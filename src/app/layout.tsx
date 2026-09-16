@@ -9,7 +9,6 @@ export const metadata: Metadata = {
     template: "%s · Albert Deep Dive",
   },
   description: "The automated monthly newsroom and publishing system of Albert School.",
-  icons: { icon: "/favicon.ico" },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

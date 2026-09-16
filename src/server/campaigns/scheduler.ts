@@ -5,7 +5,7 @@
  * AUTOMATION_TICK job or a manual "Run now" in the newsroom. Every step is idempotent through
  * `automation_runs`, so the tick can run as often as every few minutes without side effects.
  */
-import { and, asc, desc, eq, gte, inArray, isNotNull, lte, max, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, isNotNull, lte, max } from "drizzle-orm";
 import { db } from "@/server/db/client";
 import { articles, automationRuns, editionSections, editions, submissionCampaigns } from "@/server/db/schema";
 import { audit } from "@/server/audit";
@@ -17,7 +17,6 @@ import {
   addDays,
   campaignPhaseAt,
   computeCampaignSchedule,
-  describeSchedule,
   editionLabel,
   formatZoned,
   nextEditionMonth,
@@ -343,12 +342,11 @@ export async function describeAutomations(now = new Date()): Promise<{ items: Au
     .limit(3);
   const nextEdition = await db.select({ finalReviewAt: editions.finalReviewAt, id: editions.id, label: editions.label }).from(editions).where(and(isNotNull(editions.finalReviewAt), gte(editions.finalReviewAt, now))).orderBy(asc(editions.finalReviewAt)).limit(1);
 
-  const nextFor = (pick: (c: Campaign) => Date, stepKey: string): { at: Date; editionId: string; label: string } | null => {
+  const nextFor = (pick: (c: Campaign) => Date): { at: Date; editionId: string; label: string } | null => {
     for (const { campaign, edition } of upcoming) {
+      if (campaignPhaseAt(campaign, now) === "CLOSED") continue;
       const at = pick(campaign);
-      const line = describeSchedule(campaign).find((l) => l.key === stepKey);
-      const phase = campaignPhaseAt(campaign, now);
-      if (at.getTime() >= now.getTime() || (phase !== "CLOSED" && line && at.getTime() >= now.getTime())) return { at, editionId: edition.id, label: edition.label };
+      if (at.getTime() >= now.getTime()) return { at, editionId: edition.id, label: edition.label };
     }
     return null;
   };
@@ -358,13 +356,13 @@ export async function describeAutomations(now = new Date()): Promise<{ items: Au
 
   const nextByKey: Record<AutomationKey, { at: Date; editionId: string | null; label: string | null } | null> = {
     editionCreation: creationAt.getTime() >= now.getTime() ? { at: creationAt, editionId: null, label: editionLabel(nextMonth.month, nextMonth.year) } : null,
-    contributionRequest: nextFor((c) => c.opensAt, "CAMPAIGN_OPEN"),
-    reminder1: nextFor((c) => c.reminder1At, "REMINDER_1"),
-    reminder2: nextFor((c) => c.reminder2At, "REMINDER_2"),
-    gracePeriod: nextFor((c) => c.deadlineAt, "DEADLINE"),
-    aiProcessing: nextFor((c) => c.graceEndsAt, "CAMPAIGN_CLOSE"),
-    editorialAlert: nextFor((c) => c.graceEndsAt, "CAMPAIGN_CLOSE"),
-    coverageCheck: nextFor((c) => c.graceEndsAt, "CAMPAIGN_CLOSE"),
+    contributionRequest: nextFor((c) => c.opensAt),
+    reminder1: nextFor((c) => c.reminder1At),
+    reminder2: nextFor((c) => c.reminder2At),
+    gracePeriod: nextFor((c) => c.deadlineAt),
+    aiProcessing: nextFor((c) => c.graceEndsAt),
+    editorialAlert: nextFor((c) => c.graceEndsAt),
+    coverageCheck: nextFor((c) => c.graceEndsAt),
     deadlineAlert: nextEdition[0]?.finalReviewAt ? { at: new Date(nextEdition[0].finalReviewAt.getTime() - DEADLINE_ALERT_WINDOW_MS), editionId: nextEdition[0].id, label: nextEdition[0].label } : null,
   };
 
@@ -393,5 +391,3 @@ export async function automationRunsByStep(editionId: string) {
   for (const row of rows) if (!byStep.has(row.step)) byStep.set(row.step, row);
   return byStep;
 }
-
-export const _internal = { sqlTag: sql };

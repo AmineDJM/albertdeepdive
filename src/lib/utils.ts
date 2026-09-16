@@ -50,8 +50,12 @@ export function formatCurrency(n: number | null | undefined, currency = "EUR") {
   return new Intl.NumberFormat("en-GB", { style: "currency", currency, maximumFractionDigits: 2 }).format(n);
 }
 
+const LIGATURES: Record<string, string> = { æ: "ae", œ: "oe", ß: "ss", ø: "o", đ: "d", ł: "l", þ: "th", ð: "d" };
+
 export function slugify(input: string) {
   return input
+    .toLowerCase()
+    .replace(/[æœßøđłþð]/g, (c) => LIGATURES[c] ?? c)
     .normalize("NFKD")
     .replace(/[̀-ͯ]/g, "")
     .toLowerCase()

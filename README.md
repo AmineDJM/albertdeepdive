@@ -1,36 +1,158 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Albert Deep Dive
 
-## Getting Started
+**The automated monthly newsroom and publishing system of Albert School.**
 
-First, run the development server:
+Albert Deep Dive turns raw information sent by students, campus representatives, associations
+and staff into a verified, AI-assisted, human-approved monthly publication — and exports the
+same canonical edition to a print-ready PDF and an editable DOCX.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+```
+RAW HUMAN INFORMATION → STRUCTURED SOURCES → VERIFIED FACTS → STORY CLUSTERS
+→ EDITORIAL SELECTION → AI-ASSISTED WRITING → HUMAN REVIEW → DETERMINISTIC LAYOUT
+→ QA → PUBLICATION
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Human sources remain the ground truth. AI never publishes anything on its own; an editor in
+chief approves every issue.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Contents
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- [What it does](#what-it-does)
+- [Architecture](#architecture)
+- [Getting started](#getting-started)
+- [Configuration](#configuration)
+- [Running the newsroom](#running-the-newsroom)
+- [Exports](#exports)
+- [Tests](#tests)
+- [Deployment](#deployment)
+- [Documentation](#documentation)
 
-## Learn More
+## What it does
 
-To learn more about Next.js, take a look at the following resources:
+Every month:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+| Day | Automation |
+| --- | --- |
+| 1 | A new edition exists (default sections, campaign scheduled) and contributors receive personal, tokenised contribution links |
+| 4 | Reminder to non-respondents |
+| 7 | Last-day reminder |
+| 8 | Grace-period reminder, then the campaign closes |
+| after close | Submissions are normalised, classified, de-duplicated, clustered, fact-extracted, scored and turned into story candidates; editors are alerted |
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Editors then select stories, draft articles with AI assistance (every sentence traceable to its
+sources), approve them, lay out the issue on a drag-and-drop flatplan, pass the quality gates and
+export. The editor in chief approves; the version becomes immutable and is archived.
 
-## Deploy on Vercel
+## Architecture
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+| Layer | Choice |
+| --- | --- |
+| Framework | Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS v4, shadcn-style UI, Lucide |
+| Database | PostgreSQL 16 + Drizzle ORM, SQL migrations in `drizzle/` |
+| Auth | Cookie sessions (scrypt passwords), roles: super admin, editor in chief, editor, campus editor, contributor, viewer |
+| Storage | `StorageAdapter`: local disk (dev) or S3-compatible (S3 / Cloudflare R2 / Supabase Storage) |
+| Jobs | Database-backed queue (idempotent, retries, dead-letter), in-process runner or `pnpm worker`; automation tick endpoint for external cron / Trigger.dev |
+| Email | Resend in production, dev mailbox (stored in the database, visible in Settings → Mailbox) |
+| AI | OpenAI structured outputs behind an `AiProvider` interface, versioned prompt templates, deterministic local provider for development and tests, per-call logging (model, tokens, cost, latency) |
+| Images | sharp: thumbnails, web/print variants, perceptual hash, quality score, duplicate detection |
+| Publication | Canonical `EditionDocument` → HTML/CSS print design system rendered by Chromium (Playwright) to PDF, and the `docx` library to DOCX |
+| Tests | Vitest (unit + integration on a dedicated test database), Playwright (end-to-end) |
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the code layout, domain model and pipelines,
+and [docs/EDITORIAL_DNA.md](docs/EDITORIAL_DNA.md) for the analysis of the reference issue that
+shaped the sections, formats and print design.
+
+## Getting started
+
+Requirements: Node.js 22+, pnpm 10, PostgreSQL 16, Chromium (Playwright downloads one; or
+point `PLAYWRIGHT_CHROMIUM_EXECUTABLE` at an existing binary).
+
+```bash
+pnpm install
+cp .env.example .env            # adjust DATABASE_URL etc.
+createdb albertdeepdive && createdb albertdeepdive_test
+pnpm db:migrate                 # applies drizzle/ migrations
+pnpm db:seed                    # loads the May 2025 special issue as a working edition
+pnpm dev                        # http://localhost:3000
+```
+
+Sign in with `admin@albertschool.com` / `albert-deep-dive` (see `SEED_ADMIN_*`). The seed also
+creates `eic@`, `editor@`, `lyon@` (campus editor) and `viewer@albertschool.com` with the same
+password.
+
+> The seed is reconstructed from the real *Special issue N°1 — May 2025*: 26 stories, 31 raw
+> submissions, 58 photographs, facts, quotes, people, organisations, a 25-page flatplan and the
+> automation history of its campaign. Nothing is invented; contributor emails use `@example.com`.
+
+## Configuration
+
+All settings live in environment variables (see `.env.example`, every variable is documented
+there). The important ones:
+
+| Variable | Purpose |
+| --- | --- |
+| `DATABASE_URL` / `DATABASE_URL_TEST` | PostgreSQL connections (tests always use the test URL) |
+| `AUTH_SECRET` | Signs sessions, submission links and storage URLs — set a long random value |
+| `AI_PROVIDER` | `local` (deterministic, no network) or `openai` |
+| `OPENAI_API_KEY`, `AI_MODEL_FAST`, `AI_MODEL_STRONG`, `AI_PRICING` | Model routing and cost estimation |
+| `EMAIL_PROVIDER`, `RESEND_API_KEY`, `EMAIL_FROM` | `log` (dev mailbox) or `resend` |
+| `STORAGE_PROVIDER`, `STORAGE_LOCAL_DIR`, `STORAGE_S3_*` | Where originals, variants and exports are stored |
+| `JOBS_RUNNER` | `inprocess` (default), `cli` (`pnpm worker`) or `none` |
+| `PLAYWRIGHT_CHROMIUM_EXECUTABLE` | Chromium used for PDF rendering |
+| `AUTOMATION_TICK_TOKEN` | Protects `POST /api/automations/tick` for external schedulers |
+
+Runtime settings (masthead, contact, campaign day defaults, default sections, automation
+toggles, AI budget, retention) are edited in **Settings** and stored in `system_settings`.
+Prompts are versioned in **Settings → Prompts**.
+
+## Running the newsroom
+
+- **Overview** — the current edition, phase, deadlines, coverage by campus, flags, AI cost.
+- **Editions → Control room** — the whole workflow (collect, organise, write, edit, layout, QA, publish).
+- **Campaign** — schedule, contributor targets per campus, invitations, reminders, response tracking.
+- **Inbox** — triage submissions (needs review, missing information, duplicates), bulk actions.
+- **Stories** — clusters and story candidates with sources, facts, quotes, people, media, AI notes.
+- **Articles** — the editor: headline, standfirst, blocks, pull quotes, provenance ("Why is this sentence here?"), explicit AI actions, revision history, approval.
+- **Media** — library with rights status (green / yellow / red), quality, duplicates, crops.
+- **Layout** — the flatplan: drag-and-drop pages, templates, locks, fit estimates.
+- **QA & publish** — quality gates (overrides require a reason), exports, versions, approval, archive.
+- **Contributors / Campuses / Automations / Analytics / Archive / Settings** — organisation and system.
+
+Contributors never need an account: they receive `https://<app>/contribute/<token>` and use a
+mobile-first form that adapts to the story type (Business Deep Dives get their structured
+questions). Requests for more information use the same mechanism (`/respond/<token>`).
+
+## Exports
+
+`pnpm export:sample` renders the seeded edition to `exports/*.pdf` and `exports/*.docx` and
+prints the validation report. In the app, **QA & publish → Export** creates a publication version
+(`v0.1`, `v0.2` … `v1.0` when published); each version stores the canonical document, the
+validation and layout reports and its PDF/DOCX assets. Published versions are immutable.
+
+PDF rendering needs Chromium. Playwright installs one with `pnpm exec playwright install chromium`,
+or set `PLAYWRIGHT_CHROMIUM_EXECUTABLE`.
+
+## Tests
+
+```bash
+pnpm typecheck        # next typegen + tsc
+pnpm lint
+pnpm test             # vitest unit + integration (uses DATABASE_URL_TEST, seeds it)
+pnpm test:e2e         # Playwright journey: edition → campaign → submission → story → article → layout → export
+```
+
+## Deployment
+
+1. Provision PostgreSQL, an S3-compatible bucket and a Resend API key.
+2. Set the environment variables (`AI_PROVIDER=openai`, `EMAIL_PROVIDER=resend`, `STORAGE_PROVIDER=s3`, a strong `AUTH_SECRET`).
+3. `pnpm build && pnpm start`, plus either `pnpm worker` as a second process or a cron / Trigger.dev
+   task calling `POST /api/automations/tick` (Bearer `AUTOMATION_TICK_TOKEN`) every hour.
+4. Run `pnpm db:migrate` on deploy. Seed only demo environments.
+5. Chromium must be available to the server process for PDF exports (a container image with
+   Playwright's Chromium, or `PLAYWRIGHT_CHROMIUM_EXECUTABLE`).
+
+## Documentation
+
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
+- [docs/EDITORIAL_DNA.md](docs/EDITORIAL_DNA.md)
+- [docs/UI_CONVENTIONS.md](docs/UI_CONVENTIONS.md)
