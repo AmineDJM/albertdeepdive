@@ -1,0 +1,15 @@
+node_modules
+.next
+.git
+.github
+storage
+storage-test
+exports
+test-results
+playwright-report
+coverage
+docs
+tests
+*.log
+.env
+.env.local

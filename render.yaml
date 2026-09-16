@@ -15,19 +15,15 @@ databases:
 services:
   - type: web
     name: albertdeepdive
-    runtime: node
+    # Built from the Dockerfile, on Playwright's image: the print renderer drives a real Chromium,
+    # and installing one on a generic Node image needs root for apt.
+    runtime: docker
+    dockerfilePath: ./Dockerfile
     plan: standard # Chromium renders the PDF in this process and needs the memory.
     region: frankfurt
     branch: main
-    # Chromium for the print renderer, and the fonts it needs to set the pages properly.
-    buildCommand: >-
-      corepack enable &&
-      pnpm install --frozen-lockfile &&
-      pnpm exec playwright install --with-deps chromium &&
-      pnpm build
     # Migrations run on every deploy; the demo issue is loaded once, into an empty database only.
     preDeployCommand: pnpm db:migrate && pnpm db:seed:once
-    startCommand: pnpm start
     healthCheckPath: /api/health
     autoDeploy: true
     disk:
@@ -91,8 +87,6 @@ services:
       # Jobs run inside the web service; the cron below drives the monthly rhythm.
       - key: JOBS_RUNNER
         value: inprocess
-      - key: PLAYWRIGHT_BROWSERS_PATH
-        value: /var/data/playwright
       - key: LOG_LEVEL
         value: info
 
@@ -100,13 +94,13 @@ services:
   # and reads the newsroom mailbox for replies.
   - type: cron
     name: albertdeepdive-tick
-    runtime: node
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerCommand: pnpm tick
     plan: starter
     region: frankfurt
     branch: main
     schedule: "5 * * * *"
-    buildCommand: corepack enable && pnpm install --frozen-lockfile
-    startCommand: pnpm tick
     envVars:
       - key: APP_URL
         fromService:
@@ -118,7 +112,3 @@ services:
           type: web
           name: albertdeepdive
           envVarKey: AUTOMATION_TICK_TOKEN
-      - key: NODE_VERSION
-        value: "22"
-      - key: PNPM_VERSION
-        value: "10"
