@@ -11,7 +11,7 @@ import {
   type ValidationIssue,
   type ValidationReport,
 } from "@/server/db/schema";
-import { audit } from "@/server/audit";
+import { audit, recordDecision } from "@/server/audit";
 import { createLogger } from "@/server/logger";
 import { NotFoundError, ValidationError } from "@/lib/action-result";
 import { PAGE_TEMPLATES, templateByCode } from "@/lib/constants";
@@ -1071,4 +1071,41 @@ export async function runCopyfitPass(editionId: string, userId?: string | null):
     measuredAt: snapshot.at,
     stale: false,
   };
+}
+
+/**
+ * Signs the flatplan off, or reopens it.
+ *
+ * VALIDATED means an editor has looked at the pages and accepts them; the quality gate that
+ * guards publication checks for exactly that. LOCKED goes further: re-planning will not touch
+ * it. Validating runs the copyfit pass first, so nobody signs off a plan with overset text
+ * without being told.
+ */
+export async function setPlanStatus(
+  editionId: string,
+  status: "DRAFT" | "VALIDATED" | "LOCKED",
+  userId?: string | null,
+): Promise<{ status: string; pages: number; overflow: number }> {
+  const plan = await activePlan(editionId, { create: false });
+  if (!plan) throw new NotFoundError("Page plan");
+
+  let overflow = 0;
+  if (status !== "DRAFT") {
+    await runCopyfitPass(editionId, userId);
+    const [measured] = await db.select({ report: pagePlans.validationReport }).from(pagePlans).where(eq(pagePlans.id, plan.id));
+    overflow = (measured?.report?.issues ?? []).filter((i) => i.code === ISSUE_CODES.TEXT_OVERFLOW).length;
+  }
+
+  const [updated] = await db.update(pagePlans).set({ status, updatedAt: new Date() }).where(eq(pagePlans.id, plan.id)).returning();
+  invalidateFlatplanLayout(editionId);
+  await recordDecision({
+    editionId,
+    entityType: "PAGE_PLAN",
+    entityId: plan.id,
+    decision: status === "DRAFT" ? "PLAN_REOPEN" : status === "LOCKED" ? "PLAN_LOCK" : "PLAN_VALIDATE",
+    previousValue: { status: plan.status },
+    newValue: { status, overflow },
+    userId,
+  });
+  return { status: updated.status, pages: updated.pageCount, overflow };
 }

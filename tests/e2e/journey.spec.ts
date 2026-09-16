@@ -406,4 +406,136 @@ test.describe("the critical journey", () => {
     expect(await toast(page, overrideToast)).toMatch(/override removed/i);
     await chiefCtx.close();
   });
+  test("20–21 · the issue is signed off, published and archived", async ({ page }) => {
+    test.setTimeout(600_000);
+    await login(page, { email: "eic@albertschool.com", password: "albert-deep-dive" });
+    const editionId = await currentEditionId();
+
+    // Everything the gates ask for, done the way an editor would do it.
+
+    // 1. Settle every disputed fact on the stories that are in the issue.
+    const disputed = await many<Row>(
+      `select distinct f.story_id from facts f join stories s on s.id = f.story_id
+       where f.edition_id = $1 and f.status = 'DISPUTED' and s.status in ('SELECTED','DRAFTING','IN_REVIEW','APPROVED','PUBLISHED')`,
+      [editionId],
+    );
+    for (const row of disputed) {
+      await open(page, `/stories/${row.story_id}`);
+      for (let guard = 0; guard < 10; guard++) {
+        const keep = page.getByRole("button", { name: /^Keep this$/ }).first();
+        if (!(await keep.count())) break;
+        await keep.click();
+        const dialog = page.getByRole("button", { name: /Keep this version/i });
+        if (await dialog.count()) {
+          await page.locator("#settled-reason").fill("Checked against the campus register before going to print.");
+          await dialog.click();
+        }
+        await toast(page);
+        await clearToasts(page);
+        await open(page, `/stories/${row.story_id}`);
+      }
+    }
+
+    // 2. Approve every article that is on the plan.
+    for (let guard = 0; guard < 30; guard++) {
+      const pending = await one<Row>(
+        `select a.id from articles a join stories s on s.id = a.story_id
+         where a.edition_id = $1 and a.status <> 'APPROVED' and a.status <> 'EMPTY'
+           and s.status in ('SELECTED','DRAFTING','IN_REVIEW','APPROVED','PUBLISHED') limit 1`,
+        [editionId],
+      );
+      if (!pending) break;
+      await open(page, `/articles/${pending.id}`);
+      const approve = page.getByRole("button", { name: /^Approve$/ });
+      if (!(await approve.count())) break;
+      await approve.click();
+      await toast(page);
+      await clearToasts(page);
+    }
+
+    // 3. Sign the flatplan off.
+    await open(page, `/editions/${editionId}/layout`);
+    const validate = page.getByRole("button", { name: /Validate the plan/i });
+    if (await validate.count()) {
+      await validate.click();
+      expect(await toast(page)).toMatch(/validated/i);
+      await clearToasts(page);
+    }
+
+    // 4. Work the remaining gates. Anything the editor in chief may waive is waived on the record.
+    await open(page, `/editions/${editionId}/qa`);
+    for (let guard = 0; guard < 12; guard++) {
+      const override = page.getByRole("button", { name: /^Override$/ }).first();
+      if (!(await override.count())) break;
+      await override.click();
+      await page.locator("#override-reason").fill("Checked by the desk before going to print; the paperwork follows this week.");
+      await page.getByRole("button", { name: /Override the gate/ }).click();
+      await toast(page);
+      await clearToasts(page);
+      await open(page, `/editions/${editionId}/qa`);
+    }
+
+    // 5. Move the edition through layout to final review.
+    for (const target of ["Layout", "Final review"]) {
+      await open(page, `/editions/${editionId}/qa`);
+      const select = page.getByLabel("Move the edition to");
+      if (!(await select.count())) break;
+      const options = await select.locator("option").allTextContents();
+      if (!options.includes(target)) continue;
+      await select.selectOption({ label: target });
+      await page.getByRole("button", { name: /Move on/ }).click();
+      await toast(page);
+      await clearToasts(page);
+    }
+    const inFinal = await one<Row>("select status from editions where id = $1", [editionId]);
+    expect(inFinal!.status, "the edition must reach final review before it can be published").toBe("FINAL_REVIEW");
+
+    // 6. Render the version that will be published. v1.0 is a different kind, not another draft.
+    await open(page, `/editions/${editionId}/exports`);
+    await page.getByLabel("Version type").selectOption({ label: "Published (v1.0)" });
+    await page.getByRole("button", { name: /Generate PDF and DOCX/i }).click();
+    const queued = await toast(page);
+    const label = /version (v[\d.]+)/i.exec(queued)?.[1] ?? "v1.0";
+    await clearToasts(page);
+    await expect
+      .poll(
+        async () => {
+          await open(page, `/editions/${editionId}/exports`);
+          return (await page.locator(`li[data-version="${label}"]`).innerText()).replace(/\s+/g, " ");
+        },
+        { timeout: 300_000, intervals: [5000] },
+      )
+      .toMatch(/\bready\b/i);
+
+    // 7. Publish. The gates decide, not the person in a hurry.
+    await open(page, `/editions/${editionId}/qa`);
+    const publish = page.getByRole("button", { name: /Publish the issue/i });
+    await expect(publish, "a rendered v1.0 and clean gates make publication possible").toBeEnabled({ timeout: 20_000 });
+    await publish.click();
+    await page.getByRole("button", { name: /^Publish$/ }).click();
+    expect(await toast(page)).toMatch(/published/i);
+    await clearToasts(page);
+
+    const published = await one<Row>("select status, published_at, published_version_id from editions where id = $1", [editionId]);
+    expect(published!.status).toBe("PUBLISHED");
+    expect(published!.published_at).not.toBeNull();
+
+    // The published version is frozen: corrections need a new one.
+    const frozen = await one<Row>("select label, is_immutable from publication_versions where id = $1", [String(published!.published_version_id)]);
+    expect(frozen!.is_immutable).toBe(true);
+
+    // 8. Archive it, and find it in the archive with both files.
+    await open(page, `/editions/${editionId}/qa`);
+    await page.getByRole("button", { name: /Move to the archive/i }).click();
+    await page.getByRole("button", { name: /^Archive$/ }).click();
+    expect(await toast(page)).toMatch(/archived/i);
+
+    await expect
+      .poll(async () => (await one<Row>("select status from editions where id = $1", [editionId]))!.status, { timeout: 15_000 })
+      .toBe("ARCHIVED");
+
+    await open(page, "/archive");
+    await expect(page.getByRole("heading", { name: /archive/i }).first()).toBeVisible();
+    await expect(page.locator("main").getByText(String(frozen!.label)).first()).toBeVisible({ timeout: 20_000 });
+  });
 });

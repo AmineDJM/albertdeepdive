@@ -12,6 +12,7 @@ import {
   setPageNotes,
   setPageStory,
   setPageTemplate,
+  setPlanStatus,
   type FlatplanReport,
 } from "@/server/publication/flatplan";
 import { ok, toActionFailure, type ActionResult } from "@/lib/action-result";
@@ -131,6 +132,25 @@ export async function setPageNotesAction(editionId: string, pageId: string, note
     const result = await setPageNotes(editionId, pageId, notes, user.id);
     revalidateFlatplan(editionId);
     return ok(result, "Note saved");
+  } catch (err) {
+    return toActionFailure(err);
+  }
+}
+
+/** Signs the flatplan off (or reopens it). The publication gate checks for a validated plan. */
+export async function setPlanStatusAction(editionId: string, status: "DRAFT" | "VALIDATED" | "LOCKED"): Promise<ActionResult<{ status: string; pages: number; overflow: number }>> {
+  try {
+    const user = await requirePermission("layout:edit");
+    const result = await setPlanStatus(editionId, status, user.id);
+    revalidateFlatplan(editionId);
+    revalidatePath(`/editions/${editionId}/qa`);
+    const message =
+      status === "DRAFT"
+        ? "Flatplan reopened"
+        : result.overflow
+          ? `Flatplan ${status.toLowerCase()} — ${result.overflow} page(s) still overflow`
+          : `Flatplan ${status.toLowerCase()} · ${result.pages} pages fit`;
+    return ok(result, message);
   } catch (err) {
     return toActionFailure(err);
   }

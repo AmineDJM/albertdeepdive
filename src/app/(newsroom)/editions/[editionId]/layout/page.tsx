@@ -28,7 +28,7 @@ export default async function FlatplanPage({ params }: { params: Promise<{ editi
       <PageHeader
         title="Flatplan"
         description={`${stats.pages} pages · ${stats.spreads} spreads · ${stats.plannedPages} planned + ${stats.continuationPages} continuation · ${edition.pageSize}`}
-        actions={canEdit ? <FlatplanToolbar editionId={editionId} lockedPages={stats.lockedPages} planned={stats.plannedPages} /> : null}
+        actions={canEdit ? <FlatplanToolbar editionId={editionId} lockedPages={stats.lockedPages} planned={stats.plannedPages} planStatus={(flatplan.plan?.status as "DRAFT" | "VALIDATED" | "LOCKED") ?? "DRAFT"} /> : null}
       />
       <PageBody className="space-y-4">
         {!flatplan.pages.length ? (

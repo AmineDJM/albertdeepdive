@@ -118,7 +118,7 @@ Prompts are versioned in **Settings → Prompts**.
 - **Stories** — clusters and story candidates with sources, facts, quotes, people, media, AI notes.
 - **Articles** — the editor: headline, standfirst, blocks, pull quotes, provenance ("Why is this sentence here?"), explicit AI actions, revision history, approval.
 - **Media** — library with rights status (green / yellow / red), quality, duplicates, crops.
-- **Layout** — the flatplan: drag-and-drop pages, templates, locks, fit estimates.
+- **Layout** — the flatplan: spreads, drag-and-drop pages, templates, locks, pinned stories, the real copyfit measurement, and signing the plan off.
 - **QA & publish** — quality gates (overrides require a reason), exports, versions, approval, archive.
 - **Automations** — the nine scheduled steps, the job queue (retry, cancel, inspect a dead letter) and the AI call log.
 - **Analytics** — contributions, response rates, conversion, section coverage, AI cost, time to decision.
@@ -152,8 +152,10 @@ pnpm test:e2e         # Playwright: the critical journey, end to end
 
 `pnpm test:e2e` reseeds the development database first, because the journey changes the newsroom
 as it goes: it launches a campaign, files a contribution through the public form with no account,
-runs the pipeline, settles a disputed fact, approves an article, renders a version and works the
-quality gates. Set `E2E_SKIP_SEED=1` to run it against the database as it stands.
+runs the pipeline, settles a disputed fact, approves an article, signs the flatplan off, renders
+the PDF and the Word document from one snapshot, downloads both, works the quality gates as an
+editor and then as the editor in chief, publishes the issue and archives it. Set
+`E2E_SKIP_SEED=1` to run it against the database as it stands.
 
 ## Deployment
 

@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { ExternalLink, RefreshCw, Wand2 } from "lucide-react";
+import { CheckCheck, ExternalLink, RefreshCw, Undo2, Wand2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -17,19 +17,19 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { regeneratePlanAction, runCopyfitAction } from "@/app/(newsroom)/editions/[editionId]/layout/actions";
+import { regeneratePlanAction, runCopyfitAction, setPlanStatusAction } from "@/app/(newsroom)/editions/[editionId]/layout/actions";
 
 /**
  * The two things an editor triggers from the flatplan: re-running the page allocation (which pages
  * exist, in which order, with which template) and re-running the print engine's copyfit pass (how
  * the text actually flows on those pages).
  */
-export function FlatplanToolbar({ editionId, lockedPages, planned, onlyPlan = false }: { editionId: string; lockedPages: number; planned: number; onlyPlan?: boolean }) {
+export function FlatplanToolbar({ editionId, lockedPages, planned, planStatus = "DRAFT", onlyPlan = false }: { editionId: string; lockedPages: number; planned: number; planStatus?: "DRAFT" | "VALIDATED" | "LOCKED"; onlyPlan?: boolean }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [open, setOpen] = useState(false);
   const [includeCandidates, setIncludeCandidates] = useState(false);
-  const [busy, setBusy] = useState<"plan" | "copyfit" | null>(null);
+  const [busy, setBusy] = useState<"plan" | "copyfit" | "signoff" | null>(null);
 
   function regenerate() {
     setBusy("plan");
@@ -62,11 +62,39 @@ export function FlatplanToolbar({ editionId, lockedPages, planned, onlyPlan = fa
     });
   }
 
+  /** Signing the plan off is what the publication gate looks for; reopening puts it back in draft. */
+  function signOff(status: "DRAFT" | "VALIDATED") {
+    setBusy("signoff");
+    startTransition(async () => {
+      const result = await setPlanStatusAction(editionId, status);
+      setBusy(null);
+      if (result.ok) {
+        toast.success(result.message ?? "Flatplan updated", {
+          description: result.data.overflow ? "Fix the overset pages before the issue goes to print." : undefined,
+        });
+        router.refresh();
+      } else {
+        toast.error(result.error);
+      }
+    });
+  }
+
+  const signedOff = planStatus !== "DRAFT";
+
   return (
     <>
       {onlyPlan ? null : (
         <Button size="sm" variant="outline" onClick={copyfit} loading={pending && busy === "copyfit"} disabled={pending}>
           <RefreshCw /> Run copyfit
+        </Button>
+      )}
+      {onlyPlan ? null : signedOff ? (
+        <Button size="sm" variant="outline" onClick={() => signOff("DRAFT")} loading={pending && busy === "signoff"} disabled={pending}>
+          <Undo2 /> Reopen the plan
+        </Button>
+      ) : (
+        <Button size="sm" variant="outline" onClick={() => signOff("VALIDATED")} loading={pending && busy === "signoff"} disabled={pending}>
+          <CheckCheck /> Validate the plan
         </Button>
       )}
       <Button size="sm" variant="brand" onClick={() => setOpen(true)} disabled={pending} loading={pending && busy === "plan"}>
