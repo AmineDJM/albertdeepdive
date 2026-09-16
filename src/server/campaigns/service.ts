@@ -428,7 +428,14 @@ export async function openCampaign(campaignId: string, opts: OpenCampaignOptions
     const sent = await sendInvitations(campaign, edition, pending, now);
     if (opts.collectLinks) links = sent.links;
 
-    await db.update(submissionCampaigns).set({ status: "OPEN" }).where(eq(submissionCampaigns.id, campaign.id));
+    // Opening a campaign by hand before its scheduled day moves the opening to now. The phase is
+    // derived from the dates, so leaving `opensAt` in the future would send every contributor a
+    // personal link that answers "come back later" — invitations already in their inbox.
+    const openedEarly = now.getTime() < new Date(campaign.opensAt).getTime();
+    await db
+      .update(submissionCampaigns)
+      .set(openedEarly ? { status: "OPEN", opensAt: now } : { status: "OPEN" })
+      .where(eq(submissionCampaigns.id, campaign.id));
     const editionStatus = await setEditionStatus(edition, "OPEN", { strictFrom: "UPCOMING" });
 
     const invitedTotal = await db.select({ n: count() }).from(submissionRequests).where(eq(submissionRequests.campaignId, campaign.id));

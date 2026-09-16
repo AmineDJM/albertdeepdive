@@ -6,7 +6,7 @@
  * reuse the same rules.
  */
 import { z } from "zod";
-import { AUTOMATION_KEYS, type AutomationKey } from "@/server/campaigns/settings";
+import { AUTOMATION_KEYS, type AutomationKey } from "@/lib/campaigns/automations";
 import { DEFAULT_CAMPAIGN_DEFAULTS, type CampaignDefaults } from "@/lib/campaigns/schedule";
 import { CONSENT_TEXT_VERSION, DEFAULT_SECTIONS } from "@/lib/constants";
 

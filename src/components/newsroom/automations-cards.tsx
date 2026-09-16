@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { CalendarClock, CircleCheck, CirclePause, Mail, Play } from "lucide-react";
 import { toast } from "sonner";
-import type { AutomationKey } from "@/server/campaigns/settings";
+import type { AutomationKey } from "@/lib/campaigns/automations";
 import { runAutomationAction, runSchedulerTickAction } from "@/app/(newsroom)/automations/actions";
 import { GenericStatusBadge } from "@/components/newsroom/status-badge";
 import { Badge } from "@/components/ui/badge";

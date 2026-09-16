@@ -120,7 +120,12 @@ Prompts are versioned in **Settings → Prompts**.
 - **Media** — library with rights status (green / yellow / red), quality, duplicates, crops.
 - **Layout** — the flatplan: drag-and-drop pages, templates, locks, fit estimates.
 - **QA & publish** — quality gates (overrides require a reason), exports, versions, approval, archive.
-- **Contributors / Campuses / Automations / Analytics / Archive / Settings** — organisation and system.
+- **Automations** — the nine scheduled steps, the job queue (retry, cancel, inspect a dead letter) and the AI call log.
+- **Analytics** — contributions, response rates, conversion, section coverage, AI cost, time to decision.
+- **Archive** — the published back catalogue with full-text search and the PDF and DOCX of every issue.
+- **Contributors / Campuses / Settings** — organisation and system. Settings also holds the development
+  mailbox (what each contributor actually received, personal link included), the job queue and the
+  audit trail, where every action and every justified decision is recorded.
 
 Contributors never need an account: they receive `https://<app>/contribute/<token>` and use a
 mobile-first form that adapts to the story type (Business Deep Dives get their structured
@@ -142,8 +147,13 @@ or set `PLAYWRIGHT_CHROMIUM_EXECUTABLE`.
 pnpm typecheck        # next typegen + tsc
 pnpm lint
 pnpm test             # vitest unit + integration (uses DATABASE_URL_TEST, seeds it)
-pnpm test:e2e         # Playwright journey: edition → campaign → submission → story → article → layout → export
+pnpm test:e2e         # Playwright: the critical journey, end to end
 ```
+
+`pnpm test:e2e` reseeds the development database first, because the journey changes the newsroom
+as it goes: it launches a campaign, files a contribution through the public form with no account,
+runs the pipeline, settles a disputed fact, approves an article, renders a version and works the
+quality gates. Set `E2E_SKIP_SEED=1` to run it against the database as it stands.
 
 ## Deployment
 

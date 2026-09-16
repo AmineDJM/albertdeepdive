@@ -4,6 +4,7 @@ import { db } from "@/server/db/client";
 import { systemSettings } from "@/server/db/schema";
 import { DEFAULT_SECTIONS } from "@/lib/constants";
 import { DEFAULT_CAMPAIGN_DEFAULTS, type CampaignDefaults } from "@/lib/campaigns/schedule";
+import { AUTOMATION_KEYS, DEFAULT_AUTOMATION_TOGGLES, type AutomationKey, type AutomationToggles } from "@/lib/campaigns/automations";
 
 /** Reads one system setting, falling back to `fallback` when missing or malformed. */
 export async function getSetting<T>(key: string, fallback: T, schema?: z.ZodType<T>): Promise<T> {
@@ -29,33 +30,6 @@ export async function getCampaignDefaults(): Promise<CampaignDefaults> {
   const parsed = campaignDefaultsSchema.partial().safeParse(row?.value ?? {});
   return { ...DEFAULT_CAMPAIGN_DEFAULTS, ...(parsed.success ? parsed.data : {}) };
 }
-
-export const AUTOMATION_KEYS = [
-  "editionCreation",
-  "contributionRequest",
-  "reminder1",
-  "reminder2",
-  "gracePeriod",
-  "aiProcessing",
-  "editorialAlert",
-  "coverageCheck",
-  "deadlineAlert",
-] as const;
-
-export type AutomationKey = (typeof AUTOMATION_KEYS)[number];
-export type AutomationToggles = Record<AutomationKey, boolean>;
-
-export const DEFAULT_AUTOMATION_TOGGLES: AutomationToggles = {
-  editionCreation: true,
-  contributionRequest: true,
-  reminder1: true,
-  reminder2: true,
-  gracePeriod: true,
-  aiProcessing: true,
-  editorialAlert: true,
-  coverageCheck: true,
-  deadlineAlert: true,
-};
 
 export async function getAutomationToggles(): Promise<AutomationToggles> {
   const row = await db.query.systemSettings.findFirst({ where: eq(systemSettings.key, "automations") });
@@ -88,3 +62,5 @@ export async function getDefaultSections(): Promise<DefaultSection[]> {
   if (parsed.success && parsed.data.length) return parsed.data;
   return DEFAULT_SECTIONS.map((s) => ({ slug: s.slug, name: s.name, kicker: s.kicker, colour: s.colour, targetPages: s.targetPages }));
 }
+
+export { AUTOMATION_KEYS, DEFAULT_AUTOMATION_TOGGLES, type AutomationKey, type AutomationToggles };

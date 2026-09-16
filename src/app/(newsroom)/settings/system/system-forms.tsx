@@ -11,7 +11,7 @@ import { NativeSelect } from "@/components/ui/native-select";
 import { Switch } from "@/components/ui/switch";
 import { FieldError, SettingsCard } from "@/components/settings/key-value";
 import { campaignDefaultsIssues, type AiSettings, type ContactSettings, type MastheadSettings, type PrintSettings, type SettingKey } from "@/server/settings/schemas";
-import { AUTOMATION_KEYS, type AutomationKey, type AutomationToggles } from "@/server/campaigns/settings";
+import { AUTOMATION_KEYS, type AutomationKey, type AutomationToggles } from "@/lib/campaigns/automations";
 import type { CampaignDefaults } from "@/lib/campaigns/schedule";
 import { computeCampaignSchedule, formatZoned, nextEditionMonth, editionLabel } from "@/lib/campaigns/schedule";
 import { saveSettingAction } from "./actions";

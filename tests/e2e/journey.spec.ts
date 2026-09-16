@@ -77,17 +77,23 @@ test.describe("the critical journey", () => {
     test.setTimeout(240_000);
     await login(page);
 
-    // The next issue is where a campaign can still be opened; the May issue is already in production.
-    const upcoming = await one<Row>("select id, label from editions where status = 'UPCOMING' order by created_at limit 1");
-    test.skip(!upcoming, "no upcoming edition to run a campaign on");
-    const editionId = String(upcoming!.id);
-    await page.goto(`/editions/${editionId}/campaign`);
+    // The issue that is still collecting. The May issue is already in production, so the campaign
+    // steps belong to the next one — and re-running the journey must find it again once it is open.
+    const collecting = await one<Row>(
+      `select id, label, status from editions
+       where status in ('UPCOMING','OPEN','REMINDER_1','REMINDER_2','GRACE_PERIOD')
+       order by created_at limit 1`,
+    );
+    test.skip(!collecting, "no edition is collecting contributions");
+    const editionId = String(collecting!.id);
+    await open(page, `/editions/${editionId}/campaign`);
 
     const schedule = page.getByRole("button", { name: /Schedule the campaign/i });
     if (await schedule.count()) {
       await schedule.click();
       await toast(page);
-      await page.goto(`/editions/${editionId}/campaign`);
+      await clearToasts(page);
+      await open(page, `/editions/${editionId}/campaign`);
     }
 
     const launch = page.getByRole("button", { name: /Launch campaign/i });
@@ -99,13 +105,15 @@ test.describe("the critical journey", () => {
       expect(await toast(page)).toMatch(/launch|sent|open/i);
     }
 
-    // The contributor's personal link is the one the invitation email carries.
+    // The contributor's personal link is the one their invitation email carries. Pick someone who
+    // has not started anything yet, so the form opens blank and the journey is repeatable.
     let link: string | null = null;
     for (let i = 0; i < 20 && !link; i++) {
       const row = await one<Row>(
-        `select substring(html from 'contribute/[A-Za-z0-9_-]+') as path from email_log
-         where edition_id = $1 and template like 'campaign_%' and html like '%contribute/%'
-         order by created_at desc limit 1`,
+        `select substring(el.html from 'contribute/[A-Za-z0-9_-]+') as path from email_log el
+         where el.edition_id = $1 and el.template like 'campaign_%' and el.html like '%contribute/%'
+           and not exists (select 1 from submissions s where s.edition_id = el.edition_id and s.contributor_id = el.contributor_id)
+         order by el.created_at desc limit 1`,
         [editionId],
       );
       link = row?.path ? String(row.path) : null;
@@ -120,22 +128,42 @@ test.describe("the critical journey", () => {
     await expect(anonPage.getByText(/tell us|what happened|contribut/i).first()).toBeVisible({ timeout: 30_000 });
 
     const headline = `Data sprint at the Lyon campus ${Date.now()}`;
-    await anonPage.getByLabel(/headline|title|what is it about/i).first().fill(headline);
+
+    // The form is a four-step wizard: what kind of story, the details, photos, review and send.
+    // Wait for each step to arrive before acting on it — the draft autosaves between them.
+    const step = (name: RegExp) => expect(anonPage.getByRole("heading", { name })).toBeVisible({ timeout: 30_000 });
+
+    await step(/what happened/i);
+    const campusLife = anonPage.getByRole("radio", { name: /Campus life/ }).first();
+    if ((await campusLife.getAttribute("data-state")) !== "checked") await campusLife.click();
+    await anonPage.getByRole("button", { name: /^Continue$/ }).click();
+
+    await step(/tell us more|your story/i);
+    await anonPage.getByLabel(/^Title/).fill(headline);
     await anonPage
-      .getByLabel(/what happened|tell us|description|details/i)
-      .first()
+      .getByLabel(/^What happened\?/)
       .fill(
         "Thirty B2 students spent Saturday on a forecasting sprint with a retail partner. Two teams presented at the end of the day and the jury asked them to publish their notebooks.",
       );
+    await anonPage.getByLabel(/^People involved/).fill("Maelle Lalanne, B2 Lyon; Tom Perrin, B2 Lyon");
+    await anonPage.getByRole("button", { name: "Lyon", exact: true }).click();
+    await anonPage.getByRole("button", { name: /Continue to photos/ }).click();
 
-    // Consent is asked for explicitly, never assumed.
-    const consent = anonPage.getByRole("checkbox");
-    for (let i = 0; i < (await consent.count()); i++) {
-      const box = consent.nth(i);
-      if ((await box.getAttribute("data-state")) !== "checked") await box.click();
-    }
-    await anonPage.getByRole("button", { name: /send|submit|finish/i }).last().click();
-    await expect(anonPage.getByText(/thank|received|sent|got it/i).first()).toBeVisible({ timeout: 60_000 });
+    // Photos are optional: a contributor with nothing to attach walks straight on.
+    await step(/photos/i);
+    await anonPage.getByRole("button", { name: /Skip — no files|Continue to review/ }).click();
+
+    // Consent is asked for explicitly: sending without it is refused and says why.
+    await step(/review|check|send/i);
+    const send = anonPage.getByRole("button", { name: /Send my story/i });
+    await send.click();
+    await expect(anonPage.getByText(/may be published/i).first(), "sending without consent must be refused").toBeVisible({ timeout: 15_000 });
+    expect(await one<Row>("select id from submissions where title = $1 and status <> 'DRAFT'", [headline])).toBeNull();
+
+    await anonPage.locator("#consent-publication").click();
+    await send.click();
+
+    await expect(anonPage.getByText(/thank|received|sent|got it|on its way/i).first()).toBeVisible({ timeout: 60_000 });
     await anon.close();
 
     const stored = await one<Row>("select id, edition_id from submissions where title = $1", [headline]);
@@ -143,9 +171,18 @@ test.describe("the critical journey", () => {
     expect(String(stored!.edition_id)).toBe(editionId);
 
     // 8–9: it lands in the triage inbox, and the pipeline processes it on demand.
-    await page.goto(`/editions/${editionId}/inbox`);
+    await open(page, `/editions/${editionId}/inbox?view=all`);
     await expect(page.locator("main").getByText(headline).first()).toBeVisible({ timeout: 30_000 });
 
+    // The pipeline only runs once collection is closed, which is the real monthly rhythm.
+    await open(page, `/editions/${editionId}/campaign`);
+    await page.getByRole("button", { name: /^Close$/ }).click();
+    const confirmClose = page.getByRole("button", { name: /close the campaign|^Close$/i }).last();
+    await confirmClose.click();
+    expect(await toast(page)).toMatch(/clos/i);
+    await clearToasts(page);
+
+    await open(page, `/editions/${editionId}/inbox?view=all`);
     await page.getByRole("button", { name: /Run AI processing/i }).first().click();
     await page.getByRole("button", { name: /^Run processing$/i }).click();
     expect(await toast(page)).toMatch(/processing finished|processed/i);
@@ -277,7 +314,7 @@ test.describe("the critical journey", () => {
     await login(page);
     const editionId = await currentEditionId();
     const url = `/editions/${editionId}/exports`;
-    await page.goto(url);
+    await open(page, url);
     await page.getByRole("button", { name: /Generate PDF and DOCX/i }).click();
     const queued = await toast(page);
     expect(queued).toMatch(/queued for rendering/i);
@@ -289,7 +326,7 @@ test.describe("the critical journey", () => {
     await expect
       .poll(
         async () => {
-          await page.goto(url);
+          await open(page, url);
           return (await card().innerText()).replace(/\s+/g, " ");
         },
         { timeout: 240_000, intervals: [5000] },
@@ -361,8 +398,8 @@ test.describe("the critical journey", () => {
 
     await open(page, `/editions/${editionId}/qa`);
     const after = page.locator("li", { hasText: "Image rights validated" }).first();
-    await expect(after.getByText("Overridden")).toBeVisible();
-    await expect(after.getByText(reason)).toBeVisible();
+    await expect(after.getByText("Overridden", { exact: true })).toBeVisible();
+    await expect(after.getByText(reason, { exact: false })).toBeVisible();
 
     // Put the edition back as it was, so the journey is repeatable.
     await after.getByRole("button", { name: /Lift/ }).click();
