@@ -29,6 +29,8 @@ export const documentMediaSchema = z.object({
   height: z.number().nullable(),
   aspectRatio: z.number().nullable(),
   rightsStatus: z.enum(["GREEN", "YELLOW", "RED"]),
+  fileName: z.string().optional(),
+  photographer: z.string().nullable().optional(),
   src: z.object({
     print: z.object({ key: z.string(), url: z.string(), path: z.string().nullable(), width: z.number(), height: z.number() }).nullable(),
     web: z.object({ key: z.string(), url: z.string(), path: z.string().nullable(), width: z.number(), height: z.number() }).nullable(),
@@ -61,6 +63,39 @@ export const documentBddSchema = z.object({
 });
 export type DocumentBdd = z.infer<typeof documentBddSchema>;
 
+/** Fact statuses travel with the article so that validation can flag unresolved conflicts (additive). */
+export const documentFactSchema = z.object({
+  id: z.string(),
+  statement: z.string(),
+  status: z.string(), // ACTIVE | DISPUTED | RESOLVED | REJECTED
+  confidence: z.string(),
+  conflictGroup: z.string().nullable(),
+});
+export type DocumentFact = z.infer<typeof documentFactSchema>;
+
+/** Event satellite (WHY / WITH WHOM / WHERE AND WHEN pages, community listings). */
+export const documentEventSchema = z.object({
+  title: z.string(),
+  dateText: z.string().nullable(),
+  location: z.string().nullable(),
+  organiser: z.string().nullable(),
+  signupUrl: z.string().nullable(),
+  isUpcoming: z.boolean(),
+});
+export type DocumentEvent = z.infer<typeof documentEventSchema>;
+
+/**
+ * Which blocks of an article are placed on a page once the layout pass has run. `fragments` holds
+ * derived blocks (a long paragraph split at a sentence boundary) whose ids appear in `blockIds`;
+ * the canonical article body is never modified by layout.
+ */
+export const pageSliceSchema = z.object({
+  articleId: z.string(),
+  blockIds: z.array(z.string()),
+  fragments: z.array(articleBlockSchema).optional(),
+});
+export type PageSlice = z.infer<typeof pageSliceSchema>;
+
 export const documentArticleSchema = z.object({
   id: z.string(),
   storyId: z.string(),
@@ -81,6 +116,12 @@ export const documentArticleSchema = z.object({
   sourceIds: z.array(z.string()),
   status: z.string(),
   eventDateText: z.string().nullable(),
+  // ── additive (optional) ──
+  storyTitle: z.string().optional(),
+  storySlug: z.string().optional(),
+  storyStatus: z.string().optional(),
+  facts: z.array(documentFactSchema).optional(),
+  event: documentEventSchema.nullable().optional(),
 });
 export type DocumentArticle = z.infer<typeof documentArticleSchema>;
 
@@ -94,6 +135,11 @@ export const documentPageSchema = z.object({
   continuationOf: z.number().nullable(),
   isLocked: z.boolean(),
   notes: z.string().nullable(),
+  // ── additive (optional) ──
+  continuationOfPageId: z.string().nullable().optional(),
+  isContinuation: z.boolean().optional(),
+  storyIds: z.array(z.string()).optional(),
+  slices: z.array(pageSliceSchema).optional(),
 });
 export type DocumentPage = z.infer<typeof documentPageSchema>;
 
@@ -126,6 +172,15 @@ export const editionDocumentSchema = z.object({
     contactEmail: z.string().nullable(),
     website: z.string().nullable(),
     campuses: z.array(z.object({ id: z.string(), name: z.string() })),
+    // ── additive (optional) ──
+    social: z.object({ instagram: z.string().nullable() }).optional(),
+    editionStatus: z.string().optional(),
+    planId: z.string().nullable().optional(),
+    planStatus: z.string().nullable().optional(),
+    slug: z.string().optional(),
+    layout: z
+      .object({ paginatedAt: z.string(), continuationPages: z.number(), engine: z.string() })
+      .optional(),
   }),
   sections: z.array(z.object({ id: z.string(), slug: z.string(), name: z.string(), kicker: z.string().nullable(), colour: z.string().nullable(), sortOrder: z.number() })),
   articles: z.array(documentArticleSchema),

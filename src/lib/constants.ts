@@ -92,3 +92,6 @@ export const TARGET_LENGTHS = [
   { value: "LONG", label: "Long", words: [520, 850] },
   { value: "FEATURE", label: "Feature", words: [850, 1400] },
 ] as const;
+
+export const CONTRIBUTOR_TYPES = ["STUDENT", "CAMPUS_AMBASSADOR", "ASSOCIATION", "CLASS_REPRESENTATIVE", "ADMINISTRATION", "FACULTY", "CORPORATE_RELATIONS", "BDD_REPRESENTATIVE", "ALUMNI", "STUDENT_ENTREPRENEUR", "STAFF", "OTHER"] as const;
+export type ContributorType = (typeof CONTRIBUTOR_TYPES)[number];

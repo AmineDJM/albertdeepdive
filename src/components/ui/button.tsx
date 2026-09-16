@@ -41,17 +41,18 @@ function Button({
   ...props
 }: React.ComponentProps<"button"> &
   VariantProps<typeof buttonVariants> & { asChild?: boolean; loading?: boolean }) {
-  const Comp = asChild ? Slot.Root : "button";
+  if (asChild) {
+    return (
+      <Slot.Root data-slot="button" className={cn(buttonVariants({ variant, size, className }))} {...props}>
+        {children}
+      </Slot.Root>
+    );
+  }
   return (
-    <Comp
-      data-slot="button"
-      className={cn(buttonVariants({ variant, size, className }))}
-      disabled={props.disabled || loading}
-      {...props}
-    >
+    <button data-slot="button" className={cn(buttonVariants({ variant, size, className }))} disabled={props.disabled || loading} {...props}>
       {loading ? <Loader2 className="animate-spin" /> : null}
       {children}
-    </Comp>
+    </button>
   );
 }
 
