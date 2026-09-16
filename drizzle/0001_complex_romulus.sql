@@ -1,0 +1,1 @@
+ALTER TABLE "page_plan_pages" ADD COLUMN "story_ids" uuid[] DEFAULT '{}' NOT NULL;
