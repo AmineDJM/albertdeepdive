@@ -7,7 +7,6 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { requestStoryInformationAction } from "@/app/(newsroom)/stories/[storyId]/actions";
@@ -17,13 +16,11 @@ import { requestStoryInformationAction } from "@/app/(newsroom)/stories/[storyId
  * their answer comes back as a follow-up submission attached to the story.
  */
 export function InformationRequestDialog({
-  editionId,
   storyId,
   storyTitle,
   contributor,
   items,
 }: {
-  editionId: string;
   storyId: string;
   storyTitle: string;
   contributor: { id: string; name: string };

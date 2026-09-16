@@ -8,7 +8,10 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { addFactAction, rejectFactAction, resolveConflictAction, verifyFactAction } from "@/app/(newsroom)/stories/[storyId]/actions";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { addFactAction, rejectFactAction, resolveConflictAction, settleFactAction, verifyFactAction } from "@/app/(newsroom)/stories/[storyId]/actions";
 import { cn, enumLabel, truncate } from "@/lib/utils";
 
 export type FactItem = {
@@ -48,16 +51,20 @@ export function FactList({ storyId, facts, submissions, canEdit }: { storyId: st
   const [pending, startTransition] = useTransition();
   const [newFact, setNewFact] = useState("");
   const [adding, setAdding] = useState(false);
+  const [settling, setSettling] = useState<FactItem | null>(null);
+  const [statement, setStatement] = useState("");
+  const [reason, setReason] = useState("");
   const sourceById = new Map(submissions.map((s) => [s.id, s]));
   const active = facts.filter((f) => f.status !== "REJECTED");
   const conflictGroups = new Map<string, FactItem[]>();
   for (const f of active) if (f.conflictGroup) conflictGroups.set(f.conflictGroup, [...(conflictGroups.get(f.conflictGroup) ?? []), f]);
 
-  function run(fn: () => Promise<{ ok: boolean; error?: string; message?: string }>) {
+  function run(fn: () => Promise<{ ok: boolean; error?: string; message?: string }>, after?: () => void) {
     startTransition(async () => {
       const res = await fn();
       if (res.ok) {
         toast.success(res.message ?? "Done");
+        after?.();
         router.refresh();
       } else toast.error(res.error ?? "Failed");
     });
@@ -119,6 +126,17 @@ export function FactList({ storyId, facts, submissions, canEdit }: { storyId: st
                       ) : null}
                     </div>
                   ) : null}
+                  {/* A disputed fact with no rival row: the statement itself describes the doubt,
+                      so the editor settles it by writing what is actually true. Without this the
+                      fact can never be resolved, and the issue can never go to print. */}
+                  {disputed && !rivals.length && canEdit ? (
+                    <div className="mt-1.5 flex items-center gap-2">
+                      <Button size="xs" variant="outline" disabled={pending} onClick={() => { setSettling(fact); setStatement(fact.statement); setReason(""); }}>
+                        <ShieldCheck /> Keep this
+                      </Button>
+                      <span className="text-2xs text-muted-foreground">Say which reading is right, and why.</span>
+                    </div>
+                  ) : null}
                 </div>
                 {canEdit && !disputed ? (
                   <div className="flex shrink-0 gap-1">
@@ -171,6 +189,40 @@ export function FactList({ storyId, facts, submissions, canEdit }: { storyId: st
           </Button>
         )
       ) : null}
+    
+      <Dialog open={!!settling} onOpenChange={(v) => !v && setSettling(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Settle this fact</DialogTitle>
+            <DialogDescription>
+              The sources disagree. Write the version that is correct and say how you know. The wording you keep is the wording the article and the printed issue will use.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <p className="rounded-md border border-warning/40 bg-warning-soft/40 p-2 text-2xs leading-relaxed">{settling?.statement}</p>
+            <div className="space-y-1.5">
+              <Label htmlFor="settled-statement">The fact, as it should stand</Label>
+              <Textarea id="settled-statement" value={statement} onChange={(e) => setStatement(e.target.value)} rows={3} />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="settled-reason">How do you know?</Label>
+              <Textarea id="settled-reason" value={reason} onChange={(e) => setReason(e.target.value)} rows={2} placeholder="Checked against the campus register and the contributor confirmed by email." />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSettling(null)}>
+              Cancel
+            </Button>
+            <Button
+              loading={pending}
+              disabled={!statement.trim() || !reason.trim()}
+              onClick={() => settling && run(() => settleFactAction(storyId, settling.id, statement, reason), () => setSettling(null))}
+            >
+              <ShieldCheck /> Keep this version
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

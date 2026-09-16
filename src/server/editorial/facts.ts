@@ -76,6 +76,37 @@ export async function resolveConflict(factId: string, keepFactId: string, reason
   return { kept, rejected: [...new Set(losers)] };
 }
 
+/**
+ * Settles a disputed fact that has no rival row — the common case when the pipeline flags a single
+ * statement as uncertain ("spelled 'Sarfaty' in one source and 'Serfaty' in another"). The editor
+ * writes the reading that is correct and why; the fact becomes editor-verified, and the wording
+ * they chose is the wording the article and the print edition use.
+ */
+export async function settleFact(factId: string, statement: string, reason: string, userId: string) {
+  const settled = statement?.trim();
+  if (!settled) throw new ValidationError("The settled statement is required", { statement: ["Required"] });
+  if (!reason?.trim()) throw new ValidationError("A reason is required to settle a disputed fact", { reason: ["Required"] });
+  const fact = await loadFact(factId);
+  if (fact.status !== "DISPUTED") throw new ValidationError("That fact is not disputed");
+  const now = new Date();
+  const [kept] = await db
+    .update(facts)
+    .set({ statement: settled, status: "RESOLVED", confidence: "EDITOR_VERIFIED", verifiedById: userId, verifiedAt: now, notes: [fact.notes, `Settled: ${reason.trim()}`].filter(Boolean).join("\n") })
+    .where(eq(facts.id, factId))
+    .returning();
+  await recordDecision({
+    editionId: fact.editionId,
+    entityType: "FACT",
+    entityId: factId,
+    decision: "FACT_RESOLVE_CONFLICT",
+    reason: reason.trim(),
+    previousValue: { statement: fact.statement, status: fact.status },
+    newValue: { statement: settled, status: "RESOLVED" },
+    userId,
+  });
+  return kept;
+}
+
 export async function addFact(storyId: string, input: { statement: string; sourceSubmissionId?: string | null; category?: string | null; excerpt?: string | null }, userId: string) {
   const statement = input.statement?.trim();
   if (!statement) throw new ValidationError("Statement is required", { statement: ["Required"] });

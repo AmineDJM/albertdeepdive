@@ -1,4 +1,5 @@
 import "@/server/load-env";
+import { randomUUID } from "node:crypto";
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { getTableName, sql } from "drizzle-orm";
@@ -7,6 +8,7 @@ import * as s from "@/server/db/schema";
 import { env } from "@/server/env";
 import { hashPassword } from "@/server/auth/password";
 import { generateOpaqueToken } from "@/server/auth/tokens";
+import { contributionLink, mintRequestToken, requestTokenHash } from "@/server/campaigns/tokens";
 import { ingestMedia } from "@/server/media/ingest";
 import { PROMPT_DEFAULTS } from "@/server/ai/prompts";
 import { estimateCostCents } from "@/server/ai/pricing";
@@ -165,21 +167,29 @@ export async function runSeed(options: { quiet?: boolean } = {}): Promise<SeedRe
     })
     .returning();
 
-  // Requests: one per contributor
+  // Requests: one per contributor.
+  //
+  // A contributor who has not filed yet keeps a *live* personal link, derived exactly as the
+  // campaign engine derives it, so the demo can walk in through the public URL. Contributors who
+  // already submitted keep an expired, undiscoverable token: their link has done its job.
   const contributorsWithSubmissions = new Set(SEED_STORIES.flatMap((st) => st.submissions.map((sub) => sub.contributor)));
+  const openLinkExpiry = new Date(Date.now() + 30 * 86_400_000);
+  const requestIds = new Map(SEED_CONTRIBUTORS.map((c) => [c.key, randomUUID()]));
   const requestRows = await db
     .insert(s.submissionRequests)
     .values(
       SEED_CONTRIBUTORS.map((c, i) => {
         const contributor = contributorByKey.get(c.key)!;
         const submitted = contributorsWithSubmissions.has(c.key);
+        const id = requestIds.get(c.key)!;
         return {
+          id,
           campaignId: campaign.id,
           editionId: edition.id,
           contributorId: contributor.id,
           campusId: contributor.campusId,
-          tokenHash: generateOpaqueToken().hash,
-          tokenExpiresAt: new Date("2025-04-15T00:00:00Z"),
+          tokenHash: submitted ? generateOpaqueToken().hash : requestTokenHash(id, openLinkExpiry),
+          tokenExpiresAt: submitted ? new Date("2025-04-15T00:00:00Z") : openLinkExpiry,
           status: submitted ? ("SUBMITTED" as const) : i % 3 === 0 ? ("OPENED" as const) : ("SENT" as const),
           sentAt: at(opensAt, 0, 0, i),
           openedAt: submitted || i % 3 === 0 ? at(opensAt, 0, 3, i) : null,
@@ -192,12 +202,24 @@ export async function runSeed(options: { quiet?: boolean } = {}): Promise<SeedRe
     .returning();
   const requestByContributorId = new Map(requestRows.map((r) => [r.contributorId, r]));
 
-  // Email log: invitations + reminders (dev mailbox)
+  // Email log: invitations + reminders (dev mailbox).
+  // The invitation carries the contributor's real personal link, so the development mailbox shows
+  // exactly what they received — and a live link can be opened straight from it.
+  const invitationLink = (key: string) => {
+    if (contributorsWithSubmissions.has(key)) return null;
+    return contributionLink(mintRequestToken(requestIds.get(key)!, openLinkExpiry));
+  };
+  const invitationHtml = (key: string) => {
+    const link = invitationLink(key);
+    return link
+      ? `<p>Tell us what happened around you this month.</p><p><a href="${link}">Open my personal link</a></p>`
+      : "<p>Tell us what happened around you this month.</p><p>This personal link has expired.</p>";
+  };
   await db.insert(s.emailLog).values(
     SEED_CONTRIBUTORS.flatMap((c, i) => {
       const contributor = contributorByKey.get(c.key)!;
       const rows: (typeof s.emailLog.$inferInsert)[] = [
-        { to: contributor.email, subject: "Albert's Deep Dive — May 2025: tell us what happened around you", html: "<p>Invitation (seeded)</p>", textBody: "Invitation", template: "campaign_invitation", status: "LOGGED", provider: "log", entityType: "CAMPAIGN", entityId: campaign.id, editionId: edition.id, contributorId: contributor.id, sentAt: at(opensAt, 0, 0, i), createdAt: at(opensAt, 0, 0, i) },
+        { to: contributor.email, subject: "Albert's Deep Dive — May 2025: tell us what happened around you", html: invitationHtml(c.key), textBody: `Your personal link: ${invitationLink(c.key) ?? "(expired)"}`, template: "campaign_invitation", status: "LOGGED", provider: "log", entityType: "CAMPAIGN", entityId: campaign.id, editionId: edition.id, contributorId: contributor.id, sentAt: at(opensAt, 0, 0, i), createdAt: at(opensAt, 0, 0, i) },
       ];
       if (!contributorsWithSubmissions.has(c.key)) {
         rows.push({ to: contributor.email, subject: "Reminder: 3 days left to contribute to Albert's Deep Dive", html: "<p>Reminder (seeded)</p>", textBody: "Reminder", template: "campaign_reminder", status: "LOGGED", provider: "log", entityType: "CAMPAIGN", entityId: campaign.id, editionId: edition.id, contributorId: contributor.id, sentAt: new Date("2025-04-04T07:00:00Z"), createdAt: new Date("2025-04-04T07:00:00Z") });

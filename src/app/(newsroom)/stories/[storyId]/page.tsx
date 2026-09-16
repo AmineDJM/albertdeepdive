@@ -76,7 +76,6 @@ export default async function StoryPage({ params }: { params: Promise<{ storyId:
               {canEdit && primaryContributor ? (
                 <div className="mt-2.5">
                   <InformationRequestDialog
-                    editionId={edition.id}
                     storyId={story.id}
                     storyTitle={story.title}
                     contributor={{ id: primaryContributor.id, name: `${primaryContributor.firstName} ${primaryContributor.lastName}` }}

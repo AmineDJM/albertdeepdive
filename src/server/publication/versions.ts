@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { asc, desc, eq, inArray } from "drizzle-orm";
+import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import type { Browser } from "playwright";
 import { db } from "@/server/db/client";
 import { editions, notifications, publicationAssets, publicationVersions, qualityGateOverrides } from "@/server/db/schema";
@@ -305,3 +305,14 @@ export async function overrideQualityGate(editionId: string, gateKey: string, re
   await audit({ action: "qa.gate.override", userId: user.id, entityType: "EDITION", entityId: editionId, editionId, metadata: { gateKey, reason: reason.trim() } });
   return row;
 }
+
+/** Removes a gate override, so the gate goes back to reflecting the edition's real state. */
+export async function clearQualityGateOverride(editionId: string, gateKey: string, user: { id: string; role: string }) {
+  if (!OVERRIDE_ROLES.has(user.role)) throw new ForbiddenError("Only the editor in chief or a super admin can lift a quality-gate override.");
+  const [row] = await db.delete(qualityGateOverrides).where(and(eq(qualityGateOverrides.editionId, editionId), eq(qualityGateOverrides.gateKey, gateKey))).returning();
+  if (!row) throw new NotFoundError("Quality gate override");
+  await audit({ action: "qa.gate.override.clear", userId: user.id, entityType: "EDITION", entityId: editionId, editionId, metadata: { gateKey } });
+  return row;
+}
+
+export type { PublicationKind } from "./validate";

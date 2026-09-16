@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { requirePermission } from "@/server/auth/session";
-import { addFact, rejectFact, resolveConflict, verifyFact } from "@/server/editorial/facts";
+import { addFact, rejectFact, resolveConflict, settleFact, verifyFact } from "@/server/editorial/facts";
 import { addComment } from "@/server/editorial/comments";
 import { createInformationRequest } from "@/server/editorial/information-requests";
 import { ok, toActionFailure, type ActionResult } from "@/lib/action-result";
@@ -72,6 +72,17 @@ export async function requestStoryInformationAction(input: { storyId: string; co
     const result = await createInformationRequest({ storyId: input.storyId, contributorId: input.contributorId, message: input.message, items: input.items, submissionId: input.submissionId ?? null, userId: user.id });
     revalidateStory(input.storyId);
     return ok({ url: result.url }, "Information request sent");
+  } catch (err) {
+    return toActionFailure(err);
+  }
+}
+
+export async function settleFactAction(storyId: string, factId: string, statement: string, reason: string): Promise<ActionResult> {
+  try {
+    const user = await requirePermission("story:edit");
+    await settleFact(factId, statement, reason, user.id);
+    revalidateStory(storyId);
+    return ok(null, "Conflict resolved");
   } catch (err) {
     return toActionFailure(err);
   }

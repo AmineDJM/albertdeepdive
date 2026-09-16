@@ -1,4 +1,21 @@
+import { existsSync, readFileSync } from "node:fs";
 import { defineConfig, devices } from "@playwright/test";
+
+// Playwright does not read .env, so `pnpm test:e2e` would otherwise miss DATABASE_URL, AUTH_SECRET
+// and the browser path that the rest of the project gets from it.
+for (const file of [".env.local", ".env"]) {
+  if (!existsSync(file)) continue;
+  for (const line of readFileSync(file, "utf8").split("\n")) {
+    const match = /^\s*([A-Z0-9_]+)\s*=\s*(.*)$/.exec(line);
+    if (!match) continue;
+    const [, key, raw] = match;
+    if (process.env[key] !== undefined) continue;
+    process.env[key] = raw.trim().replace(/^["'](.*)["']$/, "$1");
+  }
+}
+
+// The sandbox ships one Chromium build; prefer it over the version-pinned download.
+const chromium = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE ?? (existsSync("/opt/pw-browsers/chromium") ? "/opt/pw-browsers/chromium" : undefined);
 
 const port = Number(process.env.E2E_PORT ?? 3100);
 const baseURL = process.env.E2E_BASE_URL ?? `http://127.0.0.1:${port}`;
@@ -15,11 +32,9 @@ export default defineConfig({
     baseURL,
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
-    launchOptions: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE
-      ? { executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE }
-      : undefined,
+    launchOptions: chromium ? { executablePath: chromium } : undefined,
   },
-  projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
+  projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"], channel: chromium ? undefined : "chromium" } }],
   webServer: process.env.E2E_BASE_URL
     ? undefined
     : {

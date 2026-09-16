@@ -10,15 +10,14 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { NativeSelect } from "@/components/ui/native-select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import { ArticleStatusBadge } from "@/components/newsroom/status-badge";
 import { approveArticleAction, commentOnArticleAction, explainBlockAction, requestChangesAction, restoreRevisionAction, runArticleActionAction, saveArticleAction, submitForReviewAction } from "@/app/(newsroom)/articles/[articleId]/actions";
 import type { ArticleAction, ArticleProposal } from "@/server/editorial/articles";
 import type { BlockExplanation } from "@/server/editorial/facts";
-import type { ArticleBlock } from "@/lib/publication/document";
-import { cn, formatDateTime, relativeTime, truncate } from "@/lib/utils";
+import { countWords, type ArticleBlock } from "@/lib/publication/document";
+import { cn, relativeTime, truncate } from "@/lib/utils";
 
 const AI_ACTIONS: { action: ArticleAction; label: string; icon: React.ComponentType<{ className?: string }>; hint: string }[] = [
   { action: "shorten", label: "Shorten", icon: Scissors, hint: "Tighten the text without losing a fact" },
@@ -67,7 +66,11 @@ function newId() {
   return `b_${Math.random().toString(36).slice(2, 10)}`;
 }
 
-function blockText(b: ArticleBlock): string {
+/**
+ * How a block reads when it is collapsed to a preview: one line per item, unlike the canonical
+ * `blockText`, which joins with spaces because it feeds word counts and matching, not display.
+ */
+function blockPreview(b: ArticleBlock): string {
   switch (b.type) {
     case "paragraph":
     case "crosshead":
@@ -77,7 +80,7 @@ function blockText(b: ArticleBlock): string {
     case "list":
       return b.items.join("\n");
     case "box":
-      return [b.text, ...(b.items ?? [])].filter(Boolean).join("\n");
+      return [b.title, b.text, ...(b.items ?? [])].filter(Boolean).join("\n");
     case "qa":
       return `${b.question}\n${b.answer}`;
     case "image":
@@ -85,13 +88,6 @@ function blockText(b: ArticleBlock): string {
     default:
       return "";
   }
-}
-
-function countWords(blocks: ArticleBlock[]) {
-  return blocks.reduce((n, b) => {
-    const t = blockText(b).trim();
-    return n + (t ? t.split(/\s+/).length : 0);
-  }, 0);
 }
 
 export function ArticleEditor({
@@ -561,7 +557,7 @@ function ProposalDialog({ proposal, onClose, onApply }: { proposal: ArticlePropo
                 {proposal.blocks.map((b) => (
                   <div key={b.id} className="text-xs">
                     <span className="label-caps">{BLOCK_LABELS[b.type] ?? b.type}</span>
-                    <p className="font-serif whitespace-pre-wrap">{blockText(b)}</p>
+                    <p className="font-serif whitespace-pre-wrap">{blockPreview(b)}</p>
                   </div>
                 ))}
               </div>

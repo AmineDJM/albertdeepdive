@@ -52,6 +52,7 @@ export default async function StoriesPage({ params, searchParams }: { params: Pr
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-5 py-2">
+        <h1 className="sr-only">Stories</h1>
         <nav className="flex flex-wrap items-center gap-1" aria-label="Story views">
           {VIEWS.map((v) => (
             <Link
