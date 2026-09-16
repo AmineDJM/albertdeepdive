@@ -1,12 +1,13 @@
 /**
  * Article blocks as exchanged with models: every field present (nullable instead of optional) so the
- * JSON schema can be strict, plus converters to and from the canonical ArticleBlock type.
+ * JSON schema can be strict (z.union renders as anyOf, which OpenAI accepts; discriminatedUnion
+ * would render oneOf), plus converters to and from the canonical ArticleBlock type.
  */
 import { z } from "zod";
 import type { ArticleBlock } from "@/lib/publication/document";
 import { newBlockId } from "@/lib/publication/document";
 
-export const aiBlockSchema = z.discriminatedUnion("type", [
+export const aiBlockSchema = z.union([
   z.object({ id: z.string(), type: z.enum(["paragraph"]), text: z.string() }),
   z.object({ id: z.string(), type: z.enum(["crosshead"]), text: z.string() }),
   z.object({ id: z.string(), type: z.enum(["pullquote"]), text: z.string(), attribution: z.string().nullable() }),

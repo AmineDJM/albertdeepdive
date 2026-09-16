@@ -8,7 +8,23 @@ import { editions } from "@/server/db/schema";
 import { buildEditionDocument } from "@/server/publication/document-builder";
 import { renderPdf, launchBrowser, screenshotPage } from "@/server/publication/pdf";
 
+async function shotsOnly(pages: number[]) {
+  const outDir = path.join(process.cwd(), "exports", "dev");
+  const html = await fs.readFile(path.join(outDir, "final.html"), "utf8");
+  const browser = await launchBrowser();
+  try {
+    for (const n of pages) {
+      const png = await screenshotPage(html, n, { browser, scale: 1.4 });
+      await fs.writeFile(path.join(outDir, `page-${String(n).padStart(2, "0")}.png`), png);
+    }
+  } finally {
+    await browser.close();
+  }
+  process.exit(0);
+}
+
 async function main() {
+  if (process.argv[3] === "shots") return shotsOnly(process.argv[2].split(",").map(Number));
   const t0 = Date.now();
   const edition = await db.query.editions.findFirst({ where: eq(editions.issueNumber, 1) });
   if (!edition) throw new Error("no edition");

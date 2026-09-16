@@ -23,7 +23,13 @@ describe("tokens", () => {
     const sig = signLocal("media/a/original.jpg", exp);
     expect(verifyLocalSignature("media/a/original.jpg", exp, sig)).toBe(true);
     expect(verifyLocalSignature("media/b/original.jpg", exp, sig)).toBe(false);
-    expect(verifyLocalSignature("media/a/original.jpg", exp - 200, signLocal("media/a/original.jpg", exp - 200))).toBe(false);
+    expect(
+      verifyLocalSignature(
+        "media/a/original.jpg",
+        exp - 200,
+        signLocal("media/a/original.jpg", exp - 200),
+      ),
+    ).toBe(false);
   });
   it("passwords hash with scrypt and verify", async () => {
     const hash = await hashPassword("albert-deep-dive");

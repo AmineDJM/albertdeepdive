@@ -93,6 +93,8 @@ export const pageSliceSchema = z.object({
   articleId: z.string(),
   blockIds: z.array(z.string()),
   fragments: z.array(articleBlockSchema).optional(),
+  /** Copyfit level (0–3): each step shrinks the flow's type by 2.5% before text spills to a continuation page. */
+  fit: z.number().optional(),
 });
 export type PageSlice = z.infer<typeof pageSliceSchema>;
 

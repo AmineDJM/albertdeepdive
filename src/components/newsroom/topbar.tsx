@@ -47,7 +47,7 @@ export function Topbar({ user, notifications, unread, onOpenSearch }: { user: { 
             ) : null}
           </div>
           <ul className="max-h-[380px] overflow-y-auto scrollbar-thin">
-            {notifications.length === 0 ? <li className="px-3 py-8 text-center text-xs text-muted-foreground">You're all caught up.</li> : null}
+            {notifications.length === 0 ? <li className="px-3 py-8 text-center text-xs text-muted-foreground">You&rsquo;re all caught up.</li> : null}
             {notifications.map((n) => (
               <li key={n.id} className={cn("border-b last:border-0", !n.readAt && "bg-brand-soft/30")}>
                 <button

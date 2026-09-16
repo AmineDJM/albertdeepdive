@@ -72,6 +72,13 @@ export function suggestCrops(width: number, height: number) {
       h = height;
       w = Math.round(height * t.value);
     }
-    return { name: t.name, aspect: t.aspect, x: Math.round((width - w) / 2), y: Math.round((height - h) / 2), width: w, height: h };
+    return {
+      name: t.name,
+      aspect: t.aspect,
+      x: Math.round((width - w) / 2),
+      y: Math.round((height - h) / 2),
+      width: w,
+      height: h,
+    };
   });
 }

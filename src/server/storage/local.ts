@@ -2,7 +2,7 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { env } from "@/server/env";
-import type { PutOptions, SignedUrlOptions, StorageAdapter } from "./types";
+import type { SignedUrlOptions, StorageAdapter } from "./types";
 
 function safeKey(key: string) {
   const normalized = path.posix.normalize(key).replace(/^\/+/, "");
@@ -22,7 +22,7 @@ export class LocalStorageAdapter implements StorageAdapter {
     return path.join(this.root, safeKey(key));
   }
 
-  async put(key: string, body: Buffer | Uint8Array, _options: PutOptions) {
+  async put(key: string, body: Buffer | Uint8Array) {
     const target = this.localPath(key);
     await fs.mkdir(path.dirname(target), { recursive: true });
     await fs.writeFile(target, body);

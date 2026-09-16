@@ -28,6 +28,8 @@ export type TemplateContext = {
   monthLabel: string;
   /** Pages of the same article that are "flowing" templates (used to avoid repeating a body). */
   flowPagesOfArticle: (articleId: string) => DocumentPage[];
+  /** Media ids rendered so far (pages render in order, so a continuation page knows what its source page showed). */
+  used: Set<string>;
 };
 
 export type AssetSource = (media: DocumentMedia) => string | null;
@@ -85,5 +87,6 @@ export function createTemplateContext(doc: EditionDocument, mode: AssetMode, ass
     src,
     monthLabel: `${monthName(doc.meta.month)} ${doc.meta.year}`,
     flowPagesOfArticle: (id) => (pagesOfArticle.get(id) ?? []).filter((p) => FLOW_TEMPLATES.has(p.template)),
+    used: new Set<string>(),
   };
 }

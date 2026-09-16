@@ -1,14 +1,14 @@
 import { z } from "zod";
 import { runService, type AiServiceContext } from "./common";
 
-const draftBlockSchema = z.discriminatedUnion("type", [
+const draftBlockSchema = z.union([
   z.object({ type: z.enum(["paragraph"]), text: z.string(), factIds: z.array(z.string()) }),
   z.object({ type: z.enum(["crosshead"]), text: z.string() }),
   z.object({ type: z.enum(["qa"]), question: z.string(), answer: z.string(), factIds: z.array(z.string()) }),
   z.object({ type: z.enum(["pullquote"]), quoteId: z.string() }),
   z.object({ type: z.enum(["list"]), items: z.array(z.string()), factIds: z.array(z.string()) }),
   z.object({ type: z.enum(["box"]), title: z.string(), items: z.array(z.string()), factIds: z.array(z.string()) }),
-  z.object({ type: z.enum(["testimony"]), quoteId: z.string() }),
+  z.object({ type: z.enum(["testimony"]), quoteId: z.string().nullable(), text: z.string().nullable(), speaker: z.string().nullable(), factIds: z.array(z.string()) }),
 ]);
 export type DraftBlock = z.infer<typeof draftBlockSchema>;
 

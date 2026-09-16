@@ -7,6 +7,8 @@ import { createLogger } from "@/server/logger";
 import { toStrictJsonSchema } from "./json-schema";
 import { estimateCostCents, resolveModel } from "./pricing";
 import { getPromptDefault } from "./prompts";
+import { LocalProvider } from "./providers/local";
+import { OpenAiProvider } from "./providers/openai";
 import type { AiProvider, AiTaskRequest, AiTaskResult, ModelTier } from "./types";
 import { AiOutputError } from "./types";
 
@@ -16,15 +18,7 @@ let provider: AiProvider | undefined;
 
 export function getAiProvider(): AiProvider {
   if (provider) return provider;
-  if (env.AI_PROVIDER === "openai") {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { OpenAiProvider } = require("./providers/openai") as typeof import("./providers/openai");
-    provider = new OpenAiProvider();
-  } else {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { LocalProvider } = require("./providers/local") as typeof import("./providers/local");
-    provider = new LocalProvider();
-  }
+  provider = env.AI_PROVIDER === "openai" ? new OpenAiProvider() : new LocalProvider();
   return provider;
 }
 

@@ -12,6 +12,7 @@ import {
   heroMedia,
   kickerFor,
   headlineClass,
+  leftoverMedia,
   mediaByRole,
   placeholder,
   pullQuoteSide,
@@ -95,9 +96,10 @@ export function profile(page: DocumentPage, ctx: TemplateContext): TemplateOutpu
   const width = colWidth(5);
   const aspect = portrait?.aspectRatio && portrait.aspectRatio > 0 ? portrait.aspectRatio : 1;
   const height = Math.min(96, Math.max(62, width / aspect));
+  const secondary = galleryMedia(article, ctx, new Set(portrait ? [portrait.id] : []), ["logo", "photo", "chart", "diagram", "screenshot"])[0];
   const body = html`<div class="head-band" style="grid-template-columns:${width.toFixed(1)}mm 1fr">
   <div>${figureFor(portrait, ctx, width, { widthMm: width, heightMm: height, position: "50% 15%" })}</div>
-  <div>${articleHeader(article, ctx, page, { size: "md" })}${pullQuoteSide(article)}</div>
+  <div>${articleHeader(article, ctx, page, { size: "md" })}${pullQuoteSide(article)}${when(secondary && !article.pullQuotes.length, () => html`<div style="max-width:60mm;margin-top:2mm">${figureFor(secondary, ctx, 60, { widthMm: 60, minMm: 24, maxMm: 40 })}</div>`)}</div>
 </div>
 ${flowRegion(page, article, ctx, { cols: 2, dropCap: true })}`;
   return { body, className: "profile" };
@@ -183,12 +185,15 @@ export function continuation(page: DocumentPage, ctx: TemplateContext): Template
   if (slices.length === 1) {
     const article = ctx.article(slices[0].articleId);
     if (!article) return { body: placeholder(page, "Missing article."), className: "continuation" };
+    const leftovers = leftoverMedia(article, ctx, 3);
+    const stripWidth = leftovers.length ? colWidth(12 / leftovers.length) : 0;
     const body = html`<div class="article-head rule">
 <div class="blk continued-from">Continued from page ${from ?? "?"}</div>
 <div class="kicker"><span class="dot"></span>${kickerFor(article, ctx, page)}</div>
 <h1 class="headline sm ${headlineClass(article)}">${article.headline || article.storyTitle || ""}</h1>
 </div>
-${flowRegion(page, article, ctx, { cols: 3 })}`;
+${flowRegion(page, article, ctx, { cols: 3, className: "auto", grow: false })}
+${when(leftovers.length, () => html`<div class="leftover-strip" style="grid-template-columns:repeat(${leftovers.length},1fr)">${join(leftovers.map((m) => figureFor(m, ctx, stripWidth, { widthMm: stripWidth, heightMm: leftovers.length === 1 ? 70 : 52 })))}</div>`)}`;
     return { body, className: "continuation" };
   }
   const width = colWidth(12 / Math.min(4, slices.length));

@@ -1,19 +1,15 @@
 import { env } from "@/server/env";
 import { LocalStorageAdapter } from "./local";
+import { S3StorageAdapter } from "./s3";
 import type { StorageAdapter } from "./types";
 
 let adapter: StorageAdapter | undefined;
 
 export function getStorage(): StorageAdapter {
   if (adapter) return adapter;
-  if (env.STORAGE_PROVIDER === "s3") {
-    // Lazy import keeps the AWS SDK out of the local dev path.
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { S3StorageAdapter } = require("./s3") as typeof import("./s3");
-    adapter = new S3StorageAdapter();
-  } else {
-    adapter = new LocalStorageAdapter();
-  }
+  // Static imports: a lazy require() is not resolvable under ESM (tests, the worker CLI), and the
+  // S3 client is only instantiated when the provider is actually configured.
+  adapter = env.STORAGE_PROVIDER === "s3" ? new S3StorageAdapter() : new LocalStorageAdapter();
   return adapter;
 }
 

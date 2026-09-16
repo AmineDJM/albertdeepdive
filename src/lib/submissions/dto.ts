@@ -63,6 +63,8 @@ export type InvitationDTO = {
     status: string;
   };
   campuses: CampusDTO[];
+  /** Dates pre-formatted on the server (Paris time) so the client never formats during hydration. */
+  labels: { opensLong: string; deadline: string; deadlineLong: string; graceEnds: string; graceEndsLong: string };
   submittedCount: number;
   contactEmail: string | null;
   consentTextVersion: string;

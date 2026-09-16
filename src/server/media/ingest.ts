@@ -10,7 +10,14 @@ import { scoreQuality, suggestCrops } from "./quality";
 
 const log = createLogger("media:ingest");
 
-export const SUPPORTED_IMAGE_MIMES = ["image/jpeg", "image/png", "image/webp", "image/gif", "image/tiff", "image/avif"] as const;
+export const SUPPORTED_IMAGE_MIMES = [
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+  "image/tiff",
+  "image/avif",
+] as const;
 
 export type IngestMediaInput = {
   buffer: Buffer;
@@ -31,7 +38,10 @@ export type IngestMediaInput = {
   skipDuplicateCheck?: boolean;
 };
 
-export type IngestedMedia = { asset: typeof mediaAssets.$inferSelect; variants: (typeof mediaVariants.$inferSelect)[] };
+export type IngestedMedia = {
+  asset: typeof mediaAssets.$inferSelect;
+  variants: (typeof mediaVariants.$inferSelect)[];
+};
 
 export async function sniffMime(buffer: Buffer, fallback?: string) {
   try {
@@ -44,7 +54,13 @@ export async function sniffMime(buffer: Buffer, fallback?: string) {
   return fallback ?? "application/octet-stream";
 }
 
-function guessKind(fileName: string, format: string, hasAlpha: boolean, width: number, height: number): IngestMediaInput["kind"] {
+function guessKind(
+  fileName: string,
+  format: string,
+  hasAlpha: boolean,
+  width: number,
+  height: number,
+): IngestMediaInput["kind"] {
   const name = fileName.toLowerCase();
   if (/logo/.test(name)) return "logo";
   if (/screenshot|dashboard|screen/.test(name)) return "screenshot";
@@ -78,9 +94,20 @@ export async function ingestMedia(input: IngestMediaInput): Promise<IngestedMedi
     image.clone().grayscale().resize(9, 8, { fit: "fill" }).raw().toBuffer(),
   ]);
   const phash = dHashFromGray(grayBuf, 9, 8);
-  const dominant = stats.dominant ? `#${[stats.dominant.r, stats.dominant.g, stats.dominant.b].map((v) => v.toString(16).padStart(2, "0")).join("")}` : null;
-  const sharpness = stats.channels.length ? stats.channels.reduce((s, c) => s + c.stdev, 0) / stats.channels.length : null;
-  const quality = scoreQuality({ width, height, sizeBytes: input.buffer.byteLength, format, kind: kind ?? "photo", sharpness });
+  const dominant = stats.dominant
+    ? `#${[stats.dominant.r, stats.dominant.g, stats.dominant.b].map((v) => v.toString(16).padStart(2, "0")).join("")}`
+    : null;
+  const sharpness = stats.channels.length
+    ? stats.channels.reduce((s, c) => s + c.stdev, 0) / stats.channels.length
+    : null;
+  const quality = scoreQuality({
+    width,
+    height,
+    sizeBytes: input.buffer.byteLength,
+    format,
+    kind: kind ?? "photo",
+    sharpness,
+  });
 
   const assetId = crypto.randomUUID();
   const ext = extensionForMime(mimeType);
@@ -91,18 +118,42 @@ export async function ingestMedia(input: IngestMediaInput): Promise<IngestedMedi
   const variantSpecs = [
     { kind: "THUMBNAIL" as const, width: 480, format: "webp" as const, quality: 78 },
     { kind: "WEB" as const, width: 1600, format: "webp" as const, quality: 82 },
-    { kind: "PRINT" as const, width: 2600, format: keepPng ? ("png" as const) : ("jpeg" as const), quality: 92 },
+    {
+      kind: "PRINT" as const,
+      width: 2600,
+      format: keepPng ? ("png" as const) : ("jpeg" as const),
+      quality: 92,
+    },
   ];
   const variantRows: (typeof mediaVariants.$inferInsert)[] = [];
   for (const spec of variantSpecs) {
-    let pipeline = sharp(input.buffer, { failOn: "none" }).rotate().resize({ width: spec.width, withoutEnlargement: true });
+    let pipeline = sharp(input.buffer, { failOn: "none" })
+      .rotate()
+      .resize({ width: spec.width, withoutEnlargement: true });
     if (spec.format === "webp") pipeline = pipeline.webp({ quality: spec.quality });
     else if (spec.format === "png") pipeline = pipeline.png({ compressionLevel: 9 });
-    else pipeline = pipeline.jpeg({ quality: spec.quality, mozjpeg: true, chromaSubsampling: "4:4:4" });
+    else
+      pipeline = pipeline.jpeg({
+        quality: spec.quality,
+        mozjpeg: true,
+        chromaSubsampling: "4:4:4",
+      });
     const { data, info } = await pipeline.toBuffer({ resolveWithObject: true });
     const key = storageKeys.mediaVariant(assetId, spec.kind, spec.format);
-    await storage.put(key, data, { contentType: `image/${spec.format}`, cacheControl: "public, max-age=31536000, immutable" });
-    variantRows.push({ assetId, kind: spec.kind, storageKey: key, width: info.width, height: info.height, sizeBytes: data.byteLength, format: spec.format, cropSpec: null });
+    await storage.put(key, data, {
+      contentType: `image/${spec.format}`,
+      cacheControl: "public, max-age=31536000, immutable",
+    });
+    variantRows.push({
+      assetId,
+      kind: spec.kind,
+      storageKey: key,
+      width: info.width,
+      height: info.height,
+      sizeBytes: data.byteLength,
+      format: spec.format,
+      cropSpec: null,
+    });
   }
 
   let duplicateOfId: string | null = null;
@@ -110,9 +161,20 @@ export async function ingestMedia(input: IngestMediaInput): Promise<IngestedMedi
   const flags = [...quality.flags];
   if (!input.skipDuplicateCheck) {
     const candidates = await db
-      .select({ id: mediaAssets.id, sha256: mediaAssets.sha256, phash: mediaAssets.phash, similarityGroup: mediaAssets.similarityGroup })
+      .select({
+        id: mediaAssets.id,
+        sha256: mediaAssets.sha256,
+        phash: mediaAssets.phash,
+        similarityGroup: mediaAssets.similarityGroup,
+      })
       .from(mediaAssets)
-      .where(and(isNotNull(mediaAssets.phash), ne(mediaAssets.id, assetId), input.editionId ? eq(mediaAssets.editionId, input.editionId) : undefined));
+      .where(
+        and(
+          isNotNull(mediaAssets.phash),
+          ne(mediaAssets.id, assetId),
+          input.editionId ? eq(mediaAssets.editionId, input.editionId) : undefined,
+        ),
+      );
     for (const c of candidates) {
       if (c.sha256 === sha256) {
         duplicateOfId = c.id;
@@ -131,8 +193,19 @@ export async function ingestMedia(input: IngestMediaInput): Promise<IngestedMedi
       }
     }
     if (similarityGroup) {
-      await db.update(mediaAssets).set({ similarityGroup }).where(and(eq(mediaAssets.id, similarityGroup), eq(mediaAssets.similarityGroup, similarityGroup)));
-      await db.update(mediaAssets).set({ similarityGroup }).where(eq(mediaAssets.id, similarityGroup));
+      await db
+        .update(mediaAssets)
+        .set({ similarityGroup })
+        .where(
+          and(
+            eq(mediaAssets.id, similarityGroup),
+            eq(mediaAssets.similarityGroup, similarityGroup),
+          ),
+        );
+      await db
+        .update(mediaAssets)
+        .set({ similarityGroup })
+        .where(eq(mediaAssets.id, similarityGroup));
     }
   }
 
@@ -168,7 +241,12 @@ export async function ingestMedia(input: IngestMediaInput): Promise<IngestedMedi
       suggestedCrops: suggestCrops(width, height),
       duplicateOfId,
       similarityGroup,
-      metadata: { density: meta.density ?? null, hasAlpha: !!meta.hasAlpha, space: meta.space ?? null, exifBytes: meta.exif?.byteLength ?? 0 },
+      metadata: {
+        density: meta.density ?? null,
+        hasAlpha: !!meta.hasAlpha,
+        space: meta.space ?? null,
+        exifBytes: meta.exif?.byteLength ?? 0,
+      },
     })
     .returning();
   const variants = await db.insert(mediaVariants).values(variantRows).returning();

@@ -31,6 +31,9 @@ export type FlowMeasurement = {
   blocks: MeasuredBlock[];
   overflow: boolean;
   fillRatio: number;
+  /** Content extent (including overflow columns) relative to the available area: 1.08 = 8 % too much text. */
+  extentRatio: number;
+  fitLevel: number;
 };
 
 export type PageMeasurement = {
@@ -55,6 +58,8 @@ export const MEASURE_SCRIPT = `(() => {
       const cols = Number(flow.getAttribute('data-cols') || 1);
       let maxBottom = 0;
       let maxRight = 0;
+      let maxExtent = 0;
+      const colWidth = fr.width / cols;
       const blocks = Array.from(flow.querySelectorAll(':scope > [data-block]')).map((b) => {
         const rects = Array.from(b.getClientRects());
         const fits = rects.length === 0 || rects.every((r) => inside(r, fr));
@@ -76,10 +81,11 @@ export const MEASURE_SCRIPT = `(() => {
             maxBottom = Math.max(maxBottom, r.bottom - fr.top);
             maxRight = Math.max(maxRight, r.right - fr.left);
           }
+          const colIndex = Math.max(0, Math.floor((r.left - fr.left + 1) / colWidth));
+          maxExtent = Math.max(maxExtent, colIndex * fr.height + (r.bottom - fr.top));
         }
         return { id: b.getAttribute('data-block'), type, fits, partial: !fits && startsInside, sentencesFit, sentenceCount };
       });
-      const colWidth = fr.width / cols;
       const lastCol = Math.min(cols, Math.max(1, Math.ceil(maxRight / colWidth - 0.01)));
       const fill = fr.height > 0 ? Math.min(1, ((lastCol - 1) * fr.height + maxBottom) / (cols * fr.height)) : 0;
       return {
@@ -90,6 +96,8 @@ export const MEASURE_SCRIPT = `(() => {
         blocks,
         overflow: blocks.some((b) => !b.fits),
         fillRatio: Math.round(fill * 1000) / 1000,
+        extentRatio: fr.height > 0 ? Math.round((maxExtent / (cols * fr.height)) * 1000) / 1000 : 0,
+        fitLevel: Number(flow.getAttribute('data-fit') || 0),
       };
     });
     const imgs = Array.from(page.querySelectorAll('img[data-media]'));
@@ -115,6 +123,8 @@ export type LayoutReport = {
   continuationPagesAdded: number;
   blocksMoved: number;
   paragraphsSplit: number;
+  /** Flows whose type was shrunk (copyfit) instead of spilling. */
+  copyfitFlows: number;
   rounds: number;
   remainingOverflow: { page: number; pageId: string; articleId: string; blocks: string[] }[];
   blankPages: number[];
@@ -133,7 +143,6 @@ export type PaginateOptions = {
 };
 
 export const CONTINUATION_TEMPLATE = "CONTINUATION";
-const BYLINE_ID = "__byline";
 
 function clone<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
@@ -221,7 +230,11 @@ function continuationIdFor(sourcePageId: string, doc: EditionDocument): string {
  * added). Pages are processed in order; a page's continuation (if it already exists right after it)
  * receives newly overflowing blocks at its start so the reading order is preserved.
  */
-export function applyMeasurements(doc: EditionDocument, measures: PageMeasurement[], stats: { moved: number; split: number; added: number; generation: number }): boolean {
+export const MAX_FIT_LEVEL = 4;
+/** Capacity gained per copyfit level (2.5 % smaller type and leading ≈ 5 % more text). */
+const FIT_GAIN = 0.05;
+
+export function applyMeasurements(doc: EditionDocument, measures: PageMeasurement[], stats: { moved: number; split: number; added: number; copyfit: number; generation: number }): boolean {
   let changed = false;
   const measureByPage = new Map(measures.map((m) => [m.pageId, m]));
   // Iterate over a snapshot: we insert pages while walking.
@@ -235,6 +248,19 @@ export function applyMeasurements(doc: EditionDocument, measures: PageMeasuremen
       const articleId = flow.articleId;
       const firstBad = flow.blocks.findIndex((b) => !b.fits);
       if (firstBad < 0) continue;
+      // Copyfit first: a small overflow is absorbed by shrinking the flow's type in ≤ 3 steps.
+      const currentSlice = page.slices?.find((s) => s.articleId === articleId);
+      const level = currentSlice?.fit ?? 0;
+      if (level < MAX_FIT_LEVEL && flow.extentRatio > 0 && flow.extentRatio <= 1 + FIT_GAIN * (MAX_FIT_LEVEL - level)) {
+        const ids = flow.blocks.map((b) => b.id);
+        page.slices = [
+          ...(page.slices ?? []).filter((s) => s.articleId !== articleId),
+          { articleId, blockIds: currentSlice?.blockIds ?? ids, fragments: currentSlice?.fragments, fit: level + 1 },
+        ];
+        stats.copyfit += 1;
+        changed = true;
+        continue;
+      }
       const keepIds: string[] = flow.blocks.slice(0, firstBad).map((b) => b.id);
       const moveIds: string[] = [];
       const fragments: ArticleBlock[] = [...(page.slices?.find((s) => s.articleId === articleId)?.fragments ?? [])];
@@ -278,7 +304,7 @@ export function applyMeasurements(doc: EditionDocument, measures: PageMeasuremen
       const keptFragments = fragments.filter((f) => keepIds.includes(f.id));
       page.slices = [
         ...(page.slices ?? []).filter((s) => s.articleId !== articleId),
-        { articleId, blockIds: keepIds, fragments: keptFragments.length ? keptFragments : undefined },
+        { articleId, blockIds: keepIds, fragments: keptFragments.length ? keptFragments : undefined, fit: currentSlice?.fit },
       ];
       // Find or create the continuation page right after this page.
       const index = doc.pages.findIndex((p) => p.id === page.id);
@@ -317,7 +343,7 @@ export function applyMeasurements(doc: EditionDocument, measures: PageMeasuremen
       // Keep the article order of the continuation aligned with the source page.
       target.articleIds.sort((a, b) => page.articleIds.indexOf(a) - page.articleIds.indexOf(b));
       target.slices.sort((a, b) => page.articleIds.indexOf(a.articleId) - page.articleIds.indexOf(b.articleId));
-      stats.moved += moveIds.filter((id) => id !== BYLINE_ID).length;
+      stats.moved += moveIds.length;
       changed = true;
     }
   }
@@ -329,7 +355,7 @@ export async function paginateDocument(input: EditionDocument, options: Paginate
   const log = options.log ?? (() => {});
   const doc = resetLayout(input);
   const plannedPages = doc.pages.length;
-  const stats = { moved: 0, split: 0, added: 0, generation: 0 };
+  const stats = { moved: 0, split: 0, added: 0, copyfit: 0, generation: 0 };
   let rounds = 0;
   let measures: PageMeasurement[] = [];
   for (;;) {
@@ -353,7 +379,7 @@ export async function paginateDocument(input: EditionDocument, options: Paginate
 export function buildLayoutReport(
   doc: EditionDocument,
   measures: PageMeasurement[],
-  extra: { plannedPages: number; stats: { moved: number; split: number; added: number }; rounds: number; engine: string; pageCountMismatch?: { expected: number; actual: number } },
+  extra: { plannedPages: number; stats: { moved: number; split: number; added: number; copyfit: number }; rounds: number; engine: string; pageCountMismatch?: { expected: number; actual: number } },
 ): LayoutReport {
   const remainingOverflow = measures.flatMap((m) =>
     m.flows.filter((f) => f.overflow).map((f) => ({ page: m.number, pageId: m.pageId, articleId: f.articleId, blocks: f.blocks.filter((b) => !b.fits).map((b) => b.id) })),
@@ -368,6 +394,7 @@ export function buildLayoutReport(
     continuationPagesAdded: extra.stats.added,
     blocksMoved: extra.stats.moved,
     paragraphsSplit: extra.stats.split,
+    copyfitFlows: extra.stats.copyfit,
     rounds: extra.rounds,
     remainingOverflow,
     blankPages,

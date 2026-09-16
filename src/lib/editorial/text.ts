@@ -322,7 +322,12 @@ export function sameNameLoose(a: string, b: string): boolean {
 
 const NAME_WORD = "(?:[dDlL][’'])?\\p{Lu}[\\p{L}\\p{M}’'\\-]*";
 const CONNECTOR = "(?:de|du|des|la|le|van|von|of|da|di|del|&|d’|l’|d'|l')";
-const NAME_SEQUENCE = new RegExp(`${NAME_WORD}(?:\\s+(?:${CONNECTOR}\\s+)?${NAME_WORD})+`, "gu");
+/**
+ * Horizontal whitespace only: a name never spans a line break, so "Company: Carrefour\nCohort: B2"
+ * must not be read as the person "Carrefour Cohort".
+ */
+const NAME_GAP = "[^\\S\\r\\n]+";
+const NAME_SEQUENCE = new RegExp(`${NAME_WORD}(?:${NAME_GAP}(?:${CONNECTOR}${NAME_GAP})?${NAME_WORD})+`, "gu");
 const SINGLE_CAP = new RegExp(`(?<![\\p{L}’'])${NAME_WORD}(?![\\p{L}’'])`, "gu");
 
 export type NameCandidate = { name: string; index: number; words: string[] };

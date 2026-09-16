@@ -1,6 +1,6 @@
 import type { ArticleBlock, DocumentArticle, DocumentMedia, DocumentPage } from "@/lib/publication/document";
 import { PAGE_TEMPLATES } from "@/lib/constants";
-import { bylineBlock, figure, flowBlocks, renderBlocks } from "./blocks";
+import { figure, flowBlocks, renderBlocks } from "./blocks";
 import type { TemplateContext } from "./context";
 import { EMPTY, html, join, when, type Html } from "./html";
 
@@ -38,13 +38,12 @@ export function pageShell(page: DocumentPage, ctx: TemplateContext, output: Temp
   const section = ctx.sectionOfPage(page);
   const colour = output.sectionColour ?? section?.colour ?? "#10203A";
   const chrome = output.chrome ?? true;
-  const continuation = ctx.continuationOf(page.id);
-  const label = page.isContinuation && section ? section.name : (section?.name ?? "");
+  const label = section?.name ?? "";
   return html`<section class="page ${odd ? "odd" : "even"} ${output.className ?? ""}" data-page="${page.id}" data-number="${page.number}" data-template="${page.template}" style="--section:${colour}">
 ${when(chrome, () => html`<div class="section-bar"></div>
 <div class="running"><span class="left"><span class="mark"></span>${ctx.doc.meta.masthead.title} · ${ctx.doc.meta.issueLabel}${label ? html` · ${label}` : EMPTY}</span><span class="right">${ctx.doc.meta.label} · ${page.number}</span></div>
 <div class="folio">${page.number}</div>`)}
-<div class="sheet">${output.body}${when(continuation, () => html`<div class="jump-row"><span class="jump-inline">Continued on page ${continuation!.number} →</span></div>`)}</div>
+<div class="sheet">${output.body}</div>
 <div class="preview-flag" data-preview-flag></div>
 </section>`;
 }
@@ -85,8 +84,21 @@ export type FlowOptions = {
  */
 export function flowRegion(page: DocumentPage, article: DocumentArticle, ctx: TemplateContext, options: FlowOptions): Html {
   const slice = page.slices?.find((s) => s.articleId === article.id);
-  const { blocks, byline } = flowBlocks(article, slice, options.exclude);
-  return html`<div class="flow cols-${options.cols} ${options.grow === false ? "" : "grow"} ${options.className ?? ""}" data-flow="${page.id}:${article.id}" data-page="${page.id}" data-article="${article.id}" data-cols="${options.cols}">${renderBlocks(blocks, ctx.resolver, { dropCap: options.dropCap })}${byline ? bylineBlock(article) : EMPTY}</div>`;
+  const blocks = flowBlocks(article, slice, options.exclude);
+  const fit = fitFactor(slice?.fit ?? 0);
+  const continuation = ctx.continuationOf(page.id);
+  const continues = !!continuation?.slices?.some((s) => s.articleId === article.id);
+  const foot = continues
+    ? html`<span class="jump">Continued on page ${continuation!.number} →</span>`
+    : article.byline
+      ? html`<span class="byline">Article : ${article.byline}</span>`
+      : EMPTY;
+  return html`<div class="flow cols-${options.cols} ${options.grow === false ? "" : "grow"} ${options.className ?? ""}" data-flow="${page.id}:${article.id}" data-page="${page.id}" data-article="${article.id}" data-cols="${options.cols}" data-fit="${slice?.fit ?? 0}" style="--fit:${fit}">${renderBlocks(blocks, ctx.resolver, { dropCap: options.dropCap })}</div><div class="flow-foot">${foot}</div>`;
+}
+
+/** Copyfit factor for a fit level: each level shrinks the flow's type and leading by 2.5 % (max 4 levels). */
+export function fitFactor(level: number): string {
+  return (1 - 0.025 * Math.max(0, Math.min(4, level))).toFixed(3);
 }
 
 export function placeholder(page: DocumentPage, message: string): Html {
@@ -135,7 +147,17 @@ export function mastheadSmall(ctx: TemplateContext): Html {
 }
 
 export function figureFor(media: DocumentMedia | undefined, ctx: TemplateContext, widthMm: number, opts: Parameters<typeof figure>[2] = { widthMm }): Html {
+  if (media) ctx.used.add(media.id);
   return figure(media, ctx.resolver, { ...opts, widthMm });
+}
+
+/** Visual media of an article not yet shown on an earlier page (photos, charts, diagrams, screenshots; never logos). */
+export function leftoverMedia(article: DocumentArticle, ctx: TemplateContext, max = 3): DocumentMedia[] {
+  return article.media
+    .filter((m) => !ctx.used.has(m.mediaId) && m.role !== "cover")
+    .map((m) => ctx.media(m.mediaId))
+    .filter((m): m is DocumentMedia => !!m && m.rightsStatus !== "RED" && m.kind !== "logo")
+    .slice(0, max);
 }
 
 /** Page range covered by a section (for cover page references such as "Pages 6–15"). */

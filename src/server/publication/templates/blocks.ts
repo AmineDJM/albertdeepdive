@@ -14,8 +14,6 @@ export type MediaResolver = {
   src: (media: DocumentMedia) => string | null;
 };
 
-export const BYLINE_BLOCK_ID = "__byline";
-
 export function sentenceSpans(text: string): Html {
   return join(
     splitSentences(text).map((s) => html`<span class="s">${s}</span>`),
@@ -63,7 +61,7 @@ export function figure(
   return html`<div class="figure-block ${options.className ?? ""}"><div class="figure ${contain ? "contain tinted" : ""}" style="height:${height.toFixed(1)}mm">${img}${options.captionOnImage ? caption : EMPTY}</div>${options.captionOnImage ? EMPTY : caption}</div>`;
 }
 
-export function renderBlock(block: ArticleBlock, resolver: MediaResolver, opts: { previousType?: string } = {}): Html {
+export function renderBlock(block: ArticleBlock, resolver: MediaResolver, opts: { hideSpeaker?: boolean } = {}): Html {
   const id = block.id;
   switch (block.type) {
     case "paragraph":
@@ -85,53 +83,37 @@ export function renderBlock(block: ArticleBlock, resolver: MediaResolver, opts: 
       return html`<div class="blk box" data-block="${id}" data-type="box">${when(block.title, () => html`<div class="box-title">${block.title}</div>`)}${when(block.text, () => html`<p>${block.text}</p>`)}${when(block.items?.length, () => html`<ul>${join((block.items ?? []).map((i) => html`<li>${i}</li>`))}</ul>`)}</div>`;
     case "qa":
       return html`<div class="blk qa" data-block="${id}" data-type="qa"><div class="q">${block.question}</div><div class="a">${paragraphHtml(block.answer)}</div></div>`;
-    case "testimony": {
-      const repeat = opts.previousType === "testimony";
-      return html`<div class="blk testimony" data-block="${id}" data-type="testimony">${sentenceSpans(block.text)}${when(block.speaker, () => html`<span class="speaker ${repeat ? "repeat" : ""}">— ${block.speaker}</span>`)}</div>`;
-    }
+    case "testimony":
+      return html`<div class="blk testimony" data-block="${id}" data-type="testimony">${sentenceSpans(block.text)}${when(block.speaker && !opts.hideSpeaker, () => html`<span class="speaker">— ${block.speaker}</span>`)}</div>`;
     case "divider":
       return html`<div class="blk divider" data-block="${id}" data-type="divider"></div>`;
   }
 }
 
-export function bylineBlock(article: DocumentArticle): Html {
-  if (!article.byline) return EMPTY;
-  return html`<div class="blk byline" data-block="${BYLINE_BLOCK_ID}" data-type="byline">Article : ${article.byline}</div>`;
-}
-
-/** Renders a list of blocks in order (crossheads keep their next block attached where possible). */
+/** Renders a list of blocks in order; a run of testimonies by the same speaker is signed once, at its end. */
 export function renderBlocks(blocks: readonly ArticleBlock[], resolver: MediaResolver, options: { dropCap?: boolean } = {}): Html {
   const out: Html[] = [];
-  let previous: string | undefined;
   let dropped = false;
-  for (const block of blocks) {
-    let rendered = renderBlock(block, resolver, { previousType: previous });
+  blocks.forEach((block, i) => {
+    const next = blocks[i + 1];
+    const hideSpeaker = block.type === "testimony" && next?.type === "testimony" && (next.speaker ?? "") === (block.speaker ?? "");
+    let rendered = renderBlock(block, resolver, { hideSpeaker });
     if (options.dropCap && !dropped && block.type === "paragraph") {
       rendered = raw(rendered.value.replace('class="blk para"', 'class="blk para drop"'));
       dropped = true;
     }
     out.push(rendered);
-    previous = block.type;
-  }
+  });
   return join(out);
 }
 
 /** Blocks the flowing part of a template should show: either the page slice or the whole body minus `exclude`. */
-export function flowBlocks(article: DocumentArticle, slice: { blockIds: string[]; fragments?: ArticleBlock[] } | undefined, exclude: Set<string> = new Set()): { blocks: ArticleBlock[]; byline: boolean } {
-  if (!slice) {
-    return { blocks: article.body.filter((b) => !exclude.has(b.id)), byline: !!article.byline };
-  }
+export function flowBlocks(article: DocumentArticle, slice: { blockIds: string[]; fragments?: ArticleBlock[] } | undefined, exclude: Set<string> = new Set()): ArticleBlock[] {
+  if (!slice) return article.body.filter((b) => !exclude.has(b.id));
   const lookup = new Map<string, ArticleBlock>();
   for (const b of article.body) lookup.set(b.id, b);
   for (const f of slice.fragments ?? []) lookup.set(f.id, f);
-  const blocks: ArticleBlock[] = [];
-  let byline = false;
-  for (const id of slice.blockIds) {
-    if (id === BYLINE_BLOCK_ID) byline = true;
-    const b = lookup.get(id);
-    if (b) blocks.push(b);
-  }
-  return { blocks, byline };
+  return slice.blockIds.map((id) => lookup.get(id)).filter((b): b is ArticleBlock => !!b);
 }
 
 /** Finds the first block of a given type (used by templates to lift a box or pull quote into a sidebar). */

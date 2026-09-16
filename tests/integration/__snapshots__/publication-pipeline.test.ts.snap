@@ -1,0 +1,37 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`rendering (one shared browser) > renders a PDF with at least 24 pages, metadata and a clean layout report 1`] = `
+[
+  "COVER_A",
+  "CONTENTS",
+  "INTERVIEW",
+  "PROFILE",
+  "ARTICLE_HERO",
+  "CONTINUATION",
+  "BDD_CASE",
+  "BDD_VISUAL",
+  "BDD_CASE",
+  "BDD_CASE",
+  "BDD_VISUAL",
+  "ARTICLE_TWO_COLUMN",
+  "BDD_CASE",
+  "ARTICLE_TWO_COLUMN",
+  "CONTINUATION",
+  "BDD_CASE",
+  "CONTINUATION",
+  "BDD_CASE",
+  "ARTICLE_TWO_COLUMN",
+  "NEWS_GRID",
+  "CONTINUATION",
+  "ARTICLE_TWO_COLUMN",
+  "NEWS_GRID",
+  "SHORTS",
+  "ARTICLE_HERO",
+  "CONTINUATION",
+  "NEWS_GRID",
+  "ARTICLE_TWO_COLUMN",
+  "CONTINUATION",
+  "EVENT",
+  "BACK_PAGE",
+]
+`;

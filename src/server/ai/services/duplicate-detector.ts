@@ -17,6 +17,15 @@ export function normalizeForHash(text: string): string {
   return stripDiacritics(text).toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 }
 
+/**
+ * The text two submissions are compared on: what the contributor actually wrote. Comparing the
+ * derived `normalizedText` instead would make detection depend on *when* a row was normalised
+ * (a seeded row and a freshly processed one carry different derived forms of the same story).
+ */
+export function submissionDuplicateText(input: { title?: string | null; description?: string | null }): string {
+  return [input.title ?? "", input.description ?? ""].filter(Boolean).join("\n");
+}
+
 export function textHash(text: string): string {
   return createHash("sha256").update(normalizeForHash(text)).digest("hex");
 }

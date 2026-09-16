@@ -1,4 +1,4 @@
-import { type SeedStory, p, h, q, l, box } from "./types";
+import { type SeedStory, p, h, l, box } from "./types";
 
 export const CAMPUS_STORIES: SeedStory[] = [
   {

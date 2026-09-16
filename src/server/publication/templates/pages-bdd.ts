@@ -121,20 +121,20 @@ export function bddVisual(page: DocumentPage, ctx: TemplateContext): TemplateOut
   const bodyElsewhere = otherFlowPages.length > 0;
   const half = colWidth(6);
   const grid: Html[] = [];
-  if (visuals.length === 1) grid.push(figureFor(visuals[0], ctx, CONTENT_WIDTH_MM, { widthMm: CONTENT_WIDTH_MM, minMm: 60, maxMm: 110, className: "full", contain: true }));
+  if (visuals.length === 1) grid.push(figureFor(visuals[0], ctx, CONTENT_WIDTH_MM, { widthMm: CONTENT_WIDTH_MM, minMm: 60, maxMm: bodyElsewhere ? 110 : 80, className: "full", contain: true }));
   else if (visuals.length === 2) {
-    const max = bodyElsewhere ? 92 : 62;
-    for (const v of visuals) grid.push(figureFor(v, ctx, CONTENT_WIDTH_MM, { widthMm: CONTENT_WIDTH_MM, minMm: 50, maxMm: max, className: "full", contain: true }));
+    const max = bodyElsewhere ? 70 : 52;
+    for (const v of visuals) grid.push(figureFor(v, ctx, CONTENT_WIDTH_MM, { widthMm: CONTENT_WIDTH_MM, minMm: 40, maxMm: max, className: "full", contain: true }));
   } else {
-    grid.push(figureFor(visuals[0], ctx, CONTENT_WIDTH_MM, { widthMm: CONTENT_WIDTH_MM, minMm: 50, maxMm: bodyElsewhere ? 85 : 62, className: "full", contain: true }));
-    for (const v of visuals.slice(1, 3)) grid.push(figureFor(v, ctx, half, { widthMm: half, heightMm: bodyElsewhere ? 60 : 46, contain: true }));
+    grid.push(figureFor(visuals[0], ctx, CONTENT_WIDTH_MM, { widthMm: CONTENT_WIDTH_MM, minMm: 40, maxMm: bodyElsewhere ? 78 : 50, className: "full", contain: true }));
+    for (const v of visuals.slice(1, 3)) grid.push(figureFor(v, ctx, half, { widthMm: half, heightMm: bodyElsewhere ? 56 : 40, contain: true }));
   }
   const team = ctx.media(bdd?.teamPhotoMediaId) ?? heroMedia(article, ctx, page);
   const box = firstBlockOfType(article, "box");
   const chips = (bdd?.technologies ?? []).map((t) => html`<span class="chip">${t}</span>`);
   const strip = bodyElsewhere
     ? html`<div class="grid" style="align-items:start"><div class="span-5">${when(bdd?.metrics.length || chips.length, () => html`<div class="case-panel">${when(bdd?.metrics.length, () => html`<div class="metrics">${join((bdd?.metrics ?? []).map((m) => html`<div class="metric"><div class="v">${m.value}</div><div class="l">${m.label}</div></div>`))}</div>`)}${when(chips.length, () => html`<div class="item"><span class="label">The methods</span><div class="chips">${join(chips)}</div></div>`)}</div>`)}</div><div class="span-7">${when(bdd?.keyTakeaways.length, () => html`<div class="side-box"><div class="box-title">Key takeaways</div><ul>${join((bdd?.keyTakeaways ?? []).map((t) => html`<li>${t}</li>`))}</ul></div>`)}${when(!bdd?.keyTakeaways.length, () => pullQuoteSide(article))}</div></div>`
-    : html`<div class="grid grow" style="min-height:0"><div class="span-5 side">${figureFor(team, ctx, colWidth(5), { widthMm: colWidth(5), minMm: 40, maxMm: 62 })}${sideBox(box)}${when(chips.length, () => html`<div class="chips">${join(chips)}</div>`)}</div><div class="span-7 fill">${flowRegion(page, article, ctx, { cols: 2, className: "compact", exclude: new Set(box ? [box.id] : []) })}</div></div>`;
+    : html`<div class="grid grow" style="min-height:0"><div class="span-5 side">${figureFor(team, ctx, colWidth(5), { widthMm: colWidth(5), minMm: 36, maxMm: 50 })}${sideBox(box)}${when(chips.length, () => html`<div class="chips">${join(chips)}</div>`)}</div><div class="span-7 fill">${flowRegion(page, article, ctx, { cols: 2, className: "compact", exclude: new Set(box ? [box.id] : []) })}</div></div>`;
   const body = html`${bddTop(article, ctx, page, "sm")}
 <div class="visual-grid">${join(grid)}</div>
 ${strip}`;

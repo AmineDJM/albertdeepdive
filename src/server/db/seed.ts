@@ -1,4 +1,3 @@
-/* eslint-disable no-console */
 import "@/server/load-env";
 import { promises as fs } from "node:fs";
 import path from "node:path";
@@ -15,7 +14,6 @@ import { DEFAULT_SECTIONS, PAGE_TEMPLATES, CONSENT_TEXT_VERSION, templateByCode 
 import { countWords } from "@/lib/publication/document";
 import { slugify } from "@/lib/utils";
 import { SEED_STORIES, SEED_CAMPUSES, SEED_PROGRAMS, SEED_COVER, SEED_FLATPLAN, SEED_CREDITS, SEED_CONTRIBUTORS, SEED_GROUPS } from "../../../seed";
-import type { SeedStory } from "../../../seed/types";
 
 const SEED_MEDIA_DIR = path.join(process.cwd(), "seed", "media");
 

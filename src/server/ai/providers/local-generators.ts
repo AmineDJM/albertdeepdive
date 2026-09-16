@@ -249,7 +249,8 @@ function localClassifier(input: Input) {
       hits.set(type, found.slice(0, 4));
     }
   }
-  if (declared && storyTypes.includes(declared)) scores.set(declared, (scores.get(declared) ?? 0) + 4);
+  // The contributor's declared type is a strong prior, except OTHER which only breaks ties.
+  if (declared && storyTypes.includes(declared)) scores.set(declared, (scores.get(declared) ?? 0) + (declared === "OTHER" ? 1 : 4));
   let best: string = declared && storyTypes.includes(declared) ? declared : "OTHER";
   let bestScore = -1;
   let second = 0;
@@ -263,8 +264,9 @@ function localClassifier(input: Input) {
   }
   const preferred = defaultSectionForStoryType(best);
   const sectionSlug = !sectionSlugs.length || sectionSlugs.includes(preferred) ? preferred : sectionSlugs.includes("campus-life") ? "campus-life" : sectionSlugs[0];
+  const personTokens = new Set(extractEntities(text).people.flatMap((p) => contentTokens(p.name)));
   const freq = new Map<string, number>();
-  for (const t of contentTokens(text)) if (t.length >= 4 && !/\d/.test(t)) freq.set(t, (freq.get(t) ?? 0) + 1);
+  for (const t of contentTokens(text)) if (t.length >= 4 && !/\d/.test(t) && !personTokens.has(t)) freq.set(t, (freq.get(t) ?? 0) + 1);
   const topTokens = [...freq.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).slice(0, 4).map(([t]) => t);
   const short = STORY_TYPES.find((t) => t.value === best)?.short.toLowerCase() ?? best.toLowerCase();
   const tags = uniq([short, ...topTokens]).slice(0, 6);
@@ -327,8 +329,12 @@ function localClusterNamer(input: Input) {
     title = bestTitle.title;
   }
   title = truncateChars(cleanText(title), 70);
-  const ordered = [primary, ...subs.filter((s) => s.id !== primary.id)].slice(0, 3);
-  const summary = truncateWords(ordered.map((s) => firstSentences(splitLabelled(s.text).prose, 1)).filter(Boolean).join(" "), 70);
+  const summarySentence = (s: SubmissionRef) => {
+    const sentences = splitSentences(splitLabelled(s.text).prose);
+    return sentences.find((x) => !isFirstPerson(x)) ?? sentences[0] ?? "";
+  };
+  const ordered = [primary, ...subs.filter((s) => s.id !== primary.id)].sort((a, b) => Number(isFirstPerson(firstSentences(splitLabelled(a.text).prose, 1))) - Number(isFirstPerson(firstSentences(splitLabelled(b.text).prose, 1))) || b.text.length - a.text.length).slice(0, 3);
+  const summary = truncateWords(ordered.map(summarySentence).filter(Boolean).join(" "), 70);
   const conflicts = findSpellingConflicts(subs.map((s) => ({ id: s.id, names: extractEntities(s.text).people.map((p) => p.name) })));
   const contradictions = conflicts.map((c) => ({ topic: "Spelling of a name", statementA: c.a, statementB: c.b, submissionIds: c.ids }));
   const dated = subs.map((s) => ({ id: s.id, dates: extractDates(s.text) })).filter((d) => d.dates.length);
@@ -567,9 +573,9 @@ type DraftOut =
 const BDD_SECTIONS: { title: string; re: RegExp }[] = [
   { title: "THE WINNING TEAM", re: /\b(won|winners?|winning team|favourites?|first place|congratulations|finalists?)\b/i },
   { title: "THE RESULTS", re: /\b(results?|predicts?|estimated|increase|decrease|uplift|%|accuracy|impact|performance|delivered?|recommendations?|appealed|appreciated|measure)\b/i },
+  { title: "THE CHALLENGE", re: /\b(objective|challenge|problem|mission|aims?|goals?|task|brief|had to|needed to|optimis\w*|improve|reduce)\b/i },
   { title: "THE DATA", re: /\b(data|dataset|datasets|rows|sales|historical|records|database|variables|tables?|sources)\b/i },
   { title: "THE APPROACH", re: /\b(models?|algorithms?|approach|methods?|used|built|trained|regression|ranker|clustering|forecast|python|dashboard|streamlit|power bi|lightgbm|lstm|machine learning|pipeline|analysis)\b/i },
-  { title: "THE CHALLENGE", re: /\b(objective|challenge|problem|mission|aim|goal|task|brief|had to|needed to|optimis|improve|reduce|offer)\b/i },
 ];
 const BDD_ORDER = ["THE CASE", "THE DATA", "THE CHALLENGE", "THE APPROACH", "THE RESULTS", "THE WINNING TEAM"];
 
@@ -622,7 +628,19 @@ function localArticleDrafter(input: Input) {
         sections.get(target)!.push(sentence);
       }
     }
-    const labelledFor = (re: RegExp) => uniq(subs.flatMap((s) => labelledOf(s).filter((l) => re.test(l.label)).map((l) => `${l.label}: ${l.value}`)));
+    const labelledFor = (re: RegExp) => {
+      const seen = new Set<string>();
+      const out: string[] = [];
+      for (const s of subs) {
+        for (const l of labelledOf(s)) {
+          const key = l.label.toLowerCase();
+          if (!re.test(l.label) || seen.has(key)) continue;
+          seen.add(key);
+          out.push(`${l.label}: ${l.value}`);
+        }
+      }
+      return out;
+    };
     const pushLabelled = (title: string, re: RegExp) => {
       const lines = labelledFor(re);
       if (lines.length) sections.get(title)!.push(...lines.map((l) => (l.endsWith(".") ? l : `${l}.`)));
@@ -637,7 +655,7 @@ function localArticleDrafter(input: Input) {
       if (title === "THE WINNING TEAM" && teamLines.length) {
         blocks.push({ type: "crosshead", text: title });
         for (const p of groupIntoParagraphs(sentences)) blocks.push(paragraph(p));
-        blocks.push({ type: "list", items: teamLines, factIds: teamLines.flatMap((l) => cite(l)) });
+        blocks.push({ type: "list", items: teamLines, factIds: uniq(teamLines.flatMap((l) => cite(l))) });
         continue;
       }
       if (!sentences.length) continue;
@@ -665,7 +683,10 @@ function localArticleDrafter(input: Input) {
     const sentences = splitSentences(primary ? proseOf(primary) : "");
     const buckets: Record<string, string[]> = { intro: [], "WHY?": [], "WITH WHOM?": [], "WHERE AND WHEN?": [], signup: [] };
     for (const [i, s] of sentences.entries()) {
-      if (/\b(sign[- ]?up|register|registration|link)\b/i.test(s)) buckets.signup.push(s);
+      if (/^with (?:whom|who)\b/i.test(s)) buckets["WITH WHOM?"].push(s);
+      else if (/^why\b/i.test(s)) buckets["WHY?"].push(s);
+      else if (/^(?:where|when)\b/i.test(s)) buckets["WHERE AND WHEN?"].push(s);
+      else if (/\b(sign[- ]?up|register|registration|link)\b/i.test(s)) buckets.signup.push(s);
       else if (extractDates(s).length || /\b(rue|avenue|boulevard|campus|from \d|\d{1,2}(?::\d{2})? ?(?:am|pm)|at \d)\b/i.test(s)) buckets["WHERE AND WHEN?"].push(s);
       else if (/\b(why|to meet|aim|goal|celebrate|discover|because|purpose)\b/i.test(s)) buckets["WHY?"].push(s);
       else if (/\b(with|students|team|guests|speakers|alumni|everyone|whom)\b/i.test(s) && i > 0) buckets["WITH WHOM?"].push(s);
@@ -713,8 +734,10 @@ function localArticleDrafter(input: Input) {
     usedQuoteIds.add(q.id);
   }
 
-  const shortFacts = usable.filter((f) => f.statement.length <= 100 && !/^[A-Z][a-z ]+:/.test(f.statement) === false || (f.statement.length <= 100 && f.category !== "other"));
-  const boxFacts = uniq(shortFacts).slice(0, 6);
+  // "In a nutshell": short labelled facts first (Company, Cohort, Results…), then short prose facts.
+  const isLabelled = (f: FactRef) => /^[A-Z][A-Za-z ]{1,30}: /.test(f.statement);
+  const shortFacts = usable.filter((f) => f.statement.length <= 100 && !/^People involved:|^Organisations:/i.test(f.statement));
+  const boxFacts = [...shortFacts.filter(isLabelled), ...shortFacts.filter((f) => !isLabelled(f) && f.category !== "other")].slice(0, 6);
   if (boxFacts.length >= 3) {
     blocks.push({ type: "box", title: "In a nutshell", items: boxFacts.map((f) => f.statement.replace(/\.$/, "")), factIds: boxFacts.map((f) => f.id) });
     boxFacts.forEach((f) => cited.add(f.id));
@@ -737,6 +760,12 @@ function headlineFrom(text: string): string {
     .replace(/^(?:[A-Z][a-z ]+):\s+/, "")
     .replace(/[.!]+$/, "")
     .trim();
+  if (cleaned.length <= 70) return cleaned;
+  // Prefer cutting at a clause boundary so the headline stays a complete phrase.
+  const window = cleaned.slice(0, 71);
+  let best = -1;
+  for (const m of window.matchAll(/,\s|;\s|:\s|\s[—–-]\s|\swhile\s|\sand\s/g)) if ((m.index ?? 0) >= 25) best = m.index ?? -1;
+  if (best > 0) return cleaned.slice(0, best).trim();
   return truncateChars(cleaned, 70);
 }
 
@@ -921,11 +950,11 @@ function localConsistencyChecker(input: Input) {
     if (!text) continue;
     const sentences = splitSentences(text);
     for (const name of uniq(nameSet(text))) {
-      if (sourceNameKeys.has(name.toLowerCase())) continue;
-      const near = sourceNames.find((s) => nearIdenticalNames(name, s) || (name.split(" ").length === s.split(" ").length && name.split(" ").every((w, i) => w.toLowerCase() === s.split(" ")[i]?.toLowerCase() || nearIdenticalNames(w, s.split(" ")[i] ?? ""))));
-      if (near) {
-        issues.push({ blockId: block.id, excerpt: truncateChars(sentences.find((s) => s.includes(name)) ?? name, 120), type: "NAME_MISMATCH", explanation: `“${name}” in the article vs “${near}” in the sources.`, severity: "warning" });
-      }
+      const exact = sourceNameKeys.has(name.toLowerCase());
+      const near = sourceNames.find((s) => s.toLowerCase() !== name.toLowerCase() && (nearIdenticalNames(name, s) || (name.split(" ").length === s.split(" ").length && name.split(" ").every((w, i) => w.toLowerCase() === s.split(" ")[i]?.toLowerCase() || nearIdenticalNames(w, s.split(" ")[i] ?? "")))));
+      if (!near) continue;
+      const excerpt = truncateChars(sentences.find((s) => s.includes(name)) ?? name, 120);
+      issues.push({ blockId: block.id, excerpt, type: "NAME_MISMATCH", explanation: exact ? `The sources spell this name both “${name}” and “${near}”: confirm the spelling used in the article.` : `“${name}” in the article vs “${near}” in the sources.`, severity: "warning" });
     }
     if (hasSources) {
       for (const n of extractNumbers(text)) {
@@ -937,7 +966,9 @@ function localConsistencyChecker(input: Input) {
     if (block.type === "pullquote" || block.type === "testimony") {
       const key = normalizeName(text);
       const exact = quotes.some((q) => normalizeName(q.text) === key || normalizeName(q.text).includes(key) || key.includes(normalizeName(q.text)));
-      const supported = facts.some((f) => sentenceOverlap(f.statement, text) >= 0.5 || containment(f.statement, text) >= 0.8);
+      // A quotation must match a *quote*: a fact that says the same thing is a paraphrase, not a
+      // verbatim source, so it never excuses altered wording. Facts only help when no quote exists.
+      const supported = quotes.length === 0 && facts.some((f) => sentenceOverlap(f.statement, text) >= 0.5 || containment(f.statement, text) >= 0.8);
       if (!exact && !supported && quotes.length) {
         const closest = quotes.map((q) => ({ q, s: textSimilarity(q.text, text) })).sort((a, b) => b.s - a.s)[0];
         if (closest && closest.s >= 0.5) issues.push({ blockId: block.id, excerpt: truncateChars(text, 120), type: "QUOTE_ALTERED", explanation: `The quotation differs from the source quote “${truncateChars(closest.q.text, 80)}”.`, severity: "warning" });
@@ -948,7 +979,9 @@ function localConsistencyChecker(input: Input) {
       for (const s of sentences) {
         if (wordCount(s) < 6) continue;
         const best = Math.max(0, ...facts.map((f) => Math.max(sentenceOverlap(s, f.statement), containment(s, f.statement))), ...quotes.map((q) => containment(s, q.text)));
-        if (best < 0.2) issues.push({ blockId: block.id, excerpt: truncateChars(s, 120), type: "UNSUPPORTED", explanation: "No fact or quote in the sources supports this sentence.", severity: "info" });
+        // A sentence built from the sources scores close to 1; incidental overlap on a few common
+        // words ("the winning team…") sits around 0.25, so 0.35 separates support from coincidence.
+        if (best < 0.35) issues.push({ blockId: block.id, excerpt: truncateChars(s, 120), type: "UNSUPPORTED", explanation: "No fact or quote in the sources supports this sentence.", severity: "info" });
       }
     }
   }

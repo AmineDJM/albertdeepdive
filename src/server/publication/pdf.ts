@@ -217,7 +217,7 @@ export async function renderPdf(doc: EditionDocument, options: RenderPdfOptions 
       if (mismatch) say("PDF page count differs from the paginated page count", "warn", mismatch);
       const layoutReport = buildLayoutReport(finalDocument, finalMeasures, {
         plannedPages: report.plannedPages,
-        stats: { moved: report.blocksMoved, split: report.paragraphsSplit, added: report.continuationPagesAdded },
+        stats: { moved: report.blocksMoved, split: report.paragraphsSplit, added: report.continuationPagesAdded, copyfit: report.copyfitFlows },
         rounds: report.rounds,
         engine: report.engine,
         pageCountMismatch: mismatch,

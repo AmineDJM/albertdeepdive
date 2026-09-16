@@ -1,4 +1,4 @@
-import { type SeedStory, p, h, q, l, box, t } from "./types";
+import { type SeedStory, p, h, l, box, t } from "./types";
 
 export const BDD_STORIES: SeedStory[] = [
   {

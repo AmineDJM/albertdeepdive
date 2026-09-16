@@ -8,7 +8,7 @@
  * followed by average-linkage agglomerative grouping with a fixed threshold. Pure, no I/O.
  */
 import { buildIdf, cosine, tfidfVector, type TermVector } from "./similarity";
-import { contentTokens, normalizeName, sameNameLoose } from "./text";
+import { contentTokens, extractDates, normalizeName, sameNameLoose } from "./text";
 
 export type ClusterInput = {
   id: string;
@@ -30,6 +30,10 @@ export type ClusterWeights = {
   sameCampus: number;
   sameEventDate: number;
   titleOverlap: number;
+  /** Penalty when both texts name cohorts (B1, B2, MSc…) and none is shared. */
+  differentCohort: number;
+  /** Penalty when both carry an event date and they differ. */
+  differentEventDate: number;
 };
 
 export type ClusterOptions = {
@@ -45,6 +49,8 @@ export const DEFAULT_CLUSTER_WEIGHTS: ClusterWeights = {
   sameCampus: 0.05,
   sameEventDate: 0.1,
   titleOverlap: 0.08,
+  differentCohort: 0.15,
+  differentEventDate: 0.08,
 };
 
 export const DEFAULT_CLUSTER_THRESHOLD = 0.4;
@@ -63,9 +69,14 @@ function storyTypeBoost(a: string, b: string, w: ClusterWeights): number {
 
 /** Jaccard over names where near-identical spellings count as the same entity. */
 export function fuzzyNameJaccard(a: string[], b: string[]): number {
+  const { inter, sizeA, sizeB } = fuzzyIntersection(a, b);
+  if (!sizeA && !sizeB) return 0;
+  return inter / (sizeA + sizeB - inter);
+}
+
+function fuzzyIntersection(a: string[], b: string[]): { inter: number; sizeA: number; sizeB: number } {
   const sa = [...new Set(a.map(normalizeName).filter(Boolean))];
   const sb = [...new Set(b.map(normalizeName).filter(Boolean))];
-  if (!sa.length && !sb.length) return 0;
   const matchedB = new Set<number>();
   let inter = 0;
   for (const x of sa) {
@@ -75,7 +86,27 @@ export function fuzzyNameJaccard(a: string[], b: string[]): number {
       inter += 1;
     }
   }
-  return inter / (sa.length + sb.length - inter);
+  return { inter, sizeA: sa.length, sizeB: sb.length };
+}
+
+/**
+ * Entity similarity: half Jaccard, half overlap coefficient (|A∩B| / min(|A|,|B|)) so that a short
+ * photo submission naming two people of a long report still scores high. The overlap half only
+ * counts when the smaller set has at least two names.
+ */
+export function entitySimilarity(a: string[], b: string[]): number {
+  const { inter, sizeA, sizeB } = fuzzyIntersection(a, b);
+  if (!sizeA || !sizeB) return 0;
+  const jac = inter / (sizeA + sizeB - inter);
+  const smaller = Math.min(sizeA, sizeB);
+  const overlap = smaller >= 2 ? inter / smaller : jac;
+  return 0.5 * jac + 0.5 * overlap;
+}
+
+const COHORT_RE = /\b(b1|b2|b3|m1|m2|msc|ibba|mba)\b/gi;
+
+function cohortTokens(text: string): Set<string> {
+  return new Set([...text.matchAll(COHORT_RE)].map((m) => m[1].toLowerCase()));
 }
 
 function titleOverlap(a: string, b: string): number {
@@ -89,13 +120,16 @@ function titleOverlap(a: string, b: string): number {
 
 export function pairSimilarity(a: ClusterInput, b: ClusterInput, va: TermVector, vb: TermVector, weights: ClusterWeights): PairBreakdown {
   const text = cosine(va, vb);
-  const entities = fuzzyNameJaccard([...a.people, ...a.organisations], [...b.people, ...b.organisations]);
+  const entities = entitySimilarity([...a.people, ...a.organisations], [...b.people, ...b.organisations]);
   let boosts = storyTypeBoost(a.storyType, b.storyType, weights);
   if (a.campusIds.some((c) => b.campusIds.includes(c))) boosts += weights.sameCampus;
-  if (a.eventDate && b.eventDate && a.eventDate === b.eventDate) boosts += weights.sameEventDate;
+  if (a.eventDate && b.eventDate) boosts += a.eventDate === b.eventDate ? weights.sameEventDate : -weights.differentEventDate;
   boosts += weights.titleOverlap * titleOverlap(a.title, b.title);
+  const ca = cohortTokens(`${a.title} ${a.text}`);
+  const cb = cohortTokens(`${b.title} ${b.text}`);
+  if (ca.size && cb.size && ![...ca].some((c) => cb.has(c))) boosts -= weights.differentCohort;
   const total = weights.text * text + weights.entities * entities + boosts;
-  return { total: Math.min(1, total), text, entities, boosts };
+  return { total: Math.max(0, Math.min(1, total)), text, entities, boosts };
 }
 
 export function buildSimilarityMatrix(inputs: ClusterInput[], options: ClusterOptions = {}): PairBreakdown[][] {
@@ -121,7 +155,7 @@ export function clusterSubmissions(inputs: ClusterInput[], options: ClusterOptio
   const threshold = options.threshold ?? DEFAULT_CLUSTER_THRESHOLD;
   const ordered = [...inputs].sort((a, b) => a.id.localeCompare(b.id));
   const matrix = buildSimilarityMatrix(ordered, options);
-  const n = ordered.length;
+
   let clusters: number[][] = ordered.map((_, i) => [i]);
 
   const linkage = (a: number[], b: number[]) => {
@@ -165,8 +199,10 @@ export function clusterSubmissions(inputs: ClusterInput[], options: ClusterOptio
       }
     }
     if (members.length > 1) {
-      // Prefer the longest text among near-equal candidates so the richest submission leads.
-      const top = members.filter((i) => Math.abs(similarities[ordered[i].id] - similarities[ordered[primary].id]) < 0.05);
+      // Centrality alone favours short generic notes (a photo-only submission is "similar to
+      // everything"), so among the members that clearly belong to the story we pick the richest
+      // text: that is the submission an editor wants as the lead source.
+      const top = members.filter((i) => Math.abs(similarities[ordered[i].id] - similarities[ordered[primary].id]) < 0.15);
       primary = top.sort((a, b) => ordered[b].text.length - ordered[a].text.length)[0];
     }
     return { ids: members.map((i) => ordered[i].id), primaryId: ordered[primary].id, similarities };
@@ -205,4 +241,32 @@ function nearSurname(a: string, b: string): boolean {
     diffs += 1;
   }
   return diffs === 1;
+}
+
+/**
+ * Comparable key for an event date: "4 april" for "Friday 4th April", "4 April 2025" or 2025-04-04,
+ * so submissions about the same day match regardless of how precisely the date was written.
+ */
+export function eventDateKey(input: { iso?: string | null; text?: string | null }): string | null {
+  if (input.iso) {
+    const m = input.iso.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (m) {
+      const months = ["january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december"];
+      return `${Number(m[3])} ${months[Number(m[2]) - 1] ?? m[2]}`;
+    }
+  }
+  if (input.text) {
+    const found = extractDates(input.text)[0];
+    if (found?.iso) return eventDateKey({ iso: found.iso });
+    if (found) {
+      const cleaned = found.text
+        .toLowerCase()
+        .replace(/^(monday|tuesday|wednesday|thursday|friday|saturday|sunday),?\s+/, "")
+        .replace(/(\d)(st|nd|rd|th)\b/, "$1")
+        .replace(/\s+\d{4}$/, "")
+        .trim();
+      return cleaned || null;
+    }
+  }
+  return null;
 }

@@ -26,12 +26,13 @@ export function CommandMenu({ open, onOpenChange, currentEditionId }: { open: bo
     return () => document.removeEventListener("keydown", onKey);
   }, [open, onOpenChange]);
 
+  const tooShort = query.trim().length < 2;
+  // Results are hidden (not cleared from state) while the query is too short, so no state is
+  // written synchronously from the effect.
+  const visibleGroups = tooShort ? [] : groups;
+
   useEffect(() => {
-    if (!open) return;
-    if (query.trim().length < 2) {
-      setGroups([]);
-      return;
-    }
+    if (!open || tooShort) return;
     const t = setTimeout(() => {
       startTransition(async () => {
         const res = await searchAction(query);
@@ -39,7 +40,7 @@ export function CommandMenu({ open, onOpenChange, currentEditionId }: { open: bo
       });
     }, 180);
     return () => clearTimeout(t);
-  }, [query, open]);
+  }, [query, open, tooShort]);
 
   function go(href: string) {
     onOpenChange(false);
@@ -74,8 +75,8 @@ export function CommandMenu({ open, onOpenChange, currentEditionId }: { open: bo
     <CommandDialog open={open} onOpenChange={onOpenChange} title="Search" description="Search editions, submissions, stories, articles, people, organisations, media and events">
       <CommandInput placeholder="Search everything or type a command…" value={query} onValueChange={setQuery} />
       <CommandList>
-        <CommandEmpty>{pending ? <span className="inline-flex items-center gap-2"><Loader2 className="size-3.5 animate-spin" /> Searching…</span> : query.trim().length < 2 ? "Type at least two characters." : "No results."}</CommandEmpty>
-        {groups.map((g) => (
+        <CommandEmpty>{pending ? <span className="inline-flex items-center gap-2"><Loader2 className="size-3.5 animate-spin" /> Searching…</span> : tooShort ? "Type at least two characters." : "No results."}</CommandEmpty>
+        {visibleGroups.map((g) => (
           <CommandGroup key={g.group} heading={g.group}>
             {g.hits.map((hit) => {
               const Icon = ICONS[hit.type] ?? Sparkles;
@@ -89,7 +90,7 @@ export function CommandMenu({ open, onOpenChange, currentEditionId }: { open: bo
             })}
           </CommandGroup>
         ))}
-        {groups.length ? <CommandSeparator /> : null}
+        {visibleGroups.length ? <CommandSeparator /> : null}
         <CommandGroup heading="Go to">
           {quick.map((q) => (
             <CommandItem key={q.href} value={`goto ${q.label}`} onSelect={() => go(q.href)}>

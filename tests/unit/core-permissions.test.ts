@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { NEWSROOM_ROLES, PERMISSIONS, ROLES, permissionsForRole, roleHasAny, roleHasPermission } from "@/lib/auth/permissions";
+import {
+  NEWSROOM_ROLES,
+  PERMISSIONS,
+  ROLES,
+  permissionsForRole,
+  roleHasAny,
+  roleHasPermission,
+} from "@/lib/auth/permissions";
 
 describe("permissions", () => {
   it("super admin has every permission", () => {

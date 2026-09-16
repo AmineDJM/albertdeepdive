@@ -24,7 +24,7 @@ export function GroupsPanel({ groups, canManage, activeGroupId }: { groups: { id
             </button>
             <Badge variant="muted" className="tabular">{g.members}</Badge>
             {canManage && !g.isSystem ? (
-              <Button size="icon-xs" variant="ghost" aria-label="Delete group" onClick={() => startTransition(async () => { const r = await deleteGroupAction(g.id); r.ok ? toast.success(r.message) : toast.error(r.error); router.refresh(); })}>
+              <Button size="icon-xs" variant="ghost" aria-label="Delete group" onClick={() => startTransition(async () => { const r = await deleteGroupAction(g.id); if (r.ok) toast.success(r.message); else toast.error(r.error); router.refresh(); })}>
                 <Trash2 />
               </Button>
             ) : null}

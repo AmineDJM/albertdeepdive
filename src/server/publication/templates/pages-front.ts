@@ -79,7 +79,8 @@ export function contents(page: DocumentPage, ctx: TemplateContext): TemplateOutp
     }
     group.lines.push(line);
   }
-  const dense = doc.toc.length > 26;
+  const dense = doc.toc.length > 20;
+  const veryDense = doc.toc.length > 34;
   const editorialText = doc.meta.editorial ?? "";
   const editorInChief = doc.meta.credits.find((c) => /editor in chief/i.test(c.role))?.name ?? null;
   const pageMedia = page.mediaIds.map((id) => ctx.media(id)).find(Boolean);
@@ -94,9 +95,13 @@ export function contents(page: DocumentPage, ctx: TemplateContext): TemplateOutp
 <div class="grid grow" style="min-height:0">
   <div class="span-5">
     ${when(editorialText, () => html`<div class="editorial"><span class="label">Editorial</span>${join(editorialText.split(/\n\s*\n/).map((p, i) => html`<p class="${i === 0 ? "drop" : ""}">${p}</p>`))}${when(editorInChief, () => html`<div class="sign">${editorInChief} · Editor in chief</div>`)}</div>`)}
-    ${when(candidate, () => html`<div style="margin-top:5mm">${figureFor(candidate, ctx, colWidth(5), { widthMm: colWidth(5), minMm: 45, maxMm: 70 })}</div>`)}
+    ${when(candidate, () => {
+      const owner = doc.toc.find((l) => ctx.article(l.articleId)?.heroMediaId === candidate!.id || ctx.article(l.articleId)?.media.some((m) => m.mediaId === candidate!.id));
+      const media = owner ? { ...candidate!, caption: `${candidate!.caption ?? owner.text} · page ${owner.page}` } : candidate!;
+      return html`<div style="margin-top:5mm">${figureFor(media, ctx, colWidth(5), { widthMm: colWidth(5), minMm: 45, maxMm: 70 })}</div>`;
+    })}
   </div>
-  <div class="span-7 ${dense ? "dense" : ""}">
+  <div class="span-7 toc-col ${dense ? "dense" : ""} ${veryDense ? "very-dense" : ""}">
     ${join(
       groups.map(
         (g) => html`<div class="toc-section" style="--section:${g.colour}"><div class="sec">${g.name}</div>${join(
@@ -154,7 +159,7 @@ export function backPage(page: DocumentPage, ctx: TemplateContext): TemplateOutp
 ${head}
 ${when(hero, () => figureFor(hero, ctx, CONTENT_WIDTH_MM, { widthMm: CONTENT_WIDTH_MM, minMm: 34, maxMm: 62, className: "hero-figure" }))}
 <div class="back-grid">
-  ${article ? flowRegion(page, article, ctx, { cols: 2, className: "back-flow", grow: false }) : placeholder(page, "Place the community story on this page.")}
+  <div class="fill">${article ? flowRegion(page, article, ctx, { cols: 2, className: "back-flow" }) : placeholder(page, "Place the community story on this page.")}</div>
   <div class="side">
     ${when(social || instagram, () => html`<div class="social-card">${when(social, () => figureFor(social, ctx, colWidth(4), { widthMm: colWidth(4), heightMm: 40, caption: false, contain: true }))}<div class="handle">${instagram ? `@${instagram}` : doc.meta.masthead.title}</div><div class="hint">${instagram ? "Follow the newsroom on Instagram for photos, behind the scenes and the next call for contributions." : "Write to the newsroom to contribute to the next issue."}</div></div>`)}
   </div>

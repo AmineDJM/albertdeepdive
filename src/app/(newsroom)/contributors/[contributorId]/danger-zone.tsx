@@ -15,7 +15,7 @@ export function ContributorDangerZone({ contributorId, isActive }: { contributor
       <h3 className="text-[13px] font-semibold">Privacy & account</h3>
       <p className="mt-1 text-xs text-muted-foreground">Deactivating stops invitations. Anonymising removes personal data (GDPR deletion request) while keeping the editorial provenance of past submissions.</p>
       <div className="mt-3 flex gap-2">
-        <Button variant="outline" size="sm" loading={pending} onClick={() => startTransition(async () => { const r = await setContributorActiveAction(contributorId, !isActive); r.ok ? toast.success(r.message) : toast.error(r.error); router.refresh(); })}>
+        <Button variant="outline" size="sm" loading={pending} onClick={() => startTransition(async () => { const r = await setContributorActiveAction(contributorId, !isActive); if (r.ok) toast.success(r.message); else toast.error(r.error); router.refresh(); })}>
           {isActive ? "Deactivate" : "Reactivate"}
         </Button>
         <AlertDialog>
@@ -24,12 +24,12 @@ export function ContributorDangerZone({ contributorId, isActive }: { contributor
           </AlertDialogTrigger>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Remove this contributor's personal data?</AlertDialogTitle>
+              <AlertDialogTitle>Remove this contributor&apos;s personal data?</AlertDialogTitle>
               <AlertDialogDescription>Name, email, notes and tags will be replaced. This cannot be undone. Submissions remain attributed to an anonymised contributor.</AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={() => startTransition(async () => { const r = await anonymiseContributorAction(contributorId); r.ok ? toast.success(r.message) : toast.error(r.error); router.refresh(); })}>Anonymise</AlertDialogAction>
+              <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={() => startTransition(async () => { const r = await anonymiseContributorAction(contributorId); if (r.ok) toast.success(r.message); else toast.error(r.error); router.refresh(); })}>Anonymise</AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>

@@ -1,10 +1,33 @@
 import { describe, expect, it } from "vitest";
-import { assertTransition, canTransition, EDITION_STATUSES, EditionTransitionError, isCollecting, isEditable, nextStatuses, phaseForStatus } from "@/lib/editorial/edition-state";
+import {
+  assertTransition,
+  canTransition,
+  EDITION_STATUSES,
+  EditionTransitionError,
+  isCollecting,
+  isEditable,
+  nextStatuses,
+  phaseForStatus,
+} from "@/lib/editorial/edition-state";
 
 describe("edition state machine", () => {
   it("follows the happy path in order", () => {
-    const path = ["UPCOMING", "OPEN", "REMINDER_1", "REMINDER_2", "GRACE_PERIOD", "CLOSED", "PROCESSING", "EDITORIAL_REVIEW", "LAYOUT", "FINAL_REVIEW", "PUBLISHED", "ARCHIVED"] as const;
-    for (let i = 0; i < path.length - 1; i++) expect(canTransition(path[i], path[i + 1])).toBe(true);
+    const path = [
+      "UPCOMING",
+      "OPEN",
+      "REMINDER_1",
+      "REMINDER_2",
+      "GRACE_PERIOD",
+      "CLOSED",
+      "PROCESSING",
+      "EDITORIAL_REVIEW",
+      "LAYOUT",
+      "FINAL_REVIEW",
+      "PUBLISHED",
+      "ARCHIVED",
+    ] as const;
+    for (let i = 0; i < path.length - 1; i++)
+      expect(canTransition(path[i], path[i + 1])).toBe(true);
   });
   it("allows skipping reminders when closing early", () => {
     expect(canTransition("OPEN", "CLOSED")).toBe(true);
