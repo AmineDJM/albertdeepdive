@@ -90,6 +90,17 @@ export async function runAutomationTick(opts: TickOptions = {}): Promise<TickRes
     result.errors.push(`COVERAGE_CHECK: ${errorMessage(err)}`);
   }
 
+  // 5. The newsroom mailbox: replies from contributors become submissions to triage.
+  try {
+    const { pollInbox } = await import("@/server/email/inbound");
+    const inbox = await pollInbox();
+    if (inbox.filed) result.ran.push(`MAILBOX: ${inbox.filed} repl${inbox.filed === 1 ? "y" : "ies"} filed`);
+    else if (inbox.polled) result.skipped.push(`MAILBOX (${inbox.polled} message(s), nothing to file)`);
+    else result.skipped.push("MAILBOX (no new message)");
+  } catch (err) {
+    result.errors.push(`MAILBOX: ${errorMessage(err)}`);
+  }
+
   log.info("tick done", { ran: result.ran.length, skipped: result.skipped.length, errors: result.errors });
   return result;
 }

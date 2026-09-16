@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { LucideIcon } from "lucide-react";
-import { Activity, BookOpen, Cpu, LayoutList, Mail, ScrollText, Shield, SlidersHorizontal, UserRound, Users } from "lucide-react";
+import { Activity, AtSign, BookOpen, Cpu, LayoutList, Mail, ScrollText, Shield, SlidersHorizontal, UserRound, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { roleHasPermission, type Permission, type Role } from "@/lib/auth/permissions";
 
@@ -27,6 +27,7 @@ export const SETTINGS_NAV: { label: string; items: SettingsNavItem[] }[] = [
   {
     label: "Operations",
     items: [
+      { href: "/settings/email", label: "Email", icon: AtSign, permission: ["settings:manage"], hint: "Connect the newsroom mailbox" },
       { href: "/settings/mailbox", label: "Mailbox", icon: Mail, permission: ["campaign:manage", "settings:manage"], hint: "Every email the newsroom sent" },
       { href: "/settings/jobs", label: "Jobs & AI trace", icon: Activity, permission: ["ai:run", "settings:manage"], hint: "Queue and model calls" },
       { href: "/settings/audit", label: "Audit log", icon: ScrollText, permission: "audit:view", hint: "Who changed what" },

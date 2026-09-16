@@ -157,14 +157,22 @@ test.describe("the critical journey", () => {
     await step(/review|check|send/i);
     const send = anonPage.getByRole("button", { name: /Send my story/i });
     await send.click();
-    await expect(anonPage.getByText(/may be published/i).first(), "sending without consent must be refused").toBeVisible({ timeout: 15_000 });
+    await expect(
+      anonPage.getByText(/Please confirm that this story may be published/i),
+      "sending without consent must be refused, and say so",
+    ).toBeVisible({ timeout: 20_000 });
     expect(await one<Row>("select id from submissions where title = $1 and status <> 'DRAFT'", [headline])).toBeNull();
 
     await anonPage.locator("#consent-publication").click();
+    await expect(send).toBeEnabled();
     await send.click();
 
-    await expect(anonPage.getByText(/thank|received|sent|got it|on its way/i).first()).toBeVisible({ timeout: 60_000 });
+    await expect(anonPage.getByRole("heading", { name: /your story is in the newsroom/i })).toBeVisible({ timeout: 60_000 });
     await anon.close();
+
+    await expect
+      .poll(async () => (await one<Row>("select status from submissions where title = $1", [headline]))?.status, { timeout: 20_000 })
+      .not.toBe("DRAFT");
 
     const stored = await one<Row>("select id, edition_id from submissions where title = $1", [headline]);
     expect(stored, "the contribution must reach the newsroom").not.toBeNull();

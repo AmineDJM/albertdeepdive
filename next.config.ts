@@ -11,6 +11,11 @@ const nextConfig: NextConfig = {
     "docx",
     "pdf-lib",
     "file-type",
+    // The mail stack resolves encodings and MIME handlers at runtime; bundling it makes Turbopack
+    // trace the whole project.
+    "nodemailer",
+    "imapflow",
+    "mailparser",
   ],
   images: {
     // Media is served through our signed /api/media route; disable the optimizer for it.

@@ -2,7 +2,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/server/db/client";
 import { emailLog } from "@/server/db/schema";
 import { createLogger } from "@/server/logger";
-import { getEmailAdapter } from "./adapters";
+import { resolveEmailAdapter } from "./adapters";
 import { emailTextFallback, renderEmailLayout, type EmailLayoutInput } from "./template";
 
 const log = createLogger("email");
@@ -26,7 +26,7 @@ export type SendEmailInput = {
 export async function sendEmail(input: SendEmailInput) {
   const html = renderEmailLayout(input.layout);
   const text = emailTextFallback(input.layout);
-  const adapter = getEmailAdapter();
+  const adapter = await resolveEmailAdapter();
   const [row] = await db
     .insert(emailLog)
     .values({

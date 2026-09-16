@@ -1,0 +1,52 @@
+import Link from "next/link";
+import { ArrowUpRight } from "lucide-react";
+import { getCurrentUser, hasPermission } from "@/server/auth/session";
+import { gmailStatus } from "@/server/email/gmail";
+import { mailFacets } from "@/server/settings/read-logs";
+import { env } from "@/server/env";
+import { PageBody, PageHeader, SectionTitle } from "@/components/newsroom/page-header";
+import { NoAccess } from "@/components/settings/no-access";
+import { GmailConnection } from "@/components/settings/gmail-connection";
+import { Stat, StatGrid } from "@/components/newsroom/stat";
+import { Button } from "@/components/ui/button";
+
+export const dynamic = "force-dynamic";
+
+export default async function EmailSettingsPage() {
+  const user = await getCurrentUser();
+  if (!hasPermission(user, "settings:manage")) return <NoAccess title="Email" permission="settings:manage" />;
+  const [status, facets] = await Promise.all([gmailStatus(), mailFacets()]);
+
+  return (
+    <>
+      <PageHeader
+        title="Email"
+        description="One mailbox does the whole job: invitations out, replies in. Nothing is configured in the environment."
+        actions={
+          <Button size="sm" variant="outline" asChild>
+            <Link href="/settings/mailbox">
+              Mailbox log <ArrowUpRight />
+            </Link>
+          </Button>
+        }
+      />
+      <PageBody className="space-y-5">
+        <StatGrid columns={3}>
+          <Stat label="Sending through" value={status.connected ? "Gmail" : env.EMAIL_PROVIDER === "resend" ? "Resend" : "Nothing yet"} hint={status.address ?? "Connect a mailbox below"} tone={status.connected ? "success" : "warning"} />
+          <Stat label="Messages sent" value={facets.total} hint={facets.failed ? `${facets.failed} failed` : "None failed"} href="/settings/mailbox" />
+          <Stat label="Replies" value={status.receiveEnabled ? "Collected" : "Not collected"} hint={status.lastPolledAt ? `Last checked ${new Date(status.lastPolledAt).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })}` : "Never checked"} />
+        </StatGrid>
+
+        <section>
+          <SectionTitle>Connection</SectionTitle>
+          <GmailConnection status={status} appName={env.APP_NAME} />
+        </section>
+
+        <p className="text-2xs leading-relaxed text-muted-foreground">
+          The app password is encrypted with the application secret before it is written to the database, and only the last four characters are ever shown again.
+          Replies are checked on the hourly automation tick, and on demand from this screen. A reply from someone who is not a contributor is left in the mailbox untouched.
+        </p>
+      </PageBody>
+    </>
+  );
+}
