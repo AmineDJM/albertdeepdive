@@ -101,6 +101,10 @@ there). The important ones:
 | `PLAYWRIGHT_CHROMIUM_EXECUTABLE` | Chromium used for PDF rendering |
 | `AUTOMATION_TICK_TOKEN` | Protects `POST /api/automations/tick` for external schedulers |
 
+Behind a corporate egress proxy that injects the OpenAI credentials, leave `OPENAI_API_KEY`
+empty and start Node with `NODE_USE_ENV_PROXY=1` (Node 22.21+) so that `fetch` honours
+`HTTPS_PROXY`.
+
 Runtime settings (masthead, contact, campaign day defaults, default sections, automation
 toggles, AI budget, retention) are edited in **Settings** and stored in `system_settings`.
 Prompts are versioned in **Settings → Prompts**.

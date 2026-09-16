@@ -8,9 +8,12 @@ export class OpenAiProvider implements AiProvider {
   private readonly client: OpenAI;
 
   constructor() {
+    // When no real key is configured, an egress proxy may inject credentials: send no Authorization header.
+    const proxyManaged = !env.OPENAI_API_KEY || env.OPENAI_API_KEY === "proxy" || env.OPENAI_API_KEY === "proxy-injected";
     this.client = new OpenAI({
-      apiKey: env.OPENAI_API_KEY || "proxy-managed",
+      apiKey: proxyManaged ? "proxy-injected" : env.OPENAI_API_KEY,
       baseURL: env.OPENAI_BASE_URL || undefined,
+      defaultHeaders: proxyManaged ? { Authorization: null } : undefined,
       maxRetries: 2,
       timeout: 120_000,
     });
