@@ -23,6 +23,10 @@ const schema = z.object({
   // Brevo is the default provider for Briefly: its free tier covers a small newsletter and its
   // paid tiers are priced per email rather than per contact, which suits monthly publishing.
   BREVO_API_KEY: z.string().optional(),
+  // Billing is optional: with no keys, every workspace is on the free plan and nothing breaks.
+  STRIPE_SECRET_KEY: z.string().optional(),
+  STRIPE_WEBHOOK_SECRET: z.string().optional(),
+  STRIPE_PUBLISHABLE_KEY: z.string().optional(),
   EMAIL_FROM: z.string().default("Briefly <newsroom@briefly.press>"),
   STORAGE_PROVIDER: z.enum(["local", "s3"]).default("local"),
   STORAGE_LOCAL_DIR: z.string().default("./storage"),

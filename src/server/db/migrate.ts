@@ -11,8 +11,17 @@ export async function runMigrations() {
   const db = drizzle(client);
   console.log(`[migrate] applying migrations to ${url.replace(/:[^:@/]+@/, ":***@")}`);
   await migrate(db, { migrationsFolder: path.join(process.cwd(), "drizzle") });
-  console.log("[migrate] done");
   await client.end();
+
+  // The plans Briefly sells are defined in code and seeded here rather than written into a
+  // migration, so that there is one source of truth and editing a price in the console is not
+  // undone by the next deploy. Both steps only create what is missing.
+  const { ensureDefaultPlans, backfillSubscriptions } = await import("@/server/billing/plans");
+  const created = await ensureDefaultPlans();
+  const attached = await backfillSubscriptions();
+  if (created.length) console.log(`[migrate] seeded ${created.length} plan(s)`);
+  if (attached) console.log(`[migrate] put ${attached} workspace(s) on the default plan`);
+  console.log("[migrate] done");
 }
 
 // Allow running this file directly (pnpm db:migrate).

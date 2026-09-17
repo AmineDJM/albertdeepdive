@@ -6,6 +6,7 @@ import { NotFoundError, ValidationError } from "@/lib/action-result";
 import { slugify } from "@/lib/utils";
 import { audit } from "@/server/audit";
 import type { OrganizationRole } from "./context";
+import { requireLimit } from "@/server/billing/entitlements";
 
 export const organizationTypes = ["COMPANY", "SCHOOL", "UNIVERSITY", "ASSOCIATION", "COMMUNITY", "INVESTOR", "MEDIA", "INSTITUTION", "OTHER"] as const;
 
@@ -131,7 +132,9 @@ export async function addMember(organizationId: string, userId: string, role: Or
   const existing = await db.query.organizationMembers.findFirst({
     where: and(eq(organizationMembers.organizationId, organizationId), eq(organizationMembers.userId, userId)),
   });
+  // Re-adding somebody who is already here costs no seat, so the limit is only checked for new ones.
   if (existing) return existing;
+  await requireLimit(organizationId, "users");
   const [{ has }] = await db.select({ has: count() }).from(organizationMembers).where(eq(organizationMembers.userId, userId));
   const [row] = await db
     .insert(organizationMembers)

@@ -97,6 +97,31 @@ export async function runSeed(options: { quiet?: boolean } = {}): Promise<SeedRe
   );
   await db.update(s.organizations).set({ createdById: admin.id }).where(sql`${s.organizations.id} = ${organizationId}`);
 
+  // ── Billing ────────────────────────────────────────────────────────────────
+  // The seed represents an established customer, so it gets the plan that covers what it does:
+  // a printed magazine, a team of five, and an audience. A fresh signup starts on free instead.
+  const { DEFAULT_PLANS } = await import("@/server/billing/plans");
+  const planRows = await db
+    .insert(s.plans)
+    .values(
+      DEFAULT_PLANS.map((p) => ({
+        key: p.key,
+        name: p.name,
+        tagline: p.tagline,
+        priceMonthlyCents: p.priceMonthlyCents,
+        priceYearlyCents: p.priceYearlyCents,
+        entitlements: p.entitlements,
+        highlights: p.highlights,
+        isDefault: p.isDefault ?? false,
+        isFeatured: p.isFeatured ?? false,
+        isCustomPriced: p.isCustomPriced ?? false,
+        sortOrder: p.sortOrder,
+      })),
+    )
+    .returning();
+  const businessPlan = planRows.find((p) => p.key === "business") ?? planRows[0];
+  await db.insert(s.organizationSubscriptions).values({ organizationId, planId: businessPlan.id, status: "ACTIVE" });
+
   // ── Publication ────────────────────────────────────────────────────────────
   // A recurring title. Its editions each choose their own outputs — email, web, magazine, print.
   const [publication] = await db

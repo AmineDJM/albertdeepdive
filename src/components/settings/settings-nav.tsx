@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { LucideIcon } from "lucide-react";
-import { Activity, AtSign, BookOpen, Cpu, LayoutList, Mail, ScrollText, Shield, SlidersHorizontal, UserRound, Users } from "lucide-react";
+import { Activity, AtSign, BookOpen, Building2, CreditCard, Cpu, LayoutList, Mail, ScrollText, Shield, SlidersHorizontal, UserRound, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { roleHasPermission, type Permission, type Role } from "@/lib/auth/permissions";
 
@@ -13,6 +13,13 @@ export const SETTINGS_NAV: { label: string; items: SettingsNavItem[] }[] = [
   {
     label: "Account",
     items: [{ href: "/settings/profile", label: "Profile", icon: UserRound, hint: "Name, password, theme" }],
+  },
+  {
+    label: "Workspace",
+    items: [
+      { href: "/settings/workspace", label: "Workspace", icon: Building2, permission: "settings:manage", hint: "Name, brand, language" },
+      { href: "/settings/billing", label: "Plan & usage", icon: CreditCard, permission: "settings:manage", hint: "What you get and what you use" },
+    ],
   },
   {
     label: "Newsroom",
@@ -31,6 +38,12 @@ export const SETTINGS_NAV: { label: string; items: SettingsNavItem[] }[] = [
       { href: "/settings/mailbox", label: "Mailbox", icon: Mail, permission: ["campaign:manage", "settings:manage"], hint: "Every email the newsroom sent" },
       { href: "/settings/jobs", label: "Jobs & AI trace", icon: Activity, permission: ["ai:run", "settings:manage"], hint: "Queue and model calls" },
       { href: "/settings/audit", label: "Audit log", icon: ScrollText, permission: "audit:view", hint: "Who changed what" },
+    ],
+  },
+  {
+    label: "Platform",
+    items: [
+      { href: "/settings/platform", label: "Workspaces & plans", icon: Building2, permission: "settings:manage", hint: "Every customer on this Briefly" },
     ],
   },
   {

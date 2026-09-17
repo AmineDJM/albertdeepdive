@@ -9,6 +9,8 @@ import { DEFAULT_SECTIONS } from "@/lib/constants";
 import { slugify } from "@/lib/utils";
 import { guardTenant, scoped, stampTenant } from "@/server/tenancy/scope";
 import { applyPublicationDefaults } from "@/server/outputs/service";
+import { requireLimit } from "@/server/billing/entitlements";
+import { optionalOrganizationId } from "@/server/tenancy/context";
 
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
@@ -39,6 +41,8 @@ export async function nextIssueNumber() {
 
 export async function createEdition(rawInput: z.input<typeof createEditionSchema>, userId?: string | null) {
   const input = createEditionSchema.parse(rawInput);
+  const organizationId = await optionalOrganizationId();
+  if (organizationId) await requireLimit(organizationId, "editionsPerMonth");
   const issueNumber = input.issueNumber ?? (await nextIssueNumber());
   const label = monthLabel(input.month, input.year);
   // An edition belongs to a recurring title; without one it has no default formats, no subscribers

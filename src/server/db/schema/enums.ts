@@ -35,6 +35,18 @@ export const outputFormatEnum = pgEnum("output_format", ["EMAIL", "WEB", "MAGAZI
 
 export const outputStatusEnum = pgEnum("output_status", ["NOT_CONFIGURED", "PENDING", "GENERATING", "READY", "PUBLISHED", "FAILED"]);
 
+/** Mirrors Stripe's subscription states, plus the free plan, which Stripe never sees. */
+export const subscriptionStatusEnum = pgEnum("subscription_status", [
+  "FREE",
+  "TRIALING",
+  "ACTIVE",
+  "PAST_DUE",
+  "CANCELED",
+  "INCOMPLETE",
+  "UNPAID",
+  "PAUSED",
+]);
+
 /** A reader's standing. Every send checks it; nothing goes out to anyone but SUBSCRIBED. */
 export const subscriberStatusEnum = pgEnum("subscriber_status", ["PENDING", "SUBSCRIBED", "UNSUBSCRIBED", "BOUNCED", "COMPLAINED"]);
 

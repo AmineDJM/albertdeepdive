@@ -3,9 +3,10 @@ import { db } from "@/server/db/client";
 import * as s from "@/server/db/schema";
 import type { OutputConfig } from "@/server/db/schema/outputs";
 import { audit } from "@/server/audit";
-import { NotFoundError, ValidationError } from "@/lib/action-result";
+import { ForbiddenError, NotFoundError, ValidationError } from "@/lib/action-result";
 import { slugify } from "@/lib/utils";
 import { guardTenant } from "@/server/tenancy/scope";
+import { canPublishFormat } from "@/server/billing/entitlements";
 
 export const OUTPUT_FORMATS = ["EMAIL", "WEB", "MAGAZINE", "PRINT"] as const;
 export type OutputFormat = (typeof OUTPUT_FORMATS)[number];
@@ -67,6 +68,9 @@ export async function enableOutput(editionId: string, format: OutputFormat, user
   const edition = await editionOrThrow(editionId);
   const existing = await db.query.editionOutputs.findFirst({ where: and(eq(s.editionOutputs.editionId, editionId), eq(s.editionOutputs.format, format)) });
   if (existing) return existing;
+  if (edition.organizationId && !(await canPublishFormat(edition.organizationId, format))) {
+    throw new ForbiddenError(`${OUTPUT_LABELS[format]} is not included in your plan.`);
+  }
 
   // No default subject on purpose. "Acme Weekly — Issue N°7" is a worse subject line than the cover
   // headline, which is the actual news; the renderer uses the headline unless an editor overrides it.
@@ -151,7 +155,13 @@ export async function applyPublicationDefaults(editionId: string, userId?: strin
   const publication = await db.query.publications.findFirst({ where: eq(s.publications.id, edition.publicationId), columns: { defaultFormats: true } });
   const wanted = (publication?.defaultFormats ?? []).filter((f): f is OutputFormat => (OUTPUT_FORMATS as readonly string[]).includes(f));
   const created: EditionOutput[] = [];
-  for (const format of wanted) created.push(await enableOutput(editionId, format, userId));
+  for (const format of wanted) {
+    // A title whose usual formats include one the plan does not cover still creates its edition;
+    // the format is simply not switched on. Failing here would make the plan block edition
+    // creation outright, which is not what a limit on *publishing* should do.
+    if (edition.organizationId && !(await canPublishFormat(edition.organizationId, format))) continue;
+    created.push(await enableOutput(editionId, format, userId));
+  }
   return created;
 }
 

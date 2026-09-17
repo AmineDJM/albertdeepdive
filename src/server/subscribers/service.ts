@@ -6,6 +6,7 @@ import * as s from "@/server/db/schema";
 import { audit } from "@/server/audit";
 import { NotFoundError, ValidationError } from "@/lib/action-result";
 import { hashIp } from "@/server/auth/tokens";
+import { checkLimit } from "@/server/billing/entitlements";
 
 /**
  * Readers.
@@ -72,6 +73,12 @@ export async function subscribe(publicationId: string, raw: SubscribeInput, meta
   const existing = await db.query.subscribers.findFirst({
     where: and(eq(s.subscribers.organizationId, organizationId), eq(s.subscribers.email, input.email)),
   });
+
+  // The limit is the publisher's, not the reader's, so the message says nothing about plans.
+  if (!existing) {
+    const room = await checkLimit(organizationId, "subscribers");
+    if (!room.allowed) throw new ValidationError("This publication is not accepting new subscribers right now.");
+  }
 
   const raw_token = token();
   const subscriber =

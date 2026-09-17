@@ -7,6 +7,7 @@ import { articleRevisions, articleSources, articles, businessDeepDives, editoria
 import { pagePlanPages, pagePlans, publicationAssets, publicationVersions } from "./publication";
 import { aiJobs, jobs, notifications } from "./platform";
 import { editionOutputs, publicationSubscriptions, subscribers } from "./outputs";
+import { organizationSubscriptions, plans } from "./billing";
 
 export const organizationsRelations = relations(organizations, ({ one, many }) => ({
   createdBy: one(users, { relationName: "organizationCreator", fields: [organizations.createdById], references: [users.id] }),
@@ -17,6 +18,16 @@ export const organizationsRelations = relations(organizations, ({ one, many }) =
   contributors: many(contributors),
   contributorGroups: many(contributorGroups),
   editions: many(editions),
+  subscription: one(organizationSubscriptions, { fields: [organizations.id], references: [organizationSubscriptions.organizationId] }),
+}));
+
+export const plansRelations = relations(plans, ({ many }) => ({
+  subscriptions: many(organizationSubscriptions),
+}));
+
+export const organizationSubscriptionsRelations = relations(organizationSubscriptions, ({ one }) => ({
+  organization: one(organizations, { fields: [organizationSubscriptions.organizationId], references: [organizations.id] }),
+  plan: one(plans, { fields: [organizationSubscriptions.planId], references: [plans.id] }),
 }));
 
 // `userId` and `invitedById` both point at `users`, so each side needs a name to pair up with.
