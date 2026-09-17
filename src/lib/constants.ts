@@ -95,3 +95,7 @@ export const TARGET_LENGTHS = [
 
 export const CONTRIBUTOR_TYPES = ["STUDENT", "CAMPUS_AMBASSADOR", "ASSOCIATION", "CLASS_REPRESENTATIVE", "ADMINISTRATION", "FACULTY", "CORPORATE_RELATIONS", "BDD_REPRESENTATIVE", "ALUMNI", "STUDENT_ENTREPRENEUR", "STAFF", "OTHER"] as const;
 export type ContributorType = (typeof CONTRIBUTOR_TYPES)[number];
+
+/** Audience directory segments — who the finished magazine is sent to. Mirrors `audienceSegmentEnum`. */
+export const AUDIENCE_SEGMENTS = ["STUDENT", "PARENT", "PARTNER", "ADMINISTRATION", "ALUMNI", "STAFF", "OTHER"] as const;
+export type AudienceSegment = (typeof AUDIENCE_SEGMENTS)[number];

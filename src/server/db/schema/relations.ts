@@ -1,5 +1,6 @@
 import { relations } from "drizzle-orm";
 import { academicPrograms, campuses, contributorGroupMembers, contributorGroups, contributors, sessions, users } from "./identity";
+import { audienceRecipients } from "./audience";
 import { editionSections, editions, submissionCampaigns, submissionRequests } from "./editions";
 import { consentRecords, mediaAssets, mediaVariants, submissionAttachments, submissionCampuses, submissions } from "./submissions";
 import { articleRevisions, articleSources, articles, businessDeepDives, editorialComments, events, facts, informationRequests, organisations, people, quotes, stories, storyCampuses, storyClusterMembers, storyClusters, storyMedia, storyOrganisations, storyPeople } from "./newsroom";
@@ -27,6 +28,10 @@ export const contributorsRelations = relations(contributors, ({ one, many }) => 
   groupMemberships: many(contributorGroupMembers),
   submissions: many(submissions),
   requests: many(submissionRequests),
+}));
+
+export const audienceRecipientsRelations = relations(audienceRecipients, ({ one }) => ({
+  campus: one(campuses, { fields: [audienceRecipients.campusId], references: [campuses.id] }),
 }));
 
 export const contributorGroupsRelations = relations(contributorGroups, ({ many, one }) => ({

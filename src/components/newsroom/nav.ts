@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react";
-import { Archive, BarChart3, Building2, FileText, Image, Inbox, LayoutTemplate, Newspaper, Settings, Sparkles, Users, Workflow, Home } from "lucide-react";
+import { Archive, BarChart3, BookUser, Building2, FileText, Image, Inbox, LayoutTemplate, Newspaper, Settings, Sparkles, Users, Workflow, Home } from "lucide-react";
 import type { Permission } from "@/lib/auth/permissions";
 
 export type NavItem = { href: string; label: string; icon: LucideIcon; permission?: Permission; editionScoped?: boolean; badgeKey?: "inbox" | "flags" };
@@ -27,6 +27,7 @@ export const NAV_GROUPS: NavGroup[] = [
     label: "Organisation",
     items: [
       { href: "/contributors", label: "Contributors", icon: Users, permission: "contributor:manage" },
+      { href: "/directory", label: "Directory", icon: BookUser, permission: "contributor:manage" },
       { href: "/campuses", label: "Campuses", icon: Building2, permission: "edition:view" },
     ],
   },

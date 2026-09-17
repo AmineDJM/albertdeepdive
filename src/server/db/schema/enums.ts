@@ -24,6 +24,16 @@ export const contributorTypeEnum = pgEnum("contributor_type", [
   "OTHER",
 ]);
 
+export const audienceSegmentEnum = pgEnum("audience_segment", [
+  "STUDENT",
+  "PARENT",
+  "PARTNER",
+  "ADMINISTRATION",
+  "ALUMNI",
+  "STAFF",
+  "OTHER",
+]);
+
 export const editionStatusEnum = pgEnum("edition_status", [
   "UPCOMING",
   "OPEN",

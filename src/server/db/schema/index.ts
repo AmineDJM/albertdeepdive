@@ -1,5 +1,6 @@
 export * from "./enums";
 export * from "./identity";
+export * from "./audience";
 export * from "./editions";
 export * from "./submissions";
 export * from "./newsroom";

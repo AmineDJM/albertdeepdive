@@ -133,7 +133,7 @@ const FIELD_KEYWORDS: Record<MappableField, string[]> = {
   type: ["type", "role", "statut", "status", "fonction"],
 };
 
-function guessColumn(normalisedHeader: string[], keywords: string[], used: Set<number>): number | null {
+export function guessColumn(normalisedHeader: string[], keywords: string[], used: Set<number>): number | null {
   // Prefer an exact header match before falling back to a substring match.
   for (let i = 0; i < normalisedHeader.length; i++) {
     if (!used.has(i) && keywords.includes(normalisedHeader[i])) return i;
