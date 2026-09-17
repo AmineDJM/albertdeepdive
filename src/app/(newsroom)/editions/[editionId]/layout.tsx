@@ -4,7 +4,7 @@ import { getCurrentUser } from "@/server/auth/session";
 import { roleHasPermission } from "@/lib/auth/permissions";
 import { EDITION_TABS } from "@/components/newsroom/nav";
 import { getTranslations } from "@/server/i18n/locale";
-import { EditionTabs } from "@/components/newsroom/edition-tabs";
+import { TabBar } from "@/components/newsroom/tab-bar";
 import { EditionStatusBadge } from "@/components/newsroom/status-badge";
 
 export default async function EditionLayout({ children, params }: { children: React.ReactNode; params: Promise<{ editionId: string }> }) {
@@ -24,7 +24,7 @@ export default async function EditionLayout({ children, params }: { children: Re
             </span>
             <EditionStatusBadge status={edition.status} />
           </div>
-          <EditionTabs tabs={tabs} />
+          <TabBar tabs={tabs} align="end" />
         </div>
       </div>
       {children}

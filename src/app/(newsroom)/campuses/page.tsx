@@ -2,6 +2,8 @@ import { Building2 } from "lucide-react";
 import { listCampusesWithStats } from "@/server/contributors/service";
 import { getCurrentUser, hasPermission } from "@/server/auth/session";
 import { PageBody, PageHeader } from "@/components/newsroom/page-header";
+import { HubTabs } from "@/components/newsroom/hub-tabs";
+import { AUDIENCE_TABS } from "@/components/newsroom/nav";
 import { DataTable } from "@/components/newsroom/data-table";
 import { Badge } from "@/components/ui/badge";
 import { CampusEditor } from "./campus-editor";
@@ -13,7 +15,10 @@ export default async function CampusesPage() {
   const canManage = hasPermission(user, "campus:manage");
   return (
     <>
-      <PageHeader title="Campuses" description="Campuses are configurable. Every submission can target one, several or the whole school." actions={canManage ? <CampusEditor /> : null} />
+      <PageHeader title="Campuses" description="Campuses are configurable. Every submission can target one, several or the whole school." actions={canManage ? <CampusEditor /> : null}
+      >
+        <HubTabs tabs={AUDIENCE_TABS} />
+      </PageHeader>
       <PageBody>
         <DataTable
           rows={campuses}

@@ -7,6 +7,8 @@ import { aiJobLog, jobTypeOptions, listJobs, queueStats } from "@/server/automat
 import { describeEnvironment } from "@/server/settings/environment";
 import { centsToEur } from "@/server/analytics/compute";
 import { PageBody, PageHeader, SectionTitle } from "@/components/newsroom/page-header";
+import { HubTabs } from "@/components/newsroom/hub-tabs";
+import { INSIGHTS_TABS } from "@/components/newsroom/nav";
 import { FilterBar } from "@/components/newsroom/filter-bar";
 import { DataTable } from "@/components/newsroom/data-table";
 import { Stat, StatGrid } from "@/components/newsroom/stat";
@@ -108,7 +110,9 @@ export default async function AutomationsPage({ searchParams }: { searchParams: 
             {canManage ? <RunSchedulerButton /> : null}
           </>
         }
-      />
+      >
+        <HubTabs tabs={INSIGHTS_TABS} />
+      </PageHeader>
       <PageBody className="space-y-6">
         <StatGrid columns={5}>
           <Stat label="Active automations" value={`${enabled}/${overview.cards.length}`} hint={overview.cards.length - enabled ? `${overview.cards.length - enabled} paused in settings` : "all switched on"} tone={enabled === overview.cards.length ? "success" : "warning"} />

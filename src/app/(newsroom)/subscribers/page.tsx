@@ -7,6 +7,8 @@ import { getCurrentUser, hasPermission } from "@/server/auth/session";
 import { requireTenant } from "@/server/tenancy/context";
 import { subscriberStats } from "@/server/subscribers/service";
 import { PageBody, PageHeader } from "@/components/newsroom/page-header";
+import { HubTabs } from "@/components/newsroom/hub-tabs";
+import { AUDIENCE_TABS } from "@/components/newsroom/nav";
 import { DataTable } from "@/components/newsroom/data-table";
 import { Stat, StatGrid } from "@/components/newsroom/stat";
 import { Badge } from "@/components/ui/badge";
@@ -62,7 +64,10 @@ export default async function SubscribersPage() {
 
   return (
     <>
-      <PageHeader title="Subscribers" description="The people who asked to receive your publications. Everyone here confirmed their address." />
+      <PageHeader title="Subscribers" description="The people who asked to receive your publications. Everyone here confirmed their address."
+      >
+        <HubTabs tabs={AUDIENCE_TABS} />
+      </PageHeader>
       <PageBody className="space-y-5">
         <StatGrid>
           <Stat label="Confirmed" value={stats.subscribed} />

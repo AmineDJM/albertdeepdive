@@ -6,6 +6,8 @@ import { contributorStats, listContributors, listGroups, listPrograms } from "@/
 import { listCampusesWithStats } from "@/server/contributors/service";
 import { getCurrentUser, hasPermission } from "@/server/auth/session";
 import { PageBody, PageHeader } from "@/components/newsroom/page-header";
+import { HubTabs } from "@/components/newsroom/hub-tabs";
+import { AUDIENCE_TABS } from "@/components/newsroom/nav";
 import { DataTable } from "@/components/newsroom/data-table";
 import { FilterBar } from "@/components/newsroom/filter-bar";
 import { Stat, StatGrid } from "@/components/newsroom/stat";
@@ -25,7 +27,10 @@ export default async function ContributorsPage({ searchParams }: { searchParams:
   const [rows, groups, campuses, programs, stats] = await Promise.all([listContributors({ q: sp.q, campusId: sp.campusId, type: sp.type, groupId: sp.groupId, active: sp.active as "true" | "false" | undefined }), listGroups(), listCampusesWithStats(), listPrograms(), contributorStats()]);
   return (
     <>
-      <PageHeader title="Contributors" description="Who gets asked each month, and how they respond." actions={canManage ? <div className="flex items-center gap-2"><Button asChild variant="outline" size="sm"><Link href="/contributors/import"><Upload /> Import from a file</Link></Button><Suspense><ContributorEditor campuses={campuses} programs={programs} groups={groups} openOnParam /></Suspense></div> : null} />
+      <PageHeader title="Contributors" description="Who gets asked each month, and how they respond." actions={canManage ? <div className="flex items-center gap-2"><Button asChild variant="outline" size="sm"><Link href="/contributors/import"><Upload /> Import from a file</Link></Button><Suspense><ContributorEditor campuses={campuses} programs={programs} groups={groups} openOnParam /></Suspense></div> : null}
+      >
+        <HubTabs tabs={AUDIENCE_TABS} />
+      </PageHeader>
       <PageBody className="space-y-4">
         <StatGrid columns={4}>
           <Stat label="Contributors" value={stats.total} hint={`${stats.active} active`} />

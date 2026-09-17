@@ -4,6 +4,8 @@ import { Newspaper } from "lucide-react";
 import { listEditions, nextIssueNumber } from "@/server/editions/service";
 import { getCurrentUser, hasPermission } from "@/server/auth/session";
 import { PageBody, PageHeader } from "@/components/newsroom/page-header";
+import { HubTabs } from "@/components/newsroom/hub-tabs";
+import { WORKBENCH_TABS } from "@/components/newsroom/nav";
 import { DataTable } from "@/components/newsroom/data-table";
 import { EditionStatusBadge } from "@/components/newsroom/status-badge";
 import { NewEditionDialog } from "./new-edition-dialog";
@@ -20,7 +22,10 @@ export default async function EditionsPage() {
   const nextYear = now.getMonth() + 2 > 12 ? now.getFullYear() + 1 : now.getFullYear();
   return (
     <>
-      <PageHeader title="Editions" description="One edition per month. Special issues welcome." actions={hasPermission(user, "edition:create") ? <Suspense><NewEditionDialog nextIssueNumber={next} defaultMonth={nextMonth} defaultYear={nextYear} /></Suspense> : null} />
+      <PageHeader title="Editions" description="One edition per month. Special issues welcome." actions={hasPermission(user, "edition:create") ? <Suspense><NewEditionDialog nextIssueNumber={next} defaultMonth={nextMonth} defaultYear={nextYear} /></Suspense> : null}
+      >
+        <HubTabs tabs={WORKBENCH_TABS} />
+      </PageHeader>
       <PageBody>
         <DataTable
           rows={editions}

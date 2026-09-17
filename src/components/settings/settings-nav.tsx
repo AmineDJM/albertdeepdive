@@ -3,53 +3,52 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { LucideIcon } from "lucide-react";
-import { Activity, AtSign, BookOpen, Building2, CreditCard, Cpu, LayoutList, Mail, Plug, ScrollText, Shield, SlidersHorizontal, UserRound, Users } from "lucide-react";
+import { Activity, AtSign, BookOpen, Building2, CreditCard, Cpu, LayoutList, Mail, ScrollText, Shield, SlidersHorizontal, UserRound, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { roleHasPermission, type Permission, type Role } from "@/lib/auth/permissions";
 
 export type SettingsNavItem = { href: string; label: string; icon: LucideIcon; permission?: Permission | Permission[]; hint?: string };
 
+/**
+ * Settings, in three groups instead of six.
+ *
+ * What went: Profile and Help, which are one click away in the top bar from every screen and did not
+ * need a third door; and the platform console, which was never workspace settings at all — it reads
+ * across every customer on this Briefly and now lives in its own area. What stayed is what an
+ * administrator actually configures, and it is grouped by who is asking rather than by subsystem.
+ *
+ * Two of the names changed. "Email" and "Mailbox" sat next to each other meaning, respectively, the
+ * address the newsroom sends from and the log of what it sent — a distinction the labels did nothing
+ * to carry. And "System" was a heading, not a description.
+ */
 export const SETTINGS_NAV: { label: string; items: SettingsNavItem[] }[] = [
-  {
-    label: "Account",
-    items: [{ href: "/settings/profile", label: "Profile", icon: UserRound, hint: "Name, password, theme" }],
-  },
   {
     label: "Workspace",
     items: [
+      { href: "/settings/profile", label: "Your profile", icon: UserRound, hint: "Name, password, theme" },
       { href: "/settings/workspace", label: "Workspace", icon: Building2, permission: "settings:manage", hint: "Name, brand, language" },
       { href: "/settings/billing", label: "Plan & usage", icon: CreditCard, permission: "settings:manage", hint: "What you get and what you use" },
+      { href: "/settings/users", label: "Users & roles", icon: Users, permission: "user:manage", hint: "Who can do what" },
     ],
   },
   {
     label: "Newsroom",
     items: [
-      { href: "/settings/users", label: "Users & roles", icon: Users, permission: "user:manage", hint: "Who can do what" },
+      { href: "/settings/system", label: "Publishing defaults", icon: SlidersHorizontal, permission: "settings:manage", hint: "Masthead, schedule, print, AI" },
       { href: "/settings/sections", label: "Sections", icon: LayoutList, permission: "section:manage", hint: "Default section template" },
       { href: "/settings/prompts", label: "Prompts", icon: Cpu, permission: "prompt:manage", hint: "Versioned AI templates" },
-      { href: "/settings/system", label: "System", icon: SlidersHorizontal, permission: "settings:manage", hint: "Masthead, schedule, print, AI" },
+      { href: "/settings/email", label: "Sending address", icon: AtSign, permission: ["settings:manage"], hint: "Connect the newsroom mailbox" },
       { href: "/settings/privacy", label: "Privacy & retention", icon: Shield, permission: "settings:manage", hint: "GDPR, consent, exports" },
     ],
   },
   {
-    label: "Operations",
+    label: "Records",
     items: [
-      { href: "/settings/email", label: "Email", icon: AtSign, permission: ["settings:manage"], hint: "Connect the newsroom mailbox" },
-      { href: "/settings/mailbox", label: "Mailbox", icon: Mail, permission: ["campaign:manage", "settings:manage"], hint: "Every email the newsroom sent" },
+      { href: "/settings/mailbox", label: "Sent mail", icon: Mail, permission: ["campaign:manage", "settings:manage"], hint: "Every email the newsroom sent" },
       { href: "/settings/jobs", label: "Jobs & AI trace", icon: Activity, permission: ["ai:run", "settings:manage"], hint: "Queue and model calls" },
       { href: "/settings/audit", label: "Audit log", icon: ScrollText, permission: "audit:view", hint: "Who changed what" },
+      { href: "/settings/help", label: "How Briefly works", icon: BookOpen },
     ],
-  },
-  {
-    label: "Platform",
-    items: [
-      { href: "/settings/platform", label: "Workspaces & plans", icon: Building2, permission: "settings:manage", hint: "Every customer on this Briefly" },
-      { href: "/settings/integrations", label: "Integrations", icon: Plug, permission: "settings:manage", hint: "Stripe, email, AI, storage" },
-    ],
-  },
-  {
-    label: "Help",
-    items: [{ href: "/settings/help", label: "How the newsroom works", icon: BookOpen }],
   },
 ];
 

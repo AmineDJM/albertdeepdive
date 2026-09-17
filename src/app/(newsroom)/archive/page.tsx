@@ -5,6 +5,8 @@ import { getCurrentUser, hasPermission } from "@/server/auth/session";
 import { archiveFilterOptions, searchArchive, type ArchiveFilters } from "@/server/archive/service";
 import { archiveShelf } from "@/server/archive/read-edition";
 import { PageBody, PageHeader, SectionTitle } from "@/components/newsroom/page-header";
+import { HubTabs } from "@/components/newsroom/hub-tabs";
+import { WORKBENCH_TABS } from "@/components/newsroom/nav";
 import { FilterBar } from "@/components/newsroom/filter-bar";
 import { Stat, StatGrid } from "@/components/newsroom/stat";
 import { ArchiveEditionCard } from "@/components/newsroom/archive-edition-card";
@@ -47,7 +49,10 @@ export default async function ArchivePage({ searchParams }: { searchParams: Prom
 
   return (
     <>
-      <PageHeader title="Archive" description={`${shelf.length} issue${shelf.length === 1 ? "" : "s"} · ${formatNumber(options.stats.stories)} stories · ${formatNumber(options.stats.people)} people · ${formatNumber(options.stats.organisations)} organisations`} />
+      <PageHeader title="Archive" description={`${shelf.length} issue${shelf.length === 1 ? "" : "s"} · ${formatNumber(options.stats.stories)} stories · ${formatNumber(options.stats.people)} people · ${formatNumber(options.stats.organisations)} organisations`}
+      >
+        <HubTabs tabs={WORKBENCH_TABS} />
+      </PageHeader>
       <PageBody className="space-y-6">
         <StatGrid columns={4}>
           <Stat label="Issues" value={shelf.length} hint={`${withDownloads} with a rendered export`} />

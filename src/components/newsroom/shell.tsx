@@ -17,7 +17,7 @@ export function NewsroomShell({ user, workspace, workspaces, impersonated, curre
         <Topbar user={user} notifications={notifications} unread={unread} onOpenSearch={() => setSearchOpen(true)} />
         <main className="flex min-h-0 flex-1 flex-col overflow-y-auto scrollbar-thin">{children}</main>
       </div>
-      <CommandMenu open={searchOpen} onOpenChange={setSearchOpen} currentEditionId={currentEdition?.id ?? null} />
+      <CommandMenu open={searchOpen} onOpenChange={setSearchOpen} currentEditionId={currentEdition?.id ?? null} role={user.role} />
       <RowLinkBehaviour />
     </div>
   );

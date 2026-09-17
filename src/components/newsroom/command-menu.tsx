@@ -2,14 +2,17 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Archive, BarChart3, Building2, FileText, Image, Inbox, LayoutTemplate, Newspaper, Plus, Settings, Sparkles, Users, Workflow, Home, Loader2 } from "lucide-react";
+import { Archive, BarChart3, BookUser, Building2, FileText, Image, Inbox, LayoutTemplate, Library, Mail, Newspaper, Plug, Plus, Send, Settings, Shield, Sparkles, Users, Workflow, Home, Loader2 } from "lucide-react";
 import { CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator } from "@/components/ui/command";
 import { searchAction } from "@/app/(newsroom)/actions";
+import { roleHasPermission, type Permission, type Role } from "@/lib/auth/permissions";
 import type { SearchHit } from "@/server/search/service";
+
+type QuickLink = { label: string; href: string; icon: React.ComponentType<{ className?: string }>; need?: Permission };
 
 const ICONS: Record<string, React.ComponentType<{ className?: string }>> = { edition: Newspaper, story: Sparkles, article: FileText, submission: Inbox, media: Image, contributor: Users, person: Users, organisation: Building2, event: Archive, bdd: Sparkles };
 
-export function CommandMenu({ open, onOpenChange, currentEditionId }: { open: boolean; onOpenChange: (open: boolean) => void; currentEditionId: string | null }) {
+export function CommandMenu({ open, onOpenChange, currentEditionId, role }: { open: boolean; onOpenChange: (open: boolean) => void; currentEditionId: string | null; role: Role }) {
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [groups, setGroups] = useState<{ group: string; hits: SearchHit[] }[]>([]);
@@ -49,8 +52,11 @@ export function CommandMenu({ open, onOpenChange, currentEditionId }: { open: bo
   }
 
   const ed = currentEditionId ? `/editions/${currentEditionId}` : null;
-  const quick = [
+  // The sidebar deliberately lists six destinations; this lists all of them. Anything that left the
+  // sidebar has to stay one keystroke away, or the simplification is just a removal.
+  const quick: QuickLink[] = [
     { label: "Overview", href: "/overview", icon: Home },
+    { label: "Publications", href: "/publications", icon: Library },
     { label: "Editions", href: "/editions", icon: Newspaper },
     ...(ed
       ? [
@@ -61,15 +67,24 @@ export function CommandMenu({ open, onOpenChange, currentEditionId }: { open: bo
           { label: "Media", href: `${ed}/media`, icon: Image },
           { label: "Layout", href: `${ed}/layout`, icon: LayoutTemplate },
           { label: "QA & publish", href: `${ed}/qa`, icon: Workflow },
+          { label: "Exports", href: `${ed}/exports`, icon: FileText },
+          { label: "Campaign", href: `${ed}/campaign`, icon: Send },
         ]
       : []),
-    { label: "Contributors", href: "/contributors", icon: Users },
+    { label: "Subscribers", href: "/subscribers", icon: Mail, need: "contributor:manage" as Permission },
+    { label: "Directory", href: "/directory", icon: BookUser, need: "contributor:manage" as Permission },
+    { label: "Contributors", href: "/contributors", icon: Users, need: "contributor:manage" as Permission },
     { label: "Campuses", href: "/campuses", icon: Building2 },
+    { label: "Analytics", href: "/analytics", icon: BarChart3, need: "analytics:view" as Permission },
     { label: "Automations", href: "/automations", icon: Workflow },
-    { label: "Analytics", href: "/analytics", icon: BarChart3 },
-    { label: "Archive", href: "/archive", icon: Archive },
+    { label: "Archive", href: "/archive", icon: Archive, need: "archive:view" as Permission },
+    { label: "Media library", href: "/media", icon: Image },
     { label: "Settings", href: "/settings", icon: Settings },
-  ];
+    { label: "Plan & usage", href: "/settings/billing", icon: Settings, need: "settings:manage" as Permission },
+    { label: "Users & roles", href: "/settings/users", icon: Users, need: "user:manage" as Permission },
+    { label: "Platform: customers & plans", href: "/platform", icon: Shield, need: "settings:manage" as Permission },
+    { label: "Platform: integrations", href: "/platform/integrations", icon: Plug, need: "settings:manage" as Permission },
+  ].filter((q) => !q.need || roleHasPermission(role, q.need));
 
   return (
     <CommandDialog open={open} onOpenChange={onOpenChange} title="Search" description="Search editions, submissions, stories, articles, people, organisations, media and events">

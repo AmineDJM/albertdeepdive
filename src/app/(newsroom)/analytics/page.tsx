@@ -20,6 +20,8 @@ import {
   type AnalyticsScope,
 } from "@/server/analytics/read-insights";
 import { PageBody, PageHeader, SectionTitle } from "@/components/newsroom/page-header";
+import { HubTabs } from "@/components/newsroom/hub-tabs";
+import { INSIGHTS_TABS } from "@/components/newsroom/nav";
 import { FilterBar } from "@/components/newsroom/filter-bar";
 import { DateRangeFilter } from "@/components/newsroom/analytics-date-range";
 import { DataTable } from "@/components/newsroom/data-table";
@@ -78,7 +80,10 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
   return (
     <>
       <ChartTheme />
-      <PageHeader title="Analytics" description={`${analytics.scope.label} · activity window: ${windowLabel} · every figure is read straight from the database`} />
+      <PageHeader title="Analytics" description={`${analytics.scope.label} · activity window: ${windowLabel} · every figure is read straight from the database`}
+      >
+        <HubTabs tabs={INSIGHTS_TABS} />
+      </PageHeader>
       <PageBody className="space-y-6">
         <Suspense>
           <FilterBar

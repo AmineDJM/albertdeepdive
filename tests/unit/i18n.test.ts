@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { en } from "@/lib/i18n/en";
 import { fr } from "@/lib/i18n/fr";
 import { dictionaryFor, isLocale, LOCALES, localeFromHeader, plural, translator } from "@/lib/i18n";
-import { NAV_GROUPS, EDITION_TABS } from "@/components/newsroom/nav";
+import { AUDIENCE_TABS, EDITION_TABS, INSIGHTS_TABS, NAV_ITEMS, PLATFORM_TABS, WORKBENCH_TABS } from "@/components/newsroom/nav";
 
 function flatten(object: Record<string, unknown>, prefix = ""): string[] {
   return Object.entries(object).flatMap(([key, value]) => {
@@ -90,7 +90,11 @@ describe("navigation labels", () => {
   it("are keys that both dictionaries answer", () => {
     const t = translator("fr");
     const en_ = translator("en");
-    const labels = [...NAV_GROUPS.flatMap((g) => [g.label, ...g.items.map((i) => i.label)]), ...EDITION_TABS.map((tab) => tab.label)].filter((l): l is NonNullable<typeof l> => !!l);
+    const labels = [
+      ...NAV_ITEMS.map((item) => item.label),
+      ...[WORKBENCH_TABS, AUDIENCE_TABS, INSIGHTS_TABS, PLATFORM_TABS].flat().map((tab) => tab.label),
+      ...EDITION_TABS.map((tab) => tab.label),
+    ];
     expect(labels.length).toBeGreaterThan(10);
     for (const key of labels) {
       // A key that resolves to itself is a key with no string behind it.

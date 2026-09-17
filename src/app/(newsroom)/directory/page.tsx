@@ -6,6 +6,8 @@ import { audienceFacets, listRecipients } from "@/server/audience/service";
 import { listCampusesWithStats } from "@/server/contributors/service";
 import { getCurrentUser, hasPermission } from "@/server/auth/session";
 import { PageBody, PageHeader } from "@/components/newsroom/page-header";
+import { HubTabs } from "@/components/newsroom/hub-tabs";
+import { AUDIENCE_TABS } from "@/components/newsroom/nav";
 import { FilterBar } from "@/components/newsroom/filter-bar";
 import { Stat, StatGrid } from "@/components/newsroom/stat";
 import { NoAccess } from "@/components/settings/no-access";
@@ -37,7 +39,9 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
             <Suspense><RecipientEditor campuses={campusOptions} openOnParam /></Suspense>
           </div>
         }
-      />
+      >
+        <HubTabs tabs={AUDIENCE_TABS} />
+      </PageHeader>
       <PageBody className="space-y-4">
         <StatGrid columns={4}>
           <Stat label="Recipients" value={facets.total} hint={`${facets.active} active`} />
