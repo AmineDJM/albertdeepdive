@@ -13,6 +13,9 @@ export const campuses = pgTable(
     timezone: text("timezone").default("Europe/Paris"),
     isActive: boolean("is_active").notNull().default(true),
     sortOrder: integer("sort_order").notNull().default(0),
+    // How many of this campus's contributors a new monthly campaign invites by default. Editors
+    // still adjust the exact number per campaign; this is the starting point they configure once.
+    defaultInviteTarget: integer("default_invite_target").notNull().default(0),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
   },

@@ -28,6 +28,7 @@ export type CampaignFormInput = {
   contributorGroupIds: string[];
   introMessage: string | null;
   autoProcess: boolean;
+  reinvitePrevious: boolean;
 };
 
 function revalidateCampaign(editionId: string) {

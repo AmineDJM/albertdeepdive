@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { createCampusAction, updateCampusAction } from "./actions";
 
-type Campus = { id: string; name: string; city: string | null; country: string | null; colour: string | null; timezone: string | null; isActive: boolean };
+type Campus = { id: string; name: string; city: string | null; country: string | null; colour: string | null; timezone: string | null; isActive: boolean; defaultInviteTarget?: number };
 
 export function CampusEditor({ campus, trigger }: { campus?: Campus; trigger?: React.ReactNode }) {
   const router = useRouter();
@@ -23,10 +23,11 @@ export function CampusEditor({ campus, trigger }: { campus?: Campus; trigger?: R
   const [colour, setColour] = useState(campus?.colour ?? "#2BAFE0");
   const [timezone, setTimezone] = useState(campus?.timezone ?? "Europe/Paris");
   const [isActive, setIsActive] = useState(campus?.isActive ?? true);
+  const [defaultInviteTarget, setDefaultInviteTarget] = useState(String(campus?.defaultInviteTarget ?? 0));
 
   function submit() {
     startTransition(async () => {
-      const payload = { name, city: city || null, country: country || null, colour, timezone, isActive };
+      const payload = { name, city: city || null, country: country || null, colour, timezone, isActive, defaultInviteTarget: Math.max(0, Math.floor(Number(defaultInviteTarget) || 0)) };
       const res = campus ? await updateCampusAction(campus.id, payload) : await createCampusAction(payload);
       if (!res.ok) {
         toast.error(res.error);
@@ -76,6 +77,11 @@ export function CampusEditor({ campus, trigger }: { campus?: Campus; trigger?: R
             <div className="space-y-1.5">
               <Label>Timezone</Label>
               <Input value={timezone} onChange={(e) => setTimezone(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="campus-target">People invited per campaign</Label>
+              <Input id="campus-target" type="number" min={0} value={defaultInviteTarget} onChange={(e) => setDefaultInviteTarget(e.target.value)} />
+              <p className="text-2xs text-muted-foreground">The default number chosen at random each month. Editors can still adjust it per campaign.</p>
             </div>
           </div>
           <label className="flex items-center justify-between rounded-md border px-3 py-2 text-[13px]">

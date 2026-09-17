@@ -191,8 +191,19 @@ Nothing else has to be configured. No email provider account, no object storage,
 ### The newsroom mailbox (Gmail)
 
 One Gmail account sends the invitations, the reminders and the requests for more information, and
-receives the replies. You connect it from **Settings → Email**; there is no Google Cloud project
-and no OAuth consent screen.
+receives the replies. You connect it from **Settings → Email**. There are two ways.
+
+**One click — Sign in with Google (recommended).** Set two environment variables on the service and
+the connection becomes a single button. In Google Cloud → APIs & Services → Credentials, create an
+**OAuth client ID** of type *Web application*, add the redirect URI
+`https://<your-app-url>/api/settings/gmail/callback`, and copy the client ID and secret into
+`GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` (in Render, the web service's Environment tab). If the
+mailbox is a Google Workspace address (for example on `albertschool.com`), mark the OAuth consent
+screen **Internal** so no Google verification is needed. Then, in the app, open **Settings → Email**
+and press **Sign in with Google**: you approve the permissions on Google's own screen and the mailbox
+is connected. The app stores only the refresh token, encrypted.
+
+**Or an app password (no Google Cloud project).**
 
 1. On the Google account, turn on 2-Step Verification, then open
    [App passwords](https://myaccount.google.com/apppasswords) and create one for "Albert Deep Dive".

@@ -15,6 +15,13 @@
       "when": 1789560039054,
       "tag": "0001_complex_romulus",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1789638061830,
+      "tag": "0002_lame_layla_miller",
+      "breakpoints": true
     }
   ]
 }

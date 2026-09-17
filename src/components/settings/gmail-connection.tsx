@@ -13,6 +13,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { FieldError, SettingsCard } from "@/components/settings/key-value";
 import { connectGmailAction, disconnectGmailAction, pollInboxAction, sendTestEmailAction, testGmailAction } from "@/app/(newsroom)/settings/email/actions";
 import type { GmailStatus } from "@/server/email/gmail";
+import { cn } from "@/lib/utils";
 
 const APP_PASSWORD_URL = "https://myaccount.google.com/apppasswords";
 
@@ -20,7 +21,17 @@ const APP_PASSWORD_URL = "https://myaccount.google.com/apppasswords";
  * Connecting the newsroom mailbox. The only thing an operator has to fetch from Google is a
  * 16-character app password; there is no Google Cloud project and no third-party email provider.
  */
-export function GmailConnection({ status, appName }: { status: GmailStatus; appName: string }) {
+const OAUTH_RESULT: Record<string, { ok: boolean; text: string }> = {
+  connected: { ok: true, text: "Gmail connected. Invitations and reminders will be sent from this address." },
+  denied: { ok: false, text: "You cancelled the Google sign-in. Nothing was changed." },
+  bad_state: { ok: false, text: "The sign-in link expired. Start again from this page." },
+  no_refresh_token: { ok: false, text: "Google did not return a refresh token. Remove this app under myaccount.google.com/permissions, then connect again." },
+  no_address: { ok: false, text: "Could not read the mailbox address from Google. Try again." },
+  oauth_unavailable: { ok: false, text: "Google sign-in is not configured on the server yet (GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET)." },
+  error: { ok: false, text: "Something went wrong connecting to Google. Try again." },
+};
+
+export function GmailConnection({ status, appName, oauthAvailable, oauthRedirectUri, result }: { status: GmailStatus; appName: string; oauthAvailable: boolean; oauthRedirectUri: string; result: string | null }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [busy, setBusy] = useState<"test" | "connect" | "send" | "poll" | null>(null);
@@ -48,8 +59,49 @@ export function GmailConnection({ status, appName }: { status: GmailStatus; appN
     });
   }
 
+  const banner = result ? OAUTH_RESULT[result] ?? null : null;
+
   return (
     <div className="space-y-4">
+      {banner ? (
+        <p className={cn("flex items-start gap-2 rounded-md border p-2.5 text-xs", banner.ok ? "border-success/40 bg-success-soft/40" : "border-destructive/40 bg-destructive-soft/40")}>
+          {banner.ok ? <CheckCircle2 className="mt-px size-3.5 shrink-0 text-success" /> : <Mail className="mt-px size-3.5 shrink-0 text-destructive" />}
+          <span>{banner.text}</span>
+        </p>
+      ) : null}
+
+      {oauthAvailable && !(status.connected && status.mode === "password") ? (
+        <SettingsCard
+          title="Connect with Google"
+          description="One click. Google asks you to approve, and the mailbox is connected — no password to create or paste."
+          action={status.connected && status.mode === "oauth" ? <Badge variant="success" className="gap-1"><CheckCircle2 className="size-3" /> Connected</Badge> : null}
+        >
+          {status.connected && status.mode === "oauth" ? (
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs text-muted-foreground">Signed in as <span className="font-medium text-foreground">{status.address}</span>.</span>
+              <Button size="sm" variant="outline" asChild>
+                <a href="/api/settings/gmail/start">Reconnect</a>
+              </Button>
+            </div>
+          ) : (
+            <Button size="sm" variant="brand" asChild>
+              <a href="/api/settings/gmail/start">
+                <svg viewBox="0 0 48 48" className="size-4" aria-hidden><path fill="#4285F4" d="M45 24c0-1.6-.1-3.1-.4-4.6H24v9.1h11.8c-.5 2.8-2 5.1-4.4 6.7v5.6h7.1C42.7 37 45 31 45 24z"/><path fill="#34A853" d="M24 46c6 0 11-2 14.6-5.3l-7.1-5.6c-2 1.3-4.5 2.1-7.5 2.1-5.8 0-10.7-3.9-12.4-9.2H4.3v5.8C7.9 41.1 15.3 46 24 46z"/><path fill="#FBBC05" d="M11.6 27.9c-.5-1.3-.7-2.7-.7-4.1s.3-2.8.7-4.1v-5.8H4.3C2.8 16.8 2 20.3 2 24s.8 7.2 2.3 10.1l7.3-6.2z"/><path fill="#EA4335" d="M24 10.7c3.3 0 6.2 1.1 8.5 3.3l6.3-6.3C35 4 30 2 24 2 15.3 2 7.9 6.9 4.3 14.1l7.3 5.8C13.3 14.6 18.2 10.7 24 10.7z"/></svg>
+                Sign in with Google
+              </a>
+            </Button>
+          )}
+          <p className="mt-2 text-2xs text-muted-foreground">Works with a Google Workspace or Gmail address. You approve the exact permissions on Google&rsquo;s own screen.</p>
+        </SettingsCard>
+      ) : null}
+
+      {!oauthAvailable ? (
+        <p className="flex items-start gap-2 rounded-md border border-border bg-muted/30 p-2.5 text-2xs text-muted-foreground">
+          <ExternalLink className="mt-px size-3 shrink-0" />
+          <span>To turn on one-click “Sign in with Google”, set <code>GOOGLE_CLIENT_ID</code> and <code>GOOGLE_CLIENT_SECRET</code> on the server and register this redirect URI in Google Cloud: <code className="break-all">{oauthRedirectUri}</code>. Until then, use an app password below.</span>
+        </p>
+      ) : null}
+
       <SettingsCard
         title="Newsroom mailbox"
         description="Invitations, reminders and requests for more information are sent from this address, and replies come back to it."
@@ -125,7 +177,7 @@ export function GmailConnection({ status, appName }: { status: GmailStatus; appN
       </SettingsCard>
 
       <SettingsCard
-        title={status.connected ? "Change the mailbox" : "Connect a Gmail mailbox"}
+        title={oauthAvailable ? "Or connect with an app password" : status.connected ? "Change the mailbox" : "Connect a Gmail mailbox"}
         description="Google refuses an ordinary account password, so use an app password. It takes a minute and needs no Google Cloud project."
       >
         <ol className="mb-3 space-y-1 text-xs text-muted-foreground">

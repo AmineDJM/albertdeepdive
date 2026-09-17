@@ -82,6 +82,7 @@ export default async function CampaignPage({ params }: { params: Promise<{ editi
     contributorGroupIds: [...campaign.contributorGroupIds],
     introMessage: campaign.introMessage ?? "",
     autoProcess: campaign.autoProcess,
+    reinvitePrevious: campaign.reinvitePrevious ?? false,
   };
 
   return (

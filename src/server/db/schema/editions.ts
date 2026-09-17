@@ -81,6 +81,9 @@ export const submissionCampaigns = pgTable(
     contributorGroupIds: uuid("contributor_group_ids").array().notNull().default([]),
     introMessage: text("intro_message"),
     autoProcess: boolean("auto_process").notNull().default(true),
+    // When false (the default) a campaign does not re-invite the people invited to the previous
+    // edition, so the rota rotates through the pool. Turn it on to allow them back.
+    reinvitePrevious: boolean("reinvite_previous").notNull().default(false),
     createdById: uuid("created_by_id").references(() => users.id, { onDelete: "set null" }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),

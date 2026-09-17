@@ -123,6 +123,7 @@ export const campusInputSchema = z.object({
   colour: z.string().regex(/^#[0-9a-fA-F]{6}$/).default("#2BAFE0"),
   timezone: z.string().default("Europe/Paris"),
   isActive: z.boolean().default(true),
+  defaultInviteTarget: z.coerce.number().int().min(0).max(1000).default(0),
 });
 
 export async function listCampusesWithStats() {

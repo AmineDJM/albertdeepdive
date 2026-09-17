@@ -1,0 +1,2 @@
+ALTER TABLE "campuses" ADD COLUMN "default_invite_target" integer DEFAULT 0 NOT NULL;--> statement-breakpoint
+ALTER TABLE "submission_campaigns" ADD COLUMN "reinvite_previous" boolean DEFAULT false NOT NULL;

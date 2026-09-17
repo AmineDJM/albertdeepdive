@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { createLogger } from "@/server/logger";
+import { env } from "@/server/env";
 import { audit } from "@/server/audit";
 import { deleteSecretSetting, maskSecret, open, readSecretSetting, seal, writeSecretSetting, type SealedSecret } from "@/server/settings/secrets";
 import { ValidationError } from "@/lib/action-result";
@@ -19,7 +20,12 @@ export const GMAIL_SETTING_KEY = "email.gmail";
 export type GmailConnection = {
   address: string;
   displayName: string;
-  password: SealedSecret;
+  /** How the mailbox authenticates. Older connections without this field are app passwords. */
+  mode?: "password" | "oauth";
+  /** Set for the app-password mode. */
+  password?: SealedSecret;
+  /** Set for the "Sign in with Google" mode: the long-lived Google refresh token, sealed. */
+  refreshToken?: SealedSecret;
   /** Newsroom replies land here; leave empty to receive nothing. */
   receiveEnabled: boolean;
   connectedAt: string;
@@ -28,8 +34,13 @@ export type GmailConnection = {
   lastUid: number | null;
 };
 
+export function connectionMode(c: GmailConnection): "password" | "oauth" {
+  return c.mode ?? (c.refreshToken ? "oauth" : "password");
+}
+
 export type GmailStatus = {
   connected: boolean;
+  mode: "password" | "oauth" | null;
   address: string | null;
   displayName: string | null;
   passwordHint: string | null;
@@ -98,18 +109,43 @@ export async function getGmailConnection(): Promise<GmailConnection | null> {
 export async function gmailStatus(): Promise<GmailStatus> {
   const c = await getGmailConnection();
   if (!c) {
-    return { connected: false, address: null, displayName: null, passwordHint: null, receiveEnabled: false, connectedAt: null, lastVerifiedAt: null, lastPolledAt: null };
+    return { connected: false, mode: null, address: null, displayName: null, passwordHint: null, receiveEnabled: false, connectedAt: null, lastVerifiedAt: null, lastPolledAt: null };
   }
   return {
     connected: true,
+    mode: connectionMode(c),
     address: c.address,
     displayName: c.displayName,
-    passwordHint: maskSecret(open(c.password)),
+    passwordHint: connectionMode(c) === "password" ? maskSecret(open(c.password)) : null,
     receiveEnabled: c.receiveEnabled,
     connectedAt: c.connectedAt,
     lastVerifiedAt: c.lastVerifiedAt,
     lastPolledAt: c.lastPolledAt,
   };
+}
+
+/**
+ * Stores a mailbox connected through "Sign in with Google". We keep only the refresh token
+ * (sealed); access tokens are short-lived and fetched from it when a message is sent or read.
+ */
+export async function connectGmailOAuth(input: { address: string; refreshToken: string; displayName?: string }, userId?: string | null): Promise<GmailStatus> {
+  const existing = await getGmailConnection();
+  const now = new Date().toISOString();
+  const connection: GmailConnection = {
+    address: input.address.toLowerCase(),
+    displayName: input.displayName || existing?.displayName || input.address,
+    mode: "oauth",
+    refreshToken: seal(input.refreshToken),
+    receiveEnabled: existing?.address === input.address ? existing.receiveEnabled : true,
+    connectedAt: existing?.address === input.address ? existing.connectedAt : now,
+    lastVerifiedAt: now,
+    lastPolledAt: existing?.address === input.address ? (existing.lastPolledAt ?? null) : null,
+    lastUid: existing?.address === input.address ? (existing.lastUid ?? null) : null,
+  };
+  await writeSecretSetting(GMAIL_SETTING_KEY, connection, "Gmail mailbox used to send and receive newsroom email");
+  await audit({ action: "email.gmail.connect", userId, entityType: "SETTING", metadata: { address: input.address, mode: "oauth" } });
+  log.info("gmail connected via oauth", { address: input.address });
+  return gmailStatus();
 }
 
 function friendlyError(err: unknown): string {
@@ -185,17 +221,50 @@ async function touch(patch: Partial<GmailConnection>) {
   await writeSecretSetting(GMAIL_SETTING_KEY, { ...current, ...patch }, "Gmail mailbox used to send and receive newsroom email");
 }
 
+/**
+ * SMTP credentials for the connected mailbox. App-password mode passes the password; OAuth mode
+ * hands nodemailer the client + refresh token so it fetches and refreshes access tokens itself.
+ */
+async function smtpAuth(connection: GmailConnection) {
+  if (connectionMode(connection) === "oauth") {
+    const refreshToken = open(connection.refreshToken);
+    if (!refreshToken) throw new ValidationError("The Google connection expired. Reconnect the mailbox in Settings → Email.");
+    return {
+      type: "OAuth2" as const,
+      user: connection.address,
+      clientId: env.GOOGLE_CLIENT_ID,
+      clientSecret: env.GOOGLE_CLIENT_SECRET,
+      refreshToken,
+    };
+  }
+  const password = open(connection.password);
+  if (!password) throw new ValidationError("The stored Gmail password could not be read. Connect the mailbox again in Settings → Email.");
+  return { user: connection.address, pass: password };
+}
+
+/** IMAP credentials: app password, or a fresh Google access token derived from the refresh token. */
+async function imapAuth(connection: GmailConnection): Promise<{ user: string; pass: string } | { user: string; accessToken: string } | null> {
+  if (connectionMode(connection) === "oauth") {
+    const refreshToken = open(connection.refreshToken);
+    if (!refreshToken) return null;
+    const { refreshAccessToken } = await import("./google-oauth");
+    const { accessToken } = await refreshAccessToken(refreshToken);
+    return { user: connection.address, accessToken };
+  }
+  const password = open(connection.password);
+  if (!password) return null;
+  return { user: connection.address, pass: password };
+}
+
 export type GmailSendInput = { to: string; subject: string; html: string; text?: string; cc?: string; replyTo?: string; headers?: Record<string, string> };
 
 /** Sends through the connected mailbox. Replies go to the same address, which is the point. */
 export async function sendThroughGmail(message: GmailSendInput): Promise<{ providerMessageId?: string }> {
   const connection = await getGmailConnection();
   if (!connection) throw new ValidationError("No Gmail mailbox is connected. Connect one in Settings → Email.");
-  const password = open(connection.password);
-  if (!password) throw new ValidationError("The stored Gmail password could not be read. Connect the mailbox again in Settings → Email.");
 
   const nodemailer = await import("nodemailer");
-  const transport = nodemailer.createTransport({ ...SMTP, auth: { user: connection.address, pass: password } });
+  const transport = nodemailer.createTransport({ ...SMTP, auth: await smtpAuth(connection) });
   try {
     const info = await withTimeout(
       transport.sendMail({
@@ -240,12 +309,12 @@ export type IncomingMessage = {
 export async function fetchNewGmailMessages(options: { limit?: number } = {}): Promise<IncomingMessage[]> {
   const connection = await getGmailConnection();
   if (!connection || !connection.receiveEnabled) return [];
-  const password = open(connection.password);
-  if (!password) return [];
+  const auth = await imapAuth(connection);
+  if (!auth) return [];
 
   const { ImapFlow } = await import("imapflow");
   const { simpleParser } = await import("mailparser");
-  const client = new ImapFlow({ ...IMAP, auth: { user: connection.address, pass: password }, logger: false });
+  const client = new ImapFlow({ ...IMAP, auth, logger: false });
   const messages: IncomingMessage[] = [];
   let highestUid = connection.lastUid ?? 0;
 

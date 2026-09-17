@@ -37,6 +37,10 @@ const schema = z.object({
   PLAYWRIGHT_CHROMIUM_EXECUTABLE: z.string().optional(),
   PRINT_PAGE_SIZE: z.enum(["A4", "TABLOID", "LETTER"]).default("A4"),
   AUTOMATION_TICK_TOKEN: z.string().default("change-me"),
+  // Optional. When both are set, "Sign in with Google" appears on Settings → Email and the mailbox
+  // connects with one click. Without them, the app-password method is used instead.
+  GOOGLE_CLIENT_ID: z.string().optional(),
+  GOOGLE_CLIENT_SECRET: z.string().optional(),
 });
 
 /**

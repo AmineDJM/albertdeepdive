@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Suspense } from "react";
-import { Users } from "lucide-react";
+import { Upload, Users } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { contributorStats, listContributors, listGroups, listPrograms } from "@/server/contributors/service";
 import { listCampusesWithStats } from "@/server/contributors/service";
 import { getCurrentUser, hasPermission } from "@/server/auth/session";
@@ -24,7 +25,7 @@ export default async function ContributorsPage({ searchParams }: { searchParams:
   const [rows, groups, campuses, programs, stats] = await Promise.all([listContributors({ q: sp.q, campusId: sp.campusId, type: sp.type, groupId: sp.groupId, active: sp.active as "true" | "false" | undefined }), listGroups(), listCampusesWithStats(), listPrograms(), contributorStats()]);
   return (
     <>
-      <PageHeader title="Contributors" description="Who gets asked each month, and how they respond." actions={canManage ? <Suspense><ContributorEditor campuses={campuses} programs={programs} groups={groups} openOnParam /></Suspense> : null} />
+      <PageHeader title="Contributors" description="Who gets asked each month, and how they respond." actions={canManage ? <div className="flex items-center gap-2"><Button asChild variant="outline" size="sm"><Link href="/contributors/import"><Upload /> Import from a file</Link></Button><Suspense><ContributorEditor campuses={campuses} programs={programs} groups={groups} openOnParam /></Suspense></div> : null} />
       <PageBody className="space-y-4">
         <StatGrid columns={4}>
           <Stat label="Contributors" value={stats.total} hint={`${stats.active} active`} />

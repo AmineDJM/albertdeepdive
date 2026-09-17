@@ -7,7 +7,7 @@
  */
 import { and, asc, desc, eq, gte, inArray, isNotNull, lte, max } from "drizzle-orm";
 import { db } from "@/server/db/client";
-import { articles, automationRuns, editionSections, editions, submissionCampaigns } from "@/server/db/schema";
+import { articles, automationRuns, campuses, editionSections, editions, submissionCampaigns } from "@/server/db/schema";
 import { audit } from "@/server/audit";
 import { sendEmail } from "@/server/email";
 import { env } from "@/server/env";
@@ -142,6 +142,10 @@ export async function ensureNextEdition(input: { now: Date; defaults: CampaignDe
     await db.insert(editionSections).values(sections.map((s, i) => ({ editionId: edition.id, slug: s.slug, name: s.name, kicker: s.kicker ?? null, colour: s.colour ?? null, sortOrder: i, targetPages: s.targetPages ?? null })));
   }
   // Campaign from defaults, inheriting targets and groups from the most recent campaign.
+  const defaultTargetsFromCampuses = async (): Promise<Record<string, number>> => {
+    const active = await db.select({ id: campuses.id, defaultInviteTarget: campuses.defaultInviteTarget }).from(campuses).where(eq(campuses.isActive, true));
+    return Object.fromEntries([...active.map((c) => [c.id, c.defaultInviteTarget] as const), ["school", 0] as const]);
+  };
   const previous = await db.query.submissionCampaigns.findFirst({ orderBy: [desc(submissionCampaigns.opensAt)] });
   await createOrUpdateCampaign(
     edition.id,
@@ -152,10 +156,11 @@ export async function ensureNextEdition(input: { now: Date; defaults: CampaignDe
       reminder2At: schedule.reminder2At,
       deadlineAt: schedule.deadlineAt,
       graceEndsAt: schedule.graceEndsAt,
-      targets: previous?.targets ?? {},
+      targets: previous?.targets ?? (await defaultTargetsFromCampuses()),
       contributorGroupIds: previous?.contributorGroupIds ?? [],
       introMessage: previous?.introMessage ?? "Tell us what happened around you this month: Business Deep Dives, events, associations, achievements and photos.",
       autoProcess: previous?.autoProcess ?? true,
+      reinvitePrevious: previous?.reinvitePrevious ?? false,
     },
     null,
   );

@@ -27,6 +27,7 @@ export type CampaignFormInitial = {
   contributorGroupIds: string[];
   introMessage: string;
   autoProcess: boolean;
+  reinvitePrevious: boolean;
 };
 
 /** The same campaign as the form edits it: dates as "YYYY-MM-DDTHH:mm" in the school's timezone. */
@@ -132,6 +133,7 @@ export function CampaignConfigForm({
         contributorGroupIds: values.contributorGroupIds,
         introMessage: values.introMessage.trim() || null,
         autoProcess: values.autoProcess,
+        reinvitePrevious: values.reinvitePrevious,
       };
       const res = await saveCampaignAction(editionId, payload);
       if (!res.ok) {
@@ -280,6 +282,13 @@ export function CampaignConfigForm({
             <span className="block text-2xs text-muted-foreground">Normalises, classifies and clusters every submission as soon as the grace period ends.</span>
           </span>
           <Switch checked={values.autoProcess} onCheckedChange={(v) => setValues((s) => ({ ...s, autoProcess: v }))} disabled={readOnly} aria-label="Run the AI processing when the campaign closes" />
+        </label>
+        <label className="mt-3 flex items-start justify-between gap-3">
+          <span className="min-w-0">
+            <span className="block text-[13px] font-medium">Re-invite last edition&rsquo;s contributors</span>
+            <span className="block text-2xs text-muted-foreground">Off by default: people invited to the previous edition are held back so the rota moves through the pool. Turn it on to let them take part again.</span>
+          </span>
+          <Switch checked={values.reinvitePrevious} onCheckedChange={(v) => setValues((s) => ({ ...s, reinvitePrevious: v }))} disabled={readOnly} aria-label="Re-invite last edition's contributors" />
         </label>
       </SettingsCard>
 

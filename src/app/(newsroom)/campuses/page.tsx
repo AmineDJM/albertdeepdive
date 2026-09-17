@@ -29,6 +29,7 @@ export default async function CampusesPage() {
               ) },
             { key: "city", header: "City", cell: (c) => <span className="text-xs">{[c.city, c.country].filter(Boolean).join(", ") || "—"}</span> },
             { key: "tz", header: "Timezone", cell: (c) => <span className="font-mono text-2xs text-muted-foreground">{c.timezone}</span> },
+            { key: "target", header: "Invited / campaign", cell: (c) => <span className="tabular">{c.defaultInviteTarget}</span>, align: "right" },
             { key: "contributors", header: "Active contributors", cell: (c) => <span className="tabular">{c.contributors}</span>, align: "right" },
             { key: "submissions", header: "Submissions (all time)", cell: (c) => <span className="tabular">{c.submissions}</span>, align: "right" },
             { key: "stories", header: "Stories (all time)", cell: (c) => <span className="tabular">{c.stories}</span>, align: "right" },

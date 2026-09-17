@@ -7,10 +7,10 @@ import type { SeedStory } from "./types";
 export const SEED_STORIES: SeedStory[] = [...FEATURE_STORIES, ...BDD_STORIES, ...ACTUS_STORIES, ...CAMPUS_STORIES];
 
 export const SEED_CAMPUSES = [
-  { slug: "paris", name: "Paris", city: "Paris", country: "France", colour: "#10203A", sortOrder: 1 },
-  { slug: "lyon", name: "Lyon", city: "Lyon", country: "France", colour: "#1F6FB2", sortOrder: 2 },
-  { slug: "marseille", name: "Marseille", city: "Marseille", country: "France", colour: "#2BAFE0", sortOrder: 3 },
-  { slug: "geneva", name: "Geneva", city: "Geneva", country: "Switzerland", colour: "#C9A227", sortOrder: 4 },
+  { slug: "paris", name: "Paris", city: "Paris", country: "France", colour: "#10203A", sortOrder: 1, defaultInviteTarget: 12 },
+  { slug: "lyon", name: "Lyon", city: "Lyon", country: "France", colour: "#1F6FB2", sortOrder: 2, defaultInviteTarget: 6 },
+  { slug: "marseille", name: "Marseille", city: "Marseille", country: "France", colour: "#2BAFE0", sortOrder: 3, defaultInviteTarget: 6 },
+  { slug: "geneva", name: "Geneva", city: "Geneva", country: "Switzerland", colour: "#C9A227", sortOrder: 4, defaultInviteTarget: 2 },
 ];
 
 export const SEED_PROGRAMS = [

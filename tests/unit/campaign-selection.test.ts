@@ -69,4 +69,29 @@ describe("selectContributors", () => {
     const result = selectContributors({ contributors: list, groupIds: [G_AMB], targets: { [PARIS]: 2 }, seed: "x" });
     expect(result.selected).toEqual(["never", "older"]);
   });
+
+  it("holds back the previous edition's people by default (strict), reporting the shortfall", () => {
+    // Paris pool eligible under G_AMB: p-responsive, p-silent, p-new-a, p-new-b (4 people).
+    const excludeIds = ["p-responsive", "p-silent", "p-new-a"];
+    const result = selectContributors({ contributors: pool, groupIds: [G_AMB], targets: { [PARIS]: 3 }, seed: "x", excludeIds, strictExclude: true });
+    // Only p-new-b is fresh, so exactly one is chosen and two are short.
+    expect(result.selected).toEqual(["p-new-b"]);
+    expect(result.byCampus[PARIS]).toBe(1);
+    expect(result.shortfall[PARIS]).toBe(2);
+  });
+
+  it("tops up from held-back people when not strict, freshest first", () => {
+    const excludeIds = ["p-responsive", "p-silent", "p-new-a"];
+    const result = selectContributors({ contributors: pool, groupIds: [G_AMB], targets: { [PARIS]: 3 }, seed: "x", excludeIds, strictExclude: false });
+    // Fresh p-new-b first, then the best-ranked held-back people fill the rest.
+    expect(result.selected).toHaveLength(3);
+    expect(result.selected[0]).toBe("p-new-b");
+    expect(result.shortfall[PARIS]).toBe(0);
+  });
+
+  it("re-invites everyone when nothing is excluded", () => {
+    const result = selectContributors({ contributors: pool, groupIds: [G_AMB], targets: { [PARIS]: 4 }, seed: "x", excludeIds: [] });
+    expect(result.selected).toHaveLength(4);
+  });
+
 });

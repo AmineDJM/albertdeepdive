@@ -80,6 +80,9 @@ describe("campaign engine", () => {
         contributorGroupIds: existing!.contributorGroupIds,
         introMessage: "Tell us about your first Business Deep Dives.",
         autoProcess: true,
+        // This test exercises the invitation mechanics, not the month-to-month rotation, so it
+        // lets the previous edition's people be invited again. Rotation is covered separately.
+        reinvitePrevious: true,
       },
       null,
     );

@@ -18,6 +18,9 @@ describe("automation scheduler", () => {
   beforeAll(async () => {
     const seed = await ensureSeeded();
     editionId = seed.nextEditionId;
+    // This lifecycle test invites the full seeded pool, so it opts into re-inviting the previous
+    // edition's people. The month-to-month rotation itself is covered by the selection unit tests.
+    await db.update(submissionCampaigns).set({ reinvitePrevious: true }).where(eq(submissionCampaigns.editionId, editionId));
   });
 
   it("does nothing before the campaign opens", async () => {

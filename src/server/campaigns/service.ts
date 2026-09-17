@@ -89,6 +89,7 @@ export const campaignInputSchema = z
     contributorGroupIds: z.array(z.uuid()).default([]),
     introMessage: z.string().trim().max(2000).nullable().optional(),
     autoProcess: z.boolean().default(true),
+    reinvitePrevious: z.boolean().default(false),
   })
   .superRefine((v, ctx) => {
     const order: [keyof typeof v, keyof typeof v, string][] = [
@@ -139,6 +140,7 @@ export async function createOrUpdateCampaign(editionId: string, input: CampaignI
     contributorGroupIds: data.contributorGroupIds,
     introMessage: data.introMessage ?? null,
     autoProcess: data.autoProcess,
+    reinvitePrevious: data.reinvitePrevious,
   };
 
   let campaign: Campaign;
@@ -179,8 +181,9 @@ export async function scheduleFromDefaults(editionId: string, user: Actor): Prom
   let targets: CampaignTargets = existing?.targets ?? previous?.targets ?? {};
   let groupIds = existing?.contributorGroupIds ?? previous?.contributorGroupIds ?? [];
   if (!Object.keys(targets).length) {
-    const active = await db.select({ id: campuses.id }).from(campuses).where(eq(campuses.isActive, true));
-    targets = Object.fromEntries([...active.map((c) => [c.id, 10] as const), ["school", 5] as const]);
+    // The per-campus default an editor configured on the Campuses screen is the starting number.
+    const active = await db.select({ id: campuses.id, defaultInviteTarget: campuses.defaultInviteTarget }).from(campuses).where(eq(campuses.isActive, true));
+    targets = Object.fromEntries([...active.map((c) => [c.id, c.defaultInviteTarget] as const), ["school", 0] as const]);
   }
   if (!groupIds.length) {
     const groups = await db.query.contributorGroups.findMany();
@@ -199,6 +202,7 @@ export async function scheduleFromDefaults(editionId: string, user: Actor): Prom
       contributorGroupIds: groupIds,
       introMessage: existing?.introMessage ?? previous?.introMessage ?? "Tell us what happened around you this month: Business Deep Dives, events, associations, achievements and photos.",
       autoProcess: existing?.autoProcess ?? true,
+      reinvitePrevious: existing?.reinvitePrevious ?? previous?.reinvitePrevious ?? false,
     },
     user,
   );
@@ -255,6 +259,32 @@ export async function loadEligibleContributors(groupIds: readonly string[]): Pro
   return [...byId.values()];
 }
 
+/**
+ * The contributors invited to the edition immediately before this campaign's edition. Held back by
+ * default so each month rotates through the pool instead of asking the same people again.
+ */
+export async function previousEditionContributorIds(editionId: string): Promise<Set<string>> {
+  const edition = await db.query.editions.findFirst({ where: eq(editions.id, editionId), columns: { id: true, issueNumber: true } });
+  if (!edition) return new Set();
+  const prev = await db.query.editions.findFirst({
+    where: and(ne(editions.id, editionId), sql`${editions.issueNumber} < ${edition.issueNumber}`),
+    orderBy: [desc(editions.issueNumber)],
+    columns: { id: true },
+  });
+  if (!prev) return new Set();
+  const rows = await db
+    .select({ contributorId: submissionRequests.contributorId })
+    .from(submissionRequests)
+    .where(eq(submissionRequests.editionId, prev.id));
+  return new Set(rows.map((r) => r.contributorId));
+}
+
+/** Turns a campaign's reinvite flag into the selection's exclusion inputs. */
+async function exclusionFor(campaign: Campaign): Promise<{ excludeIds: Set<string>; strictExclude: boolean }> {
+  if (campaign.reinvitePrevious) return { excludeIds: new Set(), strictExclude: false };
+  return { excludeIds: await previousEditionContributorIds(campaign.editionId), strictExclude: true };
+}
+
 export type SelectionPreview = {
   selected: (EligibleContributor & { alreadyInvited: boolean })[];
   byCampus: { key: string; campusId: string | null; name: string; target: number; selected: number; pool: number; shortfall: number }[];
@@ -266,7 +296,8 @@ export async function previewSelection(campaignId: string): Promise<SelectionPre
   const campaign = await getCampaign(campaignId);
   const pool = await loadEligibleContributors(campaign.contributorGroupIds);
   const targets = campaign.targets ?? {};
-  const selection = selectContributors({ contributors: pool, groupIds: campaign.contributorGroupIds, targets, seed: campaign.id });
+  const { excludeIds, strictExclude } = await exclusionFor(campaign);
+  const selection = selectContributors({ contributors: pool, groupIds: campaign.contributorGroupIds, targets, seed: campaign.id, excludeIds, strictExclude });
   const existing = await db.select({ contributorId: submissionRequests.contributorId }).from(submissionRequests).where(eq(submissionRequests.campaignId, campaignId));
   const invited = new Set(existing.map((r) => r.contributorId));
   const poolById = new Map(pool.map((c) => [c.id, c]));
@@ -422,7 +453,8 @@ export async function openCampaign(campaignId: string, opts: OpenCampaignOptions
   let links: OpenCampaignResult["links"];
   const step = await runStep({ editionId: edition.id, step: "CAMPAIGN_OPEN", runKey: `${edition.id}:CAMPAIGN_OPEN`, triggeredBy: opts.triggeredBy, scheduledFor: campaign.opensAt, now }, async () => {
     const pool = await loadEligibleContributors(campaign.contributorGroupIds);
-    const selection = selectContributors({ contributors: pool, groupIds: campaign.contributorGroupIds, targets: campaign.targets ?? {}, seed: campaign.id });
+    const { excludeIds, strictExclude } = await exclusionFor(campaign);
+    const selection = selectContributors({ contributors: pool, groupIds: campaign.contributorGroupIds, targets: campaign.targets ?? {}, seed: campaign.id, excludeIds, strictExclude });
     await createPendingRequests(campaign, selection.selected, now);
     const pending = await db.select().from(submissionRequests).where(and(eq(submissionRequests.campaignId, campaign.id), eq(submissionRequests.status, "PENDING")));
     const sent = await sendInvitations(campaign, edition, pending, now);

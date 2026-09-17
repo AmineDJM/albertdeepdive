@@ -74,9 +74,17 @@ export function selectContributors<T extends SelectableContributor>(input: {
   groupIds: readonly string[];
   targets: SelectionTargets;
   seed?: string;
+  /**
+   * Contributors invited to the previous edition. By default they are held back so the rota moves
+   * through the pool. If excluding them leaves a campus short of its target, the freshest of them
+   * are topped up (never inventing anyone) — unless `strictExclude` forbids even that.
+   */
+  excludeIds?: Iterable<string>;
+  strictExclude?: boolean;
 }): SelectionResult {
   const groups = new Set(input.groupIds);
   const seed = input.seed ?? "";
+  const excluded = new Set(input.excludeIds ?? []);
   const eligible = input.contributors.filter((c) => c.isActive && c.groupIds.some((g) => groups.has(g)));
 
   const buckets = new Map<string, T[]>();
@@ -98,7 +106,12 @@ export function selectContributors<T extends SelectableContributor>(input: {
     const target = Math.max(0, Math.floor(Number(input.targets[key]) || 0));
     if (target === 0) continue;
     const ranked = rankContributors(buckets.get(key) ?? [], seed);
-    const take = ranked.slice(0, target);
+    const fresh = ranked.filter((c) => !excluded.has(c.id));
+    const held = ranked.filter((c) => excluded.has(c.id));
+    // Fresh contributors first; only if a campus is still short and strictExclude is off do we
+    // bring the previous edition's people back, freshest-first.
+    const order = input.strictExclude ? fresh : [...fresh, ...held];
+    const take = order.slice(0, target);
     selected.push(...take.map((c) => c.id));
     byCampus[key] = take.length;
     shortfall[key] = Math.max(0, target - take.length);

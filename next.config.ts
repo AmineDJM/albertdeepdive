@@ -11,6 +11,8 @@ const nextConfig: NextConfig = {
     "docx",
     "pdf-lib",
     "file-type",
+    // SheetJS reads the uploaded spreadsheet on the server (contributor import); keep it out of the bundle.
+    "xlsx",
     // The mail stack resolves encodings and MIME handlers at runtime; bundling it makes Turbopack
     // trace the whole project.
     "nodemailer",
