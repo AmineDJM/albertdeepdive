@@ -3,7 +3,7 @@
  * selection, invitations, reminders, closing, statistics. Every automated step is idempotent
  * through `automation_runs` (see ./runs.ts).
  */
-import { and, asc, count, desc, eq, inArray, isNotNull, ne, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, ilike, inArray, isNotNull, isNull, ne, notInArray, or, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/server/db/client";
 import {
@@ -846,6 +846,29 @@ export async function addContributorsToCampaign(campaignId: string, contributorI
   }
   await audit({ action: "campaign.add_contributors", userId: user?.id, entityType: "CAMPAIGN", entityId: campaign.id, editionId: edition.id, metadata: { requested: ids.length, added: created.length, sent } });
   return { added: created.length, sent };
+}
+
+/**
+ * Active contributors who are NOT yet invited to this campaign — the candidates an editor can add
+ * to the edition by hand, beyond the random selection. Filtered by name/email and campus.
+ */
+export async function availableContributorsForCampaign(campaignId: string, filters: { q?: string; campusId?: string; limit?: number } = {}) {
+  await getCampaign(campaignId); // 404 on an unknown campaign before we build the "everyone minus invited" query
+  const invited = db.select({ id: submissionRequests.contributorId }).from(submissionRequests).where(eq(submissionRequests.campaignId, campaignId));
+  const where = and(
+    eq(contributors.isActive, true),
+    notInArray(contributors.id, invited),
+    filters.q ? or(ilike(contributors.firstName, `%${filters.q}%`), ilike(contributors.lastName, `%${filters.q}%`), ilike(contributors.email, `%${filters.q}%`)) : undefined,
+    filters.campusId ? (filters.campusId === "school" ? isNull(contributors.campusId) : eq(contributors.campusId, filters.campusId)) : undefined,
+  );
+  const rows = await db
+    .select({ id: contributors.id, firstName: contributors.firstName, lastName: contributors.lastName, email: contributors.email, type: contributors.type, campusId: contributors.campusId, campusName: campuses.name })
+    .from(contributors)
+    .leftJoin(campuses, eq(campuses.id, contributors.campusId))
+    .where(where)
+    .orderBy(asc(contributors.lastName), asc(contributors.firstName))
+    .limit(Math.min(filters.limit ?? 50, 200));
+  return rows;
 }
 
 /** Requests of a campaign with their contributor, for the newsroom's contributors tab. */

@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { requirePermission } from "@/server/auth/session";
 import {
+  addContributorsToCampaign,
+  availableContributorsForCampaign,
   closeCampaign,
   createOrUpdateCampaign,
   extendCampaign,
@@ -147,6 +149,38 @@ export async function resendInvitationAction(editionId: string, requestId: strin
     const result = await resendInvitation(requestId, user);
     revalidateCampaign(editionId);
     return result.ok ? ok(null, "Invitation sent again with a fresh link") : ok(null, "The email could not be sent — check the email log");
+  } catch (err) {
+    return toActionFailure(err);
+  }
+}
+
+
+export type CandidateContributor = { id: string; firstName: string; lastName: string; email: string; type: string; campusId: string | null; campusName: string | null };
+
+/** Pool contributors not yet invited to this edition, for the manual "add contributors" picker. */
+export async function searchCandidatesAction(editionId: string, filters: { q?: string; campusId?: string } = {}): Promise<ActionResult<CandidateContributor[]>> {
+  try {
+    await requirePermission("campaign:manage");
+    const campaign = await requireCampaign(editionId);
+    const rows = await availableContributorsForCampaign(campaign.id, { q: filters.q, campusId: filters.campusId });
+    return ok(rows);
+  } catch (err) {
+    return toActionFailure(err);
+  }
+}
+
+/**
+ * Adds chosen pool contributors to this edition's campaign by hand, on top of the random
+ * selection. If the campaign is already open they are emailed their personal link straight away.
+ */
+export async function addContributorsToEditionAction(editionId: string, contributorIds: string[]): Promise<ActionResult<{ added: number; sent: number }>> {
+  try {
+    const user = await requirePermission("campaign:manage");
+    const campaign = await requireCampaign(editionId);
+    const result = await addContributorsToCampaign(campaign.id, contributorIds, user);
+    revalidateCampaign(editionId);
+    const message = result.added === 0 ? "Those contributors were already invited" : result.sent > 0 ? `${result.added} added · ${result.sent} invited by email` : `${result.added} added to the edition`;
+    return ok(result, message);
   } catch (err) {
     return toActionFailure(err);
   }

@@ -3,10 +3,11 @@ import path from "node:path";
 import { and, eq } from "drizzle-orm";
 import { beforeAll, describe, expect, it } from "vitest";
 import { db } from "@/server/db/client";
-import { automationRuns, consentRecords, contributors, editions, emailLog, jobs, mediaAssets, notifications, submissionAttachments, submissionRequests, submissions } from "@/server/db/schema";
+import { automationRuns, campuses, consentRecords, contributors, editions, emailLog, jobs, mediaAssets, notifications, submissionAttachments, submissionRequests, submissions } from "@/server/db/schema";
 import { ensureSeeded } from "../helpers/db";
 import {
   addContributorsToCampaign,
+  availableContributorsForCampaign,
   campaignStats,
   closeCampaign,
   createOrUpdateCampaign,
@@ -131,6 +132,28 @@ describe("campaign engine", () => {
     expect(await countEmails("campaign_invitation", editionId)).toBe(18);
     const invitedContributor = await db.query.contributors.findFirst({ where: eq(contributors.id, links[0].contributorId) });
     expect(invitedContributor?.invitationsCount).toBe(2); // 1 from the seed + this campaign
+  });
+
+  it("offers the pool minus the already-invited as manual-add candidates, filtered by text and campus", async () => {
+    const invitedIds = new Set(links.map((l) => l.contributorId));
+    const activeIds = new Set((await db.select({ id: contributors.id }).from(contributors).where(eq(contributors.isActive, true))).map((r) => r.id));
+
+    const candidates = await availableContributorsForCampaign(campaign.id, {});
+    // The candidate list is exactly the active pool minus everyone already invited to this campaign.
+    expect(candidates.map((c) => c.id).sort()).toEqual([...activeIds].filter((id) => !invitedIds.has(id)).sort());
+    expect(candidates.some((c) => invitedIds.has(c.id))).toBe(false);
+
+    // A text query matches the name or the email, case-insensitively.
+    const sample = candidates[0];
+    expect(sample).toBeTruthy();
+    expect((await availableContributorsForCampaign(campaign.id, { q: sample.email })).some((c) => c.id === sample.id)).toBe(true);
+    expect((await availableContributorsForCampaign(campaign.id, { q: sample.firstName.toUpperCase() })).some((c) => c.id === sample.id)).toBe(true);
+    expect(await availableContributorsForCampaign(campaign.id, { q: "zzz-nobody-matches-this" })).toHaveLength(0);
+
+    // A campus filter narrows to one campus; "school" is the campus-less, school-wide pool.
+    const paris = await db.query.campuses.findFirst({ where: eq(campuses.slug, "paris") });
+    expect((await availableContributorsForCampaign(campaign.id, { campusId: paris!.id })).every((c) => c.campusId === paris!.id)).toBe(true);
+    expect((await availableContributorsForCampaign(campaign.id, { campusId: "school" })).every((c) => c.campusId === null)).toBe(true);
   });
 
   it("resolves a personal link, marks it opened and exposes a draft-free DTO", async () => {

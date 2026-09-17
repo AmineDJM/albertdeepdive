@@ -2,6 +2,7 @@ import Link from "next/link";
 import { CalendarClock, Inbox, Megaphone, Users } from "lucide-react";
 import { getCurrentUser, hasPermission } from "@/server/auth/session";
 import { campaignScreen } from "@/server/campaigns/read";
+import { ACTIVE_CAMPAIGN_STATUSES } from "@/server/campaigns/service";
 import { env } from "@/server/env";
 import { PageBody, PageHeader, SectionTitle } from "@/components/newsroom/page-header";
 import { Stat, StatGrid } from "@/components/newsroom/stat";
@@ -12,6 +13,7 @@ import { CampaignControls, CreateCampaignButton } from "@/components/newsroom/ca
 import { CampaignCoverage } from "@/components/newsroom/campaign-coverage";
 import { CampaignInvitations } from "@/components/newsroom/campaign-invitations";
 import { CampaignEmailLog } from "@/components/newsroom/campaign-email-log";
+import { AddContributorsDialog } from "@/components/newsroom/add-contributors-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -194,9 +196,18 @@ export default async function CampaignPage({ params }: { params: Promise<{ editi
         <section>
           <SectionTitle
             action={
-              <span className="text-2xs text-muted-foreground">
-                {earliestExpiry ? `Personal links are signed; the first expires ${formatZoned(earliestExpiry)}` : "Personal links are signed and expire a week after the campaign closes"}
-              </span>
+              <div className="flex items-center gap-3">
+                <span className="hidden text-2xs text-muted-foreground sm:inline">
+                  {earliestExpiry ? `Personal links are signed; the first expires ${formatZoned(earliestExpiry)}` : "Personal links are signed and expire a week after the campaign closes"}
+                </span>
+                {canManage && campaign.status !== "CLOSED" ? (
+                  <AddContributorsDialog
+                    editionId={editionId}
+                    campuses={screen.campuses.filter((c) => c.isActive).map((c) => ({ id: c.id, name: c.name }))}
+                    campaignOpen={ACTIVE_CAMPAIGN_STATUSES.includes(campaign.status)}
+                  />
+                ) : null}
+              </div>
             }
           >
             Invitations
