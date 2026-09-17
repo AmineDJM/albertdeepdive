@@ -9,6 +9,7 @@ import { PhaseTimeline, type PhaseItem } from "@/components/newsroom/phase-timel
 import { CoverThumbnail } from "@/components/newsroom/cover-thumbnail";
 import { GenericStatusBadge } from "@/components/newsroom/status-badge";
 import { EditionStatusControls } from "@/components/newsroom/edition-status-controls";
+import { SimulateReturnsButton } from "@/components/newsroom/simulate-returns-button";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency, formatDate, formatDateTime, relativeTime, enumLabel } from "@/lib/utils";
@@ -78,6 +79,7 @@ export default async function ControlRoomPage({ params }: { params: Promise<{ ed
                 <Button asChild size="sm" variant="outline"><Link href={`${ed}/layout`}>Flatplan</Link></Button>
                 <Button asChild size="sm" variant="outline"><Link href={`${ed}/qa`}>Quality gates</Link></Button>
                 <Button asChild size="sm" variant="ghost"><a href={`/print/edition/${editionId}`} target="_blank" rel="noreferrer">Live preview <ExternalLink /></a></Button>
+                {hasPermission(user, "settings:manage") ? <SimulateReturnsButton editionId={editionId} /> : null}
               </div>
             </div>
           </div>
