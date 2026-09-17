@@ -446,11 +446,21 @@ export function applyMeasurements(doc: EditionDocument, measures: PageMeasuremen
 }
 
 /** One flow pass: reset, then move overflowing text down until nothing overflows. */
+type FlowStats = { moved: number; split: number; added: number; copyfit: number; generation: number };
+
+/**
+ * Flow one candidate composition to a stable set of pages.
+ *
+ * Its `stats` are the work done on *this* attempt alone. The driver tries several compositions and
+ * keeps one, so a shared counter would report the effort spent on discarded attempts as if it were
+ * a property of the issue that ships — `continuationPagesAdded` would count pages that do not exist.
+ */
 async function flowDocument(
   input: EditionDocument,
   options: PaginateOptions,
-  stats: { moved: number; split: number; added: number; copyfit: number; generation: number },
-): Promise<{ document: EditionDocument; measures: PageMeasurement[]; rounds: number }> {
+  generation: { generation: number },
+): Promise<{ document: EditionDocument; measures: PageMeasurement[]; rounds: number; stats: FlowStats }> {
+  const stats: FlowStats = { moved: 0, split: 0, added: 0, copyfit: 0, generation: generation.generation };
   const maxRounds = options.maxRounds ?? 30;
   const log = options.log ?? (() => {});
   const doc = resetLayout(input);
@@ -467,7 +477,8 @@ async function flowDocument(
     const changed = applyMeasurements(doc, measures, stats);
     if (!changed) break;
   }
-  return { document: doc, measures, rounds };
+  generation.generation = stats.generation;
+  return { document: doc, measures, rounds, stats };
 }
 
 export type DensityChange = { page: number; pageId: string; lever: "image" | "text"; from: number; to: number; reason: string };
@@ -666,11 +677,11 @@ export async function paginateDocument(input: EditionDocument, options: Paginate
   const log = options.log ?? (() => {});
   const maxDensityPasses = options.densityPasses ?? 6;
   const plannedPages = input.pages.length;
-  const stats = { moved: 0, split: 0, added: 0, copyfit: 0, generation: 0 };
+  const generation = { generation: 0 };
 
-  const first = await flowDocument(input, options, stats);
+  const first = await flowDocument(input, options, generation);
   let rounds = first.rounds;
-  let best = { document: first.document, measures: first.measures, cost: densityCost(first.measures) };
+  let best = { document: first.document, measures: first.measures, stats: first.stats, cost: densityCost(first.measures) };
   const applied: DensityChange[] = [];
   let passes = 0;
 
@@ -684,13 +695,13 @@ export async function paginateDocument(input: EditionDocument, options: Paginate
     const attempt = planTemplateSwap(best.document, best.measures, triedTemplates);
     if (!attempt) break;
     passes += 1;
-    const next = await flowDocument(attempt.document, options, stats);
+    const next = await flowDocument(attempt.document, options, generation);
     rounds += next.rounds;
     const fewerPages = next.document.pages.length < best.document.pages.length;
     const clean = !next.measures.some((m) => m.flows.some((f) => f.overflow));
     log("variant pass", { pass: passes, swap: `${attempt.swap.from}→${attempt.swap.to}`, pages: next.document.pages.length, was: best.document.pages.length, fewerPages, clean });
     if (fewerPages && clean) {
-      best = { document: next.document, measures: next.measures, cost: densityCost(next.measures) };
+      best = { document: next.document, measures: next.measures, stats: next.stats, cost: densityCost(next.measures) };
       swaps.push(attempt.swap);
     }
   }
@@ -704,13 +715,13 @@ export async function paginateDocument(input: EditionDocument, options: Paginate
     if (!attempt) break;
     tried.add(attempt.targetPageId);
     passes += 1;
-    const next = await flowDocument(attempt.document, options, stats);
+    const next = await flowDocument(attempt.document, options, generation);
     rounds += next.rounds;
     const absorbed = next.document.pages.length < best.document.pages.length;
     const clean = !next.measures.some((m) => m.flows.some((f) => f.overflow));
     log("absorb pass", { pass: passes, pages: next.document.pages.length, was: best.document.pages.length, absorbed, clean });
     if (absorbed && clean) {
-      best = { document: next.document, measures: next.measures, cost: densityCost(next.measures) };
+      best = { document: next.document, measures: next.measures, stats: next.stats, cost: densityCost(next.measures) };
       applied.push(...attempt.changes);
     }
   }
@@ -722,7 +733,7 @@ export async function paginateDocument(input: EditionDocument, options: Paginate
     const attempt = planTailFill(best.document, best.measures, triedFills);
     if (!attempt) break;
     passes += 1;
-    const next = await flowDocument(attempt.document, options, stats);
+    const next = await flowDocument(attempt.document, options, generation);
     rounds += next.rounds;
     const clean = !next.measures.some((m) => m.flows.some((f) => f.overflow));
     const sparseBefore = best.measures.filter((m) => m.template === CONTINUATION_TEMPLATE && (m.density?.occupancy ?? 1) < DENSITY.continuationFloor).length;
@@ -730,7 +741,7 @@ export async function paginateDocument(input: EditionDocument, options: Paginate
     const noWorse = next.document.pages.length <= best.document.pages.length;
     log("tail-fill pass", { pass: passes, pages: next.document.pages.length, was: best.document.pages.length, sparseBefore, sparseAfter, clean });
     if (clean && noWorse && sparseAfter < sparseBefore) {
-      best = { document: next.document, measures: next.measures, cost: densityCost(next.measures) };
+      best = { document: next.document, measures: next.measures, stats: next.stats, cost: densityCost(next.measures) };
     }
   }
 
@@ -739,18 +750,20 @@ export async function paginateDocument(input: EditionDocument, options: Paginate
     const plan = planLooseGrowth(best.document, best.measures);
     if (!plan.changes.length) break;
     passes += 1;
-    const next = await flowDocument(plan.document, options, stats);
+    const next = await flowDocument(plan.document, options, generation);
     rounds += next.rounds;
     const cost = densityCost(next.measures);
     log("growth pass", { pass: passes, changes: plan.changes.length, cost: Math.round(cost * 10) / 10, best: Math.round(best.cost * 10) / 10 });
     if (cost >= best.cost) break; // no further gain — keep the best composition
-    best = { document: next.document, measures: next.measures, cost };
+    best = { document: next.document, measures: next.measures, stats: next.stats, cost };
     applied.push(...plan.changes);
   }
 
   const doc = best.document;
   renumberPages(doc);
   rebuildToc(doc);
+  // Continuation pages are a fact about the issue that ships, not a tally of attempts made.
+  const stats = { ...best.stats, added: doc.pages.filter((p) => p.template === "CONTINUATION").length };
   doc.meta.layout = { paginatedAt: new Date().toISOString(), continuationPages: stats.added, engine: options.engine ?? "chromium-multicol" };
   const report = buildLayoutReport(doc, best.measures, { plannedPages, stats, rounds, engine: options.engine ?? "chromium-multicol", densityPasses: passes, densityChanges: applied, templateSwaps: swaps });
   return { document: doc, report, measures: best.measures };

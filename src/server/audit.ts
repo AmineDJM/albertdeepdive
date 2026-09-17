@@ -9,6 +9,7 @@ type EntityType = (typeof auditLog.$inferInsert)["entityType"];
 export async function audit(
   entry: {
     action: string;
+    organizationId?: string | null;
     userId?: string | null;
     actorType?: "USER" | "SYSTEM" | "AI" | "CONTRIBUTOR";
     entityType?: EntityType;
@@ -23,6 +24,7 @@ export async function audit(
   try {
     await executor.insert(auditLog).values({
       action: entry.action,
+      organizationId: entry.organizationId ?? null,
       userId: entry.userId ?? null,
       actorType: entry.actorType ?? (entry.userId ? "USER" : "SYSTEM"),
       entityType: entry.entityType ?? null,

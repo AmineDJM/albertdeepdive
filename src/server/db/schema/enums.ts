@@ -9,6 +9,32 @@ export const userRoleEnum = pgEnum("user_role", [
   "VIEWER",
 ]);
 
+/** What kind of organisation a workspace belongs to — steers tone, sections and templates. */
+export const organizationTypeEnum = pgEnum("organization_type", [
+  "COMPANY",
+  "SCHOOL",
+  "UNIVERSITY",
+  "ASSOCIATION",
+  "COMMUNITY",
+  "INVESTOR",
+  "MEDIA",
+  "INSTITUTION",
+  "OTHER",
+]);
+
+/** A member's role inside one workspace. Distinct from `userRoleEnum`, which is platform-level. */
+export const organizationRoleEnum = pgEnum("organization_role", ["OWNER", "ADMIN", "EDITOR", "CONTRIBUTOR", "VIEWER"]);
+
+export const organizationStatusEnum = pgEnum("organization_status", ["ACTIVE", "SUSPENDED", "ARCHIVED"]);
+
+/** A publication is a recurring title; each of its editions chooses its own output formats. */
+export const publicationStatusEnum = pgEnum("publication_status", ["DRAFT", "ACTIVE", "PAUSED", "ARCHIVED"]);
+
+/** Where one edition is published. An edition may carry several at once. */
+export const outputFormatEnum = pgEnum("output_format", ["EMAIL", "WEB", "MAGAZINE", "PRINT"]);
+
+export const outputStatusEnum = pgEnum("output_status", ["NOT_CONFIGURED", "PENDING", "GENERATING", "READY", "PUBLISHED", "FAILED"]);
+
 export const contributorTypeEnum = pgEnum("contributor_type", [
   "STUDENT",
   "CAMPUS_AMBASSADOR",

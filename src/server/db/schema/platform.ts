@@ -1,12 +1,13 @@
 import { boolean, index, integer, jsonb, numeric, pgTable, real, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 import { actorTypeEnum, aiJobStatusEnum, automationStepEnum, emailStatusEnum, entityTypeEnum, jobStatusEnum, modelTierEnum, notificationTypeEnum } from "./enums";
-import { contributors, users } from "./identity";
+import { contributors, organizations, users } from "./identity";
 import { editions } from "./editions";
 
 export const jobs = pgTable(
   "jobs",
   {
     id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: uuid("organization_id").references(() => organizations.id, { onDelete: "cascade" }),
     type: text("type").notNull(),
     payload: jsonb("payload").$type<Record<string, unknown>>().notNull().default({}),
     idempotencyKey: text("idempotency_key"),
@@ -33,6 +34,7 @@ export const automationRuns = pgTable(
   "automation_runs",
   {
     id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: uuid("organization_id").references(() => organizations.id, { onDelete: "cascade" }),
     editionId: uuid("edition_id").references(() => editions.id, { onDelete: "cascade" }),
     step: automationStepEnum("step").notNull(),
     runKey: text("run_key").notNull(), // `${editionId}:${step}` (or with a suffix for repeatable steps)
@@ -53,6 +55,7 @@ export const promptTemplates = pgTable(
   "prompt_templates",
   {
     id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: uuid("organization_id").references(() => organizations.id, { onDelete: "cascade" }),
     key: text("key").notNull(),
     version: integer("version").notNull().default(1),
     name: text("name").notNull(),
@@ -75,6 +78,7 @@ export const aiJobs = pgTable(
   "ai_jobs",
   {
     id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: uuid("organization_id").references(() => organizations.id, { onDelete: "cascade" }),
     service: text("service").notNull(),
     provider: text("provider").notNull(),
     model: text("model").notNull(),
@@ -107,6 +111,7 @@ export const notifications = pgTable(
   "notifications",
   {
     id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: uuid("organization_id").references(() => organizations.id, { onDelete: "cascade" }),
     userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
     type: notificationTypeEnum("type").notNull(),
     title: text("title").notNull(),
@@ -124,6 +129,7 @@ export const emailLog = pgTable(
   "email_log",
   {
     id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: uuid("organization_id").references(() => organizations.id, { onDelete: "cascade" }),
     to: text("to").notNull(),
     cc: text("cc"),
     subject: text("subject").notNull(),
@@ -148,6 +154,7 @@ export const auditLog = pgTable(
   "audit_log",
   {
     id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: uuid("organization_id").references(() => organizations.id, { onDelete: "cascade" }),
     actorType: actorTypeEnum("actor_type").notNull().default("USER"),
     userId: uuid("user_id").references(() => users.id, { onDelete: "set null" }),
     action: text("action").notNull(),

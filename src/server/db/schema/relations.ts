@@ -1,5 +1,5 @@
 import { relations } from "drizzle-orm";
-import { academicPrograms, campuses, contributorGroupMembers, contributorGroups, contributors, sessions, users } from "./identity";
+import { academicPrograms, campuses, contributorGroupMembers, contributorGroups, contributors, organizationMembers, organizations, publications, sessions, users } from "./identity";
 import { audienceRecipients } from "./audience";
 import { editionSections, editions, submissionCampaigns, submissionRequests } from "./editions";
 import { consentRecords, mediaAssets, mediaVariants, submissionAttachments, submissionCampuses, submissions } from "./submissions";
@@ -7,21 +7,56 @@ import { articleRevisions, articleSources, articles, businessDeepDives, editoria
 import { pagePlanPages, pagePlans, publicationAssets, publicationVersions } from "./publication";
 import { aiJobs, jobs, notifications } from "./platform";
 
+export const organizationsRelations = relations(organizations, ({ one, many }) => ({
+  createdBy: one(users, { relationName: "organizationCreator", fields: [organizations.createdById], references: [users.id] }),
+  members: many(organizationMembers),
+  publications: many(publications),
+  campuses: many(campuses),
+  programs: many(academicPrograms),
+  contributors: many(contributors),
+  contributorGroups: many(contributorGroups),
+  editions: many(editions),
+}));
+
+// `userId` and `invitedById` both point at `users`, so each side needs a name to pair up with.
+export const organizationMembersRelations = relations(organizationMembers, ({ one }) => ({
+  organization: one(organizations, { fields: [organizationMembers.organizationId], references: [organizations.id] }),
+  user: one(users, { relationName: "organizationMembership", fields: [organizationMembers.userId], references: [users.id] }),
+  invitedBy: one(users, { relationName: "organizationInviter", fields: [organizationMembers.invitedById], references: [users.id] }),
+}));
+
+export const publicationsRelations = relations(publications, ({ one, many }) => ({
+  organization: one(organizations, { fields: [publications.organizationId], references: [organizations.id] }),
+  createdBy: one(users, { relationName: "publicationCreator", fields: [publications.createdById], references: [users.id] }),
+  editions: many(editions),
+}));
+
 export const usersRelations = relations(users, ({ one, many }) => ({
   campus: one(campuses, { fields: [users.campusId], references: [campuses.id] }),
   sessions: many(sessions),
   notifications: many(notifications),
+  memberships: many(organizationMembers, { relationName: "organizationMembership" }),
+  invitedMemberships: many(organizationMembers, { relationName: "organizationInviter" }),
+  createdOrganizations: many(organizations, { relationName: "organizationCreator" }),
+  createdPublications: many(publications, { relationName: "publicationCreator" }),
 }));
 
 export const sessionsRelations = relations(sessions, ({ one }) => ({
   user: one(users, { fields: [sessions.userId], references: [users.id] }),
 }));
 
-export const campusesRelations = relations(campuses, ({ many }) => ({
+export const campusesRelations = relations(campuses, ({ one, many }) => ({
+  organization: one(organizations, { fields: [campuses.organizationId], references: [organizations.id] }),
+  contributors: many(contributors),
+}));
+
+export const academicProgramsRelations = relations(academicPrograms, ({ one, many }) => ({
+  organization: one(organizations, { fields: [academicPrograms.organizationId], references: [organizations.id] }),
   contributors: many(contributors),
 }));
 
 export const contributorsRelations = relations(contributors, ({ one, many }) => ({
+  organization: one(organizations, { fields: [contributors.organizationId], references: [organizations.id] }),
   campus: one(campuses, { fields: [contributors.campusId], references: [campuses.id] }),
   program: one(academicPrograms, { fields: [contributors.programId], references: [academicPrograms.id] }),
   user: one(users, { fields: [contributors.userId], references: [users.id] }),
@@ -35,6 +70,7 @@ export const audienceRecipientsRelations = relations(audienceRecipients, ({ one 
 }));
 
 export const contributorGroupsRelations = relations(contributorGroups, ({ many, one }) => ({
+  organization: one(organizations, { fields: [contributorGroups.organizationId], references: [organizations.id] }),
   members: many(contributorGroupMembers),
   campus: one(campuses, { fields: [contributorGroups.campusId], references: [campuses.id] }),
 }));
@@ -45,6 +81,8 @@ export const contributorGroupMembersRelations = relations(contributorGroupMember
 }));
 
 export const editionsRelations = relations(editions, ({ many, one }) => ({
+  organization: one(organizations, { fields: [editions.organizationId], references: [organizations.id] }),
+  publication: one(publications, { fields: [editions.publicationId], references: [publications.id] }),
   sections: many(editionSections),
   campaigns: many(submissionCampaigns),
   submissions: many(submissions),

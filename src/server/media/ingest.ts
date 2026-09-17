@@ -2,7 +2,8 @@ import { createHash } from "node:crypto";
 import sharp from "sharp";
 import { and, eq, isNotNull, ne } from "drizzle-orm";
 import { db } from "@/server/db/client";
-import { mediaAssets, mediaVariants } from "@/server/db/schema";
+import { editions, mediaAssets, mediaVariants } from "@/server/db/schema";
+import { optionalOrganizationId } from "@/server/tenancy/context";
 import { extensionForMime, getStorage, storageKeys } from "@/server/storage";
 import { createLogger } from "@/server/logger";
 import { dHashFromGray, DUPLICATE_THRESHOLD, hammingDistance, SIMILAR_THRESHOLD } from "./hash";
@@ -209,10 +210,17 @@ export async function ingestMedia(input: IngestMediaInput): Promise<IngestedMedi
     }
   }
 
+  // An asset belongs to the workspace that owns the edition it was filed against; uploads that are
+  // not tied to an edition fall back to the workspace in scope for the request.
+  const organizationId =
+    (input.editionId ? (await db.query.editions.findFirst({ where: eq(editions.id, input.editionId), columns: { organizationId: true } }))?.organizationId : null) ??
+    (await optionalOrganizationId());
+
   const [asset] = await db
     .insert(mediaAssets)
     .values({
       id: assetId,
+      organizationId,
       editionId: input.editionId ?? null,
       submissionId: input.submissionId ?? null,
       uploadedByContributorId: input.contributorId ?? null,

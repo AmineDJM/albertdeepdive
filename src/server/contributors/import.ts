@@ -6,6 +6,7 @@ import { ValidationError } from "@/lib/action-result";
 import { CONTRIBUTOR_TYPES, type ContributorType } from "@/lib/constants";
 import { enumLabel } from "@/lib/utils";
 import { createContributor, listCampusesWithStats, updateContributor } from "./service";
+import { scoped } from "@/server/tenancy/scope";
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
@@ -268,7 +269,7 @@ export function mapAndValidateRows(input: MapValidateInput): ValidationResult {
 export async function loadImportContext(): Promise<{ campuses: CampusRef[]; existing: ExistingContributor[] }> {
   const [campusRows, contributorRows] = await Promise.all([
     listCampusesWithStats(),
-    db.select({ id: s.contributors.id, email: s.contributors.email }).from(s.contributors),
+    db.select({ id: s.contributors.id, email: s.contributors.email }).from(s.contributors).where(await scoped(s.contributors.organizationId)),
   ]);
   return {
     campuses: campusRows.map((c) => ({ id: c.id, name: c.name, slug: c.slug })),

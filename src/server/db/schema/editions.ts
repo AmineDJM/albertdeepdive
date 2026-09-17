@@ -1,6 +1,6 @@
 import { boolean, index, integer, jsonb, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 import { campaignStatusEnum, editionStatusEnum, requestStatusEnum } from "./enums";
-import { campuses, contributors, users } from "./identity";
+import { campuses, contributors, organizations, publications, users } from "./identity";
 
 export type EditionTheme = {
   coverTemplate?: string;
@@ -12,6 +12,9 @@ export const editions = pgTable(
   "editions",
   {
     id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: uuid("organization_id").references(() => organizations.id, { onDelete: "cascade" }),
+    /** The recurring title this edition belongs to (Organisation → Publication → Edition → Output). */
+    publicationId: uuid("publication_id").references(() => publications.id, { onDelete: "set null" }),
     issueNumber: integer("issue_number").notNull(),
     title: text("title").notNull(),
     slug: text("slug").notNull(),
@@ -41,7 +44,7 @@ export const editions = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
   },
-  (t) => [uniqueIndex("editions_slug_idx").on(t.slug), uniqueIndex("editions_issue_number_idx").on(t.issueNumber)],
+  (t) => [uniqueIndex("editions_slug_idx").on(t.organizationId, t.slug), uniqueIndex("editions_issue_number_idx").on(t.organizationId, t.issueNumber)],
 );
 
 export const editionSections = pgTable(

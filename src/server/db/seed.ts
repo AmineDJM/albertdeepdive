@@ -50,10 +50,28 @@ export async function runSeed(options: { quiet?: boolean } = {}): Promise<SeedRe
   say(`[seed] database: ${env.DATABASE_URL.replace(/:[^:@/]+@/, ":***@")}`);
   await truncateAll(options.quiet);
 
+  // ── Workspace ──────────────────────────────────────────────────────────────
+  // Briefly is multi-tenant: Albert School is one customer among many, not the platform.
+  const [org] = await db
+    .insert(s.organizations)
+    .values({
+      name: "Albert School",
+      slug: "albert-school",
+      type: "SCHOOL",
+      website: "https://albertschool.com",
+      description: "The business school for the data and AI generation.",
+      locale: "en",
+      timezone: "Europe/Paris",
+      country: "France",
+      onboardedAt: new Date(),
+    })
+    .returning();
+  const organizationId = org.id;
+
   // ── Campuses & programmes ──────────────────────────────────────────────────
-  const campusRows = await db.insert(s.campuses).values(SEED_CAMPUSES.map((c) => ({ ...c, isActive: true }))).returning();
+  const campusRows = await db.insert(s.campuses).values(SEED_CAMPUSES.map((c) => ({ ...c, organizationId, isActive: true }))).returning();
   const campusBySlug = new Map(campusRows.map((c) => [c.slug, c]));
-  const programRows = await db.insert(s.academicPrograms).values(SEED_PROGRAMS).returning();
+  const programRows = await db.insert(s.academicPrograms).values(SEED_PROGRAMS.map((p) => ({ ...p, organizationId }))).returning();
   const programByCode = new Map(programRows.map((p) => [p.code, p]));
 
   // ── Users ──────────────────────────────────────────────────────────────────
@@ -71,17 +89,42 @@ export async function runSeed(options: { quiet?: boolean } = {}): Promise<SeedRe
   const admin = userRows[0];
   const eic = userRows[1];
   const editor = userRows[2];
+  // Platform role and workspace role are different things: the first says what someone may do in
+  // Briefly, the second what they may do inside this customer's newsroom.
+  const workspaceRole = { SUPER_ADMIN: "OWNER", EDITOR_IN_CHIEF: "ADMIN", EDITOR: "EDITOR", CAMPUS_EDITOR: "EDITOR", CONTRIBUTOR: "CONTRIBUTOR", VIEWER: "VIEWER" } as const;
+  await db.insert(s.organizationMembers).values(
+    userRows.map((u) => ({ organizationId, userId: u.id, role: workspaceRole[u.role], isDefault: true, acceptedAt: new Date() })),
+  );
+  await db.update(s.organizations).set({ createdById: admin.id }).where(sql`${s.organizations.id} = ${organizationId}`);
+
+  // ── Publication ────────────────────────────────────────────────────────────
+  // A recurring title. Its editions each choose their own outputs — email, web, magazine, print.
+  const [publication] = await db
+    .insert(s.publications)
+    .values({
+      organizationId,
+      name: "Albert Deep Dive",
+      slug: "deep-dive",
+      description: "The monthly magazine of Albert School.",
+      language: "en",
+      defaultFormats: ["MAGAZINE", "EMAIL"],
+      cadence: "monthly",
+      subscribeSlug: "albert-deep-dive",
+      createdById: admin.id,
+    })
+    .returning();
 
   // ── Contributors & groups ──────────────────────────────────────────────────
   const groupRows = await db
     .insert(s.contributorGroups)
-    .values(SEED_GROUPS.map((g) => ({ slug: g.slug, name: g.name, description: "description" in g ? g.description : null, campusId: "campus" in g && g.campus ? campusBySlug.get(g.campus)!.id : null, isSystem: true })))
+    .values(SEED_GROUPS.map((g) => ({ organizationId, slug: g.slug, name: g.name, description: "description" in g ? g.description : null, campusId: "campus" in g && g.campus ? campusBySlug.get(g.campus)!.id : null, isSystem: true })))
     .returning();
   const groupBySlug = new Map(groupRows.map((g) => [g.slug, g]));
   const contributorRows = await db
     .insert(s.contributors)
     .values(
       SEED_CONTRIBUTORS.map((c) => ({
+        organizationId,
         firstName: c.firstName,
         lastName: c.lastName,
         email: contributorEmail(c),
@@ -102,7 +145,7 @@ export async function runSeed(options: { quiet?: boolean } = {}): Promise<SeedRe
 
   // ── Prompt templates & settings ────────────────────────────────────────────
   await db.insert(s.promptTemplates).values(
-    PROMPT_DEFAULTS.map((p) => ({ key: p.key, version: 1, name: p.name, description: p.description, category: p.category, systemPrompt: p.system, userPrompt: p.user, modelTier: p.tier, temperature: p.temperature, maxOutputTokens: p.maxOutputTokens, isActive: true, createdById: admin.id })),
+    PROMPT_DEFAULTS.map((p) => ({ organizationId, key: p.key, version: 1, name: p.name, description: p.description, category: p.category, systemPrompt: p.system, userPrompt: p.user, modelTier: p.tier, temperature: p.temperature, maxOutputTokens: p.maxOutputTokens, isActive: true, createdById: admin.id })),
   );
   await db.insert(s.systemSettings).values([
     { key: "masthead", value: { title: "Albert's Deep Dive", tagline: "The monthly newspaper of Albert School" }, description: "Publication masthead" },
@@ -120,6 +163,8 @@ export async function runSeed(options: { quiet?: boolean } = {}): Promise<SeedRe
   const [edition] = await db
     .insert(s.editions)
     .values({
+      organizationId,
+      publicationId: publication.id,
       issueNumber: 1,
       title: "Albert's Deep Dive — Special issue N°1",
       slug: "special-issue-1-may-2025",
@@ -623,24 +668,24 @@ export async function runSeed(options: { quiet?: boolean } = {}): Promise<SeedRe
     { step: "EDITORIAL_ALERT", when: new Date("2025-04-09T10:30:00Z"), summary: { notified: 2 } },
     { step: "COVERAGE_CHECK", when: new Date("2025-04-09T10:31:00Z"), summary: { underrepresented: ["geneva"] } },
   ];
-  await db.insert(s.automationRuns).values(steps.map((st) => ({ editionId: edition.id, step: st.step, runKey: `${edition.id}:${st.step}`, status: "SUCCEEDED", triggeredBy: "SCHEDULER", scheduledFor: st.when, startedAt: st.when, finishedAt: new Date(st.when.getTime() + 4000), summary: st.summary, createdAt: st.when })));
+  await db.insert(s.automationRuns).values(steps.map((st) => ({ organizationId, editionId: edition.id, step: st.step, runKey: `${edition.id}:${st.step}`, status: "SUCCEEDED", triggeredBy: "SCHEDULER", scheduledFor: st.when, startedAt: st.when, finishedAt: new Date(st.when.getTime() + 4000), summary: st.summary, createdAt: st.when })));
 
   const flagged = SEED_STORIES.filter((st) => (st.warnings ?? []).length || (st.missingInformation ?? []).length).length;
   for (const user of [admin, eic, editor]) {
     await db.insert(s.notifications).values([
-      { userId: user.id, type: "PROCESSING_COMPLETED", title: "AI processing finished for May 2025", body: `${SEED_STORIES.length} story clusters created from ${SEED_STORIES.reduce((n, st) => n + st.submissions.length, 0)} submissions.`, entityType: "EDITION", entityId: edition.id, href: `/editions/${edition.id}`, createdAt: new Date("2025-04-09T10:30:00Z") },
-      { userId: user.id, type: "FACTUAL_CONFLICT", title: `${flagged} stories need attention`, body: "Conflicting names and missing information were detected. Review the flags before layout.", entityType: "EDITION", entityId: edition.id, href: `/editions/${edition.id}/stories?flag=needs_attention`, createdAt: new Date("2025-04-09T10:31:00Z") },
-      { userId: user.id, type: "LOW_CAMPUS_COVERAGE", title: "Geneva is under-represented", body: "Only 1 submission mentions the Geneva campus. Consider requesting a contribution from the Geneva ambassadors.", entityType: "EDITION", entityId: edition.id, href: `/editions/${edition.id}/inbox?campus=geneva`, createdAt: new Date("2025-04-09T10:32:00Z") },
-      { userId: user.id, type: "DEADLINE_APPROACHING", title: "Final editorial review — 12 May, 18:00", body: "18 of 26 articles are approved.", entityType: "EDITION", entityId: edition.id, href: `/editions/${edition.id}/articles`, createdAt: new Date("2025-05-10T08:00:00Z") },
+      { organizationId, userId: user.id, type: "PROCESSING_COMPLETED", title: "AI processing finished for May 2025", body: `${SEED_STORIES.length} story clusters created from ${SEED_STORIES.reduce((n, st) => n + st.submissions.length, 0)} submissions.`, entityType: "EDITION", entityId: edition.id, href: `/editions/${edition.id}`, createdAt: new Date("2025-04-09T10:30:00Z") },
+      { organizationId, userId: user.id, type: "FACTUAL_CONFLICT", title: `${flagged} stories need attention`, body: "Conflicting names and missing information were detected. Review the flags before layout.", entityType: "EDITION", entityId: edition.id, href: `/editions/${edition.id}/stories?flag=needs_attention`, createdAt: new Date("2025-04-09T10:31:00Z") },
+      { organizationId, userId: user.id, type: "LOW_CAMPUS_COVERAGE", title: "Geneva is under-represented", body: "Only 1 submission mentions the Geneva campus. Consider requesting a contribution from the Geneva ambassadors.", entityType: "EDITION", entityId: edition.id, href: `/editions/${edition.id}/inbox?campus=geneva`, createdAt: new Date("2025-04-09T10:32:00Z") },
+      { organizationId, userId: user.id, type: "DEADLINE_APPROACHING", title: "Final editorial review — 12 May, 18:00", body: "18 of 26 articles are approved.", entityType: "EDITION", entityId: edition.id, href: `/editions/${edition.id}/articles`, createdAt: new Date("2025-05-10T08:00:00Z") },
     ]);
   }
 
   await db.insert(s.auditLog).values([
-    { actorType: "USER", userId: admin.id, action: "edition.create", entityType: "EDITION", entityId: edition.id, editionId: edition.id, metadata: { issueNumber: 1 }, createdAt: new Date("2025-03-28T09:00:00Z") },
-    { actorType: "SYSTEM", action: "campaign.open", entityType: "CAMPAIGN", entityId: campaign.id, editionId: edition.id, metadata: { invitations: SEED_CONTRIBUTORS.length }, createdAt: opensAt },
-    { actorType: "SYSTEM", action: "campaign.close", entityType: "CAMPAIGN", entityId: campaign.id, editionId: edition.id, metadata: {}, createdAt: new Date("2025-04-08T22:00:00Z") },
-    { actorType: "AI", action: "edition.process", entityType: "EDITION", entityId: edition.id, editionId: edition.id, metadata: { clusters: SEED_STORIES.length }, createdAt: new Date("2025-04-09T10:30:00Z") },
-    { actorType: "USER", userId: editor.id, action: "edition.transition", entityType: "EDITION", entityId: edition.id, editionId: edition.id, metadata: { from: "PROCESSING", to: "EDITORIAL_REVIEW" }, createdAt: new Date("2025-04-09T11:00:00Z") },
+    { organizationId, actorType: "USER", userId: admin.id, action: "edition.create", entityType: "EDITION", entityId: edition.id, editionId: edition.id, metadata: { issueNumber: 1 }, createdAt: new Date("2025-03-28T09:00:00Z") },
+    { organizationId, actorType: "SYSTEM", action: "campaign.open", entityType: "CAMPAIGN", entityId: campaign.id, editionId: edition.id, metadata: { invitations: SEED_CONTRIBUTORS.length }, createdAt: opensAt },
+    { organizationId, actorType: "SYSTEM", action: "campaign.close", entityType: "CAMPAIGN", entityId: campaign.id, editionId: edition.id, metadata: {}, createdAt: new Date("2025-04-08T22:00:00Z") },
+    { organizationId, actorType: "AI", action: "edition.process", entityType: "EDITION", entityId: edition.id, editionId: edition.id, metadata: { clusters: SEED_STORIES.length }, createdAt: new Date("2025-04-09T10:30:00Z") },
+    { organizationId, actorType: "USER", userId: editor.id, action: "edition.transition", entityType: "EDITION", entityId: edition.id, editionId: edition.id, metadata: { from: "PROCESSING", to: "EDITORIAL_REVIEW" }, createdAt: new Date("2025-04-09T11:00:00Z") },
   ]);
 
   // Update contributor stats
@@ -657,6 +702,8 @@ export async function runSeed(options: { quiet?: boolean } = {}): Promise<SeedRe
   const [next] = await db
     .insert(s.editions)
     .values({
+      organizationId,
+      publicationId: publication.id,
       issueNumber: 2,
       title: "Albert's Deep Dive — Issue N°2",
       slug: "issue-2-october-2026",

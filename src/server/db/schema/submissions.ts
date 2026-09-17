@@ -1,6 +1,6 @@
 import { type AnyPgColumn, boolean, index, integer, jsonb, pgTable, primaryKey, real, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 import { attachmentKindEnum, campusScopeEnum, consentTypeEnum, mediaVariantKindEnum, rightsStatusEnum, submissionStatusEnum, submissionTypeEnum } from "./enums";
-import { campuses, contributors, users } from "./identity";
+import { campuses, contributors, organizations, users } from "./identity";
 import { editions, submissionCampaigns, submissionRequests } from "./editions";
 
 export type SubmissionExtra = Record<string, unknown>;
@@ -95,6 +95,7 @@ export const mediaAssets = pgTable(
   "media_assets",
   {
     id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: uuid("organization_id").references(() => organizations.id, { onDelete: "cascade" }),
     editionId: uuid("edition_id").references(() => editions.id, { onDelete: "set null" }),
     submissionId: uuid("submission_id").references(() => submissions.id, { onDelete: "set null" }),
     uploadedByContributorId: uuid("uploaded_by_contributor_id").references(() => contributors.id, { onDelete: "set null" }),

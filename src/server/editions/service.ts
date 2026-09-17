@@ -7,6 +7,7 @@ import { NotFoundError, ValidationError } from "@/lib/action-result";
 import { assertTransition, type EditionStatus, phaseForStatus } from "@/lib/editorial/edition-state";
 import { DEFAULT_SECTIONS } from "@/lib/constants";
 import { slugify } from "@/lib/utils";
+import { guardTenant, scoped, stampTenant } from "@/server/tenancy/scope";
 
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
@@ -30,7 +31,7 @@ export const createEditionSchema = z.object({
 export type CreateEditionInput = z.infer<typeof createEditionSchema>;
 
 export async function nextIssueNumber() {
-  const [row] = await db.select({ max: sql<number>`coalesce(max(${s.editions.issueNumber}), 0)` }).from(s.editions);
+  const [row] = await db.select({ max: sql<number>`coalesce(max(${s.editions.issueNumber}), 0)` }).from(s.editions).where(await scoped(s.editions.organizationId));
   return Number(row?.max ?? 0) + 1;
 }
 
@@ -40,14 +41,14 @@ export async function createEdition(rawInput: z.input<typeof createEditionSchema
   const label = monthLabel(input.month, input.year);
   const title = input.title ?? `Albert's Deep Dive — ${input.isSpecialIssue ? "Special issue" : "Issue"} N°${issueNumber}`;
   const slug = slugify(`${input.isSpecialIssue ? "special-issue" : "issue"}-${issueNumber}-${label}`);
-  const existing = await db.query.editions.findFirst({ where: eq(s.editions.slug, slug) });
+  const existing = await db.query.editions.findFirst({ where: await scoped(s.editions.organizationId, eq(s.editions.slug, slug)) });
   if (existing) throw new ValidationError(`An edition already exists for ${label}`, { month: ["Edition already exists"] });
   const publicationTargetAt = input.publicationTargetAt ?? new Date(Date.UTC(input.year, input.month - 1, 15, 10, 0, 0));
   const finalReviewAt = input.finalReviewAt ?? new Date(Date.UTC(input.year, input.month - 1, 11, 16, 0, 0));
   const edition = await db.transaction(async (tx) => {
     const [row] = await tx
       .insert(s.editions)
-      .values({
+      .values(await stampTenant({
         issueNumber,
         title,
         slug,
@@ -63,7 +64,7 @@ export async function createEdition(rawInput: z.input<typeof createEditionSchema
         editorInChiefId: input.editorInChiefId ?? null,
         createdById: userId ?? null,
         notes: input.notes ?? null,
-      })
+      }))
       .returning();
     const setting = await tx.query.systemSettings.findFirst({ where: eq(s.systemSettings.key, "default_sections") });
     const sections = (Array.isArray(setting?.value) ? setting!.value : DEFAULT_SECTIONS) as unknown as { slug: string; name: string; kicker: string | null; colour: string; targetPages: number }[];
@@ -113,23 +114,26 @@ export async function transitionEdition(editionId: string, to: EditionStatus, us
 }
 
 export async function getEdition(editionId: string) {
-  const edition = await db.query.editions.findFirst({
-    where: eq(s.editions.id, editionId),
-    with: { sections: { orderBy: [asc(s.editionSections.sortOrder)] }, campaigns: { orderBy: [desc(s.submissionCampaigns.createdAt)], limit: 1 }, editorInChief: true },
-  });
+  const edition = await guardTenant(
+    await db.query.editions.findFirst({
+      where: eq(s.editions.id, editionId),
+      with: { sections: { orderBy: [asc(s.editionSections.sortOrder)] }, campaigns: { orderBy: [desc(s.submissionCampaigns.createdAt)], limit: 1 }, editorInChief: true },
+    }),
+    "Edition",
+  );
   if (!edition) throw new NotFoundError("Edition");
   return edition;
 }
 
 export async function listEditions() {
-  return db.query.editions.findMany({ orderBy: [desc(s.editions.year), desc(s.editions.month), desc(s.editions.issueNumber)], with: { campaigns: { orderBy: [desc(s.submissionCampaigns.createdAt)], limit: 1 } } });
+  return db.query.editions.findMany({ where: await scoped(s.editions.organizationId), orderBy: [desc(s.editions.year), desc(s.editions.month), desc(s.editions.issueNumber)], with: { campaigns: { orderBy: [desc(s.submissionCampaigns.createdAt)], limit: 1 } } });
 }
 
 const STATUS_PRIORITY: EditionStatus[] = ["FINAL_REVIEW", "LAYOUT", "EDITORIAL_REVIEW", "PROCESSING", "CLOSED", "GRACE_PERIOD", "REMINDER_2", "REMINDER_1", "OPEN", "UPCOMING", "PUBLISHED", "ARCHIVED"];
 
 /** The edition the newsroom is working on right now: the most advanced non-archived edition. */
 export async function getCurrentEdition() {
-  const rows = await db.query.editions.findMany({ where: ne(s.editions.status, "ARCHIVED"), orderBy: [desc(s.editions.year), desc(s.editions.month)] });
+  const rows = await db.query.editions.findMany({ where: await scoped(s.editions.organizationId, ne(s.editions.status, "ARCHIVED")), orderBy: [desc(s.editions.year), desc(s.editions.month)] });
   if (!rows.length) return null;
   const inProduction = rows.filter((r) => r.status !== "PUBLISHED" && r.status !== "UPCOMING");
   if (inProduction.length) return inProduction.sort((a, b) => STATUS_PRIORITY.indexOf(a.status) - STATUS_PRIORITY.indexOf(b.status))[0];

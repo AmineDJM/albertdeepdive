@@ -4,6 +4,7 @@ import * as s from "@/server/db/schema";
 import { guessColumn, normaliseForMatch, splitFullName, type CampusRef, type CommitFailure, type CommitReport, type ImportOptions, type ImportSummary, type RowBadge, type RowStatus } from "@/server/contributors/import";
 import { listCampusesWithStats } from "@/server/contributors/service";
 import { createRecipient, updateRecipient } from "./service";
+import { scoped } from "@/server/tenancy/scope";
 
 // Generic parsing, normalisation and result shapes are shared with the contributor import (keeps the
 // wizard identical); only the mappable fields and the segment/campus resolution differ here.
@@ -211,7 +212,7 @@ export function mapAndValidateRows(input: MapValidateInput): ValidationResult {
 export async function loadImportContext(): Promise<{ campuses: CampusRef[]; existing: ExistingRecipient[] }> {
   const [campusRows, recipientRows] = await Promise.all([
     listCampusesWithStats(),
-    db.select({ id: s.audienceRecipients.id, email: s.audienceRecipients.email }).from(s.audienceRecipients),
+    db.select({ id: s.audienceRecipients.id, email: s.audienceRecipients.email }).from(s.audienceRecipients).where(await scoped(s.audienceRecipients.organizationId)),
   ]);
   return {
     campuses: campusRows.map((c) => ({ id: c.id, name: c.name, slug: c.slug })),
