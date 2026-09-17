@@ -10,6 +10,7 @@ import { FilterBar } from "@/components/newsroom/filter-bar";
 import { Stat, StatGrid, ProgressBar } from "@/components/newsroom/stat";
 import { ArticleDeskTable } from "@/components/newsroom/article-desk-table";
 import { ArticleDeskBoard } from "@/components/newsroom/article-desk-board";
+import { NewArticleButton } from "@/components/newsroom/new-article-button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Button } from "@/components/ui/button";
 import { cn, formatNumber } from "@/lib/utils";
@@ -61,17 +62,20 @@ export default async function ArticleDeskPage({
         title="Article desk"
         description={`${facets.total} article${facets.total === 1 ? "" : "s"} · ${formatNumber(facets.words)} words · ${facets.approved} approved${facets.missingDrafts ? ` · ${facets.missingDrafts} selected ${facets.missingDrafts === 1 ? "story has" : "stories have"} no draft` : ""}`}
         actions={
-          <div className="flex items-center gap-0.5 rounded-md bg-muted p-0.5">
-            <Button asChild size="sm" variant={view === "table" ? "outline" : "ghost"} className={cn(view === "table" && "bg-card")}>
-              <Link href={qs({ view: undefined })} aria-current={view === "table" ? "true" : undefined}>
-                <Rows3 /> Table
-              </Link>
-            </Button>
-            <Button asChild size="sm" variant={view === "board" ? "outline" : "ghost"} className={cn(view === "board" && "bg-card")}>
-              <Link href={qs({ view: "board" })} aria-current={view === "board" ? "true" : undefined}>
-                <LayoutGrid /> Board
-              </Link>
-            </Button>
+          <div className="flex items-center gap-2">
+            {canEdit ? <NewArticleButton editionId={editionId} sections={sections.map((s) => ({ id: s.id, name: s.name }))} /> : null}
+            <div className="flex items-center gap-0.5 rounded-md bg-muted p-0.5">
+              <Button asChild size="sm" variant={view === "table" ? "outline" : "ghost"} className={cn(view === "table" && "bg-card")}>
+                <Link href={qs({ view: undefined })} aria-current={view === "table" ? "true" : undefined}>
+                  <Rows3 /> Table
+                </Link>
+              </Button>
+              <Button asChild size="sm" variant={view === "board" ? "outline" : "ghost"} className={cn(view === "board" && "bg-card")}>
+                <Link href={qs({ view: "board" })} aria-current={view === "board" ? "true" : undefined}>
+                  <LayoutGrid /> Board
+                </Link>
+              </Button>
+            </div>
           </div>
         }
       />

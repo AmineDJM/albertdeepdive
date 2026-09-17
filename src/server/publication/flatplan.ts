@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, inArray, notInArray, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, notInArray, or, sql } from "drizzle-orm";
 import { db } from "@/server/db/client";
 import {
   articles,
@@ -914,6 +914,55 @@ export async function movePlanPage(editionId: string, pageId: string, direction:
   const next = [...anchors];
   [next[index], next[target]] = [next[target], next[index]];
   return reorderPlanPages(editionId, next, userId);
+}
+
+/**
+ * Adds a blank page to the flatplan, right after `afterPageId` (or at the end), then renumbers the
+ * whole plan. The new page carries no story yet — pin one to it, or leave it as a filler/ad page.
+ */
+export async function addPlanPage(editionId: string, options: { afterPageId?: string | null; template?: string; userId?: string | null } = {}): Promise<{ pageId: string; pages: number }> {
+  const plan = await activePlan(editionId, { create: true, userId: options.userId });
+  if (!plan) throw new NotFoundError("Page plan");
+  const template = options.template ?? "ARTICLE_TWO_COLUMN";
+  if (!PAGE_TEMPLATES.some((t) => t.code === template)) throw new ValidationError(`Unknown template "${template}"`);
+  const rows = await db.select().from(pagePlanPages).where(eq(pagePlanPages.planId, plan.id)).orderBy(asc(pagePlanPages.pageNumber));
+  const afterRow = options.afterPageId ? rows.find((r) => r.id === options.afterPageId) : null;
+  if (options.afterPageId && !afterRow) throw new NotFoundError("Page");
+  const maxNumber = rows.reduce((m, r) => Math.max(m, r.pageNumber), 0);
+  const [created] = await db
+    .insert(pagePlanPages)
+    .values({ planId: plan.id, pageNumber: maxNumber + 1, template, sectionId: afterRow?.sectionId ?? null, storyIds: [], mediaAssetIds: [], fitEstimate: estimateFor(template, 0, 0) })
+    .returning();
+  const anchors = rows.filter((r) => !r.continuationOfPageId).map((r) => r.id);
+  let order: string[];
+  if (afterRow) {
+    const anchorId = afterRow.continuationOfPageId ?? afterRow.id; // pin after the whole article, not between its jump pages
+    const at = anchors.indexOf(anchorId);
+    order = [...anchors.slice(0, at + 1), created.id, ...anchors.slice(at + 1)];
+  } else {
+    order = [...anchors, created.id];
+  }
+  const res = await reorderPlanPages(editionId, order, options.userId);
+  await audit({ action: "flatplan.page.add", userId: options.userId, entityType: "PAGE", entityId: created.id, editionId, metadata: { afterPageId: options.afterPageId ?? null, template } });
+  return { pageId: created.id, pages: res.pages };
+}
+
+/** Removes a page (and any of its planned continuation pages) and renumbers the plan. Locked pages are kept. */
+export async function removePlanPage(editionId: string, pageId: string, userId?: string | null): Promise<{ pages: number }> {
+  const { row, plan } = await requirePlanPage(editionId, pageId);
+  if (row.isLocked) throw new ValidationError("This page is locked. Unlock it before removing it.");
+  let remainingCount = 0;
+  await db.transaction(async (tx) => {
+    await tx.delete(pagePlanPages).where(or(eq(pagePlanPages.id, pageId), eq(pagePlanPages.continuationOfPageId, pageId)));
+    const remaining = await tx.select({ id: pagePlanPages.id, pageNumber: pagePlanPages.pageNumber }).from(pagePlanPages).where(eq(pagePlanPages.planId, plan.id)).orderBy(asc(pagePlanPages.pageNumber));
+    for (const r of remaining) await tx.update(pagePlanPages).set({ pageNumber: -r.pageNumber }).where(eq(pagePlanPages.id, r.id));
+    for (const [i, r] of remaining.entries()) await tx.update(pagePlanPages).set({ pageNumber: i + 1 }).where(eq(pagePlanPages.id, r.id));
+    await tx.update(pagePlans).set({ pageCount: remaining.length, updatedAt: new Date() }).where(eq(pagePlans.id, plan.id));
+    remainingCount = remaining.length;
+  });
+  invalidateFlatplanLayout(editionId);
+  await audit({ action: "flatplan.page.remove", userId, entityType: "PAGE", entityId: pageId, editionId, metadata: { page: row.pageNumber } });
+  return { pages: remainingCount };
 }
 
 /** Moves a whole section (its continuous run of pages) before the previous / after the next one. */

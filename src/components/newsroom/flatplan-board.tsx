@@ -10,7 +10,9 @@ import { toast } from "sonner";
 import { FlatplanPageCard } from "@/components/newsroom/flatplan-page-card";
 import { FlatplanInspector } from "@/components/newsroom/flatplan-inspector";
 import {
+  addPageAction,
   movePageAction,
+  removePageAction,
   reorderPagesAction,
   setPageLockAction,
   setPageNotesAction,
@@ -165,6 +167,11 @@ export function FlatplanBoard({
         onMove={(pageId, direction) => run(() => movePageAction(editionId, pageId, direction), { context: pageContext(pageId) })}
         onPinStory={(pageId, storyId, pin) => run(() => setPageStoryAction(editionId, pageId, storyId, pin), { context: pageContext(pageId) })}
         onNotes={(pageId, notes) => run(() => setPageNotesAction(editionId, pageId, notes), { context: pageContext(pageId) })}
+        onAddAfter={(pageId) => run(() => addPageAction(editionId, pageId), { context: pageContext(pageId) })}
+        onRemove={(pageId) => {
+          setSelectedId(null);
+          run(() => removePageAction(editionId, pageId), { context: pageContext(pageId) });
+        }}
       />
     </div>
   );

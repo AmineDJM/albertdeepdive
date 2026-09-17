@@ -3,9 +3,11 @@
 import { revalidatePath } from "next/cache";
 import { requirePermission } from "@/server/auth/session";
 import {
+  addPlanPage,
   movePlanPage,
   moveSectionRun,
   regeneratePagePlan,
+  removePlanPage,
   reorderPlanPages,
   runCopyfitPass,
   setPageFlags,
@@ -66,6 +68,30 @@ export async function reorderPagesAction(editionId: string, orderedAnchorIds: st
     const result = await reorderPlanPages(editionId, orderedAnchorIds, user.id);
     revalidateFlatplan(editionId);
     return ok(result, "Running order saved");
+  } catch (err) {
+    return toActionFailure(err);
+  }
+}
+
+/** Adds a blank page after `afterPageId` (or at the end of the plan). */
+export async function addPageAction(editionId: string, afterPageId?: string | null, template?: string): Promise<ActionResult<{ pageId: string; pages: number }>> {
+  try {
+    const user = await requirePermission("layout:edit");
+    const result = await addPlanPage(editionId, { afterPageId, template, userId: user.id });
+    revalidateFlatplan(editionId);
+    return ok(result, `Blank page added · ${result.pages} pages`);
+  } catch (err) {
+    return toActionFailure(err);
+  }
+}
+
+/** Removes a page (and its planned continuation pages) from the plan. Locked pages must be unlocked first. */
+export async function removePageAction(editionId: string, pageId: string): Promise<ActionResult<{ pages: number }>> {
+  try {
+    const user = await requirePermission("layout:edit");
+    const result = await removePlanPage(editionId, pageId, user.id);
+    revalidateFlatplan(editionId);
+    return ok(result, `Page removed · ${result.pages} pages`);
   } catch (err) {
     return toActionFailure(err);
   }

@@ -457,6 +457,55 @@ export async function updateStory(storyId: string, patch: StoryPatch, userId: st
   return row;
 }
 
+export const blankStorySchema = z.object({
+  title: z.string().trim().min(1).max(200),
+  storyType: z.string().optional(),
+  sectionId: z.string().uuid().nullable().optional(),
+});
+export type BlankStoryInput = z.infer<typeof blankStorySchema>;
+
+/**
+ * Creates a hand-authored story with an empty, editable article shell — the "New article" path that
+ * does not come from the AI/cluster pipeline. The story is SELECTED so it is placeable straight away,
+ * and the article opens in the normal workbench for the editor to write.
+ */
+export async function createBlankStory(editionId: string, rawInput: BlankStoryInput, userId: string): Promise<{ story: StoryRow; articleId: string }> {
+  const input = blankStorySchema.parse(rawInput);
+  const edition = await db.query.editions.findFirst({ where: eq(editions.id, editionId), columns: { id: true } });
+  if (!edition) throw new NotFoundError("Edition");
+  const storyType = ((input.storyType as StoryType | undefined) ?? "OTHER") as StoryType;
+  let section = null as (typeof editionSections.$inferSelect) | null;
+  if (input.sectionId) {
+    section = (await db.query.editionSections.findFirst({ where: eq(editionSections.id, input.sectionId) })) ?? null;
+    if (!section || section.editionId !== editionId) throw new ValidationError("The section does not belong to this edition");
+  } else {
+    const visible = (await db.query.editionSections.findMany({ where: eq(editionSections.editionId, editionId) })).filter((s) => !s.isHidden);
+    section = visible.find((s) => s.slug === defaultSectionForStoryType(storyType)) ?? null;
+  }
+  const slug = await uniqueStorySlug(editionId, input.title);
+  const [story] = await db
+    .insert(stories)
+    .values({
+      editionId,
+      sectionId: section?.id ?? null,
+      title: input.title,
+      slug,
+      status: "SELECTED",
+      storyType,
+      priority: 50,
+      suggestedTemplate: defaultTemplateForStoryType(storyType, { mediaCount: 0, wordCount: 0, targetLength: "MEDIUM" }),
+      targetLength: "MEDIUM",
+    })
+    .returning();
+  const [article] = await db
+    .insert(articles)
+    .values({ storyId: story.id, editionId, kicker: section?.kicker ?? null, headline: input.title, body: [], tags: section?.slug ? [section.slug] : [], status: "IN_EDITING" })
+    .returning({ id: articles.id });
+  await audit({ action: "story.create", userId, entityType: "STORY", entityId: story.id, editionId, metadata: { manual: true, storyType } });
+  log.info("blank story created", { storyId: story.id, articleId: article.id, storyType });
+  return { story, articleId: article.id };
+}
+
 async function transitionStory(storyId: string, status: StoryStatus, userId: string, decision: string, reason?: string | null) {
   const story = await loadStory(storyId);
   const [row] = await db.update(stories).set({ status }).where(eq(stories.id, storyId)).returning();

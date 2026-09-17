@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCheck, ExternalLink, RefreshCw, Undo2, Wand2 } from "lucide-react";
+import { CheckCheck, ExternalLink, Plus, RefreshCw, Undo2, Wand2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -17,7 +17,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { regeneratePlanAction, runCopyfitAction, setPlanStatusAction } from "@/app/(newsroom)/editions/[editionId]/layout/actions";
+import { addPageAction, regeneratePlanAction, runCopyfitAction, setPlanStatusAction } from "@/app/(newsroom)/editions/[editionId]/layout/actions";
 
 /**
  * The two things an editor triggers from the flatplan: re-running the page allocation (which pages
@@ -29,7 +29,21 @@ export function FlatplanToolbar({ editionId, lockedPages, planned, planStatus = 
   const [pending, startTransition] = useTransition();
   const [open, setOpen] = useState(false);
   const [includeCandidates, setIncludeCandidates] = useState(false);
-  const [busy, setBusy] = useState<"plan" | "copyfit" | "signoff" | null>(null);
+  const [busy, setBusy] = useState<"plan" | "copyfit" | "signoff" | "addpage" | null>(null);
+
+  function addPage() {
+    setBusy("addpage");
+    startTransition(async () => {
+      const result = await addPageAction(editionId);
+      setBusy(null);
+      if (result.ok) {
+        toast.success(result.message ?? "Blank page added");
+        router.refresh();
+      } else {
+        toast.error(result.error);
+      }
+    });
+  }
 
   function regenerate() {
     setBusy("plan");
@@ -95,6 +109,11 @@ export function FlatplanToolbar({ editionId, lockedPages, planned, planStatus = 
       ) : (
         <Button size="sm" variant="outline" onClick={() => signOff("VALIDATED")} loading={pending && busy === "signoff"} disabled={pending}>
           <CheckCheck /> Validate the plan
+        </Button>
+      )}
+      {onlyPlan ? null : (
+        <Button size="sm" variant="outline" onClick={addPage} loading={pending && busy === "addpage"} disabled={pending}>
+          <Plus /> Add page
         </Button>
       )}
       <Button size="sm" variant="brand" onClick={() => setOpen(true)} disabled={pending} loading={pending && busy === "plan"}>

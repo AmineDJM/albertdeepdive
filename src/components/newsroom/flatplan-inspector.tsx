@@ -1,7 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
-import { ArrowDown, ArrowUp, ExternalLink, Image as ImageIcon, Lock, Pin } from "lucide-react";
+import { ArrowDown, ArrowUp, ExternalLink, Image as ImageIcon, Lock, Pin, Plus, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -9,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { SectionTitle } from "@/components/newsroom/page-header";
 import { ArticleStatusBadge, RightsBadge, SeverityBadge } from "@/components/newsroom/status-badge";
 import type { Flatplan, FlatplanPage, FlatplanTemplate } from "@/server/publication/flatplan";
@@ -32,6 +34,8 @@ export function FlatplanInspector({
   onMove,
   onPinStory,
   onNotes,
+  onAddAfter,
+  onRemove,
 }: {
   page: FlatplanPage | null;
   pages: FlatplanPage[];
@@ -46,7 +50,10 @@ export function FlatplanInspector({
   onMove: (pageId: string, direction: "up" | "down") => void;
   onPinStory: (pageId: string, storyId: string | null, pin: boolean) => void;
   onNotes: (pageId: string, notes: string) => void;
+  onAddAfter: (pageId: string) => void;
+  onRemove: (pageId: string) => void;
 }) {
+  const [confirmRemove, setConfirmRemove] = useState(false);
   const engineMade = page?.kind === "engine-continuation";
   const anchors = pages.filter((p) => p.anchorIndex !== null);
   const isFirst = page ? anchors[0]?.id === page.id : false;
@@ -276,8 +283,8 @@ export function FlatplanInspector({
                   </div>
 
                   {page.anchorIndex !== null ? (
-                    <div className="space-y-1.5">
-                      <Label>Running order</Label>
+                    <div className="space-y-2">
+                      <Label>Pages</Label>
                       <div className="flex gap-2">
                         <Button variant="outline" size="sm" disabled={pending || isFirst} onClick={() => onMove(page.id, "up")}>
                           <ArrowUp /> Move earlier
@@ -286,6 +293,15 @@ export function FlatplanInspector({
                           <ArrowDown /> Move later
                         </Button>
                       </div>
+                      <div className="flex gap-2">
+                        <Button variant="outline" size="sm" disabled={pending} onClick={() => onAddAfter(page.id)}>
+                          <Plus /> Add page after
+                        </Button>
+                        <Button variant="outline" size="sm" disabled={pending || page.isLocked} onClick={() => setConfirmRemove(true)} className="text-destructive hover:text-destructive">
+                          <Trash2 /> Remove page
+                        </Button>
+                      </div>
+                      {page.isLocked ? <p className="text-2xs text-muted-foreground">Unlock the page above to remove it.</p> : null}
                     </div>
                   ) : null}
 
@@ -325,6 +341,30 @@ export function FlatplanInspector({
                 ) : null}
               </div>
             </div>
+
+            <AlertDialog open={confirmRemove} onOpenChange={(v) => !pending && setConfirmRemove(v)}>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Remove page {page.number}?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    The page is deleted from the flat-plan and the pages after it are renumbered. Any story on it goes back to the pool of unplaced stories. You can add a page again or re-plan at any time.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    onClick={(event) => {
+                      event.preventDefault();
+                      setConfirmRemove(false);
+                      onRemove(page.id);
+                    }}
+                  >
+                    <Trash2 /> Remove page
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </>
         ) : null}
       </SheetContent>
