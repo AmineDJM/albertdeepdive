@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { AUDIENCE_TABS, INSIGHTS_TABS, NAV_ITEMS, PLATFORM_TABS, WORKBENCH_TABS, resolveNavItem, visibleTabs } from "@/components/newsroom/nav";
 import type { Role } from "@/lib/auth/permissions";
+import { HEX, HUES, HUE_MEANING, PALETTE } from "@/lib/brand/palette";
 
 const GROUPS = [WORKBENCH_TABS, AUDIENCE_TABS, INSIGHTS_TABS, PLATFORM_TABS];
 
@@ -55,5 +56,33 @@ describe("tab groups", () => {
     // HubTabs renders nothing below two: a single tab is not a choice, it is decoration.
     expect(visibleTabs("CAMPUS_EDITOR", AUDIENCE_TABS)).toHaveLength(1);
     expect(visibleTabs("EDITOR", AUDIENCE_TABS)).toHaveLength(4);
+  });
+});
+
+describe("the spectrum", () => {
+  it("gives every area a hue of its own", () => {
+    // Two areas sharing a colour is worse than no colour at all: it teaches the wrong thing.
+    const hues = NAV_ITEMS.map((item) => item.hue);
+    expect(new Set(hues).size).toBe(hues.length);
+  });
+
+  it("says what each hue is for", () => {
+    // A palette without assignments becomes decoration within a month.
+    for (const hue of HUES) {
+      expect(HUE_MEANING[hue], hue).toBeTruthy();
+      expect(HEX[hue], hue).toMatch(/^#[0-9A-F]{6}$/);
+    }
+  });
+
+  it("holds lightness and chroma constant so no hue shouts over its neighbours", () => {
+    // The whole trick behind a palette that looks designed: pick the hues freely, then hold
+    // everything else absolutely still.
+    const lightness = HUES.map((hue) => PALETTE[hue].solid.match(/oklch\(([\d.]+)/)![1]);
+    expect(new Set(lightness).size).toBe(1);
+    for (const hue of HUES) {
+      const [, l, c] = PALETTE[hue].soft.match(/oklch\(([\d.]+) ([\d.]+)/)!;
+      expect(Number(l), `${hue} soft`).toBeGreaterThan(0.9);
+      expect(Number(c), `${hue} soft`).toBeLessThan(0.05);
+    }
   });
 });

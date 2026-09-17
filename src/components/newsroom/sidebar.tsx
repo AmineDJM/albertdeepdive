@@ -128,13 +128,24 @@ export function Sidebar({
               <li key={item.href}>
                 <Link
                   href={resolved.href}
+                  // Each area owns a hue, and the icon carries it whether or not you are there — a
+                  // colour that only appears on the page you are already looking at cannot help you
+                  // find anything. Selection is carried by the tile and the weight instead.
+                  style={{ "--area": `var(--${item.hue})`, "--area-soft": `var(--${item.hue}-soft)` } as React.CSSProperties}
                   className={cn(
                     "group flex h-8 items-center gap-2.5 rounded-md px-2 text-[13px] transition-colors",
-                    resolved.active ? "bg-sidebar-accent font-medium text-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent/70 hover:text-foreground",
+                    resolved.active ? "bg-[var(--area-soft)] font-medium text-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent/70 hover:text-foreground",
                   )}
                   aria-current={resolved.active ? "page" : undefined}
                 >
-                  <item.icon className={cn("size-4", resolved.active ? "text-brand" : "text-muted-foreground group-hover:text-foreground")} />
+                  <span
+                    className={cn(
+                      "flex size-5 shrink-0 items-center justify-center rounded-[5px] transition-colors",
+                      resolved.active ? "bg-[var(--area)] text-white" : "bg-[var(--area-soft)] text-[var(--area)] group-hover:bg-[var(--area)] group-hover:text-white",
+                    )}
+                  >
+                    <item.icon className="size-3.5" />
+                  </span>
                   <span className="flex-1 truncate">{t(item.label)}</span>
                 </Link>
               </li>

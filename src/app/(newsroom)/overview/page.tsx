@@ -139,12 +139,12 @@ export default async function OverviewPage() {
         </section>
 
         <StatGrid columns={6}>
-          <Stat label="Contributions" value={d.submissions.total} hint={`${d.submissions.needsReview} to review`} icon={Inbox} href={`${ed}/inbox`} />
-          <Stat label="Story clusters" value={d.clusters.total} hint={`${d.stories.selected} stories selected`} icon={Sparkles} href={`${ed}/stories`} />
-          <Stat label="Article drafts" value={`${d.articles.drafted} / ${d.stories.selected}`} hint={`${d.articles.approved} approved`} icon={FileText} href={`${ed}/articles`} />
-          <Stat label="Media" value={d.media.total} hint={`${d.media.green} cleared · ${d.media.red} blocked`} icon={ImageIcon} href={`${ed}/media`} />
-          <Stat label="Flags" value={d.flags.total} hint="requiring review" tone={d.flags.total ? "warning" : "success"} icon={Flag} href={`${ed}/stories?flag=needs_attention`} />
-          <Stat label="AI processing cost" value={formatCurrency(d.ai.costCents / 100)} hint={`${d.ai.calls} calls · ${Math.round(d.ai.tokens / 1000)}k tokens`} icon={Coins} href="/analytics" />
+          <Stat label="Contributions" value={d.submissions.total} hint={`${d.submissions.needsReview} to review`} icon={Inbox} hue="teal" href={`${ed}/inbox`} />
+          <Stat label="Story clusters" value={d.clusters.total} hint={`${d.stories.selected} stories selected`} icon={Sparkles} hue="violet" href={`${ed}/stories`} />
+          <Stat label="Article drafts" value={`${d.articles.drafted} / ${d.stories.selected}`} hint={`${d.articles.approved} approved`} icon={FileText} hue="violet" href={`${ed}/articles`} />
+          <Stat label="Media" value={d.media.total} hint={`${d.media.green} cleared · ${d.media.red} blocked`} icon={ImageIcon} hue="magenta" href={`${ed}/media`} />
+          <Stat label="Flags" value={d.flags.total} hint="requiring review" hue={d.flags.total ? "coral" : "green"} icon={Flag} href={`${ed}/stories?flag=needs_attention`} />
+          <Stat label="AI processing cost" value={formatCurrency(d.ai.costCents / 100)} hint={`${d.ai.calls} calls · ${Math.round(d.ai.tokens / 1000)}k tokens`} icon={Coins} hue="amber" href="/analytics" />
         </StatGrid>
 
         <section className="grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">

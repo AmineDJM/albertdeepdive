@@ -2,6 +2,7 @@ import type { LucideIcon } from "lucide-react";
 import { BarChart3, Home, Library, Newspaper, Settings, Shield, Users } from "lucide-react";
 import { roleHasPermission, type Permission, type Role } from "@/lib/auth/permissions";
 import type { TranslationKey } from "@/lib/i18n";
+import type { Hue } from "@/lib/brand/palette";
 
 /**
  * The navigation, in two levels and no more.
@@ -18,7 +19,15 @@ import type { TranslationKey } from "@/lib/i18n";
  * stays a plain data module the server can import too.
  */
 export type SubTab = { href: string; label: TranslationKey; permission?: Permission; exact?: boolean };
-export type NavItem = { href: string; label: TranslationKey; icon: LucideIcon; permission?: Permission; tabs?: readonly SubTab[] };
+/**
+ * `hue` is not decoration.
+ *
+ * Each area of Briefly owns one colour from the spectrum, and it owns it everywhere — the sidebar
+ * icon, the page it leads to, the chart on that page. After a day nobody reads the label: teal is
+ * where the readers are. That only works if the assignment is fixed and written down, which is what
+ * this field is; a palette without assignments becomes confetti within a month.
+ */
+export type NavItem = { href: string; label: TranslationKey; icon: LucideIcon; hue: Hue; permission?: Permission; tabs?: readonly SubTab[] };
 
 /** Editions in flight, and everything that has already been published. */
 export const WORKBENCH_TABS: readonly SubTab[] = [
@@ -54,13 +63,13 @@ export const PLATFORM_TABS: readonly SubTab[] = [
 ];
 
 export const NAV_ITEMS: readonly NavItem[] = [
-  { href: "/overview", label: "nav.overview", icon: Home },
-  { href: "/publications", label: "nav.publications", icon: Library, permission: "edition:view" },
-  { href: "/editions", label: "nav.workbench", icon: Newspaper, tabs: WORKBENCH_TABS },
-  { href: "/subscribers", label: "nav.audience", icon: Users, tabs: AUDIENCE_TABS },
-  { href: "/analytics", label: "nav.insights", icon: BarChart3, tabs: INSIGHTS_TABS },
-  { href: "/settings", label: "nav.settings", icon: Settings, permission: "edition:view" },
-  { href: "/platform", label: "nav.platform", icon: Shield, permission: "settings:manage", tabs: PLATFORM_TABS },
+  { href: "/overview", label: "nav.overview", icon: Home, hue: "cobalt" },
+  { href: "/publications", label: "nav.publications", icon: Library, hue: "violet", permission: "edition:view" },
+  { href: "/editions", label: "nav.workbench", icon: Newspaper, hue: "magenta", tabs: WORKBENCH_TABS },
+  { href: "/subscribers", label: "nav.audience", icon: Users, hue: "teal", tabs: AUDIENCE_TABS },
+  { href: "/analytics", label: "nav.insights", icon: BarChart3, hue: "green", tabs: INSIGHTS_TABS },
+  { href: "/settings", label: "nav.settings", icon: Settings, hue: "amber", permission: "edition:view" },
+  { href: "/platform", label: "nav.platform", icon: Shield, hue: "coral", permission: "settings:manage", tabs: PLATFORM_TABS },
 ];
 
 export function visibleTabs(role: Role, tabs: readonly SubTab[]): SubTab[] {
