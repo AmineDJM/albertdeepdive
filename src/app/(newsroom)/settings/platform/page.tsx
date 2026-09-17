@@ -38,7 +38,7 @@ export default async function PlatformPage() {
     );
   }
 
-  const [organizations, plans, summary, subscriptions] = await Promise.all([
+  const [organizations, plans, summary, subscriptions, stripeReady] = await Promise.all([
     listOrganizations(),
     listPlans(true),
     platformBillingSummary(),
@@ -53,6 +53,7 @@ export default async function PlatformPage() {
       })
       .from(s.organizationSubscriptions)
       .leftJoin(s.plans, eq(s.plans.id, s.organizationSubscriptions.planId)),
+    stripeConfigured(),
   ]);
 
   const byOrg = new Map(subscriptions.map((r) => [r.organizationId, r]));
@@ -63,7 +64,7 @@ export default async function PlatformPage() {
     <>
       <PageHeader
         title="Workspaces & plans"
-        description={stripeConfigured() ? "Every customer on this Briefly." : "Every customer on this Briefly. Stripe is not configured, so nothing can be charged yet."}
+        description={stripeReady ? "Every customer on this Briefly." : "Every customer on this Briefly. Payments are not connected, so nothing can be charged yet."}
       />
       <PageBody className="space-y-6">
         <StatGrid>

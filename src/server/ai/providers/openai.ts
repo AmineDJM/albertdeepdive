@@ -5,14 +5,21 @@ import { AiOutputError } from "../types";
 
 export class OpenAiProvider implements AiProvider {
   readonly name = "openai" as const;
-  private readonly client: OpenAI;
 
-  constructor() {
-    // When no real key is configured, an egress proxy may inject credentials: send no Authorization header.
-    const proxyManaged = !env.OPENAI_API_KEY || env.OPENAI_API_KEY === "proxy" || env.OPENAI_API_KEY === "proxy-injected";
-    this.client = new OpenAI({
-      apiKey: proxyManaged ? "proxy-injected" : env.OPENAI_API_KEY,
-      baseURL: env.OPENAI_BASE_URL || undefined,
+  /**
+   * Built per call rather than in the constructor, because the key can be changed in the
+   * integrations console and must take effect without a restart. The client is cheap to construct;
+   * the network call that follows it is not.
+   */
+  private async clientFor(): Promise<OpenAI> {
+    const { integrationConfig } = await import("@/server/integrations/service");
+    const config = await integrationConfig("openai");
+    const apiKey = config.apiKey ?? env.OPENAI_API_KEY;
+    // With no real key an egress proxy may inject credentials, so send no Authorization header.
+    const proxyManaged = !apiKey || apiKey === "proxy" || apiKey === "proxy-injected";
+    return new OpenAI({
+      apiKey: proxyManaged ? "proxy-injected" : apiKey,
+      baseURL: config.baseUrl || env.OPENAI_BASE_URL || undefined,
       defaultHeaders: proxyManaged ? { Authorization: null } : undefined,
       maxRetries: 2,
       timeout: 120_000,
@@ -20,7 +27,8 @@ export class OpenAiProvider implements AiProvider {
   }
 
   async complete(request: ProviderRequest): Promise<ProviderResponse> {
-    const completion = await this.client.chat.completions.create({
+    const client = await this.clientFor();
+    const completion = await client.chat.completions.create({
       model: request.model,
       temperature: request.temperature,
       max_completion_tokens: request.maxOutputTokens,

@@ -1,5 +1,5 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
-import { env } from "@/server/env";
+import { integrationValue } from "@/server/integrations/service";
 import { createLogger } from "@/server/logger";
 import { AppError } from "@/lib/action-result";
 
@@ -18,13 +18,22 @@ const log = createLogger("stripe");
 
 const API = "https://api.stripe.com/v1";
 
-export function stripeConfigured() {
-  return Boolean(env.STRIPE_SECRET_KEY);
+/**
+ * Credentials come from the integrations console, falling back to the environment. Resolved on every
+ * call rather than at boot, so connecting Stripe from the interface takes effect immediately.
+ */
+export async function stripeConfigured() {
+  return Boolean(await integrationValue("stripe", "secretKey"));
 }
 
-function requireKey() {
-  if (!env.STRIPE_SECRET_KEY) throw new AppError("Stripe is not configured", "STRIPE_NOT_CONFIGURED", 503);
-  return env.STRIPE_SECRET_KEY;
+async function requireKey() {
+  const key = await integrationValue("stripe", "secretKey");
+  if (!key) throw new AppError("Stripe is not configured", "STRIPE_NOT_CONFIGURED", 503);
+  return key;
+}
+
+async function webhookSecret() {
+  return integrationValue("stripe", "webhookSecret");
 }
 
 /** Stripe takes form encoding, including for nested objects: `metadata[orgId]=…`. */
@@ -38,7 +47,7 @@ function encode(value: unknown, prefix = ""): string[] {
 }
 
 async function call<T>(path: string, options: { method?: "GET" | "POST"; body?: Record<string, unknown>; idempotencyKey?: string } = {}): Promise<T> {
-  const key = requireKey();
+  const key = await requireKey();
   const method = options.method ?? "POST";
   const body = options.body ? encode(options.body).join("&") : undefined;
   const url = method === "GET" && body ? `${API}${path}?${body}` : `${API}${path}`;
@@ -136,8 +145,8 @@ export async function cancelSubscriptionAtPeriodEnd(subscriptionId: string, canc
  * fake `customer.subscription.updated`. The comparison is constant-time, and deliveries older than
  * the tolerance are rejected so a captured request cannot be replayed later.
  */
-export function verifyWebhookSignature(payload: string, header: string | null, toleranceSeconds = 300): boolean {
-  const secret = env.STRIPE_WEBHOOK_SECRET;
+export async function verifyWebhookSignature(payload: string, header: string | null, toleranceSeconds = 300): Promise<boolean> {
+  const secret = await webhookSecret();
   if (!secret || !header) return false;
 
   const parts = Object.fromEntries(

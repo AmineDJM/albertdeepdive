@@ -22,7 +22,7 @@ export async function POST(request: Request) {
   const payload = await request.text();
   const signature = request.headers.get("stripe-signature");
 
-  if (!verifyWebhookSignature(payload, signature)) {
+  if (!(await verifyWebhookSignature(payload, signature))) {
     log.warn("rejected webhook with invalid signature");
     return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
   }

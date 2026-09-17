@@ -13,7 +13,7 @@ export const dynamic = "force-dynamic";
 
 export default async function BillingPage() {
   const tenant = await requireTenant();
-  const [t, subscription, report, plans] = await Promise.all([getTranslations(), ensureSubscription(tenant.organizationId), usageReport(tenant.organizationId), listPlans()]);
+  const [t, subscription, report, plans, stripeReady] = await Promise.all([getTranslations(), ensureSubscription(tenant.organizationId), usageReport(tenant.organizationId), listPlans(), stripeConfigured()]);
   const canManage = tenant.role === "OWNER" || tenant.role === "ADMIN";
 
   const cards: PlanCard[] = plans.map((p) => ({
@@ -73,7 +73,7 @@ export default async function BillingPage() {
               canManage={canManage}
               hasStripeCustomer={Boolean(subscription.stripeCustomerId)}
               cancelAtPeriodEnd={subscription.cancelAtPeriodEnd}
-              stripeReady={stripeConfigured()}
+              stripeReady={stripeReady}
             />
           </div>
         </section>

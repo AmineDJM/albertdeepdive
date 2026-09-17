@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { LucideIcon } from "lucide-react";
-import { Activity, AtSign, BookOpen, Building2, CreditCard, Cpu, LayoutList, Mail, ScrollText, Shield, SlidersHorizontal, UserRound, Users } from "lucide-react";
+import { Activity, AtSign, BookOpen, Building2, CreditCard, Cpu, LayoutList, Mail, Plug, ScrollText, Shield, SlidersHorizontal, UserRound, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { roleHasPermission, type Permission, type Role } from "@/lib/auth/permissions";
 
@@ -44,6 +44,7 @@ export const SETTINGS_NAV: { label: string; items: SettingsNavItem[] }[] = [
     label: "Platform",
     items: [
       { href: "/settings/platform", label: "Workspaces & plans", icon: Building2, permission: "settings:manage", hint: "Every customer on this Briefly" },
+      { href: "/settings/integrations", label: "Integrations", icon: Plug, permission: "settings:manage", hint: "Stripe, email, AI, storage" },
     ],
   },
   {

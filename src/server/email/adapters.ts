@@ -34,9 +34,11 @@ export class LogEmailAdapter implements EmailAdapter {
 export class ResendEmailAdapter implements EmailAdapter {
   readonly name = "resend" as const;
   async send(message: OutgoingEmail): Promise<SendResult> {
-    if (!env.RESEND_API_KEY) throw new Error("RESEND_API_KEY is not configured");
+    const { integrationValue } = await import("@/server/integrations/service");
+    const apiKey = await integrationValue("resend", "apiKey");
+    if (!apiKey) throw new Error("Resend is not connected");
     const { Resend } = await import("resend");
-    const resend = new Resend(env.RESEND_API_KEY);
+    const resend = new Resend(apiKey);
     const result = await resend.emails.send({
       from: env.EMAIL_FROM,
       to: message.to,
@@ -59,11 +61,13 @@ export class ResendEmailAdapter implements EmailAdapter {
 export class BrevoEmailAdapter implements EmailAdapter {
   readonly name = "brevo" as const;
   async send(message: OutgoingEmail): Promise<SendResult> {
-    if (!env.BREVO_API_KEY) throw new Error("BREVO_API_KEY is not configured");
-    const sender = parseFrom(env.EMAIL_FROM);
+    const { integrationConfig } = await import("@/server/integrations/service");
+    const config = await integrationConfig("brevo");
+    if (!config.apiKey) throw new Error("Brevo is not connected");
+    const sender = parseFrom(config.from || env.EMAIL_FROM);
     const res = await fetch("https://api.brevo.com/v3/smtp/email", {
       method: "POST",
-      headers: { "api-key": env.BREVO_API_KEY, "content-type": "application/json", accept: "application/json" },
+      headers: { "api-key": config.apiKey, "content-type": "application/json", accept: "application/json" },
       body: JSON.stringify({
         sender,
         to: [{ email: message.to }],
@@ -100,17 +104,19 @@ export class GmailEmailAdapter implements EmailAdapter {
 }
 
 /**
- * Picks the adapter for each message, at send time rather than once at boot: connecting Gmail in
- * the interface has to take effect immediately, without a restart.
+ * Picks the adapter for each message, at send time rather than once at boot: connecting a provider
+ * in the interface has to take effect immediately, without a restart.
  *
- * A connected Gmail mailbox always wins. Otherwise Resend is used when an API key is configured,
- * and otherwise messages are only recorded in the development mailbox.
+ * A connected Gmail mailbox always wins, because somebody went to the trouble of connecting it.
+ * Then Brevo, then Resend. With none of them, messages are recorded in the in-app mailbox and go
+ * nowhere — which is the right behaviour for a development install and is visible in the console.
  */
 export async function resolveEmailAdapter(): Promise<EmailAdapter> {
   const { getGmailConnection } = await import("./gmail");
   if (await getGmailConnection()) return new GmailEmailAdapter();
-  if (env.EMAIL_PROVIDER === "brevo" && env.BREVO_API_KEY) return new BrevoEmailAdapter();
-  if (env.EMAIL_PROVIDER === "resend" && env.RESEND_API_KEY) return new ResendEmailAdapter();
+  const { isConfigured } = await import("@/server/integrations/service");
+  if (await isConfigured("brevo")) return new BrevoEmailAdapter();
+  if (await isConfigured("resend")) return new ResendEmailAdapter();
   return new LogEmailAdapter();
 }
 
