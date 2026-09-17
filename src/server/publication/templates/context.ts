@@ -30,6 +30,12 @@ export type TemplateContext = {
   flowPagesOfArticle: (articleId: string) => DocumentPage[];
   /** Media ids rendered so far (pages render in order, so a continuation page knows what its source page showed). */
   used: Set<string>;
+  /**
+   * Figure height multiplier for the page currently being rendered. Pages render in order and set
+   * this before their template runs, so `figureFor` can apply the page's own image-scale lever
+   * without every template having to thread it through.
+   */
+  imageScale: number;
 };
 
 export type AssetSource = (media: DocumentMedia) => string | null;
@@ -88,5 +94,6 @@ export function createTemplateContext(doc: EditionDocument, mode: AssetMode, ass
     monthLabel: `${monthName(doc.meta.month)} ${doc.meta.year}`,
     flowPagesOfArticle: (id) => (pagesOfArticle.get(id) ?? []).filter((p) => FLOW_TEMPLATES.has(p.template)),
     used: new Set<string>(),
+    imageScale: 1,
   };
 }

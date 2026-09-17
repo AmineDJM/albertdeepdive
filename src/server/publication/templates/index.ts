@@ -1,7 +1,7 @@
 import type { DocumentPage, EditionDocument } from "@/lib/publication/document";
 import { createTemplateContext, type AssetMode, type AssetSource, type TemplateContext } from "./context";
 import { html, join, raw, type Html } from "./html";
-import { pageShell, type TemplateOutput } from "./parts";
+import { imageScaleFactor, pageShell, type TemplateOutput } from "./parts";
 import { articleHero, articleThreeColumn, articleTwoColumn, continuation, event, interview, newsGrid, photoStory, profile, shorts } from "./pages-article";
 import { bddCase, bddVisual } from "./pages-bdd";
 import { backPage, contents, coverA, coverB, quotePage, sectionOpener } from "./pages-front";
@@ -35,7 +35,11 @@ export const CONTINUATION_TEMPLATE = "CONTINUATION";
 
 export function renderPageHtml(page: DocumentPage, ctx: TemplateContext): Html {
   const template = TEMPLATES[page.template] ?? TEMPLATES.ARTICLE_TWO_COLUMN;
-  return pageShell(page, ctx, template(page, ctx));
+  // Pages render in document order, so the context can carry this page's image-scale lever.
+  ctx.imageScale = imageScaleFactor(page.imageScale ?? 0);
+  const out = pageShell(page, ctx, template(page, ctx));
+  ctx.imageScale = 1;
+  return out;
 }
 
 export type DocumentHtmlOptions = {

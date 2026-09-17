@@ -1,5 +1,6 @@
 import { templateByCode } from "@/lib/constants";
 import type { EditionDocument } from "@/lib/publication/document";
+import { DENSITY, LOOSE_ALLOWED, SPARSE_BY_DESIGN } from "@/lib/publication/layout-rules";
 import type { PageMeasurement } from "./paginate";
 import { CONTINUATION_TEMPLATE } from "./paginate";
 
@@ -16,27 +17,17 @@ import { CONTINUATION_TEMPLATE } from "./paginate";
  * the density rules: whitespace there is a decision, not an accident.
  */
 
+/** The engine composes against exactly these numbers (see `@/lib/publication/layout-rules`). */
 export const QUALITY_THRESHOLDS = {
-  /** Editorial pages should sit in this band of the usable area. */
-  targetOccupancy: { min: 0.8, max: 0.95 },
-  /** Below this, a normal editorial page is judged accidentally empty. */
-  hardOccupancyFloor: 0.72,
-  /** A text flow that stops this far short of its box is under-set. */
-  softFlowFill: 0.9,
-  hardFlowFill: 0.75,
-  /** A continuation page must earn its paper. */
-  hardContinuationFill: 0.55,
-  /** Unused height under the last element, as a share of the sheet. */
-  softTailGap: 0.12,
-  hardTailGap: 0.25,
-  /** Identical template repeated this many times in a row reads as machine-made. */
-  repeatedTemplateRun: 3,
+  targetOccupancy: DENSITY.targetOccupancy,
+  hardOccupancyFloor: DENSITY.hardOccupancyFloor,
+  softFlowFill: DENSITY.softFlowFill,
+  hardFlowFill: DENSITY.hardFlowFill,
+  hardContinuationFill: DENSITY.continuationFloor,
+  softTailGap: DENSITY.softTailGap,
+  hardTailGap: DENSITY.hardTailGap,
+  repeatedTemplateRun: DENSITY.repeatedTemplateRun,
 } as const;
-
-/** Pages whose emptiness is a design decision rather than a defect. */
-const SPARSE_BY_DESIGN = new Set(["COVER_A", "COVER_B", "SECTION_OPENER", "QUOTE_PAGE"]);
-/** Pages that are allowed to be loose, but still reported as a soft warning. */
-const LOOSE_ALLOWED = new Set(["CONTENTS", "BACK_PAGE", "PHOTO_STORY", "BDD_VISUAL", "EVENT"]);
 
 export type QualitySeverity = "error" | "warning";
 export type PageIssue = { code: string; severity: QualitySeverity; message: string };
@@ -156,8 +147,12 @@ export function analyzePages(doc: EditionDocument, measures: PageMeasurement[]):
     }
 
     // ── soft warnings ──
-    if (!sparseByDesign && occupancy < QUALITY_THRESHOLDS.targetOccupancy.min && !issues.some((i) => i.code === "UNDERFULL_PAGE")) {
-      issues.push({ code: "LOOSE_PAGE", severity: "warning", message: `${Math.round(occupancy * 100)} % of the usable area is used (target ${Math.round(QUALITY_THRESHOLDS.targetOccupancy.min * 100)} %+).` });
+    // Occupancy alone does not convict a page: ink never covers the whole sheet, because gutters,
+    // leading and grid gaps are part of good typography. A page is only "loose" when the space it
+    // leaves is actually reclaimable — a gap at the foot, or columns that stop short.
+    const reclaimable = tailGap > QUALITY_THRESHOLDS.softTailGap || (minFlowFill !== null && minFlowFill < QUALITY_THRESHOLDS.softFlowFill);
+    if (!sparseByDesign && occupancy < QUALITY_THRESHOLDS.targetOccupancy.min && reclaimable && !issues.some((i) => i.code === "UNDERFULL_PAGE")) {
+      issues.push({ code: "LOOSE_PAGE", severity: "warning", message: `${Math.round(occupancy * 100)} % of the usable area is used, and ${Math.round(tailGap * 100)} % is reclaimable.` });
     }
     if (!sparseByDesign && tailGap > QUALITY_THRESHOLDS.softTailGap && tailGap <= QUALITY_THRESHOLDS.hardTailGap) {
       issues.push({ code: "TAIL_GAP", severity: "warning", message: `${Math.round(tailGap * 100)} % of the page is empty below the last element.` });

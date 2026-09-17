@@ -142,6 +142,17 @@ export const documentPageSchema = z.object({
   isContinuation: z.boolean().optional(),
   storyIds: z.array(z.string()).optional(),
   slices: z.array(pageSliceSchema).optional(),
+  /**
+   * Layout lever: how much the page's figures are scaled inside their template's height band.
+   * Negative grows the pictures to fill a loose page, positive shrinks them to free text area
+   * (which is how a page absorbs a would-be continuation). 0 = the template's natural size.
+   */
+  imageScale: z.number().optional(),
+  /**
+   * Layout lever: the page's baseline copyfit level, used when a page carries no picture to resize
+   * (a news grid, a shorts page). A slice's own `fit`, set while flowing text, overrides it.
+   */
+  textScale: z.number().optional(),
 });
 export type DocumentPage = z.infer<typeof documentPageSchema>;
 

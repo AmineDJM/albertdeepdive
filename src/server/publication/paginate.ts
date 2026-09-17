@@ -1,5 +1,6 @@
 import type { ArticleBlock, DocumentPage, EditionDocument, PageSlice } from "@/lib/publication/document";
 import { splitParagraphAtSentence } from "@/lib/publication/text";
+import { DENSITY, FIT_LEVEL_RANGE, IMAGE_LEVEL_RANGE, SPARSE_BY_DESIGN } from "@/lib/publication/layout-rules";
 
 /**
  * Deterministic pagination.
@@ -217,12 +218,19 @@ export type LayoutReport = {
   fit: { page: number; pageId: string; template: string; articleId: string; ratio: number }[];
   pageCountMismatch?: { expected: number; actual: number };
   engine: string;
+  /** Density passes that re-flowed the issue after moving a page's image/type levers. */
+  densityPasses?: number;
+  densityChanges?: DensityChange[];
+  /** Per-page occupancy of the usable editorial area, after the final pass. */
+  density?: { page: number; template: string; occupancy: number; tailGap: number }[];
 };
 
 export type PaginateOptions = {
   render: (doc: EditionDocument) => string;
   measure: (html: string) => Promise<PageMeasurement[]>;
   maxRounds?: number;
+  /** How many times the density pass may adjust page levers and re-flow. 0 disables it. */
+  densityPasses?: number;
   log?: (message: string, meta?: Record<string, unknown>) => void;
   engine?: string;
 };
@@ -435,12 +443,15 @@ export function applyMeasurements(doc: EditionDocument, measures: PageMeasuremen
   return changed;
 }
 
-export async function paginateDocument(input: EditionDocument, options: PaginateOptions): Promise<{ document: EditionDocument; report: LayoutReport; measures: PageMeasurement[] }> {
+/** One flow pass: reset, then move overflowing text down until nothing overflows. */
+async function flowDocument(
+  input: EditionDocument,
+  options: PaginateOptions,
+  stats: { moved: number; split: number; added: number; copyfit: number; generation: number },
+): Promise<{ document: EditionDocument; measures: PageMeasurement[]; rounds: number }> {
   const maxRounds = options.maxRounds ?? 30;
   const log = options.log ?? (() => {});
   const doc = resetLayout(input);
-  const plannedPages = doc.pages.length;
-  const stats = { moved: 0, split: 0, added: 0, copyfit: 0, generation: 0 };
   let rounds = 0;
   let measures: PageMeasurement[] = [];
   for (;;) {
@@ -454,17 +465,189 @@ export async function paginateDocument(input: EditionDocument, options: Paginate
     const changed = applyMeasurements(doc, measures, stats);
     if (!changed) break;
   }
+  return { document: doc, measures, rounds };
+}
+
+export type DensityChange = { page: number; pageId: string; lever: "image" | "text"; from: number; to: number; reason: string };
+
+/**
+ * Looks at a flowed issue and adjusts each page's bounded levers so the next pass composes better.
+ *
+ * Two moves, both the ones an art director would reach for first:
+ *  · a continuation page that does not earn its paper → shrink the pictures on the page it came
+ *    from (then, only if pictures cannot give enough, tighten its type) so the tail comes back up
+ *    and the extra page disappears entirely;
+ *  · a page left accidentally loose → grow its pictures into the gap, or set its type slightly
+ *    larger when it has no picture to grow.
+ *
+ * Returns a copy with the levers moved; the caller re-flows from it. One step per page per pass
+ * keeps the whole thing convergent.
+ */
+/**
+ * Grows pages that were left accidentally loose: bigger pictures where there are pictures, slightly
+ * larger type where there are none. One step per page per pass, and never on a page that is already
+ * fighting for room, so the search converges.
+ */
+export function planLooseGrowth(doc: EditionDocument, measures: PageMeasurement[]): { document: EditionDocument; changes: DensityChange[] } {
+  const out = clone(doc);
+  const byId = new Map(out.pages.map((p) => [p.id, p]));
+  const changes: DensityChange[] = [];
+  const overflowed = new Set(measures.filter((m) => m.flows.some((f) => f.overflow)).map((m) => m.pageId));
+
+  for (const measure of measures) {
+    const page = byId.get(measure.pageId);
+    if (!page || SPARSE_BY_DESIGN.has(page.template) || overflowed.has(page.id)) continue;
+    const occupancy = measure.density?.occupancy ?? 1;
+    const tailGap = measure.density?.tailGapRatio ?? 0;
+    const underSet = measure.flows.some((f) => f.fillRatio < DENSITY.softFlowFill);
+    const loose = occupancy < DENSITY.targetOccupancy.min && (tailGap > DENSITY.softTailGap || underSet);
+    if (!loose) continue;
+
+    if (measure.imageCount > 0) {
+      const image = page.imageScale ?? 0;
+      if (image > IMAGE_LEVEL_RANGE.min) {
+        page.imageScale = image - 1;
+        changes.push({ page: measure.number, pageId: page.id, lever: "image", from: image, to: image - 1, reason: `loose at ${Math.round(occupancy * 100)} %` });
+        continue;
+      }
+    }
+    const text = page.textScale ?? 0;
+    if (text > FIT_LEVEL_RANGE.min) {
+      page.textScale = text - 1;
+      changes.push({ page: measure.number, pageId: page.id, lever: "text", from: text, to: text - 1, reason: `loose at ${Math.round(occupancy * 100)} %` });
+    }
+  }
+  return { document: out, changes };
+}
+
+/**
+ * Tries to make one sparse continuation page unnecessary.
+ *
+ * This is deliberately all-or-nothing. Nudging the source page one step at a time is worse than
+ * useless: freeing a little room on the source means *less* text spills, so the continuation gets
+ * emptier, not fuller. The only outcome worth having is the extra page disappearing, so the source's
+ * levers go straight to the end of their travel — pictures first, then type as far as readability
+ * allows — and the attempt is kept only if the page count actually drops without new overflow.
+ */
+export function planContinuationAbsorption(
+  doc: EditionDocument,
+  measures: PageMeasurement[],
+  alreadyTried: Set<string>,
+): { document: EditionDocument; changes: DensityChange[]; targetPageId: string } | null {
+  const byNumber = new Map(measures.map((m) => [m.pageId, m]));
+  const sparse = measures
+    .filter((m) => m.template === CONTINUATION_TEMPLATE && (m.density?.occupancy ?? 1) < DENSITY.continuationFloor)
+    .sort((a, b) => (a.density?.occupancy ?? 1) - (b.density?.occupancy ?? 1));
+
+  for (const measure of sparse) {
+    const page = doc.pages.find((p) => p.id === measure.pageId);
+    const sourceId = page?.continuationOfPageId;
+    if (!sourceId || alreadyTried.has(sourceId)) continue;
+    const out = clone(doc);
+    const source = out.pages.find((p) => p.id === sourceId);
+    if (!source) continue;
+    const changes: DensityChange[] = [];
+    const image = source.imageScale ?? 0;
+    const text = source.textScale ?? 0;
+    // Pictures take the strain first; type moves only two steps (5 %), which stays readable.
+    const targetImage = byNumber.get(sourceId)?.imageCount ? IMAGE_LEVEL_RANGE.max : image;
+    const targetText = Math.min(FIT_LEVEL_RANGE.max, 2);
+    if (targetImage === image && targetText <= text) continue;
+    if (targetImage !== image) {
+      source.imageScale = targetImage;
+      changes.push({ page: measure.number, pageId: sourceId, lever: "image", from: image, to: targetImage, reason: `absorb continuation at ${Math.round((measure.density?.occupancy ?? 0) * 100)} %` });
+    }
+    if (targetText > text) {
+      source.textScale = targetText;
+      changes.push({ page: measure.number, pageId: sourceId, lever: "text", from: text, to: targetText, reason: "absorb continuation" });
+    }
+    if (!changes.length) continue;
+    return { document: out, changes, targetPageId: sourceId };
+  }
+  return null;
+}
+
+/** Scores a flowed issue so competing density passes can be compared: lower is better. */
+function densityCost(measures: PageMeasurement[]): number {
+  let cost = 0;
+  for (const m of measures) {
+    if (m.flows.some((f) => f.overflow)) cost += 100;
+    const occupancy = m.density?.occupancy ?? 1;
+    const isContinuation = m.template === CONTINUATION_TEMPLATE;
+    if (SPARSE_BY_DESIGN.has(m.template)) continue;
+    if (isContinuation && occupancy < DENSITY.continuationFloor) cost += 40;
+    if (occupancy < DENSITY.targetOccupancy.min) cost += (DENSITY.targetOccupancy.min - occupancy) * 20;
+  }
+  // Every page costs something, so absorbing a continuation is always an improvement.
+  return cost + measures.length * 0.5;
+}
+
+export async function paginateDocument(input: EditionDocument, options: PaginateOptions): Promise<{ document: EditionDocument; report: LayoutReport; measures: PageMeasurement[] }> {
+  const log = options.log ?? (() => {});
+  const maxDensityPasses = options.densityPasses ?? 6;
+  const plannedPages = input.pages.length;
+  const stats = { moved: 0, split: 0, added: 0, copyfit: 0, generation: 0 };
+
+  const first = await flowDocument(input, options, stats);
+  let rounds = first.rounds;
+  let best = { document: first.document, measures: first.measures, cost: densityCost(first.measures) };
+  const applied: DensityChange[] = [];
+  let passes = 0;
+
+  // ── stage 1 · absorb continuation pages that do not earn their paper ──
+  // Each attempt is judged on one question only: did the issue lose a page without gaining overflow?
+  const tried = new Set<string>();
+  for (;;) {
+    if (passes >= maxDensityPasses) break;
+    const attempt = planContinuationAbsorption(best.document, best.measures, tried);
+    if (!attempt) break;
+    tried.add(attempt.targetPageId);
+    passes += 1;
+    const next = await flowDocument(attempt.document, options, stats);
+    rounds += next.rounds;
+    const absorbed = next.document.pages.length < best.document.pages.length;
+    const clean = !next.measures.some((m) => m.flows.some((f) => f.overflow));
+    log("absorb pass", { pass: passes, pages: next.document.pages.length, was: best.document.pages.length, absorbed, clean });
+    if (absorbed && clean) {
+      best = { document: next.document, measures: next.measures, cost: densityCost(next.measures) };
+      applied.push(...attempt.changes);
+    }
+  }
+
+  // ── stage 2 · grow the pages that are merely loose ──
+  while (passes < maxDensityPasses) {
+    const plan = planLooseGrowth(best.document, best.measures);
+    if (!plan.changes.length) break;
+    passes += 1;
+    const next = await flowDocument(plan.document, options, stats);
+    rounds += next.rounds;
+    const cost = densityCost(next.measures);
+    log("growth pass", { pass: passes, changes: plan.changes.length, cost: Math.round(cost * 10) / 10, best: Math.round(best.cost * 10) / 10 });
+    if (cost >= best.cost) break; // no further gain — keep the best composition
+    best = { document: next.document, measures: next.measures, cost };
+    applied.push(...plan.changes);
+  }
+
+  const doc = best.document;
   renumberPages(doc);
   rebuildToc(doc);
   doc.meta.layout = { paginatedAt: new Date().toISOString(), continuationPages: stats.added, engine: options.engine ?? "chromium-multicol" };
-  const report = buildLayoutReport(doc, measures, { plannedPages, stats, rounds, engine: options.engine ?? "chromium-multicol" });
-  return { document: doc, report, measures };
+  const report = buildLayoutReport(doc, best.measures, { plannedPages, stats, rounds, engine: options.engine ?? "chromium-multicol", densityPasses: passes, densityChanges: applied });
+  return { document: doc, report, measures: best.measures };
 }
 
 export function buildLayoutReport(
   doc: EditionDocument,
   measures: PageMeasurement[],
-  extra: { plannedPages: number; stats: { moved: number; split: number; added: number; copyfit: number }; rounds: number; engine: string; pageCountMismatch?: { expected: number; actual: number } },
+  extra: {
+    plannedPages: number;
+    stats: { moved: number; split: number; added: number; copyfit: number };
+    rounds: number;
+    engine: string;
+    pageCountMismatch?: { expected: number; actual: number };
+    densityPasses?: number;
+    densityChanges?: DensityChange[];
+  },
 ): LayoutReport {
   const remainingOverflow = measures.flatMap((m) =>
     m.flows.filter((f) => f.overflow).map((f) => ({ page: m.number, pageId: m.pageId, articleId: f.articleId, blocks: f.blocks.filter((b) => !b.fits).map((b) => b.id) })),
@@ -487,5 +670,8 @@ export function buildLayoutReport(
     fit,
     pageCountMismatch: extra.pageCountMismatch,
     engine: extra.engine,
+    densityPasses: extra.densityPasses,
+    densityChanges: extra.densityChanges,
+    density: measures.map((m) => ({ page: m.number, template: m.template, occupancy: m.density?.occupancy ?? 0, tailGap: m.density?.tailGapRatio ?? 0 })),
   };
 }

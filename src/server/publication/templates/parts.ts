@@ -1,5 +1,6 @@
 import type { ArticleBlock, DocumentArticle, DocumentMedia, DocumentPage } from "@/lib/publication/document";
 import { PAGE_TEMPLATES } from "@/lib/constants";
+import { fitFactor } from "@/lib/publication/layout-rules";
 import { figure, flowBlocks, renderBlocks } from "./blocks";
 import type { TemplateContext } from "./context";
 import { EMPTY, html, join, when, type Html } from "./html";
@@ -85,7 +86,8 @@ export type FlowOptions = {
 export function flowRegion(page: DocumentPage, article: DocumentArticle, ctx: TemplateContext, options: FlowOptions): Html {
   const slice = page.slices?.find((s) => s.articleId === article.id);
   const blocks = flowBlocks(article, slice, options.exclude);
-  const fit = fitFactor(slice?.fit ?? 0);
+  const level = slice?.fit ?? page.textScale ?? 0;
+  const fit = fitFactor(level);
   const continuation = ctx.continuationOf(page.id);
   const continues = !!continuation?.slices?.some((s) => s.articleId === article.id);
   const foot = continues
@@ -93,13 +95,10 @@ export function flowRegion(page: DocumentPage, article: DocumentArticle, ctx: Te
     : article.byline
       ? html`<span class="byline">Article : ${article.byline}</span>`
       : EMPTY;
-  return html`<div class="flow cols-${options.cols} ${options.grow === false ? "" : "grow"} ${options.className ?? ""}" data-flow="${page.id}:${article.id}" data-page="${page.id}" data-article="${article.id}" data-cols="${options.cols}" data-fit="${slice?.fit ?? 0}" style="--fit:${fit}">${renderBlocks(blocks, ctx.resolver, { dropCap: options.dropCap })}</div><div class="flow-foot">${foot}</div>`;
+  return html`<div class="flow cols-${options.cols} ${options.grow === false ? "" : "grow"} ${options.className ?? ""}" data-flow="${page.id}:${article.id}" data-page="${page.id}" data-article="${article.id}" data-cols="${options.cols}" data-fit="${level}" style="--fit:${fit}">${renderBlocks(blocks, ctx.resolver, { dropCap: options.dropCap })}</div><div class="flow-foot">${foot}</div>`;
 }
 
-/** Copyfit factor for a fit level: each level shrinks the flow's type and leading by 2.5 % (max 4 levels). */
-export function fitFactor(level: number): string {
-  return (1 - 0.025 * Math.max(0, Math.min(4, level))).toFixed(3);
-}
+export { fitFactor, imageScaleFactor, FIT_LEVEL_RANGE, IMAGE_LEVEL_RANGE } from "@/lib/publication/layout-rules";
 
 export function placeholder(page: DocumentPage, message: string): Html {
   const template = PAGE_TEMPLATES.find((t) => t.code === page.template);
@@ -148,7 +147,7 @@ export function mastheadSmall(ctx: TemplateContext): Html {
 
 export function figureFor(media: DocumentMedia | undefined, ctx: TemplateContext, widthMm: number, opts: Parameters<typeof figure>[2] = { widthMm }): Html {
   if (media) ctx.used.add(media.id);
-  return figure(media, ctx.resolver, { ...opts, widthMm });
+  return figure(media, ctx.resolver, { ...opts, widthMm, scale: ctx.imageScale });
 }
 
 /** Visual media of an article not yet shown on an earlier page (photos, charts, diagrams, screenshots; never logos). */

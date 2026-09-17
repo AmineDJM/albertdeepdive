@@ -46,13 +46,19 @@ export function creditLine(media: DocumentMedia | undefined): string | null {
 export function figure(
   media: DocumentMedia | undefined,
   resolver: MediaResolver,
-  options: { widthMm: number; minMm?: number; maxMm?: number; heightMm?: number; contain?: boolean; caption?: boolean; captionOnImage?: boolean; className?: string; position?: string } = { widthMm: 100 },
+  options: { widthMm: number; minMm?: number; maxMm?: number; heightMm?: number; contain?: boolean; caption?: boolean; captionOnImage?: boolean; className?: string; position?: string; scale?: number } = { widthMm: 100 },
 ): Html {
   if (!media) return EMPTY;
   const src = resolver.src(media);
   const aspect = media.aspectRatio && media.aspectRatio > 0 ? media.aspectRatio : 1.5;
   const natural = options.widthMm / aspect;
-  const height = options.heightMm ?? Math.min(options.maxMm ?? 120, Math.max(options.minMm ?? 30, natural));
+  const base = options.heightMm ?? Math.min(options.maxMm ?? 120, Math.max(options.minMm ?? 30, natural));
+  // The page's image-scale lever moves the figure inside its band. It may shrink a little past the
+  // template's own minimum to win back text area, but never below 70 % of it — a picture that small
+  // stops being a picture, and the layout pass is expected to change the page instead.
+  const scale = options.scale ?? 1;
+  const floor = (options.minMm ?? 30) * 0.7;
+  const height = scale === 1 ? base : Math.max(floor, Math.min(options.maxMm ?? 120, base * scale));
   const contain = options.contain ?? (media.kind === "logo" || media.kind === "chart" || media.kind === "diagram" || media.kind === "screenshot");
   const caption = options.caption === false ? EMPTY : captionHtml(media.caption, creditLine(media), options.captionOnImage ? "on-image" : "");
   const img = src
