@@ -144,11 +144,12 @@ function measurement(pageId: string, number: number, template: string, blocks: P
     pageId,
     number,
     template,
-    flows: [{ flow: `${pageId}:a1`, pageId, articleId: "a1", cols: 2, blocks, overflow: blocks.some((b) => !b.fits), fillRatio: 1, extentRatio, fitLevel: 0 }],
+    flows: [{ flow: `${pageId}:a1`, pageId, articleId: "a1", cols: 2, blocks, overflow: blocks.some((b) => !b.fits), fillRatio: 1, extentRatio, fitLevel: 0, slackRatio: 0, orphans: 0, widows: 0 }],
     blank: false,
     textLength: 100,
     imageCount: 0,
     imagesFailed: [],
+    density: { occupancy: 0.9, tailGapRatio: 0.05, sheetHeight: 1000, contentBottom: 950 },
   };
 }
 

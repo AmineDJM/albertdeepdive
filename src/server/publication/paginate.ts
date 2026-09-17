@@ -34,6 +34,25 @@ export type FlowMeasurement = {
   /** Content extent (including overflow columns) relative to the available area: 1.08 = 8 % too much text. */
   extentRatio: number;
   fitLevel: number;
+  /** Unused area of the flow box, as a fraction: 0.3 = the flow's last column stops 30 % short. */
+  slackRatio: number;
+  /** A block's first line left alone at the foot of a column. */
+  orphans: number;
+  /** A block's last line left alone at the head of a column. */
+  widows: number;
+};
+
+/**
+ * Density of one page, measured against `.sheet` — the usable editorial area inside the margins.
+ * `occupancy` is a true union (grid raster) of text, images and coloured panels, so a full-bleed
+ * photo reads ≈ 1 and a headline-plus-one-paragraph page reads low. `tailGapRatio` is the single
+ * most useful defect signal: unused height between the last content and the foot of the sheet.
+ */
+export type PageDensity = {
+  occupancy: number;
+  tailGapRatio: number;
+  sheetHeight: number;
+  contentBottom: number;
 };
 
 export type PageMeasurement = {
@@ -45,12 +64,35 @@ export type PageMeasurement = {
   textLength: number;
   imageCount: number;
   imagesFailed: string[];
+  density: PageDensity;
 };
 
 /** Browser-side measurement (evaluated with page.evaluate). Returns PageMeasurement[]. */
 export const MEASURE_SCRIPT = `(() => {
   const tol = 0.75;
   const inside = (r, fr) => r.right <= fr.right + tol && r.bottom <= fr.bottom + tol;
+  const GX = 48, GY = 64;
+  const isPaper = (c) => !c || c === 'transparent' || c === 'rgba(0, 0, 0, 0)';
+  /** Elements that actually put ink on the page: text leaves, images, coloured panels and rules. */
+  const inkRects = (root) => {
+    const out = [];
+    const all = root.querySelectorAll('*');
+    for (const el of all) {
+      const cs = getComputedStyle(el);
+      if (cs.display === 'none' || cs.visibility === 'hidden' || Number(cs.opacity) === 0) continue;
+      let ink = false;
+      if (el.tagName === 'IMG' || el.tagName === 'SVG' || cs.backgroundImage !== 'none') ink = true;
+      else if (!isPaper(cs.backgroundColor)) ink = true;
+      else {
+        for (const n of el.childNodes) {
+          if (n.nodeType === 3 && n.textContent && n.textContent.trim().length) { ink = true; break; }
+        }
+      }
+      if (!ink) continue;
+      for (const r of el.getClientRects()) if (r.width > 0.5 && r.height > 0.5) out.push(r);
+    }
+    return out;
+  };
   const pages = Array.from(document.querySelectorAll('.page'));
   return pages.map((page) => {
     const flows = Array.from(page.querySelectorAll('.flow[data-flow]')).map((flow) => {
@@ -59,6 +101,8 @@ export const MEASURE_SCRIPT = `(() => {
       let maxBottom = 0;
       let maxRight = 0;
       let maxExtent = 0;
+      let orphans = 0;
+      let widows = 0;
       const colWidth = fr.width / cols;
       const blocks = Array.from(flow.querySelectorAll(':scope > [data-block]')).map((b) => {
         const rects = Array.from(b.getClientRects());
@@ -74,6 +118,15 @@ export const MEASURE_SCRIPT = `(() => {
             const srects = Array.from(s.getClientRects());
             if (srects.length && srects.every((r) => inside(r, fr))) sentencesFit += 1;
             else break;
+          }
+        }
+        // A block broken across columns leaves an orphan (first line alone at a column foot) or a
+        // widow (last line alone at a column head) when its edge fragment is barely one line tall.
+        if (rects.length > 1 && (type === 'paragraph' || type === 'qa' || type === 'testimony')) {
+          const lh = parseFloat(getComputedStyle(b).lineHeight) || 0;
+          if (lh > 0) {
+            if (rects[0].height < lh * 1.6) orphans += 1;
+            if (rects[rects.length - 1].height < lh * 1.6) widows += 1;
           }
         }
         for (const r of rects) {
@@ -98,11 +151,37 @@ export const MEASURE_SCRIPT = `(() => {
         fillRatio: Math.round(fill * 1000) / 1000,
         extentRatio: fr.height > 0 ? Math.round((maxExtent / (cols * fr.height)) * 1000) / 1000 : 0,
         fitLevel: Number(flow.getAttribute('data-fit') || 0),
+        slackRatio: Math.round((1 - fill) * 1000) / 1000,
+        orphans,
+        widows,
       };
     });
     const imgs = Array.from(page.querySelectorAll('img[data-media]'));
     const failed = imgs.filter((i) => !i.complete || i.naturalWidth === 0).map((i) => i.getAttribute('data-media'));
     const text = (page.innerText || '').replace(/\\s+/g, ' ').trim();
+    // ── density, measured against the usable editorial area (.sheet) ──
+    const sheet = page.querySelector('.sheet') || page;
+    const sr = sheet.getBoundingClientRect();
+    const rects = inkRects(page);
+    let contentBottom = sr.top;
+    const grid = new Uint8Array(GX * GY);
+    const cw = sr.width / GX;
+    const ch = sr.height / GY;
+    for (const r of rects) {
+      const top = Math.max(r.top, sr.top), bottom = Math.min(r.bottom, sr.bottom);
+      const left = Math.max(r.left, sr.left), right = Math.min(r.right, sr.right);
+      if (bottom <= top || right <= left) continue;
+      contentBottom = Math.max(contentBottom, bottom);
+      if (cw <= 0 || ch <= 0) continue;
+      const x0 = Math.max(0, Math.floor((left - sr.left) / cw));
+      const x1 = Math.min(GX - 1, Math.ceil((right - sr.left) / cw) - 1);
+      const y0 = Math.max(0, Math.floor((top - sr.top) / ch));
+      const y1 = Math.min(GY - 1, Math.ceil((bottom - sr.top) / ch) - 1);
+      for (let y = y0; y <= y1; y += 1) for (let x = x0; x <= x1; x += 1) grid[y * GX + x] = 1;
+    }
+    let filled = 0;
+    for (let i = 0; i < grid.length; i += 1) filled += grid[i];
+    const tailGap = sr.height > 0 ? Math.max(0, (sr.bottom - contentBottom) / sr.height) : 0;
     return {
       pageId: page.getAttribute('data-page'),
       number: Number(page.getAttribute('data-number')),
@@ -112,6 +191,12 @@ export const MEASURE_SCRIPT = `(() => {
       textLength: text.length,
       imageCount: imgs.length,
       imagesFailed: failed,
+      density: {
+        occupancy: Math.round((filled / (GX * GY)) * 1000) / 1000,
+        tailGapRatio: Math.round(tailGap * 1000) / 1000,
+        sheetHeight: Math.round(sr.height * 10) / 10,
+        contentBottom: Math.round((contentBottom - sr.top) * 10) / 10,
+      },
     };
   });
 })()`;
