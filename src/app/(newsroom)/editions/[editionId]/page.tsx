@@ -55,6 +55,7 @@ export default async function ControlRoomPage({ params }: { params: Promise<{ ed
             ? `${output.recipientCount} recipient${output.recipientCount === 1 ? "" : "s"} · ${enumLabel(output.status)}`
             : enumLabel(output.status),
     locked: output?.status === "PUBLISHED",
+    publicUrl: format === "WEB" && output?.publicSlug ? `/r/${output.publicSlug}` : null,
   }));
   const options = nextStatuses(d.edition.status).filter((st) => st !== "PUBLISHED" && st !== "ARCHIVED" || hasPermission(user, st === "PUBLISHED" ? "edition:publish" : "edition:archive"));
 
@@ -96,7 +97,7 @@ export default async function ControlRoomPage({ params }: { params: Promise<{ ed
               <div>
                 <SectionTitle>Where this edition goes</SectionTitle>
                 <div className="mt-2">
-                  <OutputPicker editionId={editionId} rows={outputRows} canEdit={canTransition} />
+                  <OutputPicker editionId={editionId} rows={outputRows} canEdit={canTransition} canPublish={hasPermission(user, "edition:publish")} />
                 </div>
               </div>
               <div className="flex flex-wrap gap-2">

@@ -17,6 +17,12 @@ export type EmailLayoutInput = {
   secondaryCta?: { label: string; url: string };
   footer?: string;
   appName?: string;
+  /**
+   * A message that is already a complete document — a rendered edition, say. Wrapping it in the
+   * transactional layout would nest one <html> inside another, which mail clients render badly.
+   */
+  rawHtml?: string;
+  rawText?: string;
 };
 
 function esc(s: string) {
@@ -39,6 +45,7 @@ function renderBlock(b: EmailBlock): string {
 }
 
 export function renderEmailLayout(input: EmailLayoutInput) {
+  if (input.rawHtml) return input.rawHtml;
   const app = input.appName ?? "Briefly";
   const button = (cta: { label: string; url: string }, primary: boolean) =>
     `<a href="${esc(cta.url)}" style="display:inline-block;padding:11px 18px;border-radius:6px;font-size:14px;font-weight:600;text-decoration:none;${primary ? "background:#10203A;color:#ffffff;" : "background:#ffffff;color:#10203A;border:1px solid #d1d5db;"}margin-right:8px;">${esc(cta.label)}</a>`;
@@ -67,6 +74,7 @@ ${input.preheader ? `<div style="display:none;max-height:0;overflow:hidden;opaci
 }
 
 export function emailTextFallback(input: EmailLayoutInput) {
+  if (input.rawText) return input.rawText;
   const lines: string[] = [input.title, ""];
   for (const b of input.blocks) {
     if (b.type === "paragraph") lines.push(b.text, "");

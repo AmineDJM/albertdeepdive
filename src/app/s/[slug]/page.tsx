@@ -12,9 +12,9 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   if (!publication) return { title: "Not found" };
   const title = `Subscribe to ${publication.name}`;
   return {
-    title,
+    title: { absolute: title },
     description: publication.description ?? `Get ${publication.name} from ${publication.organization?.name ?? ""}.`.trim(),
-    openGraph: { title, description: publication.description ?? undefined, type: "website" },
+    openGraph: { title, description: publication.description ?? undefined, siteName: publication.organization?.name, type: "website" },
     robots: { index: true, follow: true },
   };
 }

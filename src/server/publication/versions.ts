@@ -274,6 +274,10 @@ export async function publishEdition(editionId: string, versionId: string, userI
     .where(eq(editions.id, editionId))
     .returning();
   const [immutable] = await db.update(publicationVersions).set({ isImmutable: true }).where(eq(publicationVersions.id, versionId)).returning();
+  // Publishing the edition is what makes the laid-out issue public, so its magazine output goes
+  // with it. Email and web are separate acts: one is sent, the other made readable, each on its own.
+  const { linkMagazineVersion } = await import("@/server/outputs/publish");
+  await linkMagazineVersion(editionId, versionId);
   await audit({ action: "edition.publish", userId, entityType: "EDITION", entityId: editionId, editionId, metadata: { versionId, label: version.label } });
   log.info("edition published", { editionId, versionId });
   return { edition: updated, version: immutable };

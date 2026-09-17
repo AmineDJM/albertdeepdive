@@ -68,7 +68,9 @@ export async function enableOutput(editionId: string, format: OutputFormat, user
   const existing = await db.query.editionOutputs.findFirst({ where: and(eq(s.editionOutputs.editionId, editionId), eq(s.editionOutputs.format, format)) });
   if (existing) return existing;
 
-  const config: OutputConfig = format === "EMAIL" ? { subject: edition.title } : {};
+  // No default subject on purpose. "Acme Weekly — Issue N°7" is a worse subject line than the cover
+  // headline, which is the actual news; the renderer uses the headline unless an editor overrides it.
+  const config: OutputConfig = {};
   const [row] = await db
     .insert(s.editionOutputs)
     .values({
@@ -110,11 +112,11 @@ export async function updateOutputConfig(editionId: string, format: OutputFormat
   return row;
 }
 
-export async function setOutputStatus(
-  outputId: string,
-  status: (typeof s.outputStatusEnum.enumValues)[number],
-  extra: Partial<Pick<EditionOutput, "versionId" | "providerCampaignId" | "recipientCount" | "lastError" | "generatedAt" | "publishedAt">> = {},
-) {
+export type OutputStatusPatch = Partial<
+  Pick<EditionOutput, "versionId" | "providerCampaignId" | "recipientCount" | "deliveredCount" | "openedCount" | "clickedCount" | "lastError" | "generatedAt" | "publishedAt" | "scheduledFor">
+>;
+
+export async function setOutputStatus(outputId: string, status: (typeof s.outputStatusEnum.enumValues)[number], extra: OutputStatusPatch = {}) {
   const [row] = await db.update(s.editionOutputs).set({ status, ...extra }).where(eq(s.editionOutputs.id, outputId)).returning();
   if (!row) throw new NotFoundError("Output");
   return row;
