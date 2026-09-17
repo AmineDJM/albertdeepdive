@@ -21,7 +21,8 @@ services:
     dockerfilePath: ./Dockerfile
     plan: standard # Chromium renders the PDF in this process and needs the memory.
     region: frankfurt
-    branch: main
+    # No branch is pinned: Render follows the repository's default branch, so this works whether
+    # the code lives on main or on the branch it was developed on.
     # Migrations run on every deploy; the demo issue is loaded once, into an empty database only.
     preDeployCommand: pnpm db:migrate && pnpm db:seed:once
     healthCheckPath: /api/health
@@ -98,7 +99,6 @@ services:
     dockerCommand: pnpm tick
     plan: starter
     region: frankfurt
-    branch: main
     schedule: "5 * * * *"
     envVars:
       - key: APP_HOST

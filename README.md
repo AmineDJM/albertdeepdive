@@ -162,7 +162,8 @@ editor and then as the editor in chief, publishes the issue and archives it. Set
 ### Render, in one click
 
 `render.yaml` describes the whole installation. In Render, choose **New → Blueprint**, point it at
-this repository, and it creates the PostgreSQL database, the web service with a disk for
+this repository and pick the branch you want to run (the blueprint itself pins no branch, so it
+follows whichever one you deploy), and it creates the PostgreSQL database, the web service with a disk for
 photographs and exports, and the hourly automation job. The service is built from the `Dockerfile`
 on Playwright's own image, so the Chromium that renders the print PDF is already there with the
 libraries and fonts it needs. **The only value it asks you for is your
