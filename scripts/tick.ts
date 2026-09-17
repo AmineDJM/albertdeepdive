@@ -3,7 +3,17 @@
  * work inside the service that already has the database, the storage disk and Chromium, rather
  * than building a second copy of the world in the cron container.
  */
-const url = (process.env.APP_URL ?? process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000").replace(/\/$/, "");
+/**
+ * Render's blueprint can pass a service's host but not its full URL, so accept either and add
+ * the scheme when it is missing.
+ */
+function baseUrl(): string {
+  const raw = process.env.APP_URL || process.env.APP_HOST || process.env.RENDER_EXTERNAL_URL || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  const value = raw.trim().replace(/\/$/, "");
+  return /^https?:\/\//.test(value) ? value : `https://${value}`;
+}
+
+const url = baseUrl();
 const token = process.env.AUTOMATION_TICK_TOKEN;
 
 async function main() {

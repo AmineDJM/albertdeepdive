@@ -52,11 +52,10 @@ services:
       - key: SEED_ADMIN_PASSWORD
         generateValue: true
 
-      - key: NEXT_PUBLIC_APP_URL
-        fromService:
-          type: web
-          name: albertdeepdive
-          property: url
+      # NEXT_PUBLIC_APP_URL is not set here on purpose: a blueprint cannot know a service's
+      # address before the service exists. Render publishes it to the running process as
+      # RENDER_EXTERNAL_URL, and the application reads that. Set NEXT_PUBLIC_APP_URL yourself
+      # only when you put a custom domain in front.
       - key: APP_NAME
         value: Albert Deep Dive
       - key: NODE_ENV
@@ -102,11 +101,11 @@ services:
     branch: main
     schedule: "5 * * * *"
     envVars:
-      - key: APP_URL
+      - key: APP_HOST
         fromService:
           type: web
           name: albertdeepdive
-          property: url
+          property: host
       - key: AUTOMATION_TICK_TOKEN
         fromService:
           type: web

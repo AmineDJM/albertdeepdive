@@ -39,8 +39,25 @@ const schema = z.object({
   AUTOMATION_TICK_TOKEN: z.string().default("change-me"),
 });
 
+/**
+ * The address the newsroom hands out — in contribution links, signed storage URLs and emails.
+ *
+ * A hosting platform only knows a service's public URL once it exists, which is too late for a
+ * blueprint to set it. Render, Railway, Fly and Vercel all publish it to the running process
+ * instead, so the environment variable stays optional and this fills it in.
+ */
+export function publicAppUrl(source: Record<string, string | undefined>): string | undefined {
+  const explicit = source.NEXT_PUBLIC_APP_URL?.trim();
+  if (explicit) return explicit;
+  const platform = source.RENDER_EXTERNAL_URL || source.RAILWAY_PUBLIC_DOMAIN || source.FLY_APP_NAME || source.VERCEL_URL;
+  if (!platform) return undefined;
+  const value = platform.trim();
+  if (/^https?:\/\//.test(value)) return value;
+  return `https://${source.FLY_APP_NAME ? `${value}.fly.dev` : value}`;
+}
+
 function loadEnv() {
-  const parsed = schema.safeParse(process.env);
+  const parsed = schema.safeParse({ ...process.env, NEXT_PUBLIC_APP_URL: publicAppUrl(process.env) });
   if (!parsed.success) {
     const issues = parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("\n");
     throw new Error(`Invalid environment configuration:\n${issues}`);
