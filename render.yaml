@@ -11,6 +11,9 @@ databases:
     user: albertdeepdive
     plan: basic-256mb
     postgresMajorVersion: "16"
+    # Must match the services' region. The connection string Render hands the service is the
+    # internal one (host "dpg-…-a", no domain), and that name only resolves within one region.
+    region: frankfurt
 
 services:
   - type: web
@@ -24,7 +27,8 @@ services:
     # No branch is pinned: Render follows the repository's default branch, so this works whether
     # the code lives on main or on the branch it was developed on.
     # Migrations run on every deploy; the demo issue is loaded once, into an empty database only.
-    preDeployCommand: pnpm db:migrate && pnpm db:seed:once
+    # One command (not "a && b"): some platforms run the pre-deploy without a shell.
+    preDeployCommand: pnpm predeploy
     healthCheckPath: /api/health
     autoDeploy: true
     disk:
