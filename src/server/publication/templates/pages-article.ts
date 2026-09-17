@@ -178,6 +178,16 @@ ${flowRegion(page, article, ctx, { cols: 2, className: "compact" })}`;
 }
 
 /** Pages inserted by the pagination pass: "Continued from page N" + the moved blocks. */
+/**
+ * A slice that carries the article's first block is a story *starting* on this page, not a jump:
+ * it must not be labelled "continued from". This is what lets a jump page's empty tail be filled
+ * with the next story instead of being left three-quarters blank.
+ */
+function isArticleStart(article: DocumentArticle, slice: { blockIds: string[] }): boolean {
+  const first = article.body[0]?.id;
+  return !!first && slice.blockIds.includes(first);
+}
+
 export function continuation(page: DocumentPage, ctx: TemplateContext): TemplateOutput {
   const slices = page.slices ?? [];
   const from = page.continuationOf;
@@ -187,8 +197,9 @@ export function continuation(page: DocumentPage, ctx: TemplateContext): Template
     if (!article) return { body: placeholder(page, "Missing article."), className: "continuation" };
     const leftovers = leftoverMedia(article, ctx, 3);
     const stripWidth = leftovers.length ? colWidth(12 / leftovers.length) : 0;
+    const startsHere = isArticleStart(article, slices[0]);
     const body = html`<div class="article-head rule">
-<div class="blk continued-from">Continued from page ${from ?? "?"}</div>
+${when(!startsHere, () => html`<div class="blk continued-from">Continued from page ${from ?? "?"}</div>`)}
 <div class="kicker"><span class="dot"></span>${kickerFor(article, ctx, page)}</div>
 <h1 class="headline sm ${headlineClass(article)}">${article.headline || article.storyTitle || ""}</h1>
 </div>
@@ -201,7 +212,7 @@ ${when(leftovers.length, () => html`<div class="leftover-strip" style="grid-temp
     const article = ctx.article(slice.articleId);
     if (!article) return EMPTY;
     return html`<div class="news-item" style="width:${width.toFixed(1)}mm">
-<div class="blk continued-from">Continued from page ${from ?? "?"}</div>
+${when(!isArticleStart(article, slice), () => html`<div class="blk continued-from">Continued from page ${from ?? "?"}</div>`)}
 <div class="kicker"><span class="dot"></span>${kickerFor(article, ctx, page)}</div>
 <h2 class="headline xs ${headlineClass(article)}">${article.headline || article.storyTitle || ""}</h2>
 ${flowRegion(page, article, ctx, { cols: 1, className: "compact" })}

@@ -1,6 +1,6 @@
 import type { ArticleBlock, DocumentPage, EditionDocument, PageSlice } from "@/lib/publication/document";
 import { splitParagraphAtSentence } from "@/lib/publication/text";
-import { DENSITY, FIT_LEVEL_RANGE, IMAGE_LEVEL_RANGE, SPARSE_BY_DESIGN } from "@/lib/publication/layout-rules";
+import { DENSITY, FIT_LEVEL_RANGE, IMAGE_LEVEL_RANGE, SPARSE_BY_DESIGN, TEMPLATE_ALTERNATIVES } from "@/lib/publication/layout-rules";
 
 /**
  * Deterministic pagination.
@@ -221,6 +221,8 @@ export type LayoutReport = {
   /** Density passes that re-flowed the issue after moving a page's image/type levers. */
   densityPasses?: number;
   densityChanges?: DensityChange[];
+  /** Article pages re-set in a denser layout variant to avoid a jump page. */
+  templateSwaps?: TemplateSwap[];
   /** Per-page occupancy of the usable editorial area, after the final pass. */
   density?: { page: number; template: string; occupancy: number; tailGap: number }[];
 };
@@ -567,6 +569,84 @@ export function planContinuationAbsorption(
   return null;
 }
 
+export type TemplateSwap = { pageId: string; from: string; to: string; reason: string };
+
+/**
+ * Re-sets the story behind a sparse continuation in a denser layout variant.
+ *
+ * This is the move that actually removes most jump pages: a story allocated a big opening picture
+ * spills a paragraph or two onto a page that then sits three-quarters empty, when the same story
+ * set in two or three columns lands cleanly on one page. Candidates are tried from the least to the
+ * most dense, so a story only loses its picture if it has to.
+ */
+export function planTemplateSwap(doc: EditionDocument, measures: PageMeasurement[], tried: Set<string>): { document: EditionDocument; swap: TemplateSwap } | null {
+  const sparse = measures
+    .filter((m) => m.template === CONTINUATION_TEMPLATE && (m.density?.occupancy ?? 1) < DENSITY.continuationFloor)
+    .sort((a, b) => (a.density?.occupancy ?? 1) - (b.density?.occupancy ?? 1));
+
+  for (const measure of sparse) {
+    const page = doc.pages.find((p) => p.id === measure.pageId);
+    const sourceId = page?.continuationOfPageId;
+    if (!sourceId) continue;
+    const source = doc.pages.find((p) => p.id === sourceId);
+    if (!source || source.isLocked) continue;
+    for (const candidate of TEMPLATE_ALTERNATIVES[source.template] ?? []) {
+      const key = `${sourceId}:${candidate}`;
+      if (tried.has(key)) continue;
+      tried.add(key);
+      const out = clone(doc);
+      const target = out.pages.find((p) => p.id === sourceId);
+      if (!target) continue;
+      const from = target.template;
+      target.template = candidate;
+      return { document: out, swap: { pageId: sourceId, from, to: candidate, reason: `continuation ${Math.round((measure.density?.occupancy ?? 0) * 100)} % full` } };
+    }
+  }
+  return null;
+}
+
+/**
+ * Fills the empty tail of a jump page with the story that follows it.
+ *
+ * Some articles genuinely need more than one page: no variant and no resizing can make 1.3 pages of
+ * text fit on one. What a magazine never does is leave the second page three-quarters blank — it
+ * starts the next story underneath. So the following page's article is moved onto the jump page and
+ * its own page removed; whatever does not fit flows on as usual, but now behind a page that is full.
+ */
+export function planTailFill(doc: EditionDocument, measures: PageMeasurement[], tried: Set<string>): { document: EditionDocument; moved: { pageId: string; articleId: string } } | null {
+  const measureById = new Map(measures.map((m) => [m.pageId, m]));
+  for (const [index, page] of doc.pages.entries()) {
+    if (page.template !== CONTINUATION_TEMPLATE) continue;
+    const measure = measureById.get(page.id);
+    const occupancy = measure?.density?.occupancy ?? 1;
+    if (occupancy >= DENSITY.continuationFloor) continue;
+    if (tried.has(page.id)) continue;
+
+    const next = doc.pages[index + 1];
+    if (!next || next.isLocked) continue;
+    // Only absorb a plain, single-story article page — never a cover, opener, contents or a
+    // structured page whose shape carries meaning, and never another jump page.
+    if (next.template === CONTINUATION_TEMPLATE || SPARSE_BY_DESIGN.has(next.template)) continue;
+    if (!(TEMPLATE_ALTERNATIVES[next.template] ?? []).length && next.template !== "ARTICLE_THREE_COLUMN") continue;
+    if (next.articleIds.length !== 1) continue;
+    const articleId = next.articleIds[0];
+    const article = doc.articles.find((a) => a.id === articleId);
+    if (!article || !article.body.length) continue;
+
+    tried.add(page.id);
+    const out = clone(doc);
+    const target = out.pages.find((p) => p.id === page.id);
+    const victim = out.pages.find((p) => p.id === next.id);
+    if (!target || !victim) continue;
+    target.articleIds = [...target.articleIds, articleId];
+    target.slices = [...(target.slices ?? []), { articleId, blockIds: article.body.map((b) => b.id) }];
+    target.mediaIds = [...target.mediaIds, ...victim.mediaIds];
+    out.pages = out.pages.filter((p) => p.id !== victim.id);
+    return { document: out, moved: { pageId: page.id, articleId } };
+  }
+  return null;
+}
+
 /** Scores a flowed issue so competing density passes can be compared: lower is better. */
 function densityCost(measures: PageMeasurement[]): number {
   let cost = 0;
@@ -594,6 +674,27 @@ export async function paginateDocument(input: EditionDocument, options: Paginate
   const applied: DensityChange[] = [];
   let passes = 0;
 
+  // ── stage 0 · re-set a spilling story in a denser layout variant ──
+  // Changing the composition comes before resizing anything: a story that needs two columns rather
+  // than a full-width opening picture keeps its type and its pictures at their natural size.
+  const triedTemplates = new Set<string>();
+  const swaps: TemplateSwap[] = [];
+  for (;;) {
+    if (passes >= maxDensityPasses) break;
+    const attempt = planTemplateSwap(best.document, best.measures, triedTemplates);
+    if (!attempt) break;
+    passes += 1;
+    const next = await flowDocument(attempt.document, options, stats);
+    rounds += next.rounds;
+    const fewerPages = next.document.pages.length < best.document.pages.length;
+    const clean = !next.measures.some((m) => m.flows.some((f) => f.overflow));
+    log("variant pass", { pass: passes, swap: `${attempt.swap.from}→${attempt.swap.to}`, pages: next.document.pages.length, was: best.document.pages.length, fewerPages, clean });
+    if (fewerPages && clean) {
+      best = { document: next.document, measures: next.measures, cost: densityCost(next.measures) };
+      swaps.push(attempt.swap);
+    }
+  }
+
   // ── stage 1 · absorb continuation pages that do not earn their paper ──
   // Each attempt is judged on one question only: did the issue lose a page without gaining overflow?
   const tried = new Set<string>();
@@ -611,6 +712,25 @@ export async function paginateDocument(input: EditionDocument, options: Paginate
     if (absorbed && clean) {
       best = { document: next.document, measures: next.measures, cost: densityCost(next.measures) };
       applied.push(...attempt.changes);
+    }
+  }
+
+  // ── stage 1b · fill what is left of a jump page with the story that follows ──
+  const triedFills = new Set<string>();
+  for (;;) {
+    if (passes >= maxDensityPasses) break;
+    const attempt = planTailFill(best.document, best.measures, triedFills);
+    if (!attempt) break;
+    passes += 1;
+    const next = await flowDocument(attempt.document, options, stats);
+    rounds += next.rounds;
+    const clean = !next.measures.some((m) => m.flows.some((f) => f.overflow));
+    const sparseBefore = best.measures.filter((m) => m.template === CONTINUATION_TEMPLATE && (m.density?.occupancy ?? 1) < DENSITY.continuationFloor).length;
+    const sparseAfter = next.measures.filter((m) => m.template === CONTINUATION_TEMPLATE && (m.density?.occupancy ?? 1) < DENSITY.continuationFloor).length;
+    const noWorse = next.document.pages.length <= best.document.pages.length;
+    log("tail-fill pass", { pass: passes, pages: next.document.pages.length, was: best.document.pages.length, sparseBefore, sparseAfter, clean });
+    if (clean && noWorse && sparseAfter < sparseBefore) {
+      best = { document: next.document, measures: next.measures, cost: densityCost(next.measures) };
     }
   }
 
@@ -632,7 +752,7 @@ export async function paginateDocument(input: EditionDocument, options: Paginate
   renumberPages(doc);
   rebuildToc(doc);
   doc.meta.layout = { paginatedAt: new Date().toISOString(), continuationPages: stats.added, engine: options.engine ?? "chromium-multicol" };
-  const report = buildLayoutReport(doc, best.measures, { plannedPages, stats, rounds, engine: options.engine ?? "chromium-multicol", densityPasses: passes, densityChanges: applied });
+  const report = buildLayoutReport(doc, best.measures, { plannedPages, stats, rounds, engine: options.engine ?? "chromium-multicol", densityPasses: passes, densityChanges: applied, templateSwaps: swaps });
   return { document: doc, report, measures: best.measures };
 }
 
@@ -647,6 +767,7 @@ export function buildLayoutReport(
     pageCountMismatch?: { expected: number; actual: number };
     densityPasses?: number;
     densityChanges?: DensityChange[];
+    templateSwaps?: TemplateSwap[];
   },
 ): LayoutReport {
   const remainingOverflow = measures.flatMap((m) =>
@@ -672,6 +793,7 @@ export function buildLayoutReport(
     engine: extra.engine,
     densityPasses: extra.densityPasses,
     densityChanges: extra.densityChanges,
+    templateSwaps: extra.templateSwaps,
     density: measures.map((m) => ({ page: m.number, template: m.template, occupancy: m.density?.occupancy ?? 0, tailGap: m.density?.tailGapRatio ?? 0 })),
   };
 }

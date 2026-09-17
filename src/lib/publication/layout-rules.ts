@@ -36,6 +36,23 @@ export const SPARSE_BY_DESIGN = new Set(["COVER_A", "COVER_B", "SECTION_OPENER",
 /** These may run loose without failing the issue, but are still reported. */
 export const LOOSE_ALLOWED = new Set(["CONTENTS", "BACK_PAGE", "PHOTO_STORY", "BDD_VISUAL", "EVENT"]);
 
+/**
+ * Layout variants an article page may be recomposed into, ordered by increasing text capacity.
+ *
+ * The engine does not decide up front that a story is "a hero page"; when a composition spills onto
+ * a jump page that cannot earn its paper, it re-sets the story in a denser variant of the same
+ * family and measures again. Structured pages (a Business Deep Dive case, an event, a cover) have
+ * no alternative: their shape carries meaning.
+ */
+export const TEMPLATE_ALTERNATIVES: Record<string, readonly string[]> = {
+  ARTICLE_HERO: ["ARTICLE_TWO_COLUMN", "ARTICLE_THREE_COLUMN"],
+  ARTICLE_TWO_COLUMN: ["ARTICLE_THREE_COLUMN"],
+  PROFILE: ["ARTICLE_TWO_COLUMN", "ARTICLE_THREE_COLUMN"],
+  INTERVIEW: ["ARTICLE_TWO_COLUMN", "ARTICLE_THREE_COLUMN"],
+  PHOTO_STORY: ["ARTICLE_TWO_COLUMN"],
+  SHORTS: ["NEWS_GRID"],
+};
+
 export function fitFactor(level: number): string {
   return (1 - 0.025 * Math.max(FIT_LEVEL_RANGE.min, Math.min(FIT_LEVEL_RANGE.max, level))).toFixed(3);
 }
