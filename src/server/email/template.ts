@@ -39,7 +39,7 @@ function renderBlock(b: EmailBlock): string {
 }
 
 export function renderEmailLayout(input: EmailLayoutInput) {
-  const app = input.appName ?? "Albert Deep Dive";
+  const app = input.appName ?? "Briefly";
   const button = (cta: { label: string; url: string }, primary: boolean) =>
     `<a href="${esc(cta.url)}" style="display:inline-block;padding:11px 18px;border-radius:6px;font-size:14px;font-weight:600;text-decoration:none;${primary ? "background:#10203A;color:#ffffff;" : "background:#ffffff;color:#10203A;border:1px solid #d1d5db;"}margin-right:8px;">${esc(cta.label)}</a>`;
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>${esc(input.title)}</title></head>
@@ -60,7 +60,7 @@ ${input.preheader ? `<div style="display:none;max-height:0;overflow:hidden;opaci
   ${input.cta || input.secondaryCta ? `<div style="margin:20px 0 8px;">${input.cta ? button(input.cta, true) : ""}${input.secondaryCta ? button(input.secondaryCta, false) : ""}</div>` : ""}
   ${input.cta ? `<p style="margin:12px 0 0;font-size:12px;line-height:18px;color:#6b7280;">If the button does not work, copy this link: <a href="${esc(input.cta.url)}" style="color:#1F6FB2;word-break:break-all;">${esc(input.cta.url)}</a></p>` : ""}
 </td></tr>
-<tr><td style="padding:18px 28px 24px;border-top:1px solid #f0f0ee;font-size:12px;line-height:18px;color:#9ca3af;">${esc(input.footer ?? `${app} · the monthly newsroom of Albert School`)}</td></tr>
+<tr><td style="padding:18px 28px 24px;border-top:1px solid #f0f0ee;font-size:12px;line-height:18px;color:#9ca3af;">${esc(input.footer ?? app)}</td></tr>
 </table>
 </td></tr></table>
 </body></html>`;

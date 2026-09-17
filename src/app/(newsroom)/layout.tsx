@@ -7,11 +7,16 @@ import { listNotificationsForUser } from "@/server/editions/notifications";
 import { db } from "@/server/db/client";
 import * as s from "@/server/db/schema";
 import { NewsroomShell } from "@/components/newsroom/shell";
+import { getTenant, listMyOrganizations } from "@/server/tenancy/context";
 
 export default async function NewsroomLayout({ children }: { children: React.ReactNode }) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   if (!NEWSROOM_ROLES.includes(user.role)) redirect("/login?reason=contributor");
+  const [tenant, workspaces] = await Promise.all([getTenant(), listMyOrganizations()]);
+  // Someone with no workspace has nothing to look at — every screen would be empty. Send them to
+  // create one instead of showing them an app that appears broken.
+  if (!tenant) redirect("/onboarding");
   const [current, editions, notifications] = await Promise.all([getCurrentEdition(), listEditions(), listNotificationsForUser(user.id, 15)]);
   let badges = { inbox: 0, flags: 0 };
   if (current) {
@@ -25,6 +30,9 @@ export default async function NewsroomLayout({ children }: { children: React.Rea
   return (
     <NewsroomShell
       user={{ name: user.name, email: user.email, role: user.role }}
+      workspace={tenant ? { name: tenant.name, role: tenant.role } : null}
+      workspaces={workspaces.map((w) => ({ organizationId: w.organizationId, name: w.name, slug: w.slug, role: w.role }))}
+      impersonated={tenant?.impersonated ?? false}
       currentEdition={current ? toSidebar(current) : null}
       editions={editions.filter((e) => e.status !== "ARCHIVED").slice(0, 8).map(toSidebar)}
       badges={badges}

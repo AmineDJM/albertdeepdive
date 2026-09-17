@@ -3,7 +3,7 @@ import { z } from "zod";
 const schema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   NEXT_PUBLIC_APP_URL: z.string().url().default("http://localhost:3000"),
-  APP_NAME: z.string().default("Albert Deep Dive"),
+  APP_NAME: z.string().default("Briefly"),
   LOG_LEVEL: z.enum(["debug", "info", "warn", "error"]).default("info"),
   DATABASE_URL: z.string().min(1).default("postgres://postgres@127.0.0.1:5432/albertdeepdive"),
   DATABASE_URL_TEST: z.string().optional(),
@@ -20,7 +20,7 @@ const schema = z.object({
   AI_PRICING: z.string().default("gpt-4.1-mini:0.37:1.48;gpt-4.1:1.85:7.40;gpt-4o-mini:0.14:0.55;gpt-4o:2.30:9.20;gpt-5-mini:0.23:1.85;gpt-5:1.15:9.20"),
   EMAIL_PROVIDER: z.enum(["resend", "log"]).default("log"),
   RESEND_API_KEY: z.string().optional(),
-  EMAIL_FROM: z.string().default("Albert Deep Dive <newsroom@albertschool.com>"),
+  EMAIL_FROM: z.string().default("Briefly <newsroom@briefly.press>"),
   STORAGE_PROVIDER: z.enum(["local", "s3"]).default("local"),
   STORAGE_LOCAL_DIR: z.string().default("./storage"),
   STORAGE_S3_BUCKET: z.string().optional(),

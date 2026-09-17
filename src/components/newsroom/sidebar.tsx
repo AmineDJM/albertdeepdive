@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ChevronsUpDown, Command as CommandIcon } from "lucide-react";
-import { AlbertMark } from "./albert-mark";
+import { WorkspaceSwitcher, type WorkspaceOption } from "./workspace-switcher";
 import { NAV_GROUPS } from "./nav";
 import { cn } from "@/lib/utils";
 import { roleHasPermission, type Role } from "@/lib/auth/permissions";
@@ -13,15 +13,12 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 
 export type SidebarEdition = { id: string; label: string; issueLabel: string; status: EditionStatus };
 
-export function Sidebar({ role, currentEdition, editions, badges, onOpenSearch }: { role: Role; currentEdition: SidebarEdition | null; editions: SidebarEdition[]; badges: { inbox: number; flags: number }; onOpenSearch: () => void }) {
+export function Sidebar({ role, workspace, workspaces, impersonated, currentEdition, editions, badges, onOpenSearch }: { role: Role; workspace: { name: string; role: string } | null; workspaces: WorkspaceOption[]; impersonated: boolean; currentEdition: SidebarEdition | null; editions: SidebarEdition[]; badges: { inbox: number; flags: number }; onOpenSearch: () => void }) {
   const pathname = usePathname();
   return (
     <aside className="flex h-full w-[232px] shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground">
-      <div className="flex h-12 items-center gap-2 px-4">
-        <AlbertMark className="size-5" />
-        <span className="masthead text-[15px] font-semibold tracking-tight text-foreground">Albert&rsquo;s Deep Dive</span>
-      </div>
-      <div className="px-3 pb-2">
+      <WorkspaceSwitcher current={workspace} options={workspaces} impersonated={impersonated} />
+      <div className="px-3 pb-2 pt-2">
         <DropdownMenu>
           <DropdownMenuTrigger className="flex w-full items-center justify-between gap-2 rounded-md border border-sidebar-border bg-card px-2.5 py-1.5 text-left shadow-xs transition-colors hover:bg-sidebar-accent focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none">
             <span className="min-w-0">
