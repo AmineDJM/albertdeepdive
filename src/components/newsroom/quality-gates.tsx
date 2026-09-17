@@ -3,16 +3,19 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, ArrowUpRight, Check, Clock, ShieldAlert, ShieldCheck, Undo2, X } from "lucide-react";
+import { AlertTriangle, ArrowUpRight, Check, Clock, ShieldAlert, ShieldCheck, Undo2, Wrench, X } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { clearOverrideAction, overrideGateAction } from "@/app/(newsroom)/editions/[editionId]/qa/actions";
+import { clearOverrideAction, fixGateAction, overrideGateAction } from "@/app/(newsroom)/editions/[editionId]/qa/actions";
 import type { QualityGate } from "@/server/publication/validate";
 import { cn } from "@/lib/utils";
+
+/** Gates the checklist can fix in place (the rest — RED media, factual conflicts — need a human). */
+const FIXABLE = new Set(["every_selected_article_approved", "image_rights_validated", "cover_approved", "page_layout_validated", "toc_consistent", "page_numbers_consistent", "no_text_overflow", "pdf_generated", "docx_generated"]);
 
 const ICONS = { pass: Check, fail: X, warn: AlertTriangle, pending: Clock } as const;
 const TONES = {
@@ -62,8 +65,13 @@ export function QualityGates({ editionId, gates, canOverride }: { editionId: str
                 <p className="mt-0.5 text-2xs leading-relaxed text-muted-foreground">{gate.details}</p>
               </div>
               <div className="flex shrink-0 items-center gap-1">
+                {canOverride && FIXABLE.has(gate.key) && (gate.status === "fail" || gate.status === "warn" || gate.status === "pending") ? (
+                  <Button size="xs" variant="secondary" disabled={pending} onClick={() => run(() => fixGateAction(editionId, gate.key))} title="Fix this automatically">
+                    <Wrench /> Fix
+                  </Button>
+                ) : null}
                 {gate.href ? (
-                  <Button size="icon-sm" variant="ghost" asChild title="Go and fix this" aria-label="Go and fix this">
+                  <Button size="icon-sm" variant="ghost" asChild title="Go and fix this by hand" aria-label="Go and fix this by hand">
                     <Link href={gate.href}>
                       <ArrowUpRight />
                     </Link>
