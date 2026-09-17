@@ -13,6 +13,7 @@ import { SimulateReturnsButton } from "@/components/newsroom/simulate-returns-bu
 import { AutopilotButton } from "@/components/newsroom/autopilot-button";
 import { OutputPicker, type OutputRow } from "@/components/newsroom/output-picker";
 import { outputMatrix } from "@/server/outputs/service";
+import { getTranslations } from "@/server/i18n/locale";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency, formatDate, formatDateTime, relativeTime, enumLabel } from "@/lib/utils";
@@ -23,7 +24,7 @@ export const dynamic = "force-dynamic";
 export default async function ControlRoomPage({ params }: { params: Promise<{ editionId: string }> }) {
   const { editionId } = await params;
   const user = await getCurrentUser();
-  const [d, activity, outputs] = await Promise.all([editionDashboard(editionId), recentActivity(editionId, 8), outputMatrix(editionId)]);
+  const [d, activity, outputs, translate] = await Promise.all([editionDashboard(editionId), recentActivity(editionId, 8), outputMatrix(editionId), getTranslations()]);
   const coverUrl = d.edition.coverMediaAssetId ? await mediaUrl(d.edition.coverMediaAssetId, "WEB") : null;
   const ed = `/editions/${editionId}`;
   const phase = phaseForStatus(d.edition.status);
@@ -39,16 +40,16 @@ export default async function ControlRoomPage({ params }: { params: Promise<{ ed
   ].map((p, i) => ({ ...p, state: (i < phaseIndex ? "done" : i === phaseIndex ? "active" : "todo") as PhaseItem["state"] }));
 
   const canTransition = hasPermission(user, "edition:edit");
-  const outputRows: OutputRow[] = outputs.map(({ format, label, description, output }) => ({
+  const outputRows: OutputRow[] = outputs.map(({ format, label, output }) => ({
     format,
     label,
-    description,
+    description: translate(`outputs.${format.toLowerCase()}Description` as "outputs.emailDescription"),
     enabled: !!output,
     status: output?.status ?? null,
     detail: !output
       ? null
       : output.status === "PUBLISHED"
-        ? `Published ${output.publishedAt ? formatDate(output.publishedAt) : ""}`.trim()
+        ? translate("outputs.published", { date: output.publishedAt ? formatDate(output.publishedAt) : "" }).trim()
         : output.status === "FAILED"
           ? (output.lastError ?? "Failed")
           : format === "EMAIL"
@@ -95,7 +96,7 @@ export default async function ControlRoomPage({ params }: { params: Promise<{ ed
                 </div>
               </dl>
               <div>
-                <SectionTitle>Where this edition goes</SectionTitle>
+                <SectionTitle>{translate("outputs.heading")}</SectionTitle>
                 <div className="mt-2">
                   <OutputPicker editionId={editionId} rows={outputRows} canEdit={canTransition} canPublish={hasPermission(user, "edition:publish")} />
                 </div>

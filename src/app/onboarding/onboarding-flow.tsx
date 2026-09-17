@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { NativeSelect } from "@/components/ui/native-select";
 import { BrieflyMark } from "@/components/brand/briefly-mark";
 import { cn } from "@/lib/utils";
+import { useTranslations } from "@/components/i18n/provider";
 import type { ActionResult } from "@/lib/action-result";
 import type { DiscoveredOrganization } from "@/server/tenancy/discovery";
 
@@ -54,6 +55,7 @@ function ErrorNote({ message }: { message: string }) {
  */
 export function OnboardingFlow({ suggestedTimezone }: { suggestedTimezone: string }) {
   const router = useRouter();
+  const t = useTranslations();
   const [discovery, discover, discovering] = useActionState<ActionResult<DiscoveredOrganization> | null, FormData>(discoverAction, null);
   const [confirmState, confirm, confirming] = useActionState<ActionResult<{ organizationId: string }> | null, FormData>(confirmOnboardingAction, null);
   const [manual, setManual] = useState(false);
@@ -75,13 +77,13 @@ export function OnboardingFlow({ suggestedTimezone }: { suggestedTimezone: strin
       {step === 1 ? (
         <form action={discover} className="space-y-6">
           <div>
-            <h1 className="text-[28px] leading-tight font-semibold tracking-[-0.02em]">Let&rsquo;s start with your website.</h1>
+            <h1 className="text-[28px] leading-tight font-semibold tracking-[-0.02em]">{t("onboarding.websiteTitle")}</h1>
             <p className="mt-2 text-[14px] leading-6 text-muted-foreground">
-              Briefly reads what your organization already publishes — your name, your logo, your colours and where you post — so you don&rsquo;t have to set any of it up.
+              {t("onboarding.websiteBody")}
             </p>
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="website">Website</Label>
+            <Label htmlFor="website">{t("onboarding.website")}</Label>
             <div className="relative">
               <Globe className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input id="website" name="website" placeholder="acme.com" autoFocus autoComplete="url" className="pl-9" aria-invalid={!!(discovery && !discovery.ok)} />
@@ -90,11 +92,11 @@ export function OnboardingFlow({ suggestedTimezone }: { suggestedTimezone: strin
           </div>
           <div className="flex items-center gap-3">
             <Button type="submit" size="lg" loading={discovering}>
-              {discovering ? "Reading your site…" : "Continue"}
+              {discovering ? t("onboarding.reading") : t("common.continue")}
               {!discovering ? <ArrowRight className="size-4" /> : null}
             </Button>
             <button type="button" onClick={() => setManual(true)} className="text-[13px] text-muted-foreground underline-offset-4 hover:underline">
-              I&rsquo;ll enter the details myself
+              {t("onboarding.enterManually")}
             </button>
           </div>
         </form>
@@ -104,14 +106,14 @@ export function OnboardingFlow({ suggestedTimezone }: { suggestedTimezone: strin
             <h1 className="flex items-center gap-2 text-[28px] leading-tight font-semibold tracking-[-0.02em]">
               {found ? (
                 <>
-                  <Sparkles className="size-6 text-muted-foreground" /> We learned your identity.
+                  <Sparkles className="size-6 text-muted-foreground" /> {t("onboarding.learnedTitle")}
                 </>
               ) : (
-                "Tell us about your organization."
+                t("onboarding.manualTitle")
               )}
             </h1>
             <p className="mt-2 text-[14px] leading-6 text-muted-foreground">
-              {found ? "Here is what Briefly found. Change anything that isn't right — you can refine it later." : "A name is enough to start; everything else can come later."}
+              {found ? t("onboarding.learnedBody") : t("onboarding.manualBody")}
             </p>
           </div>
 
@@ -119,7 +121,7 @@ export function OnboardingFlow({ suggestedTimezone }: { suggestedTimezone: strin
             <div className="flex items-center gap-3 rounded-lg border border-border bg-card p-3">
               {found.logoUrl ? <RemoteLogo src={found.logoUrl} /> : null}
               <div className="min-w-0 flex-1">
-                <p className="label-caps">Your colours</p>
+                <p className="label-caps">{t("onboarding.yourColours")}</p>
                 <div className="mt-1.5 flex gap-1.5">
                   {found.colours.map((c) => (
                     <span key={c} className="size-6 rounded-md border border-black/10" style={{ backgroundColor: c }} title={c} />
@@ -131,11 +133,11 @@ export function OnboardingFlow({ suggestedTimezone }: { suggestedTimezone: strin
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1.5 sm:col-span-2">
-              <Label htmlFor="name">Organization name</Label>
+              <Label htmlFor="name">{t("onboarding.organizationName")}</Label>
               <Input id="name" name="name" required defaultValue={found?.name ?? ""} placeholder="Acme" />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="type">Type</Label>
+              <Label htmlFor="type">{t("onboarding.type")}</Label>
               <NativeSelect id="type" name="type" defaultValue={found?.type ?? "COMPANY"}>
                 {TYPES.map(([value, label]) => (
                   <option key={value} value={value}>
@@ -145,23 +147,23 @@ export function OnboardingFlow({ suggestedTimezone }: { suggestedTimezone: strin
               </NativeSelect>
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="locale">Language</Label>
+              <Label htmlFor="locale">{t("onboarding.language")}</Label>
               <NativeSelect id="locale" name="locale" defaultValue={found?.locale ?? "en"}>
                 <option value="en">English</option>
                 <option value="fr">Français</option>
               </NativeSelect>
             </div>
             <div className="space-y-1.5 sm:col-span-2">
-              <Label htmlFor="publicationName">What will you publish?</Label>
+              <Label htmlFor="publicationName">{t("onboarding.whatWillYouPublish")}</Label>
               <Input id="publicationName" name="publicationName" required defaultValue={found?.name ? `${found.name} Weekly` : ""} placeholder="Acme Weekly" />
-              <p className="text-xs text-muted-foreground">A recurring title. Each edition decides for itself whether it goes out by email, on the web, as a magazine or in print.</p>
+              <p className="text-xs text-muted-foreground">{t("onboarding.publicationHint")}</p>
             </div>
           </div>
 
           {found && Object.keys(found.links).length > 1 ? (
             <div className="rounded-lg border border-border bg-muted/30 p-3">
               <p className="label-caps flex items-center gap-1.5">
-                <Link2 className="size-3" /> Where you already post
+                <Link2 className="size-3" /> {t("onboarding.whereYouPost")}
               </p>
               <ul className="mt-2 space-y-1">
                 {Object.entries(found.links)
@@ -189,7 +191,7 @@ export function OnboardingFlow({ suggestedTimezone }: { suggestedTimezone: strin
 
           <div className={cn("flex items-center gap-3")}>
             <Button type="submit" size="lg" loading={confirming}>
-              {confirming ? "Creating your workspace…" : "Looks good — create my workspace"}
+              {confirming ? t("onboarding.creating") : t("onboarding.confirm")}
             </Button>
           </div>
         </form>

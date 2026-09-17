@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Textarea } from "@/components/ui/textarea";
+import { useTranslations } from "@/components/i18n/provider";
 
 const TYPES = [
   ["COMPANY", "Company"],
@@ -26,6 +27,7 @@ export type WorkspaceValues = WorkspaceInput & { slug: string };
 
 export function WorkspaceForm({ initial, canEdit }: { initial: WorkspaceValues; canEdit: boolean }) {
   const router = useRouter();
+  const t = useTranslations();
   const [pending, startTransition] = useTransition();
   const [values, setValues] = useState<WorkspaceInput>(initial);
 
@@ -47,14 +49,14 @@ export function WorkspaceForm({ initial, canEdit }: { initial: WorkspaceValues; 
     <div className="max-w-2xl space-y-5">
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-1.5 sm:col-span-2">
-          <Label htmlFor="ws-name">Name</Label>
+          <Label htmlFor="ws-name">{t("workspace.name")}</Label>
           <Input id="ws-name" value={values.name} onChange={(e) => set("name", e.target.value)} disabled={!canEdit} />
           <p className="text-xs text-muted-foreground">
-            Public address: <span className="font-mono">/{initial.slug}</span>
+            {t("workspace.publicAddress")}: <span className="font-mono">/{initial.slug}</span>
           </p>
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="ws-type">Type</Label>
+          <Label htmlFor="ws-type">{t("onboarding.type")}</Label>
           <NativeSelect id="ws-type" value={values.type} onChange={(e) => set("type", e.target.value as WorkspaceInput["type"])} disabled={!canEdit}>
             {TYPES.map(([value, label]) => (
               <option key={value} value={value}>
@@ -64,37 +66,37 @@ export function WorkspaceForm({ initial, canEdit }: { initial: WorkspaceValues; 
           </NativeSelect>
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="ws-locale">Interface language</Label>
+          <Label htmlFor="ws-locale">{t("workspace.interfaceLanguage")}</Label>
           <NativeSelect id="ws-locale" value={values.locale} onChange={(e) => set("locale", e.target.value as WorkspaceInput["locale"])} disabled={!canEdit}>
             <option value="en">English</option>
             <option value="fr">Français</option>
           </NativeSelect>
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="ws-website">Website</Label>
+          <Label htmlFor="ws-website">{t("workspace.website")}</Label>
           <Input id="ws-website" value={values.website ?? ""} onChange={(e) => set("website", e.target.value)} placeholder="https://acme.com" disabled={!canEdit} />
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="ws-timezone">Timezone</Label>
+          <Label htmlFor="ws-timezone">{t("workspace.timezone")}</Label>
           <Input id="ws-timezone" value={values.timezone} onChange={(e) => set("timezone", e.target.value)} disabled={!canEdit} />
         </div>
         <div className="space-y-1.5 sm:col-span-2">
-          <Label htmlFor="ws-description">Description</Label>
+          <Label htmlFor="ws-description">{t("workspace.description")}</Label>
           <Textarea id="ws-description" rows={2} value={values.description ?? ""} onChange={(e) => set("description", e.target.value)} disabled={!canEdit} />
         </div>
       </div>
 
       <div className="space-y-3 rounded-lg border border-border bg-card p-4">
-        <p className="label-caps">Brand</p>
+        <p className="label-caps">{t("workspace.brand")}</p>
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-1.5 sm:col-span-2">
-            <Label htmlFor="ws-logo">Logo URL</Label>
+            <Label htmlFor="ws-logo">{t("workspace.logoUrl")}</Label>
             <Input id="ws-logo" value={values.logoUrl ?? ""} onChange={(e) => set("logoUrl", e.target.value)} placeholder="https://acme.com/logo.svg" disabled={!canEdit} />
           </div>
           {(
             [
-              ["primary", "Primary colour"],
-              ["accent", "Accent colour"],
+              ["primary", t("workspace.primaryColour")],
+              ["accent", t("workspace.accentColour")],
             ] as const
           ).map(([key, label]) => (
             <div key={key} className="space-y-1.5">
@@ -113,15 +115,15 @@ export function WorkspaceForm({ initial, canEdit }: { initial: WorkspaceValues; 
             </div>
           ))}
         </div>
-        <p className="text-xs text-muted-foreground">Used on your subscribe pages, your web editions and the emails you send.</p>
+        <p className="text-xs text-muted-foreground">{t("workspace.brandHint")}</p>
       </div>
 
       {canEdit ? (
         <Button onClick={submit} loading={pending}>
-          Save workspace
+          {t("workspace.saveWorkspace")}
         </Button>
       ) : (
-        <p className="text-xs text-muted-foreground">Only an owner or admin of this workspace can change these.</p>
+        <p className="text-xs text-muted-foreground">{t("workspace.adminOnly")}</p>
       )}
     </div>
   );

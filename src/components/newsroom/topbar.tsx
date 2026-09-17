@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { LanguagePicker } from "@/components/i18n/language-picker";
+import { useTranslations } from "@/components/i18n/provider";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { initials, relativeTime, cn } from "@/lib/utils";
 import { ROLE_LABELS, type Role } from "@/lib/auth/permissions";
@@ -18,6 +20,7 @@ export type TopbarNotification = { id: string; title: string; body: string | nul
 
 export function Topbar({ user, notifications, unread, onOpenSearch }: { user: { name: string; email: string; role: Role }; notifications: TopbarNotification[]; unread: number; onOpenSearch: () => void }) {
   const router = useRouter();
+  const t = useTranslations();
   const { theme, setTheme } = useTheme();
   const [pending, startTransition] = useTransition();
   return (
@@ -104,13 +107,18 @@ export function Topbar({ user, notifications, unread, onOpenSearch }: { user: { 
             <div className="mt-1 text-2xs text-brand">{ROLE_LABELS[user.role]}</div>
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
+          <div className="flex items-center justify-between gap-2 px-2 py-1.5">
+            <span className="text-2xs text-muted-foreground">Language</span>
+            <LanguagePicker />
+          </div>
+          <DropdownMenuSeparator />
           <DropdownMenuItem asChild>
             <Link href="/settings/profile">
               <UserRound /> Profile
             </Link>
           </DropdownMenuItem>
           <DropdownMenuItem variant="destructive" onSelect={() => startTransition(async () => { await signOutAction(); })}>
-            <LogOut /> Sign out
+            <LogOut /> {t("auth.signOut")}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

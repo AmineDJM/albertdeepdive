@@ -56,3 +56,16 @@ export async function setThemeAction(theme: ThemePreference): Promise<ActionResu
     return toActionFailure(err);
   }
 }
+
+/** Change the interface language for this person only. Their workspace keeps its own default. */
+export async function setLocaleAction(locale: "en" | "fr"): Promise<ActionResult> {
+  try {
+    const user = await requireUser();
+    const { setLocalePreference } = await import("@/server/settings/users");
+    await setLocalePreference(user.id, locale === "fr" ? "fr" : "en");
+    revalidatePath("/", "layout");
+    return ok(null);
+  } catch (err) {
+    return toActionFailure(err);
+  }
+}

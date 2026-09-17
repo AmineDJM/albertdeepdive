@@ -17,6 +17,8 @@ export type CurrentUser = {
   role: Role;
   campusId: string | null;
   avatarUrl: string | null;
+  /** Per-person settings; `locale` is read by the translator, so it travels with the session. */
+  preferences: Record<string, unknown>;
   permissions: readonly Permission[];
 };
 
@@ -73,6 +75,7 @@ async function loadUserFromToken(token: string | undefined): Promise<CurrentUser
       role: users.role,
       campusId: users.campusId,
       avatarUrl: users.avatarUrl,
+      preferences: users.preferences,
       isActive: users.isActive,
       sessionId: sessions.id,
     })
@@ -90,6 +93,7 @@ async function loadUserFromToken(token: string | undefined): Promise<CurrentUser
     role: row.role,
     campusId: row.campusId,
     avatarUrl: row.avatarUrl,
+    preferences: (row.preferences ?? {}) as Record<string, unknown>,
     permissions: permissionsForRole(row.role),
   };
 }

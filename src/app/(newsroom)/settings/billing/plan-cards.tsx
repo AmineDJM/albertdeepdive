@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { openPortalAction, setCancelAction, startCheckoutAction } from "./actions";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useLocale, useTranslations } from "@/components/i18n/provider";
 
 export type PlanCard = {
   key: string;
@@ -21,8 +22,9 @@ export type PlanCard = {
   purchasable: boolean;
 };
 
-function money(cents: number, currency: string) {
-  return new Intl.NumberFormat("en-GB", { style: "currency", currency, maximumFractionDigits: cents % 100 === 0 ? 0 : 2 }).format(cents / 100);
+/** French writes "59 €", English "€59" — Intl knows, so the locale is passed rather than assumed. */
+function money(cents: number, currency: string, locale: string) {
+  return new Intl.NumberFormat(locale === "fr" ? "fr-FR" : "en-GB", { style: "currency", currency, maximumFractionDigits: cents % 100 === 0 ? 0 : 2 }).format(cents / 100);
 }
 
 /**
@@ -33,6 +35,8 @@ function money(cents: number, currency: string) {
  */
 export function PlanCards({ plans, currentKey, canManage, hasStripeCustomer, cancelAtPeriodEnd, stripeReady }: { plans: PlanCard[]; currentKey: string; canManage: boolean; hasStripeCustomer: boolean; cancelAtPeriodEnd: boolean; stripeReady: boolean }) {
   const router = useRouter();
+  const t = useTranslations();
+  const locale = useLocale();
   const [interval, setInterval] = useState<"month" | "year">("month");
   const [pending, startTransition] = useTransition();
   const [busy, setBusy] = useState<string | null>(null);
@@ -83,17 +87,17 @@ export function PlanCards({ plans, currentKey, canManage, hasStripeCustomer, can
               onClick={() => setInterval(value)}
               className={cn("rounded-[5px] px-3 py-1 text-[13px] transition-colors", interval === value ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground")}
             >
-              {value === "month" ? "Monthly" : "Yearly"}
+              {value === "month" ? t("billing.monthly") : t("billing.yearly")}
             </button>
           ))}
         </div>
         {hasStripeCustomer && canManage ? (
           <div className="flex items-center gap-2">
             <Button variant="outline" size="sm" loading={pending && busy === "portal"} onClick={portal}>
-              Invoices and payment method
+              {t("billing.invoices")}
             </Button>
             <Button variant="ghost" size="sm" onClick={toggleCancel} disabled={pending}>
-              {cancelAtPeriodEnd ? "Resume subscription" : "Cancel subscription"}
+              {cancelAtPeriodEnd ? t("billing.resume") : t("billing.cancel")}
             </Button>
           </div>
         ) : null}
@@ -117,25 +121,26 @@ export function PlanCards({ plans, currentKey, canManage, hasStripeCustomer, can
                 <span className="text-[14px] font-semibold">{plan.name}</span>
                 {plan.isFeatured && !current ? (
                   <span className="inline-flex items-center gap-0.5 rounded-sm bg-foreground px-1.5 py-0.5 text-2xs font-medium text-background">
-                    <Sparkles className="size-2.5" /> Popular
+                    <Sparkles className="size-2.5" /> {t("billing.popular")}
                   </span>
                 ) : null}
-                {current ? <span className="rounded-sm bg-emerald-600/10 px-1.5 py-0.5 text-2xs font-medium text-emerald-700 dark:text-emerald-400">Current</span> : null}
+                {current ? <span className="rounded-sm bg-emerald-600/10 px-1.5 py-0.5 text-2xs font-medium text-emerald-700 dark:text-emerald-400">{t("billing.current")}</span> : null}
               </div>
               {plan.tagline ? <p className="mt-1 text-xs leading-5 text-muted-foreground">{plan.tagline}</p> : null}
 
               <div className="mt-3">
                 {plan.isCustomPriced ? (
-                  <p className="text-[22px] font-semibold tracking-tight">Custom</p>
+                  <p className="text-[22px] font-semibold tracking-tight">{t("billing.custom")}</p>
                 ) : (
                   <>
                     <p className="text-[22px] font-semibold tracking-tight">
-                      {money(perMonth, plan.currency)}
-                      <span className="text-[13px] font-normal text-muted-foreground"> / month</span>
+                      {money(perMonth, plan.currency, locale)}
+                      <span className="text-[13px] font-normal text-muted-foreground"> {t("billing.perMonth")}</span>
                     </p>
                     {interval === "year" && cents > 0 ? (
                       <p className="mt-0.5 text-2xs text-muted-foreground">
-                        {money(cents, plan.currency)} billed yearly{saving > 0 ? ` · save ${saving}%` : ""}
+                        {t("billing.billedYearly", { total: money(cents, plan.currency, locale) })}
+                        {saving > 0 ? ` · ${t("billing.save", { percent: saving })}` : ""}
                       </p>
                     ) : null}
                   </>
@@ -154,15 +159,15 @@ export function PlanCards({ plans, currentKey, canManage, hasStripeCustomer, can
               <div className="mt-4">
                 {current ? (
                   <Button variant="outline" size="sm" className="w-full" disabled>
-                    Your plan
+                    {t("billing.yourPlan")}
                   </Button>
                 ) : plan.isCustomPriced ? (
                   <Button variant="outline" size="sm" className="w-full" asChild>
-                    <a href="mailto:sales@briefly.press?subject=Briefly%20Enterprise">Contact us</a>
+                    <a href="mailto:sales@briefly.press?subject=Briefly%20Enterprise">{t("billing.contactUs")}</a>
                   </Button>
                 ) : plan.priceMonthlyCents === 0 ? (
                   <Button variant="outline" size="sm" className="w-full" disabled>
-                    Included
+                    {t("billing.included")}
                   </Button>
                 ) : (
                   <Button
@@ -173,7 +178,7 @@ export function PlanCards({ plans, currentKey, canManage, hasStripeCustomer, can
                     onClick={() => upgrade(plan.key)}
                     title={!stripeReady ? "Payments are not set up on this Briefly yet" : !plan.purchasable ? "This plan has no price configured yet" : undefined}
                   >
-                    Choose {plan.name}
+                    {t("billing.choose", { plan: plan.name })}
                   </Button>
                 )}
               </div>
@@ -182,8 +187,8 @@ export function PlanCards({ plans, currentKey, canManage, hasStripeCustomer, can
         })}
       </div>
 
-      {!canManage ? <p className="text-xs text-muted-foreground">Only an owner or admin of this workspace can change the plan.</p> : null}
-      {canManage && !stripeReady ? <p className="text-xs text-muted-foreground">Payments are not configured on this installation, so plans cannot be bought here yet.</p> : null}
+      {!canManage ? <p className="text-xs text-muted-foreground">{t("billing.adminOnly")}</p> : null}
+      {canManage && !stripeReady ? <p className="text-xs text-muted-foreground">{t("billing.paymentsNotConfigured")}</p> : null}
     </div>
   );
 }

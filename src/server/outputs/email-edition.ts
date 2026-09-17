@@ -1,5 +1,6 @@
 import type { EditionDocument } from "@/lib/publication/document";
 import { blockText } from "@/lib/publication/document";
+import { translator } from "@/lib/i18n";
 
 /**
  * An edition, as an email.
@@ -28,6 +29,8 @@ export type EditionEmailOptions = {
   footerNote?: string | null;
   /** Hidden by the paid plans that remove Briefly's branding. */
   showBrieflyMark?: boolean;
+  /** The publication's language — the one the reader agreed to receive. */
+  locale?: string;
 };
 
 function esc(value: string) {
@@ -51,6 +54,7 @@ function standfirstFor(article: EditionDocument["articles"][number]) {
 }
 
 export function renderEditionEmail(doc: EditionDocument, options: EditionEmailOptions): { subject: string; html: string; text: string } {
+  const t = translator(options.locale);
   const accent = options.accentColour || "#101014";
   const sections = new Map(doc.sections.map((s) => [s.id, s]));
   const byId = new Map(doc.articles.map((a) => [a.id, a]));
@@ -63,7 +67,7 @@ export function renderEditionEmail(doc: EditionDocument, options: EditionEmailOp
   const grouped: { name: string; colour: string | null; articles: typeof rest }[] = [];
   for (const article of rest) {
     const section = article.sectionId ? sections.get(article.sectionId) : undefined;
-    const name = section?.name ?? "Also in this edition";
+    const name = section?.name ?? t("editionEmail.alsoInThisEdition");
     const existing = grouped.find((g) => g.name === name);
     if (existing) existing.articles.push(article);
     else grouped.push({ name, colour: section?.colour ?? null, articles: [article] });
@@ -76,7 +80,7 @@ export function renderEditionEmail(doc: EditionDocument, options: EditionEmailOp
   const readMore = (label: string) => (options.webUrl ? `<a href="${esc(options.webUrl)}" style="color:${esc(accent)};text-decoration:none;font-weight:600;">${esc(label)} →</a>` : "");
 
   const html = `<!doctype html>
-<html lang="${esc(doc.meta.label.match(/[a-z]{2}/i)?.[0] ?? "en")}">
+<html lang="${esc(options.locale === "fr" ? "fr" : "en")}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -99,7 +103,7 @@ export function renderEditionEmail(doc: EditionDocument, options: EditionEmailOp
   ${
     doc.meta.editorial
       ? `<tr><td style="padding:22px 30px 0;">
-    <div style="font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#8a8a85;margin-bottom:8px;">From the editor</div>
+    <div style="font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#8a8a85;margin-bottom:8px;">${esc(t("editionEmail.fromTheEditor"))}</div>
     <p style="margin:0;font-size:15px;line-height:25px;color:#3a3a38;">${esc(summarise(doc.meta.editorial, 420))}</p>
   </td></tr>`
       : ""
@@ -113,7 +117,7 @@ export function renderEditionEmail(doc: EditionDocument, options: EditionEmailOp
     <h1 style="margin:0 0 10px;font-family:Georgia,'Times New Roman',serif;font-size:27px;line-height:1.2;font-weight:700;color:#101014;">${esc(doc.meta.cover.headline || lead.headline)}</h1>
     <p style="margin:0 0 12px;font-size:16px;line-height:26px;color:#3a3a38;">${esc(doc.meta.cover.standfirst || standfirstFor(lead))}</p>
     ${lead.byline ? `<div style="font-size:12px;color:#8a8a85;margin-bottom:12px;">${esc(lead.byline)}</div>` : ""}
-    ${readMore("Read the full story")}
+    ${readMore(t("editionEmail.readFullStory"))}
   </td></tr>`
       : ""
   }
@@ -143,7 +147,7 @@ export function renderEditionEmail(doc: EditionDocument, options: EditionEmailOp
   ${
     options.webUrl
       ? `<tr><td style="padding:26px 30px 4px;text-align:center;">
-    <a href="${esc(options.webUrl)}" style="display:inline-block;padding:13px 26px;border-radius:6px;background:${esc(accent)};color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;">Read the whole edition</a>
+    <a href="${esc(options.webUrl)}" style="display:inline-block;padding:13px 26px;border-radius:6px;background:${esc(accent)};color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;">${esc(t("editionEmail.readWholeEdition"))}</a>
   </td></tr>`
       : ""
   }
@@ -151,9 +155,9 @@ export function renderEditionEmail(doc: EditionDocument, options: EditionEmailOp
   <tr><td style="padding:28px 30px 26px;text-align:center;">
     <div style="border-top:1px solid #ececea;padding-top:18px;font-size:12px;line-height:20px;color:#9a9a95;">
       ${options.footerNote ? `${esc(options.footerNote)}<br>` : ""}
-      You are receiving this because you subscribed to ${esc(doc.meta.masthead.title)}.<br>
-      <a href="${esc(options.unsubscribeUrl)}" style="color:#9a9a95;text-decoration:underline;">Unsubscribe</a>
-      ${options.showBrieflyMark === false ? "" : ` · Published with Briefly`}
+      ${esc(t("editionEmail.whyReceiving", { publication: doc.meta.masthead.title }))}<br>
+      <a href="${esc(options.unsubscribeUrl)}" style="color:#9a9a95;text-decoration:underline;">${esc(t("editionEmail.unsubscribe"))}</a>
+      ${options.showBrieflyMark === false ? "" : ` · ${esc(t("subscribe.publishedWith", { brand: "Briefly" }))}`}
     </div>
   </td></tr>
 
@@ -170,9 +174,9 @@ export function renderEditionEmail(doc: EditionDocument, options: EditionEmailOp
     doc.meta.editorial ? `${summarise(doc.meta.editorial, 420)}\n` : "",
     lead ? `${doc.meta.cover.headline || lead.headline}\n${doc.meta.cover.standfirst || standfirstFor(lead)}\n` : "",
     ...grouped.map((g) => [`${g.name.toUpperCase()}`, ...g.articles.map((a) => `- ${a.headline}: ${summarise(standfirstFor(a), 150)}`), ""].join("\n")),
-    options.webUrl ? `Read the whole edition: ${options.webUrl}` : "",
+    options.webUrl ? `${t("editionEmail.readWholeEdition")}: ${options.webUrl}` : "",
     "",
-    `Unsubscribe: ${options.unsubscribeUrl}`,
+    `${t("editionEmail.unsubscribe")}: ${options.unsubscribeUrl}`,
   ]
     .filter(Boolean)
     .join("\n");

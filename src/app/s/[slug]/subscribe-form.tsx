@@ -7,9 +7,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { ActionResult } from "@/lib/action-result";
+import { translator, type Locale } from "@/lib/i18n";
 
-export function SubscribeForm({ slug, accent }: { slug: string; accent: string }) {
+/** The reader's language is the publication's, so it is passed in rather than read from context. */
+export function SubscribeForm({ slug, accent, locale }: { slug: string; accent: string; locale: Locale }) {
   const [state, action, pending] = useActionState<ActionResult<SubscribeState> | null, FormData>(subscribeAction, null);
+  const t = translator(locale);
 
   if (state?.ok) {
     return (
@@ -24,11 +27,11 @@ export function SubscribeForm({ slug, accent }: { slug: string; accent: string }
     <form action={action} className="space-y-3">
       <input type="hidden" name="slug" value={slug} />
       <div className="space-y-1.5">
-        <Label htmlFor="firstName">First name</Label>
-        <Input id="firstName" name="firstName" autoComplete="given-name" placeholder="Optional" />
+        <Label htmlFor="firstName">{t("subscribe.firstName")}</Label>
+        <Input id="firstName" name="firstName" autoComplete="given-name" placeholder={t("common.optional")} />
       </div>
       <div className="space-y-1.5">
-        <Label htmlFor="email">Email</Label>
+        <Label htmlFor="email">{t("subscribe.email")}</Label>
         <Input id="email" name="email" type="email" required autoComplete="email" placeholder="you@example.com" />
       </div>
       {state && !state.ok ? (
@@ -38,9 +41,9 @@ export function SubscribeForm({ slug, accent }: { slug: string; accent: string }
         </p>
       ) : null}
       <Button type="submit" size="lg" className="w-full" loading={pending} style={accent ? { backgroundColor: accent } : undefined}>
-        Subscribe
+        {t("subscribe.subscribe")}
       </Button>
-      <p className="text-center text-xs text-muted-foreground">We&rsquo;ll email you once to confirm. Unsubscribe in one click, any time.</p>
+      <p className="text-center text-xs text-muted-foreground">{t("subscribe.reassurance")}</p>
     </form>
   );
 }

@@ -9,12 +9,14 @@ import { cn } from "@/lib/utils";
 import { roleHasPermission, type Role } from "@/lib/auth/permissions";
 import { STATUS_LABELS, type EditionStatus } from "@/lib/editorial/edition-state";
 import { Kbd } from "@/components/ui/kbd";
+import { useTranslations } from "@/components/i18n/provider";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 export type SidebarEdition = { id: string; label: string; issueLabel: string; status: EditionStatus };
 
 export function Sidebar({ role, workspace, workspaces, impersonated, currentEdition, editions, badges, onOpenSearch }: { role: Role; workspace: { name: string; role: string } | null; workspaces: WorkspaceOption[]; impersonated: boolean; currentEdition: SidebarEdition | null; editions: SidebarEdition[]; badges: { inbox: number; flags: number }; onOpenSearch: () => void }) {
   const pathname = usePathname();
+  const t = useTranslations();
   return (
     <aside className="flex h-full w-[232px] shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground">
       <WorkspaceSwitcher current={workspace} options={workspaces} impersonated={impersonated} />
@@ -51,7 +53,7 @@ export function Sidebar({ role, workspace, workspaces, impersonated, currentEdit
           if (!items.length) return null;
           return (
             <div key={gi} className="mb-2">
-              {group.label ? <div className="label-caps px-2 pt-2 pb-1">{group.label}</div> : null}
+              {group.label ? <div className="label-caps px-2 pt-2 pb-1">{t(group.label)}</div> : null}
               <ul className="space-y-px">
                 {items.map((item) => {
                   const href = item.editionScoped && currentEdition ? `/editions/${currentEdition.id}/${item.href.slice(1)}` : item.href;
@@ -61,7 +63,7 @@ export function Sidebar({ role, workspace, workspaces, impersonated, currentEdit
                     <li key={item.href}>
                       <Link href={href} className={cn("group flex h-7 items-center gap-2 rounded-md px-2 text-[13px] transition-colors", active ? "bg-sidebar-accent font-medium text-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent/70 hover:text-foreground")} aria-current={active ? "page" : undefined}>
                         <item.icon className={cn("size-4", active ? "text-brand" : "text-muted-foreground group-hover:text-foreground")} />
-                        <span className="flex-1 truncate">{item.label}</span>
+                        <span className="flex-1 truncate">{t(item.label)}</span>
                         {badge ? <span className="tabular rounded-sm bg-brand-soft px-1 text-2xs font-semibold text-brand-foreground">{badge}</span> : null}
                       </Link>
                     </li>

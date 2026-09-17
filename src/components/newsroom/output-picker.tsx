@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { publishWebEditionAction, sendEditionEmailAction, toggleOutputAction } from "@/app/(newsroom)/editions/[editionId]/output-actions";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useTranslations } from "@/components/i18n/provider";
 import type { OutputFormat } from "@/server/outputs/service";
 
 export type OutputRow = {
@@ -32,6 +33,7 @@ const ICONS: Record<OutputFormat, typeof Mail> = { EMAIL: Mail, WEB: Globe, MAGA
  */
 export function OutputPicker({ editionId, rows, canEdit, canPublish }: { editionId: string; rows: OutputRow[]; canEdit: boolean; canPublish: boolean }) {
   const router = useRouter();
+  const t = useTranslations();
   const [pending, startTransition] = useTransition();
   const [busy, setBusy] = useState<OutputFormat | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -73,7 +75,7 @@ export function OutputPicker({ editionId, rows, canEdit, canPublish }: { edition
             );
           }}
         >
-          <Send /> Send
+          <Send /> {t("outputs.send")}
         </Button>
       );
     }
@@ -87,7 +89,7 @@ export function OutputPicker({ editionId, rows, canEdit, canPublish }: { edition
             run("WEB", () => publishWebEditionAction(editionId, true), "Web edition is live");
           }}
         >
-          Publish
+          {t("outputs.publish")}
         </Button>
       );
     }
@@ -124,7 +126,7 @@ export function OutputPicker({ editionId, rows, canEdit, canPublish }: { edition
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="flex items-center gap-1.5">
-                    <span className="text-[13px] font-medium">{row.label}</span>
+                    <span className="text-[13px] font-medium">{t(`outputs.${row.format.toLowerCase()}` as "outputs.email")}</span>
                     {row.enabled ? <Check className="size-3.5 text-emerald-600" /> : null}
                   </span>
                   <span className="mt-0.5 block text-xs leading-5 text-muted-foreground">{row.detail ?? row.description}</span>
@@ -134,7 +136,7 @@ export function OutputPicker({ editionId, rows, canEdit, canPublish }: { edition
                 {action(row)}
                 {row.publicUrl && row.status === "PUBLISHED" ? (
                   <a href={row.publicUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-2xs text-muted-foreground underline-offset-4 hover:underline">
-                    Open <ExternalLink className="size-2.5" />
+                    {t("outputs.open")} <ExternalLink className="size-2.5" />
                   </a>
                 ) : null}
               </span>

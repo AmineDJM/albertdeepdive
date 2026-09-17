@@ -5,6 +5,7 @@ import { sendEmail } from "@/server/email";
 import { env } from "@/server/env";
 import { publicationBySubscribeSlug, subscribe } from "@/server/subscribers/service";
 import { ok, toActionFailure, type ActionResult } from "@/lib/action-result";
+import { translator } from "@/lib/i18n";
 
 export type SubscribeState = { message: string };
 
@@ -17,7 +18,9 @@ export async function subscribeAction(_prev: ActionResult<SubscribeState> | null
   try {
     const slug = String(formData.get("slug") ?? "");
     const publication = await publicationBySubscribeSlug(slug);
-    if (!publication) return ok({ message: "Check your inbox to confirm your subscription." });
+    // Same answer for an unknown slug as for a real one: a stranger learns nothing either way.
+    if (!publication) return ok({ message: translator("en")("subscribe.checkInbox") });
+    const t = translator(publication.language);
 
     const h = await headers();
     const result = await subscribe(
@@ -34,25 +37,25 @@ export async function subscribeAction(_prev: ActionResult<SubscribeState> | null
       const url = `${env.NEXT_PUBLIC_APP_URL}/s/confirm/${result.confirmToken}`;
       await sendEmail({
         to: String(formData.get("email") ?? "").trim().toLowerCase(),
-        subject: `Confirm your subscription to ${publication.name}`,
+        subject: t("editionEmail.confirmSubject", { publication: publication.name }),
         template: "subscription_confirm",
         organizationId: publication.organizationId,
         layout: {
           appName: publication.organization?.name ?? publication.name,
           kicker: publication.name,
-          title: "One more step",
-          preheader: `Confirm your subscription to ${publication.name}.`,
+          title: t("editionEmail.confirmTitle"),
+          preheader: t("editionEmail.confirmSubject", { publication: publication.name }),
           blocks: [
-            { type: "paragraph", text: `Someone — we hope you — asked to receive ${publication.name}. Confirm below and you will get the next edition.` },
-            { type: "paragraph", text: "If this wasn't you, ignore this email. Nothing will be sent." },
+            { type: "paragraph", text: t("editionEmail.confirmBody", { publication: publication.name }) },
+            { type: "paragraph", text: t("editionEmail.confirmIgnore") },
           ],
-          cta: { label: "Confirm subscription", url },
+          cta: { label: t("editionEmail.confirmCta"), url },
           footer: publication.organization?.name ?? undefined,
         },
       });
     }
 
-    return ok({ message: "Check your inbox to confirm your subscription." });
+    return ok({ message: t("subscribe.checkInbox") });
   } catch (err) {
     return toActionFailure(err);
   }

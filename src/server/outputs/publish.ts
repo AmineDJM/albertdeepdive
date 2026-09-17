@@ -8,6 +8,7 @@ import { sendEmail } from "@/server/email";
 import { buildEditionDocument } from "@/server/publication/document-builder";
 import { mediaUrls } from "@/server/media/urls";
 import { recipientsFor } from "@/server/subscribers/service";
+import { showsBrieflyBranding } from "@/server/billing/entitlements";
 import { renderEditionEmail } from "./email-edition";
 import { setOutputStatus } from "./service";
 import { NotFoundError, ValidationError } from "@/lib/action-result";
@@ -43,9 +44,11 @@ export async function sendEditionEmail(editionId: string, userId?: string | null
   const output = await loadOutput(editionId, "EMAIL");
   if (output.status === "PUBLISHED") throw new ValidationError("This edition has already been emailed.");
 
-  const [organization, recipients] = await Promise.all([
+  const [organization, publication, recipients, showBrieflyMark] = await Promise.all([
     edition.organizationId ? db.query.organizations.findFirst({ where: eq(s.organizations.id, edition.organizationId) }) : Promise.resolve(undefined),
+    db.query.publications.findFirst({ where: eq(s.publications.id, edition.publicationId) }),
     recipientsFor(edition.publicationId),
+    edition.organizationId ? showsBrieflyBranding(edition.organizationId) : Promise.resolve(true),
   ]);
 
   if (!recipients.length) {
@@ -80,6 +83,9 @@ export async function sendEditionEmail(editionId: string, userId?: string | null
       greetingName: recipient.firstName,
       imageUrls,
       footerNote: typeof config.fromName === "string" ? config.fromName : null,
+      // The reader agreed to receive this title, in the language it publishes in.
+      locale: publication?.language ?? "en",
+      showBrieflyMark,
     });
 
     const result = await sendEmail({

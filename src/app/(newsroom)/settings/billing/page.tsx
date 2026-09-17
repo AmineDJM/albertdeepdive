@@ -7,19 +7,13 @@ import { PageBody, PageHeader, SectionTitle } from "@/components/newsroom/page-h
 import { ProgressBar } from "@/components/newsroom/stat";
 import { PlanCards, type PlanCard } from "./plan-cards";
 import { formatDate } from "@/lib/utils";
+import { getTranslations } from "@/server/i18n/locale";
 
 export const dynamic = "force-dynamic";
 
-const LIMIT_LABELS: Record<string, string> = {
-  publications: "Publications",
-  users: "Team members",
-  subscribers: "Subscribers",
-  editionsPerMonth: "Editions this month",
-};
-
 export default async function BillingPage() {
   const tenant = await requireTenant();
-  const [subscription, report, plans] = await Promise.all([ensureSubscription(tenant.organizationId), usageReport(tenant.organizationId), listPlans()]);
+  const [t, subscription, report, plans] = await Promise.all([getTranslations(), ensureSubscription(tenant.organizationId), usageReport(tenant.organizationId), listPlans()]);
   const canManage = tenant.role === "OWNER" || tenant.role === "ADMIN";
 
   const cards: PlanCard[] = plans.map((p) => ({
@@ -37,24 +31,24 @@ export default async function BillingPage() {
 
   return (
     <>
-      <PageHeader title="Plan and usage" description={`${tenant.name} is on the ${report.plan.planName} plan.`} />
+      <PageHeader title={t("billing.title")} description={t("billing.onPlan", { workspace: tenant.name, plan: report.plan.planName })} />
       <PageBody className="space-y-6">
         <section className="rounded-lg border border-border bg-card p-4">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
-            <SectionTitle>Usage</SectionTitle>
+            <SectionTitle>{t("billing.usage")}</SectionTitle>
             {report.plan.currentPeriodEnd ? (
               <p className="text-xs text-muted-foreground">
-                {report.plan.cancelAtPeriodEnd ? "Ends" : "Renews"} {formatDate(report.plan.currentPeriodEnd)}
+                {report.plan.cancelAtPeriodEnd ? t("billing.ends", { date: formatDate(report.plan.currentPeriodEnd) }) : t("billing.renews", { date: formatDate(report.plan.currentPeriodEnd) })}
               </p>
             ) : null}
           </div>
           <dl className="mt-3 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {report.lines.map((line) => (
               <div key={line.key}>
-                <dt className="label-caps">{LIMIT_LABELS[line.key] ?? line.key}</dt>
+                <dt className="label-caps">{t(`billing.${line.key}` as "billing.publications")}</dt>
                 <dd className="mt-1 text-[15px] font-medium tabular">
                   {line.used.toLocaleString()}
-                  <span className="text-[13px] font-normal text-muted-foreground"> / {line.limit === null ? "unlimited" : line.limit.toLocaleString()}</span>
+                  <span className="text-[13px] font-normal text-muted-foreground"> / {line.limit === null ? t("common.unlimited") : line.limit.toLocaleString()}</span>
                 </dd>
                 {line.limit !== null ? <ProgressBar value={line.used} max={line.limit} className="mt-1.5" /> : null}
               </div>
@@ -62,16 +56,16 @@ export default async function BillingPage() {
           </dl>
           {report.plan.status === "PAST_DUE" ? (
             <p className="mt-4 rounded-md border border-amber-500/30 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
-              A payment did not go through. Everything keeps working while we retry — update your card to avoid interruption.
+              {t("billing.pastDue")}
             </p>
           ) : null}
           {report.plan.trialEndsAt && report.plan.status === "TRIALING" ? (
-            <p className="mt-4 text-xs text-muted-foreground">Trial ends {formatDate(report.plan.trialEndsAt)}.</p>
+            <p className="mt-4 text-xs text-muted-foreground">{t("billing.trialEnds", { date: formatDate(report.plan.trialEndsAt) })}</p>
           ) : null}
         </section>
 
         <section>
-          <SectionTitle>Plans</SectionTitle>
+          <SectionTitle>{t("billing.plans")}</SectionTitle>
           <div className="mt-3">
             <PlanCards
               plans={cards}

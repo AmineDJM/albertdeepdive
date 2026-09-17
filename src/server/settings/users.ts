@@ -188,6 +188,15 @@ export async function signOutOtherSessions(userId: string, currentToken?: string
   return rows.length;
 }
 
+/** A person's own interface language, which wins over their workspace's. */
+export async function setLocalePreference(userId: string, locale: "en" | "fr") {
+  await db
+    .update(users)
+    .set({ preferences: sql`coalesce(${users.preferences}, '{}'::jsonb) || ${JSON.stringify({ locale })}::jsonb` })
+    .where(eq(users.id, userId));
+  return locale;
+}
+
 export async function setThemePreference(userId: string, theme: ThemePreference) {
   await db
     .update(users)
