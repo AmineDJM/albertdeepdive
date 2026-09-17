@@ -6,6 +6,7 @@ import { publications } from "@/server/db/schema";
 import { requireUser } from "@/server/auth/session";
 import { discoverOrganization, type DiscoveredOrganization } from "@/server/tenancy/discovery";
 import { createOrganization, organizationTypes, updateOrganization } from "@/server/tenancy/service";
+import { ensureBrand } from "@/server/brand/service";
 import { setActiveOrganization } from "@/server/tenancy/context";
 import { slugify } from "@/lib/utils";
 import { ok, toActionFailure, type ActionResult } from "@/lib/action-result";
@@ -32,6 +33,7 @@ const confirmSchema = z.object({
   logoUrl: z.string().trim().url().optional().or(z.literal("")),
   faviconUrl: z.string().trim().url().optional().or(z.literal("")),
   colours: z.string().optional(),
+  fonts: z.string().optional(),
   links: z.string().optional(),
 });
 
@@ -56,6 +58,7 @@ export async function confirmOnboardingAction(_prev: ActionResult<{ organization
     const user = await requireUser();
     const input = confirmSchema.parse(Object.fromEntries(formData));
     const colours = parseJson<string[]>(input.colours, []);
+    const fonts = parseJson<string[]>(input.fonts, []);
     const links = parseJson<Record<string, string>>(input.links, {});
 
     const org = await createOrganization(
@@ -82,6 +85,11 @@ export async function confirmOnboardingAction(_prev: ActionResult<{ organization
         user.id,
       );
     }
+
+    // The brand is built from the same evidence the confirmation screen showed, so what the customer
+    // just approved is what every renderer will use. Discovery is not repeated: the site may have
+    // changed between the two steps, and agreeing to one thing and getting another is not onboarding.
+    await ensureBrand(org.id, { colours, fonts, logoUrl: input.logoUrl || null, type: input.type });
 
     const slug = slugify(input.publicationName) || "edition";
     await db.insert(publications).values({

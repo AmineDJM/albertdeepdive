@@ -3,6 +3,7 @@ import { isIP } from "node:net";
 import sharp from "sharp";
 import { createLogger } from "@/server/logger";
 import { ValidationError } from "@/lib/action-result";
+import { extractFontFamilies } from "@/lib/brand/discover";
 
 const log = createLogger("discovery");
 
@@ -24,6 +25,9 @@ export type DiscoveredOrganization = {
   logoUrl: string | null;
   faviconUrl: string | null;
   colours: string[];
+  /** `font-family` names the page sets on itself. Weak evidence, but the only type evidence a
+   * stylesheet offers, and enough to tell an editorial brand from a technical one. */
+  fonts: string[];
   links: { website: string; linkedin?: string; instagram?: string; x?: string; youtube?: string; facebook?: string };
   type: OrganizationTypeGuess;
   locale: "en" | "fr";
@@ -294,6 +298,7 @@ export async function discoverOrganization(rawWebsite: string): Promise<Discover
     logoUrl,
     faviconUrl,
     colours,
+    fonts: extractFontFamilies(html).slice(0, 12),
     links,
     type: guessType(html, description),
     locale: guessLocale(html),

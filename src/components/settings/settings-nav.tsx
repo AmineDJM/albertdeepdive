@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { LucideIcon } from "lucide-react";
-import { Activity, AtSign, BookOpen, Building2, CreditCard, Cpu, LayoutList, Mail, ScrollText, Shield, SlidersHorizontal, UserRound, Users } from "lucide-react";
+import { Activity, AtSign, BookOpen, Building2, CreditCard, Cpu, LayoutList, Mail, Palette, ScrollText, Shield, SlidersHorizontal, UserRound, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { roleHasPermission, type Permission, type Role } from "@/lib/auth/permissions";
 
@@ -26,7 +26,8 @@ export const SETTINGS_NAV: { label: string; items: SettingsNavItem[] }[] = [
     label: "Workspace",
     items: [
       { href: "/settings/profile", label: "Your profile", icon: UserRound, hint: "Name, password, theme" },
-      { href: "/settings/workspace", label: "Workspace", icon: Building2, permission: "settings:manage", hint: "Name, brand, language" },
+      { href: "/settings/workspace", label: "Workspace", icon: Building2, permission: "settings:manage", hint: "Name, address, language" },
+      { href: "/settings/brand", label: "Brand", icon: Palette, permission: "settings:manage", hint: "Colours, type and voice" },
       { href: "/settings/billing", label: "Plan & usage", icon: CreditCard, permission: "settings:manage", hint: "What you get and what you use" },
       { href: "/settings/users", label: "Users & roles", icon: Users, permission: "user:manage", hint: "Who can do what" },
     ],

@@ -8,6 +8,7 @@ import { addMember, createOrganization, listMembers, removeMember, setMemberRole
 import { createContributor, getContributor, listCampusesWithStats, listContributors, listGroups, listPrograms, createCampus, createGroup } from "@/server/contributors/service";
 import { createRecipient, getRecipient, listRecipients } from "@/server/audience/service";
 import { createEdition, getEdition, listEditions } from "@/server/editions/service";
+import { activeBrand, ensureBrand, saveBrand } from "@/server/brand/service";
 import { NotFoundError } from "@/lib/action-result";
 
 /**
@@ -113,6 +114,30 @@ describe("tenant isolation", () => {
     // With a second owner in place the first one may step down.
     await setMemberRole(rivalOrgId, viewer!.id, "OWNER");
     await expect(setMemberRole(rivalOrgId, adminId, "EDITOR")).resolves.toMatchObject({ role: "EDITOR" });
+  });
+
+  it("gives each workspace its own brand, and only ever one active version", async () => {
+    // A brand is the input to every renderer, so a leak here would put one customer's colours on
+    // another customer's magazine.
+    const albert = await activeBrand(albertOrgId);
+    expect(albert?.system.colours.brand).toBe("#10203A");
+
+    const rival = await ensureBrand(rivalOrgId);
+    expect(rival.organizationId).toBe(rivalOrgId);
+    expect(rival.id).not.toBe(albert!.id);
+
+    await saveBrand({ organizationId: rivalOrgId, system: { ...rival.system, colours: { ...rival.system.colours, brand: "#7A1F3D" } }, actorId: adminId });
+
+    // The new version is active, the old one is kept, and Albert is untouched.
+    const rows = await db.query.brandSystems.findMany({ where: eq(s.brandSystems.organizationId, rivalOrgId) });
+    expect(rows).toHaveLength(2);
+    expect(rows.filter((r) => r.isActive)).toHaveLength(1);
+    expect((await activeBrand(rivalOrgId))!.system.colours.brand).toBe("#7A1F3D");
+    expect((await activeBrand(albertOrgId))!.system.colours.brand).toBe("#10203A");
+  });
+
+  it("refuses a brand that is not a brand", async () => {
+    await expect(saveBrand({ organizationId: rivalOrgId, system: { colours: { brand: "#fff" } }, actorId: adminId })).rejects.toThrow(/not valid/i);
   });
 
   it("keeps workspace slugs unique even when two customers share a name", async () => {

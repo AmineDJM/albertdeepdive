@@ -7,6 +7,7 @@ import { db, schema } from "@/server/db/client";
 import * as s from "@/server/db/schema";
 import { env } from "@/server/env";
 import { hashPassword } from "@/server/auth/password";
+import { DEFAULT_BRAND_SYSTEM } from "@/lib/brand/system";
 import { generateOpaqueToken } from "@/server/auth/tokens";
 import { contributionLink, mintRequestToken, requestTokenHash } from "@/server/campaigns/tokens";
 import { ingestMedia } from "@/server/media/ingest";
@@ -96,6 +97,21 @@ export async function runSeed(options: { quiet?: boolean } = {}): Promise<SeedRe
     userRows.map((u) => ({ organizationId, userId: u.id, role: workspaceRole[u.role], isDefault: true, acceptedAt: new Date() })),
   );
   await db.update(s.organizations).set({ createdById: admin.id }).where(sql`${s.organizations.id} = ${organizationId}`);
+
+  // ── Brand ──────────────────────────────────────────────────────────────────
+  // Albert's own navy and blue, as the design system every renderer reads from. Written explicitly
+  // rather than left to the lazy default, so a fresh seed always looks like Albert School.
+  await db.insert(s.brandSystems).values({
+    organizationId,
+    system: {
+      ...DEFAULT_BRAND_SYSTEM,
+      colours: { brand: "#10203A", accent: "#2BAFE0", ink: "#17191C", paper: "#FFFFFF" },
+      personality: "editorial",
+      voice: { tone: ["precise", "confident"], avoid: ["synergy", "disruptive"], person: "third" },
+    },
+    origin: { brand: "discovered", accent: "discovered" },
+    createdById: admin.id,
+  });
 
   // ── Billing ────────────────────────────────────────────────────────────────
   // The seed represents an established customer, so it gets the plan that covers what it does:

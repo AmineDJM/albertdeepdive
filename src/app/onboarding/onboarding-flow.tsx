@@ -184,6 +184,7 @@ export function OnboardingFlow({ suggestedTimezone }: { suggestedTimezone: strin
           <input type="hidden" name="logoUrl" value={found?.logoUrl ?? ""} />
           <input type="hidden" name="faviconUrl" value={found?.faviconUrl ?? ""} />
           <input type="hidden" name="colours" value={JSON.stringify(found?.colours ?? [])} />
+          <input type="hidden" name="fonts" value={JSON.stringify(found?.fonts ?? [])} />
           <input type="hidden" name="links" value={JSON.stringify(found?.links ?? {})} />
           <input type="hidden" name="timezone" value={suggestedTimezone} />
 
