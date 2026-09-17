@@ -18,8 +18,13 @@ export type Locale = (typeof LOCALES)[number];
 
 export const LOCALE_LABELS: Record<Locale, string> = { en: "English", fr: "Français" };
 
-/** The shape of a dictionary: English's keys, with values widened from literals to plain strings. */
-export type Dictionary = { readonly [K in keyof typeof en]: { readonly [P in keyof (typeof en)[K]]: string } };
+/**
+ * The shape of a dictionary: English's keys, with values widened from literals to plain strings and
+ * nesting allowed to any depth. Marketing copy is grouped several levels deep; the app's own strings
+ * are two.
+ */
+type Widen<T> = T extends string ? string : T extends readonly string[] ? readonly string[] : { readonly [K in keyof T]: Widen<T[K]> };
+export type Dictionary = Widen<typeof en>;
 
 const DICTIONARIES: Record<Locale, Dictionary> = { en, fr };
 
@@ -43,8 +48,26 @@ export function localeFromHeader(header: string | null | undefined): Locale {
   return "en";
 }
 
-type Path<T> = T extends object ? { [K in keyof T & string]: T[K] extends string ? K : `${K}.${Path<T[K]>}` }[keyof T & string] : never;
+type Path<T> = T extends string ? never : T extends readonly unknown[] ? never : { [K in keyof T & string]: T[K] extends string ? K : `${K}.${Path<T[K]>}` }[keyof T & string];
 export type TranslationKey = Path<Dictionary>;
+
+/** Lists — FAQ entries, feature bullets — read as arrays rather than numbered keys. */
+export type ListKey = { [K in keyof Dictionary & string]: Dictionary[K] extends readonly string[] ? K : `${K}.${ListPath<Dictionary[K]>}` }[keyof Dictionary & string];
+type ListPath<T> = T extends readonly string[] ? never : { [K in keyof T & string]: T[K] extends readonly string[] ? K : T[K] extends string ? never : `${K}.${ListPath<T[K]>}` }[keyof T & string];
+
+function walk(dictionary: Dictionary, key: string): unknown {
+  let node: unknown = dictionary;
+  for (const part of key.split(".")) {
+    if (typeof node !== "object" || node === null) return undefined;
+    node = (node as Record<string, unknown>)[part];
+  }
+  return node;
+}
+
+function lookupList(dictionary: Dictionary, key: string): readonly string[] | undefined {
+  const node = walk(dictionary, key);
+  return Array.isArray(node) ? (node as readonly string[]) : undefined;
+}
 
 function lookup(dictionary: Dictionary, key: string): string | undefined {
   let node: unknown = dictionary;
@@ -55,7 +78,10 @@ function lookup(dictionary: Dictionary, key: string): string | undefined {
   return typeof node === "string" ? node : undefined;
 }
 
-export type Translate = (key: TranslationKey, values?: Record<string, string | number>) => string;
+export type Translate = ((key: TranslationKey, values?: Record<string, string | number>) => string) & {
+  /** Read a list of strings — FAQ entries, feature bullets — rather than one. */
+  list: (key: ListKey) => readonly string[];
+};
 
 /**
  * A translator for one locale.
@@ -66,11 +92,13 @@ export type Translate = (key: TranslationKey, values?: Record<string, string | n
  */
 export function translator(locale: string | null | undefined): Translate {
   const dictionary = dictionaryFor(locale);
-  return (key, values) => {
+  const t = ((key: TranslationKey, values?: Record<string, string | number>) => {
     const template = lookup(dictionary, key) ?? lookup(en, key) ?? key;
     if (!values) return template;
     return template.replace(/\{(\w+)\}/g, (match, name: string) => (name in values ? String(values[name]) : match));
-  };
+  }) as Translate;
+  t.list = (key: ListKey) => lookupList(dictionary, key) ?? lookupList(en, key) ?? [];
+  return t;
 }
 
 /** Plural choice for the two languages Briefly ships in; both have the same one/other split. */

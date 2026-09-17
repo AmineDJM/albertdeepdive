@@ -4,9 +4,13 @@ import { NextResponse, type NextRequest } from "next/server";
 // sent to them by email. None of it belongs behind a sign-in — a reader has no account.
 const PUBLIC_PREFIXES = ["/login", "/contribute", "/respond", "/s", "/r", "/api/public", "/api/webhooks", "/api/storage", "/api/automations", "/api/health", "/print", "/fonts", "/_next", "/favicon.ico", "/icon.svg"];
 
+/** Pages anyone may open without a session: the landing page and what search engines read. */
+const PUBLIC_EXACT = new Set(["/", "/sitemap.xml", "/robots.txt", "/opengraph-image", "/icon.svg", "/manifest.webmanifest"]);
+
 /** Lightweight gate: unauthenticated visitors (no session cookie) are sent to /login. Real authorization happens server-side. */
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  if (PUBLIC_EXACT.has(pathname)) return NextResponse.next();
   if (PUBLIC_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`))) return NextResponse.next();
   const hasSession = request.cookies.has("add_session");
   if (!hasSession) {

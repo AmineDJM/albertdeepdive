@@ -81,7 +81,9 @@ export const DEFAULT_PLANS: {
       videoGeneration: false,
       cinematicMode: false,
     },
-    highlights: ["3 publications", "5 users", "5,000 subscribers", "Magazine and PDF", "Social carousels", "Custom domain", "No Briefly branding"],
+    // Highlights are what a customer is buying *today*. Entitlements above may describe capability
+    // that is still being built; the public pricing table must not promise it.
+    highlights: ["3 publications", "5 users", "5,000 subscribers", "Magazine and print-ready PDF", "Custom domain", "No Briefly branding"],
   },
   {
     key: "business",
@@ -112,17 +114,7 @@ export const DEFAULT_PLANS: {
       customBrandSystem: true,
       advancedTemplates: true,
     },
-    highlights: [
-      "10 publications",
-      "20 users",
-      "25,000 subscribers",
-      "Everything in Pro",
-      "Video generation",
-      "Approval workflows",
-      "Advanced analytics",
-      "API and webhooks",
-      "Print",
-    ],
+    highlights: ["10 publications", "20 users", "25,000 subscribers", "Everything in Pro", "Approval workflows", "Advanced analytics", "API and webhooks", "Print delivery"],
   },
   {
     key: "enterprise",
