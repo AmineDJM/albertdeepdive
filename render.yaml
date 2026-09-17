@@ -51,11 +51,13 @@ services:
         generateValue: true
       - key: AUTOMATION_TICK_TOKEN
         generateValue: true
-      # The first administrator. Change the password from Settings → Profile after signing in.
+      # The first administrator. You choose the password when Render creates the blueprint (it is
+      # prompted like the OpenAI key), so there is no generated string to hunt for and copy.
+      # Change it from Settings → Profile after signing in.
       - key: SEED_ADMIN_EMAIL
         value: admin@albertschool.com
       - key: SEED_ADMIN_PASSWORD
-        generateValue: true
+        sync: false
 
       # NEXT_PUBLIC_APP_URL is not set here on purpose: a blueprint cannot know a service's
       # address before the service exists. Render publishes it to the running process as

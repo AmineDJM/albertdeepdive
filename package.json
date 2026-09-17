@@ -24,7 +24,8 @@
     "check": "pnpm lint && pnpm typecheck && pnpm test",
     "db:seed:once": "tsx scripts/seed-once.ts",
     "tick": "tsx scripts/tick.ts",
-    "predeploy": "tsx scripts/predeploy.ts"
+    "predeploy": "tsx scripts/predeploy.ts",
+    "reset-admin": "tsx scripts/reset-admin.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1133.0",

@@ -176,10 +176,15 @@ in front.
 
 Then, in the application:
 
-1. Sign in as `admin@albertschool.com`. The password is the generated `SEED_ADMIN_PASSWORD`, which
-   you read once in Render under the service's **Environment** tab. Change it in **Settings → Profile**.
+1. Sign in as `admin@albertschool.com` with the password you gave Render when you created the
+   blueprint. Change it in **Settings → Profile**.
 2. Go to **Settings → Email** and connect the newsroom mailbox (below). Until you do, invitations
    are only recorded, so nothing is sent by accident.
+
+Render prompts you for two values when it creates the blueprint: your `OPENAI_API_KEY` and the
+first administrator's password (`SEED_ADMIN_PASSWORD`, used with `admin@albertschool.com`). If you
+ever need to reset that password, open the web service's **Shell** and run
+`pnpm reset-admin admin@albertschool.com <new-password>`; it touches only that one account.
 
 Nothing else has to be configured. No email provider account, no object storage, no cron service.
 
