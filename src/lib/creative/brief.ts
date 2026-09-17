@@ -107,6 +107,17 @@ export type CreativeBrief = z.infer<typeof creativeBriefSchema>;
  */
 export type TextBlock = {
   role: "display" | "text" | "label" | "figure";
+  /**
+   * Whether this block is read or merely seen.
+   *
+   * A design system's furniture can be either. The report's header is information and must never sit
+   * on the content; the poster's ghosted numeral is texture and is *supposed* to sit behind it. Both
+   * are text blocks, and without this the renderer and the overlap check cannot tell them apart —
+   * which means either the numeral is rejected as a collision or a real collision is missed.
+   *
+   * Background blocks are drawn first, so content always sits on top.
+   */
+  layer?: "background" | "content";
   content: string;
   x: number;
   y: number;
@@ -119,7 +130,7 @@ export type TextBlock = {
   lineHeight: number;
   colour: string;
   transform: "none" | "uppercase";
-  align: "left" | "center";
+  align: "left" | "center" | "right";
   /** How many lines it is expected to take, from measurement rather than guesswork. */
   lines: number;
 };
@@ -166,6 +177,8 @@ export type FrameSpec = {
 export type RenderSpec = {
   format: string;
   mode: string;
+  /** Which design system composed it, so a re-render reproduces the same treatment. */
+  system: string;
   width: number;
   height: number;
   frames: FrameSpec[];

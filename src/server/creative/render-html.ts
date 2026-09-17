@@ -99,13 +99,17 @@ export type FrameImages = Map<string, string>;
 
 export function renderFrameHtml(frame: FrameSpec, options: { fontCss: string; images?: FrameImages }): string {
   const image = frame.image ? imageHtml(frame.image, frame.image.mediaId ? (options.images?.get(frame.image.mediaId) ?? null) : null) : "";
+  // Background blocks first, then shapes, then content: a ghosted numeral is meant to be under the
+  // headline, and draw order is the only thing that decides which of two overlapping blocks wins.
+  const background = frame.text.filter((block) => block.layer === "background");
+  const content = frame.text.filter((block) => block.layer !== "background");
   return `<!doctype html><html><head><meta charset="utf-8"><style>
 ${options.fontCss}
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{width:${frame.width}px;height:${frame.height}px;overflow:hidden}
 body{-webkit-font-smoothing:antialiased;text-rendering:geometricPrecision;font-kerning:normal;font-variant-ligatures:common-ligatures}
 .frame{position:relative;width:${frame.width}px;height:${frame.height}px;overflow:hidden;background:${frame.background}}
-</style></head><body><div class="frame">${image}${frame.shapes.map(shapeHtml).join("")}${frame.text.map(textHtml).join("")}</div></body></html>`;
+</style></head><body><div class="frame">${image}${background.map(textHtml).join("")}${frame.shapes.map(shapeHtml).join("")}${content.map(textHtml).join("")}</div></body></html>`;
 }
 
 /**

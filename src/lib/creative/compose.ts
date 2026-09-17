@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { FORMATS, MODES, typeBox, type CreativeFormat, type CreativeMode } from "./formats";
+import { designSystem, type DesignSystem } from "./design-systems";
 import type { CreativeBrief, Emphasis, FrameBrief, FrameLayout, FrameSpec, ImageBlock, RenderSpec, ShapeBlock, TextBlock } from "./brief";
 import { ensureContrast } from "@/lib/brand/colour";
 import { FAMILIES } from "@/lib/brand/typography";
@@ -141,6 +142,8 @@ const DISPLAY_STEPS: Record<Emphasis, { from: number; to: number }> = {
   loud: { from: 6, to: 4 },
 };
 
+const clampStep = (step: number) => Math.max(0, Math.min(6, step));
+
 const ANCHOR: Record<FrameLayout, "top" | "center" | "bottom"> = {
   statement: "bottom",
   quote: "bottom",
@@ -168,6 +171,9 @@ type Ctx = {
   canvas: { width: number; height: number };
   /** The brand's ratio, re-anchored to this canvas. See `posterScale`. */
   scale: number[];
+  system: DesignSystem;
+  organizationName: string;
+  total: number;
 };
 
 /**
@@ -265,22 +271,33 @@ function composeFrame(frame: FrameBrief, index: number, ctx: Ctx): FrameSpec {
   }
 
   const contentBox = frame.layout === "image_top" ? { ...box, y: Math.round(canvas.height * 0.52) + box.y, height: canvas.height - Math.round(canvas.height * 0.52) - box.y * 2 } : box;
-  const displayStyle = { ...tokens.type.display, case: tokens.type.display.case };
+  const displayStyle = { ...tokens.type.display, case: ctx.system.displayCase ?? tokens.type.display.case };
   const bodyStyle = tokens.type.text;
   const labelStyle = tokens.type.label;
 
-  // The index chip. Present on every multi-frame still, because a reader who cannot see how many
-  // slides are left stops swiping.
-  const chipHeight = Math.round(scale[0] * 2.2);
-  if (ctx.format === "CAROUSEL") {
-    shapes.push({ kind: "rect", x: contentBox.x, y: contentBox.y, width: chipHeight * 2, height: chipHeight, radius: tokens.shape.radiusSm, colour: surface.highlight });
-    text.push(
-      block("label", `${index + 1}`, contentBox.x, contentBox.y + Math.round(chipHeight * 0.28), chipHeight * 2, scale[0], 1, labelStyle, ensureContrast(surface.background, surface.highlight, 4.5), "center"),
-    );
+  // The design system's furniture: an index chip, a bled numeral, a header and footer. It declares
+  // the room it took, so the content below cannot collide with it.
+  const chrome = ctx.system.chrome({
+    format: ctx.format,
+    canvas,
+    box: contentBox,
+    tokens,
+    surface,
+    index,
+    total: ctx.total,
+    organizationName: ctx.organizationName,
+  });
+  shapes.push(...chrome.shapes);
+  for (const item of chrome.text) {
+    text.push({ layer: "content", ...item, fontFamily: item.fontFamily ?? familyStack(item.role === "figure" ? tokens.type.figure.family : tokens.type.label.family) } as TextBlock);
   }
 
-  const topInset = ctx.format === "CAROUSEL" ? chipHeight + tokens.shape.space[4] : 0;
-  const inner = { x: contentBox.x, y: contentBox.y + topInset, width: contentBox.width, height: contentBox.height - topInset };
+  const inner = {
+    x: contentBox.x,
+    y: contentBox.y + chrome.insetTop,
+    width: contentBox.width,
+    height: contentBox.height - chrome.insetTop - chrome.insetBottom,
+  };
 
   const place = (options: { anchor: "top" | "center" | "bottom" }) => {
     const blocks: { fn: (y: number) => TextBlock[]; height: number }[] = [];
@@ -293,7 +310,8 @@ function composeFrame(frame: FrameBrief, index: number, ctx: Ctx): FrameSpec {
       push((y) => [block("figure", frame.figure!, inner.x, y, inner.width, fit.fontSize, fit.lines.length, tokens.type.figure, surface.highlight)], fit.lines.length * fit.fontSize * tokens.type.figure.leading);
     }
 
-    const headlineSteps = frame.layout === "figure" ? BODY_STEPS[frame.emphasis] : DISPLAY_STEPS[frame.emphasis];
+    const bias = (steps: { from: number; to: number }) => ({ from: clampStep(steps.from + ctx.system.stepBias), to: clampStep(steps.to + ctx.system.stepBias) });
+    const headlineSteps = bias(frame.layout === "figure" ? BODY_STEPS[frame.emphasis] : DISPLAY_STEPS[frame.emphasis]);
     const headlineStyle = frame.layout === "figure" ? bodyStyle : displayStyle;
     const headlineFit = fitToBox(
       frame.headline,
@@ -308,7 +326,7 @@ function composeFrame(frame: FrameBrief, index: number, ctx: Ctx): FrameSpec {
     );
 
     if (frame.body) {
-      const fit = fitToBox(frame.body, { width: inner.width, height: inner.height * 0.45 }, scale, { family: bodyStyle.family, tracking: bodyStyle.tracking, leading: bodyStyle.leading, uppercase: false, weight: bodyStyle.weight }, BODY_STEPS[frame.emphasis]);
+      const fit = fitToBox(frame.body, { width: inner.width, height: inner.height * 0.45 }, scale, { family: bodyStyle.family, tracking: bodyStyle.tracking, leading: bodyStyle.leading, uppercase: false, weight: bodyStyle.weight }, bias(BODY_STEPS[frame.emphasis]));
       push(
         (y) => fit.lines.map((line, lineIndex) => block("text", line, inner.x, y + lineIndex * fit.fontSize * bodyStyle.leading, inner.width, fit.fontSize, 1, bodyStyle, subdued)),
         fit.lines.length * fit.fontSize * bodyStyle.leading + gap,
@@ -316,17 +334,27 @@ function composeFrame(frame: FrameBrief, index: number, ctx: Ctx): FrameSpec {
     }
 
     if (frame.items?.length) {
-      const fit = fitToBox(frame.items.reduce((longest, item) => (item.length > longest.length ? item : longest)), { width: inner.width - tokens.shape.space[4], height: inner.height / frame.items.length }, scale, { family: bodyStyle.family, tracking: bodyStyle.tracking, leading: bodyStyle.leading, uppercase: false, weight: bodyStyle.weight }, BODY_STEPS[frame.emphasis]);
-      const step = fit.fontSize * bodyStyle.leading + tokens.shape.space[2];
+      const fit = fitToBox(frame.items.reduce((longest, item) => (item.length > longest.length ? item : longest)), { width: inner.width - tokens.shape.space[4], height: inner.height / frame.items.length }, scale, { family: bodyStyle.family, tracking: bodyStyle.tracking, leading: bodyStyle.leading, uppercase: false, weight: bodyStyle.weight }, bias(BODY_STEPS[frame.emphasis]));
+      // Each item is wrapped in its own right. Emitting the whole string as one block looks fine
+      // until an item is a word too long, at which point `white-space: pre` runs it off the frame —
+      // which is exactly what the poster system, with its wider measure, found.
+      const itemWidth = inner.width - tokens.shape.space[4];
+      const wrapped = frame.items.map((item) => wrapLines(item, itemWidth, bodyStyle.family, fit.fontSize, bodyStyle.tracking, false, bodyStyle.weight));
+      const lineHeight = fit.fontSize * bodyStyle.leading;
+      const totalHeight = wrapped.reduce((sum, lines) => sum + lines.length * lineHeight + tokens.shape.space[2], 0);
+
       push((y) => {
         const out: TextBlock[] = [];
-        frame.items!.forEach((item, itemIndex) => {
-          const lineY = y + itemIndex * step;
-          shapes.push({ kind: "dot", x: inner.x, y: Math.round(lineY + fit.fontSize * 0.35), width: Math.round(fit.fontSize * 0.28), height: Math.round(fit.fontSize * 0.28), radius: 999, colour: surface.highlight });
-          out.push(block("text", item, inner.x + tokens.shape.space[4], lineY, inner.width - tokens.shape.space[4], fit.fontSize, 1, bodyStyle, foreground));
+        let cursor = y;
+        wrapped.forEach((lines) => {
+          shapes.push({ kind: "dot", x: inner.x, y: Math.round(cursor + fit.fontSize * 0.35), width: Math.round(fit.fontSize * 0.28), height: Math.round(fit.fontSize * 0.28), radius: 999, colour: surface.highlight });
+          lines.forEach((line, lineIndex) => {
+            out.push(block("text", line, inner.x + tokens.shape.space[4], cursor + lineIndex * lineHeight, itemWidth, fit.fontSize, 1, bodyStyle, foreground));
+          });
+          cursor += lines.length * lineHeight + tokens.shape.space[2];
         });
         return out;
-      }, frame.items.length * step + gap);
+      }, totalHeight + gap);
     }
 
     if (frame.attribution) {
@@ -393,15 +421,29 @@ function describeFrame(frame: FrameBrief): string {
  * anything visible changes and does not when nothing does. The render worker uses it to skip work,
  * and the golden tests use it to notice that a refactor moved a pixel.
  */
-export function composeSpec(brief: CreativeBrief, tokens: BrandTokens, options: { brandVersion: string }): RenderSpec {
+export function composeSpec(brief: CreativeBrief, tokens: BrandTokens, options: { brandVersion: string; system?: string; organizationName?: string }): RenderSpec {
   const definition = FORMATS[brief.format];
+  const system = designSystem(options.system);
+  const base = typeBox(brief.format);
+  const gutter = system.gutter * tokens.shape.space[3];
   const ctx: Ctx = {
     format: brief.format,
     mode: brief.mode,
     tokens,
-    box: typeBox(brief.format),
+    // A system may pull in or push out from the platform's safe area, but never past it in the
+    // direction that matters: `Math.max(0, …)` keeps a bold system from bleeding type under
+    // somebody else's interface.
+    box: {
+      x: Math.max(0, base.x + gutter),
+      y: Math.max(0, base.y + gutter),
+      width: base.width - gutter * 2,
+      height: base.height - gutter * 2,
+    },
     canvas: { width: definition.width, height: definition.height },
     scale: posterScale(definition.width, ratioOf(tokens)),
+    system,
+    organizationName: options.organizationName ?? "",
+    total: Math.min(brief.frames.length, definition.maxFrames),
   };
 
   const frames = brief.frames.slice(0, definition.maxFrames).map((frame, index) => composeFrame(frame, index, ctx));
@@ -409,6 +451,7 @@ export function composeSpec(brief: CreativeBrief, tokens: BrandTokens, options: 
   const spec: Omit<RenderSpec, "fingerprint"> = {
     format: brief.format,
     mode: brief.mode,
+    system: system.key,
     width: definition.width,
     height: definition.height,
     frames,

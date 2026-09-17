@@ -6,6 +6,7 @@ import { localBrief } from "@/server/ai/services/art-director";
 import { compileBrandSystem, DEFAULT_BRAND_SYSTEM, type BrandSystem } from "@/lib/brand/system";
 import { contrastRatio } from "@/lib/brand/colour";
 import { PERSONALITY_KEYS } from "@/lib/brand/typography";
+import { DESIGN_SYSTEMS, SYSTEMS, designSystem } from "@/lib/creative/design-systems";
 
 const ALBERT: BrandSystem = {
   ...DEFAULT_BRAND_SYSTEM,
@@ -249,5 +250,101 @@ describe("the brief built without a model", () => {
     const brief = localBrief({ format: "SQUARE_POST", mode: "STUDIO", organizationName: "Empty Co", brand: ALBERT, stories: [] });
     expect(creativeBriefSchema.safeParse(brief).success).toBe(true);
     expect(auditSpec(composeSpec(brief, compileBrandSystem(ALBERT), { brandVersion: "v" }))).toEqual([]);
+  });
+});
+
+describe("design systems", () => {
+  const tokens = compileBrandSystem(ALBERT);
+  const compose = (system: string) => composeSpec(briefFor(), tokens, { brandVersion: "v", system, organizationName: "Albert School" });
+
+  it("produce visibly different compositions from the same brief and brand", () => {
+    const fingerprints = DESIGN_SYSTEMS.map((key) => compose(key).fingerprint);
+    expect(new Set(fingerprints).size).toBe(DESIGN_SYSTEMS.length);
+  });
+
+  it("all stay inside the frame", () => {
+    // Each system moves the margins and the type steps, so each is its own chance to overflow.
+    for (const key of DESIGN_SYSTEMS) {
+      expect(auditSpec(compose(key)), key).toEqual([]);
+    }
+  });
+
+  it("never let a system's furniture sit on its own content", () => {
+    // A system declares the room it took; the composer lays out in what is left. This is that
+    // contract, checked: no chrome block may overlap a content block.
+    for (const key of DESIGN_SYSTEMS) {
+      const spec = compose(key);
+      for (const frame of spec.frames) {
+        // Background blocks are texture and are meant to sit behind the type; everything else is
+        // information and must not.
+        const readable = frame.text.filter((text) => text.layer !== "background");
+        const chrome = readable.filter((text) => text.role === "label");
+        const content = readable.filter((text) => !chrome.includes(text));
+        for (const a of chrome) {
+          for (const b of content) {
+            const overlapsY = a.y < b.y + b.lines * b.fontSize * b.lineHeight && b.y < a.y + a.lines * a.fontSize * a.lineHeight;
+            const overlapsX = a.x < b.x + b.width && b.x < a.x + a.width;
+            expect(overlapsY && overlapsX, `${key} frame ${frame.index}: "${a.content}" over "${b.content.slice(0, 24)}"`).toBe(false);
+          }
+        }
+      }
+    }
+  });
+
+  it("keeps type inside the platform's safe area even when a system pulls the margins in", () => {
+    // Poster has a negative gutter. It may tighten the margin; it may not bleed under Instagram's
+    // own interface, which is what the safe area is for.
+    const spec = composeSpec(localBrief({ format: "STORY", mode: "STUDIO", organizationName: "T", brand: ALBERT, stories: STORIES }), tokens, { brandVersion: "v", system: "poster" });
+    for (const frame of spec.frames) {
+      for (const text of frame.text) {
+        expect(text.x, text.content.slice(0, 20)).toBeGreaterThanOrEqual(0);
+        expect(text.x + text.width).toBeLessThanOrEqual(frame.width);
+      }
+    }
+  });
+
+  it("falls back to editorial rather than failing on an unknown name", () => {
+    expect(designSystem("something-else").key).toBe("editorial");
+    expect(designSystem(null).key).toBe("editorial");
+    expect(designSystem("poster").key).toBe("poster");
+  });
+
+  it("describes each system by the job it does", () => {
+    for (const key of DESIGN_SYSTEMS) {
+      expect(SYSTEMS[key].name, key).toBeTruthy();
+      expect(SYSTEMS[key].description.length, key).toBeGreaterThan(30);
+    }
+  });
+
+  it("marks the poster numeral as texture rather than as something to read", () => {
+    const spec = compose("poster");
+    const numeral = spec.frames[0].text.find((text) => /^\d\d$/.test(text.content));
+    expect(numeral?.layer).toBe("background");
+    // And the report's header is the opposite: information, drawn on top, never overlapped.
+    expect(compose("report").frames[0].text.find((text) => text.content === "ALBERT SCHOOL" || text.content === "Albert School")?.layer).not.toBe("background");
+  });
+
+  it("records which system drew a spec, so a re-render reproduces it", () => {
+    expect(compose("report").system).toBe("report");
+  });
+
+  it("wraps a list item that is a word too long", () => {
+    // Found by the poster system, whose wider measure and hotter step turned a fitting item into an
+    // overflowing one. Items used to be emitted whole, with `white-space: pre`.
+    const brief: CreativeBrief = {
+      ...briefFor(),
+      frames: [
+        { layout: "statement", headline: "Opening", surface: "brand", emphasis: "loud" },
+        { layout: "list", headline: "Everything at once", items: ["A list item of quite considerable length that will certainly not fit on one line at this size", "Short one"], surface: "paper", emphasis: "loud" },
+        { layout: "cta", headline: "Read on", surface: "accent", emphasis: "normal" },
+      ],
+    };
+    for (const key of DESIGN_SYSTEMS) {
+      const spec = composeSpec(brief, tokens, { brandVersion: "v", system: key });
+      expect(auditSpec(spec), key).toEqual([]);
+      const listFrame = spec.frames.find((frame) => frame.layout === "list")!;
+      // The long item became more than one block, which is what wrapping looks like from outside.
+      expect(listFrame.text.filter((text) => text.role === "text").length, key).toBeGreaterThan(2);
+    }
   });
 });
