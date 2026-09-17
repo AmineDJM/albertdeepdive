@@ -97,6 +97,8 @@ export function generateLocal(request: ProviderRequest): unknown {
       return localToneHarmonizer(input);
     case "section_planner":
       return localSectionPlanner(input);
+    case "art_director":
+      return localArtDirector(input);
     case "cover_selector":
       return localCoverSelector(input);
     case "toc_generator":
@@ -1141,4 +1143,51 @@ function localImageDescriber(input: Input) {
   const description = caption ? `${kind === "photo" ? "Photo" : kind.charAt(0).toUpperCase() + kind.slice(1)}: ${caption}` : `${kind.charAt(0).toUpperCase() + kind.slice(1)} from file ${fileName}${width && height ? ` (${width}×${height})` : ""}${context ? `, related to ${context}` : ""}.`;
   const tags = uniq([kind, ...nameTokens, ...contentTokens(context).slice(0, 3)]).slice(0, 6);
   return { description: truncateChars(description, 200), tags, kind };
+}
+
+
+/**
+ * The Art Director, without a model.
+ *
+ * Builds the same brief `localBrief` would, from the prompt variables the service passed down. It
+ * exists so the local provider answers every service rather than most of them: a development install
+ * or a workspace with no OpenAI key gets a real carousel, not a gap.
+ *
+ * Parsing the material back out of the formatted prompt string is not elegant, and it is the right
+ * trade: the alternative is a second path into the composer that can drift from the first.
+ */
+function localArtDirector(input: Input): unknown {
+  const stories = str(input, "stories");
+  const lines = stories.split("\n").filter(Boolean);
+  const headlines = lines
+    .filter((line) => line.startsWith("— Story"))
+    .map((line) => line.replace(/^— Story \d+ \(id [^)]*\): /, "").trim())
+    .filter(Boolean);
+  const standfirst = lines.find((line) => line.startsWith("Standfirst: "))?.slice(12) ?? null;
+  const quoteLine = lines.find((line) => line.startsWith('Quote: "'));
+  const organizationName = str(input, "organizationName") || "We";
+  const minFrames = Math.max(1, Number(input.minFrames) || 3);
+  const maxFrames = Math.max(minFrames, Number(input.maxFrames) || 10);
+
+  const lead = headlines[0] ?? organizationName;
+  const frames: Record<string, unknown>[] = [{ layout: "statement", headline: lead.slice(0, 180), surface: "brand", emphasis: "loud" }];
+  if (standfirst) frames.push({ layout: "heading_body", headline: "What happened", body: standfirst.slice(0, 420), surface: "paper", emphasis: "normal" });
+  if (quoteLine) {
+    const match = /^Quote: "(.+)" — (.+)$/.exec(quoteLine);
+    if (match) frames.push({ layout: "quote", headline: match[1].slice(0, 180), attribution: match[2].slice(0, 180), surface: "muted", emphasis: "normal" });
+  }
+  const others = headlines.slice(1, 6);
+  if (others.length >= 2) frames.push({ layout: "list", headline: "Also this month", items: others.map((item) => item.slice(0, 180)), surface: "paper", emphasis: "quiet" });
+  frames.push({ layout: "cta", headline: "Read the whole thing", body: `The full edition from ${organizationName}.`, surface: "accent", emphasis: "normal" });
+
+  while (frames.length < minFrames) frames.push({ layout: "statement", headline: organizationName, surface: "ink", emphasis: "normal" });
+
+  return {
+    format: str(input, "format") || "CAROUSEL",
+    mode: str(input, "mode") || "STUDIO",
+    intent: standfirst ?? lead,
+    frames: frames.slice(0, maxFrames),
+    caption: [lead, standfirst, `— ${organizationName}`].filter(Boolean).join("\n\n").slice(0, 2200),
+    hashtags: [],
+  };
 }

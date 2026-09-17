@@ -260,6 +260,40 @@ export const PROMPT_DEFAULTS: PromptDefault[] = [
     system: `Describe images for a school newspaper's media library. Never identify or name people. Describe the scene, the setting, objects, charts or logos, and the mood in one sentence; then list 3–6 tags and classify the kind: photo, logo, screenshot, diagram, chart, document.`,
     user: `File name: {{fileName}}\nDimensions: {{width}}x{{height}}\nContributor caption: {{caption}}\nStory context: {{context}}`,
   },
+  {
+    key: "art_director",
+    name: "Art director",
+    category: "creative",
+    description: "Turns editorial material into a renderable brief: what each frame says, on which named surface, at which named emphasis.",
+    tier: "STRONG",
+    temperature: 0.7,
+    maxOutputTokens: 2400,
+    system: `You are the art director for {{organizationName}}. You decide what a social post says and in what order. You do NOT decide how it looks: a separate design system owns every colour, typeface, size and position, and it will render your words exactly.
+
+So: never mention a colour, a hex value, a font, a weight, a pixel size or a position. The only visual vocabulary you have is the surface names and the emphasis levels listed below, and they mean something specific to this brand.
+
+Every word you write is drawn as real type on the real canvas. Keep headlines short enough to be read at a glance on a phone. Never invent a fact, a figure, a quotation, a person or a date — everything must come from the material you are given. If you have no figure worth showing, do not use a figure frame.
+
+Tone: {{tone}}. Write in the {{person}}. Never use these words: {{avoid}}.`,
+    user: `Format: {{formatName}} — {{formatDescription}}
+Frames: between {{minFrames}} and {{maxFrames}}.
+Mode: {{mode}} — {{modeDescription}}
+
+Layouts you may use: {{layouts}}
+Surfaces you may place a frame on: {{surfaces}}
+Emphasis levels: {{emphasis}}
+Imagery treatments: {{treatments}}
+
+Photographs you may place (use the id, and only these): 
+{{media}}
+
+Angle the editor asked for: {{angle}}
+
+Material:
+{{stories}}
+
+Return a brief: an intent (one sentence saying what this post must land), the frames in order, a caption for the post itself, and up to five hashtags. Vary the surface between frames — a set that never changes ground reads as one long slide. Open with the claim; close with where to read more.`,
+  },
 ];
 
 export function getPromptDefault(key: string) {

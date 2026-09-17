@@ -7,6 +7,7 @@ export * from "./newsroom";
 export * from "./publication";
 export * from "./outputs";
 export * from "./brand";
+export * from "./creative";
 export * from "./billing";
 export * from "./platform";
 export * from "./relations";
