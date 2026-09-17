@@ -11,6 +11,8 @@ import { GenericStatusBadge } from "@/components/newsroom/status-badge";
 import { EditionStatusControls } from "@/components/newsroom/edition-status-controls";
 import { SimulateReturnsButton } from "@/components/newsroom/simulate-returns-button";
 import { AutopilotButton } from "@/components/newsroom/autopilot-button";
+import { OutputPicker, type OutputRow } from "@/components/newsroom/output-picker";
+import { outputMatrix } from "@/server/outputs/service";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency, formatDate, formatDateTime, relativeTime, enumLabel } from "@/lib/utils";
@@ -21,7 +23,7 @@ export const dynamic = "force-dynamic";
 export default async function ControlRoomPage({ params }: { params: Promise<{ editionId: string }> }) {
   const { editionId } = await params;
   const user = await getCurrentUser();
-  const [d, activity] = await Promise.all([editionDashboard(editionId), recentActivity(editionId, 8)]);
+  const [d, activity, outputs] = await Promise.all([editionDashboard(editionId), recentActivity(editionId, 8), outputMatrix(editionId)]);
   const coverUrl = d.edition.coverMediaAssetId ? await mediaUrl(d.edition.coverMediaAssetId, "WEB") : null;
   const ed = `/editions/${editionId}`;
   const phase = phaseForStatus(d.edition.status);
@@ -37,6 +39,23 @@ export default async function ControlRoomPage({ params }: { params: Promise<{ ed
   ].map((p, i) => ({ ...p, state: (i < phaseIndex ? "done" : i === phaseIndex ? "active" : "todo") as PhaseItem["state"] }));
 
   const canTransition = hasPermission(user, "edition:edit");
+  const outputRows: OutputRow[] = outputs.map(({ format, label, description, output }) => ({
+    format,
+    label,
+    description,
+    enabled: !!output,
+    status: output?.status ?? null,
+    detail: !output
+      ? null
+      : output.status === "PUBLISHED"
+        ? `Published ${output.publishedAt ? formatDate(output.publishedAt) : ""}`.trim()
+        : output.status === "FAILED"
+          ? (output.lastError ?? "Failed")
+          : format === "EMAIL"
+            ? `${output.recipientCount} recipient${output.recipientCount === 1 ? "" : "s"} · ${enumLabel(output.status)}`
+            : enumLabel(output.status),
+    locked: output?.status === "PUBLISHED",
+  }));
   const options = nextStatuses(d.edition.status).filter((st) => st !== "PUBLISHED" && st !== "ARCHIVED" || hasPermission(user, st === "PUBLISHED" ? "edition:publish" : "edition:archive"));
 
   return (
@@ -74,6 +93,12 @@ export default async function ControlRoomPage({ params }: { params: Promise<{ ed
                   <dd className="mt-0.5 font-medium">{d.edition.editorInChief?.name ?? "—"}</dd>
                 </div>
               </dl>
+              <div>
+                <SectionTitle>Where this edition goes</SectionTitle>
+                <div className="mt-2">
+                  <OutputPicker editionId={editionId} rows={outputRows} canEdit={canTransition} />
+                </div>
+              </div>
               <div className="flex flex-wrap gap-2">
                 <Button asChild size="sm"><Link href={`${ed}/inbox`}>Inbox <ArrowRight /></Link></Button>
                 <Button asChild size="sm" variant="outline"><Link href={`${ed}/stories`}>Stories</Link></Button>

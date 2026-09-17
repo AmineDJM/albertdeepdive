@@ -20,6 +20,9 @@ export type SendEmailInput = {
   entityId?: string | null;
   editionId?: string | null;
   contributorId?: string | null;
+  organizationId?: string | null;
+  /** Bulk mail only: the one-click unsubscribe address for this recipient. */
+  listUnsubscribeUrl?: string;
 };
 
 /** Renders, logs and sends an email. Never throws on provider failure: the log row records the error. */
@@ -36,6 +39,7 @@ export async function sendEmail(input: SendEmailInput) {
       html,
       textBody: text,
       template: input.template,
+      organizationId: input.organizationId ?? null,
       status: "QUEUED",
       provider: adapter.name,
       entityType: input.entityType ?? null,
@@ -45,7 +49,7 @@ export async function sendEmail(input: SendEmailInput) {
     })
     .returning();
   try {
-    const result = await adapter.send({ to: input.to, cc: input.cc, replyTo: input.replyTo, subject: input.subject, html, text });
+    const result = await adapter.send({ to: input.to, cc: input.cc, replyTo: input.replyTo, subject: input.subject, html, text, listUnsubscribeUrl: input.listUnsubscribeUrl });
     await db
       .update(emailLog)
       .set({ status: adapter.name === "log" ? "LOGGED" : "SENT", providerMessageId: result.providerMessageId ?? null, sentAt: new Date() })

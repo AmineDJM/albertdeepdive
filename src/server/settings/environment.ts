@@ -7,7 +7,7 @@ import { env } from "@/server/env";
 export type EnvironmentInfo = {
   app: { name: string; url: string; nodeEnv: string; logLevel: string };
   ai: { provider: "openai" | "local"; modelFast: string; modelStrong: string; apiKeyConfigured: boolean; customBaseUrl: boolean; monthlyBudgetEur: number };
-  email: { provider: "resend" | "log"; effectiveProvider: "resend" | "log"; from: string; apiKeyConfigured: boolean };
+  email: { provider: "brevo" | "resend" | "log"; effectiveProvider: "brevo" | "resend" | "log"; from: string; apiKeyConfigured: boolean };
   storage: { provider: "local" | "s3"; localDir: string | null; bucket: string | null; region: string | null; customEndpoint: boolean; signedUrlTtlSeconds: number };
   jobs: { runner: "inprocess" | "cli" | "none"; pollIntervalMs: number };
   uploads: { maxFileMb: number; maxFilesPerSubmission: number };
@@ -29,9 +29,9 @@ export function describeEnvironment(): EnvironmentInfo {
     },
     email: {
       provider: env.EMAIL_PROVIDER,
-      effectiveProvider: env.EMAIL_PROVIDER === "resend" && env.RESEND_API_KEY ? "resend" : "log",
+      effectiveProvider: env.EMAIL_PROVIDER === "brevo" && env.BREVO_API_KEY ? "brevo" : env.EMAIL_PROVIDER === "resend" && env.RESEND_API_KEY ? "resend" : "log",
       from: env.EMAIL_FROM,
-      apiKeyConfigured: Boolean(env.RESEND_API_KEY),
+      apiKeyConfigured: Boolean(env.EMAIL_PROVIDER === "brevo" ? env.BREVO_API_KEY : env.RESEND_API_KEY),
     },
     storage: {
       provider: env.STORAGE_PROVIDER,

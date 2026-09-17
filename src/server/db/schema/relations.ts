@@ -6,6 +6,7 @@ import { consentRecords, mediaAssets, mediaVariants, submissionAttachments, subm
 import { articleRevisions, articleSources, articles, businessDeepDives, editorialComments, events, facts, informationRequests, organisations, people, quotes, stories, storyCampuses, storyClusterMembers, storyClusters, storyMedia, storyOrganisations, storyPeople } from "./newsroom";
 import { pagePlanPages, pagePlans, publicationAssets, publicationVersions } from "./publication";
 import { aiJobs, jobs, notifications } from "./platform";
+import { editionOutputs, publicationSubscriptions, subscribers } from "./outputs";
 
 export const organizationsRelations = relations(organizations, ({ one, many }) => ({
   createdBy: one(users, { relationName: "organizationCreator", fields: [organizations.createdById], references: [users.id] }),
@@ -29,6 +30,23 @@ export const publicationsRelations = relations(publications, ({ one, many }) => 
   organization: one(organizations, { fields: [publications.organizationId], references: [organizations.id] }),
   createdBy: one(users, { relationName: "publicationCreator", fields: [publications.createdById], references: [users.id] }),
   editions: many(editions),
+  subscriptions: many(publicationSubscriptions),
+}));
+
+export const editionOutputsRelations = relations(editionOutputs, ({ one }) => ({
+  edition: one(editions, { fields: [editionOutputs.editionId], references: [editions.id] }),
+  organization: one(organizations, { fields: [editionOutputs.organizationId], references: [organizations.id] }),
+  version: one(publicationVersions, { fields: [editionOutputs.versionId], references: [publicationVersions.id] }),
+}));
+
+export const subscribersRelations = relations(subscribers, ({ one, many }) => ({
+  organization: one(organizations, { fields: [subscribers.organizationId], references: [organizations.id] }),
+  subscriptions: many(publicationSubscriptions),
+}));
+
+export const publicationSubscriptionsRelations = relations(publicationSubscriptions, ({ one }) => ({
+  publication: one(publications, { fields: [publicationSubscriptions.publicationId], references: [publications.id] }),
+  subscriber: one(subscribers, { fields: [publicationSubscriptions.subscriberId], references: [subscribers.id] }),
 }));
 
 export const usersRelations = relations(users, ({ one, many }) => ({
@@ -92,6 +110,7 @@ export const editionsRelations = relations(editions, ({ many, one }) => ({
   mediaAssets: many(mediaAssets),
   pagePlans: many(pagePlans),
   versions: many(publicationVersions),
+  outputs: many(editionOutputs),
   editorInChief: one(users, { fields: [editions.editorInChiefId], references: [users.id] }),
 }));
 

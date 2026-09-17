@@ -43,6 +43,13 @@
       "when": 1789664096058,
       "tag": "0005_fair_texas_twister",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1789665700904,
+      "tag": "0006_damp_winter_soldier",
+      "breakpoints": true
     }
   ]
 }

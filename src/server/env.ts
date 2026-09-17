@@ -18,8 +18,11 @@ const schema = z.object({
   AI_MODEL_STRONG: z.string().default("gpt-4.1"),
   AI_MAX_MONTHLY_BUDGET_EUR: z.coerce.number().default(50),
   AI_PRICING: z.string().default("gpt-4.1-mini:0.37:1.48;gpt-4.1:1.85:7.40;gpt-4o-mini:0.14:0.55;gpt-4o:2.30:9.20;gpt-5-mini:0.23:1.85;gpt-5:1.15:9.20"),
-  EMAIL_PROVIDER: z.enum(["resend", "log"]).default("log"),
+  EMAIL_PROVIDER: z.enum(["brevo", "resend", "log"]).default("log"),
   RESEND_API_KEY: z.string().optional(),
+  // Brevo is the default provider for Briefly: its free tier covers a small newsletter and its
+  // paid tiers are priced per email rather than per contact, which suits monthly publishing.
+  BREVO_API_KEY: z.string().optional(),
   EMAIL_FROM: z.string().default("Briefly <newsroom@briefly.press>"),
   STORAGE_PROVIDER: z.enum(["local", "s3"]).default("local"),
   STORAGE_LOCAL_DIR: z.string().default("./storage"),

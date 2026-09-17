@@ -5,5 +5,6 @@ export * from "./editions";
 export * from "./submissions";
 export * from "./newsroom";
 export * from "./publication";
+export * from "./outputs";
 export * from "./platform";
 export * from "./relations";

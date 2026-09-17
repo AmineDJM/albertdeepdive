@@ -8,6 +8,7 @@ import { assertTransition, type EditionStatus, phaseForStatus } from "@/lib/edit
 import { DEFAULT_SECTIONS } from "@/lib/constants";
 import { slugify } from "@/lib/utils";
 import { guardTenant, scoped, stampTenant } from "@/server/tenancy/scope";
+import { applyPublicationDefaults } from "@/server/outputs/service";
 
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
@@ -19,6 +20,7 @@ export const createEditionSchema = z.object({
   month: z.number().int().min(1).max(12),
   year: z.number().int().min(2020).max(2100),
   issueNumber: z.number().int().positive().optional(),
+  publicationId: z.string().uuid().optional().nullable(),
   title: z.string().trim().min(1).max(160).optional(),
   isSpecialIssue: z.boolean().default(false),
   publicationTargetAt: z.coerce.date().optional(),
@@ -39,7 +41,12 @@ export async function createEdition(rawInput: z.input<typeof createEditionSchema
   const input = createEditionSchema.parse(rawInput);
   const issueNumber = input.issueNumber ?? (await nextIssueNumber());
   const label = monthLabel(input.month, input.year);
-  const title = input.title ?? `Albert's Deep Dive — ${input.isSpecialIssue ? "Special issue" : "Issue"} N°${issueNumber}`;
+  // An edition belongs to a recurring title; without one it has no default formats, no subscribers
+  // and no name to inherit. When the caller does not say which, use the workspace's first.
+  const publication = input.publicationId
+    ? await db.query.publications.findFirst({ where: await scoped(s.publications.organizationId, eq(s.publications.id, input.publicationId)) })
+    : await db.query.publications.findFirst({ where: await scoped(s.publications.organizationId), orderBy: [asc(s.publications.sortOrder), asc(s.publications.createdAt)] });
+  const title = input.title ?? `${publication?.name ?? "Edition"} — ${input.isSpecialIssue ? "Special issue" : "Issue"} N°${issueNumber}`;
   const slug = slugify(`${input.isSpecialIssue ? "special-issue" : "issue"}-${issueNumber}-${label}`);
   const existing = await db.query.editions.findFirst({ where: await scoped(s.editions.organizationId, eq(s.editions.slug, slug)) });
   if (existing) throw new ValidationError(`An edition already exists for ${label}`, { month: ["Edition already exists"] });
@@ -49,6 +56,7 @@ export async function createEdition(rawInput: z.input<typeof createEditionSchema
     const [row] = await tx
       .insert(s.editions)
       .values(await stampTenant({
+        publicationId: publication?.id ?? null,
         issueNumber,
         title,
         slug,
@@ -71,7 +79,9 @@ export async function createEdition(rawInput: z.input<typeof createEditionSchema
     await tx.insert(s.editionSections).values(sections.map((sec, i) => ({ editionId: row.id, slug: sec.slug, name: sec.name, kicker: sec.kicker ?? null, colour: sec.colour ?? null, sortOrder: i, targetPages: sec.targetPages ?? null })));
     return row;
   });
-  await audit({ action: "edition.create", userId, entityType: "EDITION", entityId: edition.id, editionId: edition.id, metadata: { issueNumber, label } });
+  // The title's usual formats are a starting point; the edition can change them before it goes out.
+  await applyPublicationDefaults(edition.id, userId);
+  await audit({ action: "edition.create", userId, entityType: "EDITION", entityId: edition.id, editionId: edition.id, metadata: { issueNumber, label, publicationId: publication?.id ?? null } });
   return edition;
 }
 
