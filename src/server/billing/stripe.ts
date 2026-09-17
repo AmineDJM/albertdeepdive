@@ -187,3 +187,110 @@ export function mapStatus(stripeStatus: string): "TRIALING" | "ACTIVE" | "PAST_D
       return "CANCELED";
   }
 }
+
+/* ── One-click provisioning ───────────────────────────────────────────────────────────────── */
+
+export type StripeWebhookEndpoint = { id: string; url: string; secret?: string; enabled_events: string[]; status: string };
+export type StripePrice = { id: string; unit_amount: number | null; currency: string; recurring?: { interval?: string } };
+export type StripeProduct = { id: string; name: string };
+
+/**
+ * The events Briefly needs, and no others.
+ *
+ * A webhook subscribed to everything is a webhook whose failures are noise. These four are the only
+ * ones that change what a workspace is allowed to do.
+ */
+export const WEBHOOK_EVENTS = [
+  "checkout.session.completed",
+  "customer.subscription.created",
+  "customer.subscription.updated",
+  "customer.subscription.deleted",
+  "invoice.payment_failed",
+] as const;
+
+export async function listWebhookEndpoints(): Promise<StripeWebhookEndpoint[]> {
+  const res = await call<{ data: StripeWebhookEndpoint[] }>("/webhook_endpoints", { method: "GET", body: { limit: 100 } });
+  return res.data ?? [];
+}
+
+/**
+ * Point Stripe at this Briefly, and hand back the signing secret.
+ *
+ * Creating the endpoint by hand and copying the `whsec_` across is the single most error-prone step
+ * in connecting Stripe, and getting it wrong fails silently — payments work, and then nothing
+ * updates. Stripe returns the secret exactly once, at creation, so an endpoint that already exists
+ * for this URL is deleted and remade rather than reused: we cannot read the old secret, and an
+ * endpoint whose secret nobody holds is worse than no endpoint.
+ */
+export async function provisionWebhook(url: string): Promise<{ endpoint: StripeWebhookEndpoint; replaced: boolean }> {
+  const existing = (await listWebhookEndpoints()).filter((e) => e.url === url);
+  for (const endpoint of existing) {
+    await call(`/webhook_endpoints/${endpoint.id}`, { method: "POST", body: { disabled: true } }).catch(() => null);
+    await fetch(`${API}/webhook_endpoints/${endpoint.id}`, {
+      method: "DELETE",
+      headers: { authorization: `Bearer ${await requireKey()}`, "stripe-version": "2024-06-20" },
+      signal: AbortSignal.timeout(20_000),
+    }).catch(() => null);
+  }
+  const endpoint = await call<StripeWebhookEndpoint>("/webhook_endpoints", {
+    body: { url, enabled_events: [...WEBHOOK_EVENTS], description: "Briefly — subscription state" },
+  });
+  return { endpoint, replaced: existing.length > 0 };
+}
+
+/**
+ * A product and its two prices for one plan.
+ *
+ * Idempotent on the plan key, so running setup twice does not leave a customer able to buy the same
+ * plan at two different prices. A price is immutable in Stripe — changing what you charge means a
+ * new price — so an existing one at the right amount is reused and a wrong one is superseded.
+ */
+export async function provisionPlanPrices(plan: {
+  key: string;
+  name: string;
+  currency: string;
+  priceMonthlyCents: number;
+  priceYearlyCents: number;
+  stripeProductId?: string | null;
+  stripeMonthlyPriceId?: string | null;
+  stripeYearlyPriceId?: string | null;
+}): Promise<{ productId: string; monthlyPriceId: string | null; yearlyPriceId: string | null }> {
+  const product = plan.stripeProductId
+    ? await call<StripeProduct>(`/products/${plan.stripeProductId}`, { method: "GET" }).catch(() => null)
+    : null;
+
+  const productId =
+    product?.id ??
+    (
+      await call<StripeProduct>("/products", {
+        body: { name: `Briefly ${plan.name}`, metadata: { brieflyPlanKey: plan.key } },
+        idempotencyKey: `product:${plan.key}`,
+      })
+    ).id;
+
+  const prices = (await call<{ data: StripePrice[] }>("/prices", { method: "GET", body: { product: productId, active: true, limit: 100 } })).data ?? [];
+
+  const findOrCreate = async (interval: "month" | "year", amount: number): Promise<string | null> => {
+    if (amount <= 0) return null;
+    const match = prices.find((p) => p.recurring?.interval === interval && p.unit_amount === amount && p.currency === plan.currency.toLowerCase());
+    if (match) return match.id;
+    const created = await call<StripePrice>("/prices", {
+      body: { product: productId, unit_amount: amount, currency: plan.currency.toLowerCase(), recurring: { interval } },
+      idempotencyKey: `price:${plan.key}:${interval}:${amount}:${plan.currency}`,
+    });
+    return created.id;
+  };
+
+  return {
+    productId,
+    monthlyPriceId: await findOrCreate("month", plan.priceMonthlyCents),
+    yearlyPriceId: await findOrCreate("year", plan.priceYearlyCents),
+  };
+}
+
+/** Who the key belongs to, so the console can say which account it just connected. */
+export async function accountSummary(): Promise<{ id: string; name: string | null; livemode: boolean }> {
+  const account = await call<{ id: string; settings?: { dashboard?: { display_name?: string } }; charges_enabled?: boolean }>("/account", { method: "GET" });
+  const key = await requireKey();
+  return { id: account.id, name: account.settings?.dashboard?.display_name ?? null, livemode: key.startsWith("sk_live_") };
+}

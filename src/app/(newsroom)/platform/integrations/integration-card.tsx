@@ -2,9 +2,10 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { AlertCircle, Check, ExternalLink, Lock, Plug, Unplug } from "lucide-react";
+import { AlertCircle, Check, ExternalLink, Lock, Plug, Unplug, Wand2, X } from "lucide-react";
 import { toast } from "sonner";
-import { clearIntegrationAction, saveIntegrationAction, testIntegrationAction } from "./actions";
+import { clearIntegrationAction, saveIntegrationAction, setUpIntegrationAction, testIntegrationAction } from "./actions";
+import type { SetupResult } from "@/server/integrations/setup";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,12 +22,28 @@ import type { IntegrationStatus } from "@/server/integrations/service";
  * A field injected through the environment is shown locked rather than editable: a self-hosted
  * install that sets secrets at deploy time should see that, not silently have them ignored.
  */
-export function IntegrationCard({ integration }: { integration: IntegrationStatus }) {
+export function IntegrationCard({ integration, setupLabel }: { integration: IntegrationStatus; setupLabel?: string }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [edits, setEdits] = useState<Record<string, string>>({});
   const [testResult, setTestResult] = useState<{ ok: boolean; message: string } | null>(null);
+  const [setup, setSetup] = useState<SetupResult | null>(null);
   const dirty = Object.keys(edits).length > 0;
+
+  function runSetup() {
+    setSetup(null);
+    setTestResult(null);
+    startTransition(async () => {
+      const result = await setUpIntegrationAction(integration.key);
+      if (!result.ok) {
+        setSetup({ ok: false, summary: result.error, steps: [] });
+        return;
+      }
+      setSetup(result.data);
+      if (result.data.ok) toast.success(result.data.summary);
+      router.refresh();
+    });
+  }
 
   function save() {
     startTransition(async () => {
@@ -131,6 +148,27 @@ export function IntegrationCard({ integration }: { integration: IntegrationStatu
         })}
       </div>
 
+      {setup ? (
+        <div className={cn("mt-4 rounded-lg border p-3", setup.ok ? "border-green-soft bg-green-soft/40" : "border-amber-soft bg-amber-soft/40")}>
+          <p className="flex items-start gap-1.5 text-[13px] font-medium">
+            {setup.ok ? <Check className="mt-0.5 size-3.5 shrink-0 text-green-deep" /> : <AlertCircle className="mt-0.5 size-3.5 shrink-0 text-amber-deep" />}
+            {setup.summary}
+          </p>
+          {setup.steps.length ? (
+            <ul className="mt-2 space-y-1">
+              {setup.steps.map((step) => (
+                <li key={step.label} className="flex items-start gap-1.5 text-xs text-muted-foreground">
+                  {step.ok ? <Check className="mt-0.5 size-3 shrink-0 text-green-deep" /> : <X className="mt-0.5 size-3 shrink-0 text-coral-deep" />}
+                  <span>
+                    <span className="font-medium text-foreground">{step.label}</span> — {step.detail}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </div>
+      ) : null}
+
       {testResult ? (
         <p className={cn("mt-3 flex items-start gap-1.5 text-xs", testResult.ok ? "text-emerald-700 dark:text-emerald-400" : "text-destructive")}>
           {testResult.ok ? <Check className="mt-0.5 size-3.5 shrink-0" /> : <AlertCircle className="mt-0.5 size-3.5 shrink-0" />}
@@ -142,8 +180,13 @@ export function IntegrationCard({ integration }: { integration: IntegrationStatu
         <Button size="sm" onClick={save} loading={pending && dirty} disabled={!dirty}>
           <Plug /> Save
         </Button>
+        {setupLabel ? (
+          <Button size="sm" variant={integration.configured ? "outline" : "ghost"} onClick={runSetup} loading={pending && !dirty} disabled={pending || !integration.configured}>
+            <Wand2 /> {setupLabel}
+          </Button>
+        ) : null}
         {integration.testable ? (
-          <Button size="sm" variant="outline" onClick={test} disabled={pending || !integration.configured}>
+          <Button size="sm" variant="ghost" onClick={test} disabled={pending || !integration.configured}>
             Test connection
           </Button>
         ) : null}

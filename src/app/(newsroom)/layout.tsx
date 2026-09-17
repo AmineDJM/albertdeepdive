@@ -29,7 +29,7 @@ export default async function NewsroomLayout({ children }: { children: React.Rea
   const toSidebar = (e: { id: string; label: string; issueNumber: number; isSpecialIssue: boolean; status: (typeof editions)[number]["status"] }) => ({ id: e.id, label: e.label, issueLabel: `${e.isSpecialIssue ? "Special issue" : "Issue"} N°${e.issueNumber}`, status: e.status });
   return (
     <NewsroomShell
-      user={{ name: user.name, email: user.email, role: user.role }}
+      user={{ name: user.name, email: user.email, role: user.role, viewingAs: user.viewingAs ?? null }}
       workspace={tenant ? { name: tenant.name, role: tenant.role } : null}
       workspaces={workspaces.map((w) => ({ organizationId: w.organizationId, name: w.name, slug: w.slug, role: w.role }))}
       impersonated={tenant?.impersonated ?? false}

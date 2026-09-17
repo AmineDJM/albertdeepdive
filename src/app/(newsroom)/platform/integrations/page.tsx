@@ -6,16 +6,27 @@ import { PageBody, PageHeader, SectionTitle } from "@/components/newsroom/page-h
 import { HubTabs } from "@/components/newsroom/hub-tabs";
 import { PLATFORM_TABS } from "@/components/newsroom/nav";
 import { IntegrationCard } from "./integration-card";
+import { SETUP_SUPPORTED } from "@/server/integrations/setup";
 
 export const dynamic = "force-dynamic";
 
 /**
  * Everything Briefly plugs into, in one place.
  *
- * The point of this screen is that running Briefly should not require a deploy. A super admin
- * connects Stripe, connects a sender, connects a model, sees at a glance what is live and what is
- * not, and can prove each one works before a customer discovers otherwise.
+ * The point of this screen is that running Briefly should not require a deploy — and, past that,
+ * that it should not require reading four other dashboards either. Pasting a key is the easy half;
+ * the half that goes wrong is creating a webhook with the right events, six Stripe price ids, a
+ * verified sender, a model name your account can actually reach. So each service has one button that
+ * does all of that by calling the service, and reports each step in a sentence you can check.
  */
+
+/** What the setup button says, per service. Named for what it does, not for the word "setup". */
+const SETUP_LABELS: Record<string, string> = {
+  stripe: "Set up billing",
+  brevo: "Find my sender",
+  openai: "Choose models",
+  storage: "Check storage",
+};
 export default async function IntegrationsPage() {
   const user = await getCurrentUser();
   if (!hasPermission(user, "settings:manage")) {
@@ -50,14 +61,17 @@ export default async function IntegrationsPage() {
               {statuses
                 .filter((s) => s.category === category)
                 .map((integration) => (
-                  <IntegrationCard key={integration.key} integration={integration} />
+                  <IntegrationCard
+                    key={integration.key}
+                    integration={integration}
+                    setupLabel={(SETUP_SUPPORTED as readonly string[]).includes(integration.key) ? SETUP_LABELS[integration.key] : undefined}
+                  />
                 ))}
             </div>
             {category === "payments" ? (
               <p className="mt-3 text-xs leading-5 text-muted-foreground">
-                Point your Stripe webhook at <span className="font-mono text-foreground">{webhookUrl}</span> and subscribe it to{" "}
-                <span className="font-mono">checkout.session.completed</span>, <span className="font-mono">customer.subscription.*</span> and{" "}
-                <span className="font-mono">invoice.payment_failed</span>.
+                &ldquo;Set up billing&rdquo; creates the webhook at <span className="font-mono text-foreground">{webhookUrl}</span>, stores its signing secret, and gives
+                every priced plan a Stripe product and prices. Run it again after you change a price — it is safe to repeat.
               </p>
             ) : null}
           </section>

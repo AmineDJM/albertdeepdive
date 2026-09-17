@@ -1,33 +1,31 @@
-import { Building2, CreditCard } from "lucide-react";
-import { eq } from "drizzle-orm";
-import { db } from "@/server/db/client";
-import * as s from "@/server/db/schema";
+import Link from "next/link";
+import { AlertTriangle, ArrowRight, Check, CircleDollarSign, Cpu, Mail, Plug, Sparkles, Users, Zap } from "lucide-react";
 import { getCurrentUser, hasPermission } from "@/server/auth/session";
-import { listOrganizations } from "@/server/tenancy/service";
-import { listPlans } from "@/server/billing/plans";
-import { platformBillingSummary } from "@/server/billing/entitlements";
-import { stripeConfigured } from "@/server/billing/stripe";
+import { dormantWorkspaces, platformHealth, recentFailures } from "@/server/platform/dashboard";
 import { PageBody, PageHeader, SectionTitle } from "@/components/newsroom/page-header";
 import { HubTabs } from "@/components/newsroom/hub-tabs";
 import { PLATFORM_TABS } from "@/components/newsroom/nav";
-import { DataTable } from "@/components/newsroom/data-table";
 import { Stat, StatGrid } from "@/components/newsroom/stat";
+import { DataTable } from "@/components/newsroom/data-table";
 import { Badge } from "@/components/ui/badge";
-import { PlanEditor, type EditablePlan } from "./plan-editor";
-import { WorkspacePlanPicker } from "./workspace-plan-picker";
-import { formatDate } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { formatNumber, relativeTime } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
-const money = (cents: number, currency = "EUR") => new Intl.NumberFormat("en-GB", { style: "currency", currency, maximumFractionDigits: 0 }).format(cents / 100);
+const money = (cents: number, currency = "EUR") => new Intl.NumberFormat("en-GB", { style: "currency", currency, maximumFractionDigits: cents % 100 === 0 ? 0 : 2 }).format(cents / 100);
 
 /**
- * The platform console: every customer on this Briefly, and what they pay.
+ * Running Briefly, on one screen.
  *
- * Gated on `settings:manage`, which only a platform super admin holds. This is the one screen that
- * deliberately reads across workspaces, so the check is explicit rather than inherited.
+ * Four questions, in the order somebody asks them: is it making money, is anyone using it, is it
+ * broken, and is it about to cost more than it earns. Everything below that is something to act on —
+ * a service that is not connected, a customer who has gone quiet, an error from the last two days.
+ *
+ * Nothing here is a vanity figure. If a number cannot change what the reader does next, it is not on
+ * this page.
  */
-export default async function PlatformPage() {
+export default async function PlatformHealthPage() {
   const user = await getCurrentUser();
   if (!hasPermission(user, "settings:manage")) {
     return (
@@ -40,171 +38,160 @@ export default async function PlatformPage() {
     );
   }
 
-  const [organizations, plans, summary, subscriptions, stripeReady] = await Promise.all([
-    listOrganizations(),
-    listPlans(true),
-    platformBillingSummary(),
-    db
-      .select({
-        organizationId: s.organizationSubscriptions.organizationId,
-        planId: s.organizationSubscriptions.planId,
-        planName: s.plans.name,
-        status: s.organizationSubscriptions.status,
-        currentPeriodEnd: s.organizationSubscriptions.currentPeriodEnd,
-        stripeCustomerId: s.organizationSubscriptions.stripeCustomerId,
-      })
-      .from(s.organizationSubscriptions)
-      .leftJoin(s.plans, eq(s.plans.id, s.organizationSubscriptions.planId)),
-    stripeConfigured(),
-  ]);
-
-  const byOrg = new Map(subscriptions.map((r) => [r.organizationId, r]));
-  const planOptions = plans.map((p) => ({ id: p.id, name: p.name }));
-  const payingWorkspaces = subscriptions.filter((r) => r.status === "ACTIVE" || r.status === "TRIALING" || r.status === "PAST_DUE").length;
+  const [health, failures, dormant] = await Promise.all([platformHealth(), recentFailures(12), dormantWorkspaces()]);
+  const missing = health.integrations.filter((integration) => !integration.configured);
+  const problems = health.reliability.jobsFailed24 + health.reliability.emailsFailed24 + health.reliability.aiErrors24;
 
   return (
     <>
-      <PageHeader
-        title="Workspaces & plans"
-        description={stripeReady ? "Every customer on this Briefly." : "Every customer on this Briefly. Payments are not connected, so nothing can be charged yet."}
-      >
+      <PageHeader title="Platform" description="Every customer on this Briefly, and how it is holding up.">
         <HubTabs tabs={PLATFORM_TABS} />
       </PageHeader>
       <PageBody className="space-y-6">
-        <StatGrid>
-          <Stat label="Workspaces" value={organizations.length} />
-          <Stat label="On a paid plan" value={payingWorkspaces} />
-          <Stat label="Monthly recurring" value={money(summary.mrrCents)} />
-          <Stat label="Plans" value={plans.length} />
+        <StatGrid columns={4}>
+          <Stat label="Monthly recurring" value={money(health.revenue.mrrCents)} hint={`${health.revenue.payingWorkspaces} paying · ${health.revenue.freeWorkspaces} free`} icon={CircleDollarSign} hue="amber" href="/platform/workspaces" />
+          <Stat label="Workspaces" value={formatNumber(health.growth.workspacesTotal)} hint={`${health.growth.workspacesNew30} in the last 30 days`} icon={Users} hue="teal" href="/platform/workspaces" />
+          <Stat label="Published, 30 days" value={formatNumber(health.activity.publishedEditions30)} hint={`${formatNumber(health.activity.emailsSent30)} emails sent`} icon={Sparkles} hue="violet" />
+          <Stat
+            label="AI spend, 30 days"
+            value={money(health.spend.aiCostCents30)}
+            hint={`${money(health.spend.costPerWorkspaceCents)} per workspace · ${formatNumber(health.spend.aiCalls30)} calls`}
+            icon={Cpu}
+            hue={health.spend.costPerWorkspaceCents > 500 ? "coral" : "green"}
+          />
         </StatGrid>
 
-        <section>
-          <SectionTitle>Plans</SectionTitle>
-          <div className="mt-3">
-            <DataTable
-              rows={plans}
-              rowKey={(p) => p.id}
-              empty={{ title: "No plans", description: "Plans are seeded on migration.", icon: CreditCard }}
-              columns={[
-                {
-                  key: "name",
-                  header: "Plan",
-                  cell: (p) => (
-                    <span className="flex items-center gap-2">
-                      <span className="font-medium">{p.name}</span>
-                      {p.isDefault ? <Badge variant="muted">default</Badge> : null}
-                      {p.isFeatured ? <Badge>popular</Badge> : null}
-                      {!p.isPublic ? <Badge variant="muted">hidden</Badge> : null}
-                    </span>
-                  ),
-                },
-                { key: "key", header: "Key", cell: (p) => <span className="font-mono text-2xs text-muted-foreground">{p.key}</span> },
-                { key: "monthly", header: "Monthly", cell: (p) => <span className="tabular">{p.isCustomPriced ? "Custom" : money(p.priceMonthlyCents, p.currency)}</span>, align: "right" },
-                { key: "yearly", header: "Yearly", cell: (p) => <span className="tabular">{p.isCustomPriced ? "—" : money(p.priceYearlyCents, p.currency)}</span>, align: "right" },
-                {
-                  key: "stripe",
-                  header: "Stripe",
-                  cell: (p) =>
-                    p.isCustomPriced ? (
-                      <span className="text-2xs text-muted-foreground">n/a</span>
-                    ) : p.stripeMonthlyPriceId || p.stripeYearlyPriceId ? (
-                      <Badge variant="muted">linked</Badge>
-                    ) : (
-                      <span className="text-2xs text-muted-foreground">not linked</span>
-                    ),
-                },
-                {
-                  key: "workspaces",
-                  header: "Workspaces",
-                  cell: (p) => <span className="tabular">{summary.rows.find((r) => r.planKey === p.key)?.workspaces ?? 0}</span>,
-                  align: "right",
-                },
-                {
-                  key: "actions",
-                  header: "",
-                  cell: (p) => (
-                    <span data-no-row-link>
-                      <PlanEditor
-                        plan={
-                          {
-                            id: p.id,
-                            key: p.key,
-                            name: p.name,
-                            tagline: p.tagline,
-                            priceMonthlyCents: p.priceMonthlyCents,
-                            priceYearlyCents: p.priceYearlyCents,
-                            currency: p.currency,
-                            stripeMonthlyPriceId: p.stripeMonthlyPriceId,
-                            stripeYearlyPriceId: p.stripeYearlyPriceId,
-                            entitlements: p.entitlements as Record<string, unknown>,
-                            highlights: p.highlights,
-                            isPublic: p.isPublic,
-                            isFeatured: p.isFeatured,
-                            isDefault: p.isDefault,
-                            trialDays: p.trialDays,
-                          } satisfies EditablePlan
-                        }
-                      />
-                    </span>
-                  ),
-                  align: "right",
-                  width: "60px",
-                },
-              ]}
-            />
-          </div>
-        </section>
+        {missing.length ? (
+          <section className="rounded-xl border border-amber-soft bg-amber-soft/50 p-4">
+            <div className="flex items-start gap-3">
+              <span className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-lg bg-amber text-white">
+                <Plug className="size-4" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <h2 className="text-[14px] font-semibold">
+                  {missing.length} service{missing.length === 1 ? "" : "s"} not connected
+                </h2>
+                <ul className="mt-2 space-y-1">
+                  {missing.map((integration) => (
+                    <li key={integration.key} className="text-xs text-muted-foreground">
+                      <span className="font-medium text-foreground">{integration.name}</span> — {integration.whenMissing}
+                    </li>
+                  ))}
+                </ul>
+                <Button asChild size="sm" className="mt-3">
+                  <Link href="/platform/integrations">
+                    Connect them <ArrowRight />
+                  </Link>
+                </Button>
+              </div>
+            </div>
+          </section>
+        ) : (
+          <section className="flex items-center gap-2.5 rounded-xl border border-green-soft bg-green-soft/50 px-4 py-3 text-[13px]">
+            <span className="flex size-5 items-center justify-center rounded-full bg-green text-white">
+              <Check className="size-3" />
+            </span>
+            Every service is connected. Payments, sending, models and storage are all live.
+          </section>
+        )}
+
+        <div className="grid gap-4 xl:grid-cols-2">
+          <section>
+            <SectionTitle action={problems ? <Badge variant="muted">{problems} in 24h</Badge> : null}>What is failing</SectionTitle>
+            <div className="rounded-lg border border-border bg-card">
+              {failures.length ? (
+                <ul className="divide-y divide-border">
+                  {failures.map((failure) => (
+                    <li key={failure.id} className="flex items-start gap-3 px-3.5 py-2.5">
+                      <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-[5px] bg-coral-soft text-coral-deep">
+                        {failure.source === "Email" ? <Mail className="size-3" /> : failure.source === "AI" ? <Cpu className="size-3" /> : <Zap className="size-3" />}
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="flex items-baseline justify-between gap-2">
+                          <span className="truncate text-[13px] font-medium">{failure.kind || failure.source}</span>
+                          <span className="shrink-0 text-2xs text-muted-foreground">{relativeTime(failure.at)}</span>
+                        </span>
+                        <span className="line-clamp-2 block text-xs text-muted-foreground">{failure.detail || "No message recorded."}</span>
+                        {failure.workspace ? <span className="mt-0.5 block text-2xs text-muted-foreground">{failure.workspace}</span> : null}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="px-3.5 py-8 text-center text-xs text-muted-foreground">
+                  Nothing has failed in the last two days. {health.reliability.jobsQueued} job{health.reliability.jobsQueued === 1 ? "" : "s"} queued,{" "}
+                  {health.reliability.jobsRunning} running.
+                </p>
+              )}
+            </div>
+          </section>
+
+          <section>
+            <SectionTitle action={dormant.length ? <Badge variant="muted">{dormant.length}</Badge> : null}>Gone quiet</SectionTitle>
+            <div className="rounded-lg border border-border bg-card">
+              {dormant.length ? (
+                <ul className="divide-y divide-border">
+                  {dormant.slice(0, 8).map((workspace) => (
+                    <li key={workspace.id} className="flex items-center justify-between gap-3 px-3.5 py-2.5">
+                      <span className="min-w-0">
+                        <span className="block truncate text-[13px] font-medium">{workspace.name}</span>
+                        <span className="block truncate text-2xs text-muted-foreground">
+                          {workspace.planName ?? "Free"} · {workspace.editions} edition{workspace.editions === 1 ? "" : "s"} · last seen{" "}
+                          {workspace.lastActivity ? relativeTime(workspace.lastActivity) : "never"}
+                        </span>
+                      </span>
+                      <Button asChild variant="ghost" size="xs">
+                        <Link href={`/platform/workspaces?open=${workspace.id}`}>Open</Link>
+                      </Button>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="px-3.5 py-8 text-center text-xs text-muted-foreground">
+                  Every workspace that has published has been active in the last three weeks.
+                </p>
+              )}
+            </div>
+          </section>
+        </div>
 
         <section>
-          <SectionTitle>Workspaces</SectionTitle>
-          <div className="mt-3">
-            <DataTable
-              rows={organizations}
-              rowKey={(o) => o.id}
-              empty={{ title: "No workspaces", description: "The first one is created by onboarding.", icon: Building2 }}
-              columns={[
-                {
-                  key: "name",
-                  header: "Workspace",
-                  cell: (o) => (
-                    <span className="flex flex-col">
-                      <span className="font-medium">{o.name}</span>
-                      <span className="font-mono text-2xs text-muted-foreground">/{o.slug}</span>
-                    </span>
-                  ),
-                },
-                { key: "type", header: "Type", cell: (o) => <span className="text-xs capitalize">{o.type.toLowerCase()}</span> },
-                { key: "members", header: "Members", cell: (o) => <span className="tabular">{o.members}</span>, align: "right" },
-                { key: "publications", header: "Titles", cell: (o) => <span className="tabular">{o.publications}</span>, align: "right" },
-                {
-                  key: "status",
-                  header: "Billing",
-                  cell: (o) => {
-                    const sub = byOrg.get(o.id);
-                    if (!sub) return <span className="text-2xs text-muted-foreground">—</span>;
-                    return (
-                      <span className="flex flex-col">
-                        <Badge variant={sub.status === "ACTIVE" || sub.status === "TRIALING" ? "default" : sub.status === "PAST_DUE" ? "warning" : "muted"}>{sub.status.toLowerCase().replace("_", " ")}</Badge>
-                        {sub.currentPeriodEnd ? <span className="mt-0.5 text-2xs text-muted-foreground">to {formatDate(sub.currentPeriodEnd)}</span> : null}
-                      </span>
-                    );
-                  },
-                },
-                {
-                  key: "plan",
-                  header: "Plan",
-                  cell: (o) => (
-                    <span data-no-row-link>
-                      <WorkspacePlanPicker organizationId={o.id} planId={byOrg.get(o.id)?.planId ?? null} plans={planOptions} />
-                    </span>
-                  ),
-                  align: "right",
-                },
-                { key: "created", header: "Since", cell: (o) => <span className="text-xs text-muted-foreground">{formatDate(o.createdAt)}</span>, align: "right" },
-              ]}
-            />
-          </div>
+          <SectionTitle action={<Button asChild variant="ghost" size="xs"><Link href="/platform/workspaces">All customers <ArrowRight /></Link></Button>}>Plans</SectionTitle>
+          <DataTable
+            rows={health.plans}
+            rowKey={(row) => row.planKey}
+            empty={{ title: "No plans", description: "Plans are seeded on migration.", icon: CircleDollarSign }}
+            columns={[
+              { key: "plan", header: "Plan", cell: (row) => <span className="font-medium">{row.planName}</span> },
+              { key: "price", header: "Monthly", cell: (row) => <span className="tabular">{row.isCustomPriced ? "Custom" : row.priceMonthlyCents ? money(row.priceMonthlyCents) : "Free"}</span>, align: "right" },
+              { key: "workspaces", header: "Workspaces", cell: (row) => <span className="tabular">{row.workspaces}</span>, align: "right" },
+              { key: "paying", header: "Paying", cell: (row) => <span className="tabular">{row.paying}</span>, align: "right" },
+              {
+                key: "mrr",
+                header: "Contributes",
+                cell: (row) => <span className="tabular font-medium">{money(row.paying * row.priceMonthlyCents)}</span>,
+                align: "right",
+              },
+            ]}
+          />
         </section>
+
+        {health.revenue.pastDue || health.revenue.trialing ? (
+          <section className="flex flex-wrap gap-4 rounded-lg border border-border bg-card px-4 py-3 text-[13px]">
+            {health.revenue.pastDue ? (
+              <span className="flex items-center gap-2">
+                <AlertTriangle className="size-3.5 text-coral" />
+                {health.revenue.pastDue} workspace{health.revenue.pastDue === 1 ? "" : "s"} past due — still working while Stripe retries.
+              </span>
+            ) : null}
+            {health.revenue.trialing ? (
+              <span className="flex items-center gap-2">
+                <Sparkles className="size-3.5 text-violet" />
+                {health.revenue.trialing} on trial.
+              </span>
+            ) : null}
+          </section>
+        ) : null}
       </PageBody>
     </>
   );

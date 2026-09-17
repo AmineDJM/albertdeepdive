@@ -20,6 +20,15 @@ export type CurrentUser = {
   /** Per-person settings; `locale` is read by the translator, so it travels with the session. */
   preferences: Record<string, unknown>;
   permissions: readonly Permission[];
+  /**
+   * Set while platform staff are looking at the product as somebody else.
+   *
+   * `role` above is then the *assumed* role, so every permission check in the product narrows
+   * without a single call site knowing about it. `id`, `email` and `name` stay real, which is what
+   * keeps the audit trail honest: a change made during a support session carries the name of the
+   * person who actually made it.
+   */
+  viewingAs?: { role: Role; realRole: Role; userName?: string } | null;
 };
 
 function sessionTtlMs() {
@@ -98,10 +107,33 @@ async function loadUserFromToken(token: string | undefined): Promise<CurrentUser
   };
 }
 
-/** Per-request memoised current user (React cache). */
+/**
+ * Per-request memoised current user (React cache).
+ *
+ * The one place "view as" is applied. Doing it here rather than at each gate means every
+ * `hasPermission`, every `requirePermission` and every role-filtered nav item narrows together —
+ * a simulation that is only half applied would show a support agent a screen no customer can reach
+ * and teach them the wrong thing.
+ */
 export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
   const store = await cookies();
-  return loadUserFromToken(store.get(SESSION_COOKIE)?.value);
+  const user = await loadUserFromToken(store.get(SESSION_COOKIE)?.value);
+  if (!user) return null;
+
+  // Only platform staff may simulate, and they already hold everything, so this can only ever take
+  // permissions away. There is no path here that grants one.
+  if (user.role !== "SUPER_ADMIN") return user;
+  const { readViewAs } = await import("./view-as");
+  const view = await readViewAs();
+  if (!view || view.role === user.role) return user;
+
+  const { permissionsForRole } = await import("@/lib/auth/permissions");
+  return {
+    ...user,
+    role: view.role,
+    permissions: permissionsForRole(view.role),
+    viewingAs: { role: view.role, realRole: user.role, userName: view.userName },
+  };
 });
 
 export async function getUserFromRequest(request: Request): Promise<CurrentUser | null> {

@@ -58,7 +58,10 @@ export const INSIGHTS_TABS: readonly SubTab[] = [
  * Briefly" look like a preference. It is a different job, so it gets its own door.
  */
 export const PLATFORM_TABS: readonly SubTab[] = [
-  { href: "/platform", label: "nav.customers", permission: "settings:manage", exact: true },
+  { href: "/platform", label: "nav.health", permission: "settings:manage", exact: true },
+  { href: "/platform/workspaces", label: "nav.customers", permission: "settings:manage" },
+  { href: "/platform/people", label: "nav.people", permission: "settings:manage" },
+  { href: "/platform/logs", label: "nav.logs", permission: "settings:manage" },
   { href: "/platform/integrations", label: "nav.integrations", permission: "settings:manage" },
 ];
 

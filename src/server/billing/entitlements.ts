@@ -198,12 +198,13 @@ export async function platformBillingSummary() {
       planKey: s.plans.key,
       planName: s.plans.name,
       priceMonthlyCents: s.plans.priceMonthlyCents,
+      isCustomPriced: s.plans.isCustomPriced,
       workspaces: sql<number>`count(${s.organizationSubscriptions.id})`,
       paying: sql<number>`count(${s.organizationSubscriptions.id}) filter (where ${s.organizationSubscriptions.status} in ('ACTIVE','TRIALING','PAST_DUE'))`,
     })
     .from(s.plans)
     .leftJoin(s.organizationSubscriptions, eq(s.organizationSubscriptions.planId, s.plans.id))
-    .groupBy(s.plans.id, s.plans.key, s.plans.name, s.plans.priceMonthlyCents, s.plans.sortOrder)
+    .groupBy(s.plans.id, s.plans.key, s.plans.name, s.plans.priceMonthlyCents, s.plans.isCustomPriced, s.plans.sortOrder)
     .orderBy(s.plans.sortOrder);
 
   const mrrCents = rows.reduce((total, r) => total + Number(r.paying) * r.priceMonthlyCents, 0);
