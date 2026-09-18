@@ -223,7 +223,69 @@ async function checkStorage(): Promise<SetupResult> {
 /* ── Entry point ──────────────────────────────────────────────────────────────────────────── */
 
 /** Which integrations have a setup step worth offering. */
-export const SETUP_SUPPORTED = ["stripe", "brevo", "openai", "storage"] as const;
+/* ── Resend ───────────────────────────────────────────────────────────────────────────────── */
+
+/**
+ * Finish connecting delivery: the webhook that reports what happened to every message, and the
+ * shared domain customers send from until their own is verified. Both are things a person would
+ * otherwise do by hand in two dashboards with a signing secret in the clipboard in between.
+ */
+async function setUpResend(actorId?: string | null): Promise<SetupResult> {
+  const { getEmailProvider } = await import("@/server/email/providers");
+  const { RESEND_WEBHOOK_EVENTS } = await import("@/server/email/providers/resend");
+  const provider = await getEmailProvider();
+  if (!provider) return fail("Add your Resend API key first, then run setup.");
+  const steps: SetupStep[] = [];
+  const endpoint = `${env.NEXT_PUBLIC_APP_URL}/api/webhooks/resend`;
+
+  try {
+    const hooks = await provider.listWebhooks();
+    const existing = hooks.find((hook) => hook.endpoint === endpoint);
+    if (existing) {
+      const secret = existing.secret ?? (await provider.getWebhook(existing.id)).secret;
+      if (secret) await saveIntegration("resend", { webhookSecret: secret }, actorId);
+      steps.push({ label: "Webhook", detail: secret ? `Already pointing at ${endpoint}; signing secret stored.` : `Already pointing at ${endpoint}, but Resend did not hand back its signing secret — rotate it in Resend and paste it here.`, ok: Boolean(secret) });
+    } else {
+      const created = await provider.createWebhook(endpoint, [...RESEND_WEBHOOK_EVENTS]);
+      await saveIntegration("resend", { webhookSecret: created.secret }, actorId);
+      steps.push({ label: "Webhook", detail: `Created for ${endpoint}: deliveries, bounces, complaints, opens, clicks and domain changes now reach Briefly. Signing secret stored.`, ok: true });
+    }
+  } catch (err) {
+    steps.push({ label: "Webhook", detail: err instanceof Error ? err.message : String(err), ok: false });
+  }
+
+  const shared = (await integrationValue("resend", "sharedDomain"))?.trim().toLowerCase();
+  if (!shared) {
+    steps.push({ label: "Briefly sending domain", detail: "Not set. Customers can only send once their own domain is verified. Add one, e.g. send.briefly.press, and run setup again.", ok: false });
+  } else {
+    try {
+      const region = (await integrationValue("resend", "region"))?.trim() || "eu-west-1";
+      const domains = await provider.listDomains();
+      let domain = domains.find((candidate) => candidate.name.toLowerCase() === shared) ?? null;
+      let created = false;
+      if (!domain) {
+        domain = await provider.createDomain(shared, { region });
+        created = true;
+      } else {
+        domain = await provider.getDomain(domain.id);
+      }
+      if (domain.status === "verified") {
+        steps.push({ label: "Briefly sending domain", detail: `${shared} is verified. Customers send as “via Briefly” from it until their own domain is ready.`, ok: true });
+      } else {
+        const records = domain.records.map((record) => `${record.type} ${record.name} → ${record.value}${record.priority !== undefined ? ` (priority ${record.priority})` : ""}`).join("; ");
+        steps.push({ label: "Briefly sending domain", detail: `${shared} is ${created ? "registered" : domain.status.replace("_", " ")}. Publish these DNS records, then run setup again: ${records}`, ok: false });
+      }
+    } catch (err) {
+      steps.push({ label: "Briefly sending domain", detail: err instanceof Error ? err.message : String(err), ok: false });
+    }
+  }
+
+  const ok = steps.every((step) => step.ok);
+  await audit({ action: "integration.setup", userId: actorId, metadata: { integration: "resend", ok, steps: steps.map((step) => step.label) } });
+  return { ok, summary: ok ? "Delivery is set up: every message reports back, and customers can send before their own domain is ready." : "Delivery is partly set up — see the steps below.", steps };
+}
+
+export const SETUP_SUPPORTED = ["stripe", "brevo", "resend", "openai", "storage"] as const;
 
 export async function runSetup(integrationKey: string, actorId?: string | null): Promise<SetupResult> {
   const run = async () => {
@@ -232,6 +294,8 @@ export async function runSetup(integrationKey: string, actorId?: string | null):
         return setUpStripe(actorId);
       case "brevo":
         return setUpBrevo(actorId);
+      case "resend":
+        return setUpResend(actorId);
       case "openai":
         return setUpOpenAi(actorId);
       case "storage":

@@ -25,6 +25,7 @@ export const dynamic = "force-dynamic";
 const SETUP_LABELS: Record<string, string> = {
   stripe: "Set up billing",
   brevo: "Find my sender",
+  resend: "Set up delivery",
   openai: "Choose models",
   storage: "Check storage",
 };

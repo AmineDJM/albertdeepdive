@@ -38,6 +38,7 @@ export const JOB_TYPES = {
   EDITION_EXPORT: "edition.export",
   AUTOMATION_TICK: "automation.tick",
   EMAIL_SEND: "email.send",
+  EMAIL_DOMAIN_VERIFY: "email.domain.verify",
   INFO_REQUEST_SEND: "info_request.send",
   CREATIVE_RENDER: "creative.render",
 } as const;

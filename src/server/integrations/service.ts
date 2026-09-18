@@ -219,7 +219,16 @@ export async function testIntegration(integrationKey: string): Promise<Integrati
       case "resend": {
         if (!config.apiKey) return { ok: false, message: "No API key saved yet." };
         const res = await fetch("https://api.resend.com/domains", { headers: { authorization: `Bearer ${config.apiKey}` }, signal: AbortSignal.timeout(12_000) });
-        return res.ok ? { ok: true, message: "Connected to Resend." } : { ok: false, message: res.status === 401 ? "Resend rejected that key." : `Resend answered ${res.status}.` };
+        if (!res.ok) return { ok: false, message: res.status === 401 ? "Resend rejected that key." : `Resend answered ${res.status}.` };
+        const body = (await res.json().catch(() => ({}))) as { data?: { name: string; status: string }[] };
+        const domains = body.data ?? [];
+        const shared = config.sharedDomain?.trim().toLowerCase();
+        if (!shared) return { ok: true, message: `Connected. ${domains.length} domain${domains.length === 1 ? "" : "s"} in the account. Add a Briefly sending domain so customers can send before their own is ready.` };
+        const mine = domains.find((domain) => domain.name.toLowerCase() === shared);
+        if (!mine) return { ok: true, message: `Connected, but ${shared} is not registered in Resend yet — run “Set up delivery”.` };
+        return mine.status === "verified"
+          ? { ok: true, message: `Connected. Customers send as “via Briefly” from ${shared} until their own domain is ready.` }
+          : { ok: true, message: `Connected, but ${shared} is ${mine.status.replace("_", " ")} in Resend: its DNS records still need publishing.` };
       }
 
       case "openai": {

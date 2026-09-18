@@ -9,6 +9,10 @@ export type OutgoingEmail = {
   replyTo?: string;
   /** Bulk mail must offer one-click unsubscribe, or inboxes treat it as spam. */
   listUnsubscribeUrl?: string;
+  /** Who it is from, resolved per workspace. Adapters with a fixed identity (a mailbox) ignore it. */
+  from?: string;
+  /** Labels the provider hands back on every webhook. */
+  tags?: Record<string, string>;
 };
 export type SendResult = { providerMessageId?: string };
 
@@ -31,25 +35,17 @@ export class LogEmailAdapter implements EmailAdapter {
   }
 }
 
+/**
+ * Resend, Briefly's delivery layer, through the provider interface. The sender is decided upstream
+ * per workspace — the customer's own domain once it is verified, Briefly's shared domain until then.
+ */
 export class ResendEmailAdapter implements EmailAdapter {
   readonly name = "resend" as const;
   async send(message: OutgoingEmail): Promise<SendResult> {
-    const { integrationValue } = await import("@/server/integrations/service");
-    const apiKey = await integrationValue("resend", "apiKey");
-    if (!apiKey) throw new Error("Resend is not connected");
-    const { Resend } = await import("resend");
-    const resend = new Resend(apiKey);
-    const result = await resend.emails.send({
-      from: env.EMAIL_FROM,
-      to: message.to,
-      cc: message.cc ? [message.cc] : undefined,
-      replyTo: message.replyTo,
-      subject: message.subject,
-      html: message.html,
-      text: message.text,
-    });
-    if (result.error) throw new Error(result.error.message);
-    return { providerMessageId: result.data?.id };
+    const { getEmailProvider } = await import("./providers");
+    const provider = await getEmailProvider();
+    if (!provider) throw new Error("Resend is not connected");
+    return provider.send({ ...message, from: message.from ?? env.EMAIL_FROM });
   }
 }
 
@@ -107,16 +103,17 @@ export class GmailEmailAdapter implements EmailAdapter {
  * Picks the adapter for each message, at send time rather than once at boot: connecting a provider
  * in the interface has to take effect immediately, without a restart.
  *
- * A connected Gmail mailbox always wins, because somebody went to the trouble of connecting it.
- * Then Brevo, then Resend. With none of them, messages are recorded in the in-app mailbox and go
- * nowhere — which is the right behaviour for a development install and is visible in the console.
+ * Resend is the delivery layer, and wins whenever it is connected: it is the one path that can send
+ * as each customer's own domain. Without it, a connected Gmail mailbox sends (somebody went to the
+ * trouble of connecting it), then Brevo. With none of them, messages are recorded in the in-app
+ * mailbox and go nowhere — the right behaviour for a development install, and visible in the console.
  */
 export async function resolveEmailAdapter(): Promise<EmailAdapter> {
+  const { isConfigured } = await import("@/server/integrations/service");
+  if (await isConfigured("resend")) return new ResendEmailAdapter();
   const { getGmailConnection } = await import("./gmail");
   if (await getGmailConnection()) return new GmailEmailAdapter();
-  const { isConfigured } = await import("@/server/integrations/service");
   if (await isConfigured("brevo")) return new BrevoEmailAdapter();
-  if (await isConfigured("resend")) return new ResendEmailAdapter();
   return new LogEmailAdapter();
 }
 

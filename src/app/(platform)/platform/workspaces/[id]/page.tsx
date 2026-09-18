@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { Activity, ArrowLeft, Building2, CircleDollarSign, Database, Mail, Receipt, ShieldAlert, Users } from "lucide-react";
 import { getCurrentUser, hasPermission } from "@/server/auth/session";
 import { workspaceSheet, type WorkspaceMember } from "@/server/platform/insights";
+import { getSendingDomain } from "@/server/email/domains";
 import { overrideReport } from "@/server/platform/overrides";
 import { listPlans } from "@/server/billing/plans";
 import { LOG_SOURCE_LABELS } from "@/server/platform/logs";
@@ -51,7 +52,7 @@ export default async function WorkspaceSheetPage({ params }: { params: Promise<{
   const { id } = await params;
   const sheet = await workspaceSheet(id);
   if (!sheet) notFound();
-  const [overrides, plans] = await Promise.all([overrideReport(id), listPlans(true)]);
+  const [overrides, plans, sendingDomain] = await Promise.all([overrideReport(id), listPlans(true), getSendingDomain(id)]);
   const { organization, subscription, counts, spend30, spendAll } = sheet;
   const currency = subscription.currency;
   const cost30 = spend30.aiCents + spend30.creativeCents;
@@ -98,6 +99,8 @@ export default async function WorkspaceSheetPage({ params }: { params: Promise<{
               <dd>{organization.onboardedAt ? formatDate(organization.onboardedAt) : tr("not finished")}</dd>
               <dt className="text-muted-foreground">{tr("Editions")}</dt>
               <dd>{counts.editions} · {counts.publishedEditions} {tr("published")}{counts.jobsFailed7 ? <span className="text-warning">{" "}· {counts.jobsFailed7} {tr("jobs failed this week")}</span> : null}</dd>
+              <dt className="text-muted-foreground">{tr("Email sending")}</dt>
+              <dd>{sendingDomain ? <span className="font-mono">{sendingDomain.domainName}</span> : tr("via Briefly (test mode)")}{sendingDomain ? <span className="text-muted-foreground">{" "}· {sendingDomain.status.toLowerCase().replace(/_/g, " ")}</span> : null}</dd>
               <dt className="text-muted-foreground">{tr("Reader payments")}</dt>
               <dd>{organization.readerPaymentsConnected ? `${tr("connected")} · ${counts.paidPublications} ${tr("paid titles")}` : tr("not connected")}</dd>
               <dt className="text-muted-foreground">{tr("All-time cost")}</dt>

@@ -259,6 +259,12 @@ export const modelTierEnum = pgEnum("model_tier", ["FAST", "STRONG"]);
 
 export const emailStatusEnum = pgEnum("email_status", ["QUEUED", "SENT", "FAILED", "LOGGED"]);
 
+/** What the world did with a message once it left: the provider's webhooks write these. */
+export const emailDeliveryEnum = pgEnum("email_delivery", ["PENDING", "DELIVERED", "DELAYED", "BOUNCED", "COMPLAINED", "SUPPRESSED", "FAILED"]);
+
+/** A customer's sending domain, in the words the customer sees. */
+export const sendingDomainStatusEnum = pgEnum("sending_domain_status", ["SETTING_UP", "WAITING_FOR_DNS", "VERIFYING", "READY", "NEEDS_ATTENTION"]);
+
 export const actorTypeEnum = pgEnum("actor_type", ["USER", "SYSTEM", "AI", "CONTRIBUTOR"]);
 
 export const notificationTypeEnum = pgEnum("notification_type", [
@@ -274,5 +280,6 @@ export const notificationTypeEnum = pgEnum("notification_type", [
   "EXPORT_COMPLETED",
   "EXPORT_FAILED",
   "PROCESSING_COMPLETED",
+  "EMAIL_DOMAIN_READY",
   "SYSTEM",
 ]);

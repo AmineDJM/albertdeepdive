@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { env } from "@/server/env";
 import { createLogger } from "@/server/logger";
 import { runAutomationTick } from "@/server/campaigns/scheduler";
+import { checkPendingSendingDomains } from "@/server/email/domains";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -36,7 +37,13 @@ async function handle(request: Request) {
   if (now && Number.isNaN(now.getTime())) return NextResponse.json({ error: "Invalid now" }, { status: 400 });
   try {
     const result = await runAutomationTick({ triggeredBy: "SCHEDULER", now });
-    return NextResponse.json({ ok: result.errors.length === 0, ...result });
+    // Customers' sending domains are looked at on every pass too: a verification that only
+    // happened when somebody clicked would be a verification most people never see complete.
+    const sendingDomains = await checkPendingSendingDomains().catch((err) => {
+      log.warn("sending domain sweep failed", { err });
+      return { checked: 0, ready: 0 };
+    });
+    return NextResponse.json({ ok: result.errors.length === 0, ...result, sendingDomains });
   } catch (err) {
     log.error("tick failed", { err });
     return NextResponse.json({ ok: false, error: err instanceof Error ? err.message : "Tick failed" }, { status: 500 });

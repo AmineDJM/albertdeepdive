@@ -3,6 +3,7 @@ import { db } from "@/server/db/client";
 import { emailLog } from "@/server/db/schema";
 import { createLogger } from "@/server/logger";
 import { resolveEmailAdapter } from "./adapters";
+import { senderFor } from "./sender";
 import { emailTextFallback, renderEmailLayout, type EmailLayoutInput } from "./template";
 
 const log = createLogger("email");
@@ -29,7 +30,10 @@ export type SendEmailInput = {
 export async function sendEmail(input: SendEmailInput) {
   const html = renderEmailLayout(input.layout);
   const text = emailTextFallback(input.layout);
-  const adapter = await resolveEmailAdapter();
+  // Who it is from is the workspace's business — its own domain once verified, Briefly's shared one
+  // until then — and only the delivery provider can honour that; a mailbox sends as itself.
+  const [adapter, sender] = await Promise.all([resolveEmailAdapter(), senderFor(input.organizationId ?? null)]);
+  const from = adapter.name === "resend" ? sender.from : null;
   const [row] = await db
     .insert(emailLog)
     .values({
@@ -42,6 +46,7 @@ export async function sendEmail(input: SendEmailInput) {
       organizationId: input.organizationId ?? null,
       status: "QUEUED",
       provider: adapter.name,
+      fromAddress: from,
       entityType: input.entityType ?? null,
       entityId: input.entityId ?? null,
       editionId: input.editionId ?? null,
@@ -49,7 +54,17 @@ export async function sendEmail(input: SendEmailInput) {
     })
     .returning();
   try {
-    const result = await adapter.send({ to: input.to, cc: input.cc, replyTo: input.replyTo, subject: input.subject, html, text, listUnsubscribeUrl: input.listUnsubscribeUrl });
+    const result = await adapter.send({
+      to: input.to,
+      cc: input.cc,
+      from: from ?? undefined,
+      replyTo: input.replyTo ?? (adapter.name === "resend" ? sender.replyTo : undefined),
+      subject: input.subject,
+      html,
+      text,
+      listUnsubscribeUrl: input.listUnsubscribeUrl,
+      tags: { workspace: input.organizationId ?? "platform", template: input.template },
+    });
     await db
       .update(emailLog)
       .set({ status: adapter.name === "log" ? "LOGGED" : "SENT", providerMessageId: result.providerMessageId ?? null, sentAt: new Date() })

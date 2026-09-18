@@ -46,7 +46,7 @@ export const SETTINGS_NAV: { label: string; items: SettingsNavItem[] }[] = [
       { href: "/settings/system", label: "Publishing defaults", icon: SlidersHorizontal, permission: "settings:manage", hint: "Masthead, schedule, print, AI" },
       { href: "/settings/sections", label: "Sections", icon: LayoutList, permission: "section:manage", hint: "Default section template" },
       { href: "/settings/prompts", label: "Prompts", icon: Cpu, permission: "prompt:manage", hint: "Versioned AI templates" },
-      { href: "/settings/email", label: "Sending address", icon: AtSign, permission: ["settings:manage"], hint: "Connect the newsroom mailbox" },
+      { href: "/settings/email", label: "Email sending", icon: AtSign, permission: ["settings:manage"], workspaceRoles: ["OWNER", "ADMIN"], hint: "Your domain and sender" },
       { href: "/settings/privacy", label: "Privacy & retention", icon: Shield, permission: "settings:manage", hint: "GDPR, consent, exports" },
     ],
   },

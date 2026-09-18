@@ -1,5 +1,5 @@
 import { boolean, index, integer, jsonb, numeric, pgTable, real, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
-import { actorTypeEnum, aiJobStatusEnum, automationStepEnum, emailStatusEnum, entityTypeEnum, jobStatusEnum, modelTierEnum, notificationTypeEnum } from "./enums";
+import { actorTypeEnum, aiJobStatusEnum, automationStepEnum, emailDeliveryEnum, emailStatusEnum, entityTypeEnum, jobStatusEnum, modelTierEnum, notificationTypeEnum } from "./enums";
 import { contributors, organizations, users } from "./identity";
 import { editions } from "./editions";
 
@@ -152,9 +152,20 @@ export const emailLog = pgTable(
     editionId: uuid("edition_id").references(() => editions.id, { onDelete: "set null" }),
     contributorId: uuid("contributor_id").references(() => contributors.id, { onDelete: "set null" }),
     sentAt: timestamp("sent_at", { withTimezone: true }),
+    /** The address it went out as: the customer's own domain, or Briefly's while theirs is not ready. */
+    fromAddress: text("from_address"),
+    /** What the world did with it, from the provider's webhooks. */
+    delivery: emailDeliveryEnum("delivery").notNull().default("PENDING"),
+    deliveryDetail: text("delivery_detail"),
+    deliveredAt: timestamp("delivered_at", { withTimezone: true }),
+    bouncedAt: timestamp("bounced_at", { withTimezone: true }),
+    openedAt: timestamp("opened_at", { withTimezone: true }),
+    clickedAt: timestamp("clicked_at", { withTimezone: true }),
+    opens: integer("opens").notNull().default(0),
+    clicks: integer("clicks").notNull().default(0),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [index("email_log_edition_idx").on(t.editionId), index("email_log_contributor_idx").on(t.contributorId)],
+  (t) => [index("email_log_edition_idx").on(t.editionId), index("email_log_contributor_idx").on(t.contributorId), index("email_log_provider_message_idx").on(t.providerMessageId)],
 );
 
 export const auditLog = pgTable(
