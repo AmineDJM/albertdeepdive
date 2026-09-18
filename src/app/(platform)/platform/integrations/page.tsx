@@ -27,6 +27,7 @@ const SETUP_LABELS: Record<string, string> = {
   brevo: "Find my sender",
   resend: "Set up delivery",
   openai: "Choose models",
+  elevenlabs: "Set up voices",
   storage: "Check storage",
 };
 export default async function IntegrationsPage() {

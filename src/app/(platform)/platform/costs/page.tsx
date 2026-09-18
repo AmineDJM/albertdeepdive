@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Cpu, Database, Download, Mail, Sparkles, TrendingUp, Users } from "lucide-react";
+import { AudioLines, Cpu, Database, Download, Mail, Sparkles, TrendingUp, Users } from "lucide-react";
 import { getCurrentUser, hasPermission } from "@/server/auth/session";
 import { COST_WINDOWS, costWindow, costsBreakdown, type ModelSpend, type PersonSpend, type ServiceSpend, type WorkspaceSpend } from "@/server/platform/insights";
 import { PageBody, PageHeader, SectionTitle } from "@/components/newsroom/page-header";
@@ -42,7 +42,7 @@ export default async function PlatformCostsPage({ searchParams }: { searchParams
   const { totals } = breakdown;
   const currency = breakdown.byWorkspace.find((row) => row.mrrCents > 0)?.currency ?? "EUR";
   const margin = totals.marginCents;
-  const points = breakdown.byDay.map((day) => ({ label: day.day.slice(5), value: day.aiCents + day.creativeCents, title: `${day.day}: ${formatSpend(day.aiCents + day.creativeCents, currency)} · ${day.calls} ${tr("calls")}` }));
+  const points = breakdown.byDay.map((day) => ({ label: day.day.slice(5), value: day.aiCents + day.creativeCents + day.speechCents, title: `${day.day}: ${formatSpend(day.aiCents + day.creativeCents + day.speechCents, currency)} · ${day.calls} ${tr("calls")}` }));
 
   return (
     <>
@@ -72,10 +72,11 @@ export default async function PlatformCostsPage({ searchParams }: { searchParams
           ))}
         </div>
 
-        <StatGrid columns={6}>
+        <StatGrid columns={4}>
           <Stat label={tr("Revenue")} value={formatCents(totals.revenueCents, currency)} hint={`${tr("over")} ${days} ${tr("days, from the plans")}`} icon={TrendingUp} hue="amber" />
           <Stat label={tr("Model calls")} value={formatSpend(totals.aiCents, currency)} hint={`${formatNumber(totals.aiCalls)} ${tr("calls")} · ${formatTokens(totals.aiTokens)} ${tr("tokens")}${totals.aiFailed ? ` · ${totals.aiFailed} ${tr("failed")}` : ""}`} icon={Cpu} hue="violet" />
           <Stat label={tr("Studio")} value={formatSpend(totals.creativeCents, currency)} hint={`${formatNumber(totals.creativeCredits)} ${tr("credits")}`} icon={Sparkles} hue="magenta" />
+          <Stat label={tr("Narration")} value={formatSpend(totals.speechCents, currency)} hint={`${formatNumber(Math.round(totals.speechSeconds / 60))} ${tr("minutes of audio")}`} icon={AudioLines} hue="violet" />
           <Stat label={tr("Margin")} value={formatCents(margin, currency)} hint={totals.revenueCents ? `${Math.round((margin / totals.revenueCents) * 100)}% ${tr("of revenue")}` : tr("nothing billed yet")} tone={margin < 0 ? "destructive" : "default"} hue={margin < 0 ? "coral" : "green"} />
           <Stat label={tr("Emails sent")} value={formatNumber(totals.emails)} hint={totals.emailsFailed ? `${totals.emailsFailed} ${tr("failed")}` : tr("none failed")} icon={Mail} hue="teal" />
           <Stat label={tr("Storage")} value={formatBytes(totals.storageBytes)} hint={tr("held now, all customers")} icon={Database} hue="cobalt" />
@@ -84,7 +85,7 @@ export default async function PlatformCostsPage({ searchParams }: { searchParams
         <section>
           <SectionTitle>{tr("Spend by day")}</SectionTitle>
           <div className="rounded-lg border border-border bg-card px-3 py-2">
-            <Bars points={points} hue="violet" label={`${tr("Model and Studio spend per day over the last")} ${days} ${tr("days")}`} format={(value) => formatSpend(value, currency)} />
+            <Bars points={points} hue="violet" label={`${tr("Model, Studio and narration spend per day over the last")} ${days} ${tr("days")}`} format={(value) => formatSpend(value, currency)} />
           </div>
         </section>
 
@@ -111,6 +112,7 @@ export default async function PlatformCostsPage({ searchParams }: { searchParams
               { key: "revenue", header: tr("Revenue"), cell: (row: WorkspaceSpend) => <span className="tabular text-xs">{formatCents(row.revenueCents, row.currency)}</span>, align: "right" },
               { key: "ai", header: tr("Model calls"), cell: (row: WorkspaceSpend) => <span className="tabular text-xs">{formatSpend(row.aiCents, row.currency)}<span className="text-muted-foreground">{" "}· {formatNumber(row.aiCalls)}</span></span>, align: "right" },
               { key: "creative", header: tr("Studio"), cell: (row: WorkspaceSpend) => <span className="tabular text-xs">{formatSpend(row.creativeCents, row.currency)}</span>, align: "right" },
+              { key: "speech", header: tr("Narration"), cell: (row: WorkspaceSpend) => <span className="tabular text-xs">{formatSpend(row.speechCents, row.currency)}<span className="text-muted-foreground">{" "}· {formatNumber(Math.round(row.speechSeconds / 60))} min</span></span>, align: "right" },
               { key: "emails", header: tr("Emails"), cell: (row: WorkspaceSpend) => <span className="tabular text-xs">{formatNumber(row.emails)}{row.emailsFailed ? <span className="text-warning">{" "}· {row.emailsFailed} ✕</span> : null}</span>, align: "right" },
               { key: "storage", header: tr("Storage"), cell: (row: WorkspaceSpend) => <span className="tabular text-xs">{formatBytes(row.storageBytes)}</span>, align: "right" },
               { key: "margin", header: tr("Margin"), cell: (row: WorkspaceSpend) => <span className={cn("tabular text-xs font-medium", row.marginCents < 0 ? "text-destructive" : "")}>{formatCents(row.marginCents, row.currency)}</span>, align: "right" },

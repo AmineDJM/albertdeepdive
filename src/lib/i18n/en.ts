@@ -66,6 +66,7 @@ export const en = {
     campaign: "Campaign",
     qa: "QA & publish",
     exports: "Exports",
+    audio: "Audio",
   },
 
   auth: {

@@ -244,6 +244,28 @@ export async function testIntegration(integrationKey: string): Promise<Integrati
           : { ok: true, message: `Connected. ${names.size} model${names.size === 1 ? "" : "s"} available.` };
       }
 
+      case "elevenlabs": {
+        if (!config.apiKey) return { ok: false, message: "No API key saved yet." };
+        const { ElevenLabsProvider } = await import("@/server/speech/providers/elevenlabs");
+        const { resolveCatalogue } = await import("@/lib/speech/voices");
+        const { LANGUAGE_NAMES } = await import("@/lib/speech/language");
+        const provider = new ElevenLabsProvider({ apiKey: config.apiKey, baseUrl: config.baseUrl });
+        const account = await provider.account!();
+        let catalogue: Record<string, string> = {};
+        try {
+          catalogue = config.voiceCatalog ? (JSON.parse(config.voiceCatalog) as Record<string, string>) : {};
+        } catch {
+          return { ok: false, message: "The curated voices field is not valid JSON." };
+        }
+        const resolved = resolveCatalogue(catalogue);
+        const spoken = [...new Set(resolved.filter((entry) => entry.providerVoiceId).map((entry) => entry.voice.language))];
+        const silent = [...new Set(resolved.filter((entry) => !entry.providerVoiceId).map((entry) => entry.voice.language))].filter((language) => !spoken.includes(language));
+        const usage = account.charactersLimit ? ` · ${(account.charactersUsed ?? 0).toLocaleString()} of ${account.charactersLimit.toLocaleString()} characters used this period` : "";
+        const voices = spoken.length ? `Voices set up for ${spoken.map((language) => LANGUAGE_NAMES.en[language]).join(", ")}` : "No voices set up yet";
+        const missing = silent.length ? `; none yet for ${silent.map((language) => LANGUAGE_NAMES.en[language]).join(", ")} — run “Set up voices”` : "";
+        return { ok: true, message: `Connected (${account.label})${usage}. ${voices}${missing}.` };
+      }
+
       case "higgsfield": {
         if (!config.apiKey) return { ok: false, message: "No credentials saved yet." };
         if (!config.apiKey.includes(":")) return { ok: false, message: "Credentials must be key-id:key-secret, both halves from the Higgsfield console." };

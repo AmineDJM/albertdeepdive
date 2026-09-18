@@ -111,6 +111,10 @@ export function generateLocal(request: ProviderRequest): unknown {
       return localTranslator(input);
     case "image_describer":
       return localImageDescriber(input);
+    case "speech_adapter":
+      return localSpeechAdapter(input);
+    case "voice_director":
+      return localVoiceDirector(input);
     default:
       throw new Error(`Local generator not implemented for ${service}`);
   }
@@ -1213,4 +1217,20 @@ function parseOfferedMedia(text: string): { id: string; description: string }[] 
     const match = OFFERED_MEDIA_LINE.exec(line.trim());
     return match ? [{ id: match[1], description: match[2].trim() }] : [];
   });
+}
+
+// ─── Speech ──────────────────────────────────────────────────────────────────
+
+/**
+ * Without a model, the words are read as written: the deterministic pass that follows says the
+ * numbers and the initialisms, and nothing is condensed. Passages come back one for one, in order,
+ * which is the contract the adapter checks a real model against too.
+ */
+function localSpeechAdapter(input: Input): unknown {
+  const passages = arr<{ index: number; text: string }>(input, "passagesJson");
+  return { language: str(input, "language") || "en", passages: passages.map((passage) => ({ index: passage.index, text: passage.text, tag: null })) };
+}
+
+function localVoiceDirector(input: Input): unknown {
+  return { stance: str(input, "baseStance"), energy: str(input, "baseEnergy") || "medium", pauses: str(input, "basePauses") || "natural", tags: [] };
 }

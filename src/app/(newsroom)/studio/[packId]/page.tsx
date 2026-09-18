@@ -15,6 +15,7 @@ import { formatDateTime } from "@/lib/utils";
 import { BriefEditor } from "./brief-editor";
 import { PackControls } from "./pack-controls";
 import { getUi } from "@/server/i18n/locale";
+import { PackNarration } from "./pack-narration";
 
 export const dynamic = "force-dynamic";
 
@@ -121,6 +122,8 @@ export default async function PackPage({ params }: { params: Promise<{ packId: s
                 <BriefEditor packId={pack.id} brief={pack.brief} busy={pack.status === "RENDERING" || pack.status === "DIRECTING"} />
               </div>
             ) : null}
+
+            {format.moving && pack.spec ? <PackNarration packId={pack.id} organizationId={pack.organizationId} publicationId={pack.publicationId} canPublish={hasPermission(user, "edition:publish")} /> : null}
           </section>
 
           <aside className="space-y-5">

@@ -25,7 +25,7 @@ import { ROLES, type Role } from "@/lib/auth/permissions";
  */
 
 /** The limits a person can raise or lower. `null` means unlimited and is not the same as 0. */
-export const LIMIT_KEYS = ["publications", "users", "subscribers", "editionsPerMonth", "creativeCredits"] as const;
+export const LIMIT_KEYS = ["publications", "users", "subscribers", "editionsPerMonth", "creativeCredits", "narrationMinutes"] as const;
 
 /** The switches. Each is a capability the product genuinely gates on. */
 export const FLAG_KEYS = [
@@ -40,6 +40,15 @@ export const FLAG_KEYS = [
   "socialPack",
   "cinematicMode",
   "videoGeneration",
+  // Spoken Briefly. Narration at all, the premium voice, whole editions, another language than
+  // the text's, the house voice, a consented clone, a second take.
+  "audioNarration",
+  "premiumVoices",
+  "audioEditions",
+  "multilingualNarration",
+  "brandVoice",
+  "voiceCloning",
+  "multipleTakes",
 ] as const;
 
 export const OVERRIDE_LABELS: Record<string, string> = {
@@ -59,6 +68,14 @@ export const OVERRIDE_LABELS: Record<string, string> = {
   cinematicMode: "Cinematic mode",
   videoGeneration: "Video",
   outputs: "Formats",
+  narrationMinutes: "Narration minutes a month",
+  audioNarration: "Narration",
+  premiumVoices: "Premium voices",
+  audioEditions: "Audio editions",
+  multilingualNarration: "Narration in another language",
+  brandVoice: "Brand voice",
+  voiceCloning: "Voice cloning (with consent)",
+  multipleTakes: "Second take",
 };
 
 export type OverrideRow = {

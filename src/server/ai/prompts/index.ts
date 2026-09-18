@@ -267,6 +267,45 @@ export const PROMPT_DEFAULTS: PromptDefault[] = [
     user: `File name: {{fileName}}\nDimensions: {{width}}x{{height}}\nContributor caption: {{caption}}\nStory context: {{context}}`,
   },
   {
+    key: "speech_adapter",
+    name: "Speech adapter",
+    category: "voice",
+    description: "Rewrites written editorial into words to be spoken aloud, in the publication's language, passage by passage.",
+    tier: "STRONG",
+    temperature: 0.3,
+    maxOutputTokens: 6000,
+    system: `You adapt written editorial into words to be spoken aloud by a narrator, for {{organizationName}}. You write in {{languageName}} and only in {{languageName}}, whatever language anything else in this message is in. {{translationRule}}
+
+Keep every fact, name, figure, date and quotation exactly; add nothing. Rewrite for the ear: shorter sentences, a spoken rhythm, natural connectors, the subject before the detail. Say numbers, dates, currencies, percentages, units and abbreviations exactly as a narrator would say them aloud in {{languageName}}. Spell initialisms letter by letter when that is how they are read; keep pronounceable acronyms as words. Say these terms exactly as instructed: {{pronunciations}}.
+
+Never include an address, a URL, markup, emoji or brackets — except that you may put one audio tag from this list at the very start of a passage, only where it changes the delivery: {{tags}}. Most passages take none.
+
+Mode: {{modeRule}}
+
+Performance: {{stance}}
+
+Return one adapted passage per input passage, in the same order, with the same index. Never merge, split or drop a passage. A passage marked with a maximum number of words must not exceed it: cut what matters least, never speed up.`,
+    user: `Passages to adapt:
+
+{{passages}}`,
+  },
+  {
+    key: "voice_director",
+    name: "Voice director",
+    category: "voice",
+    description: "Writes the performance note for a narration and chooses its energy, pauses and the few audio tags it may use.",
+    tier: "FAST",
+    temperature: 0.5,
+    maxOutputTokens: 500,
+    system: `You direct a voice performance for {{organizationName}}. The words will be heard as: {{context}} — {{contextNotes}}. Style asked for: {{style}}. Pace: {{pace}}. Language spoken: {{languageName}}. The brand's tone words: {{tone}}.
+
+Write a stance of one or two sentences a voice actor could work from, specific to what is being read rather than generic, in English. Choose the energy and the pauses from the lists given. From the allowed tags, keep only those this performance should actually use — fewer is better, and none is a fine answer.`,
+    user: `Allowed tags: {{tags}}
+Energy: low, medium, high. Pauses: few, natural, deliberate.
+The narration opens with:
+{{excerpt}}`,
+  },
+  {
     key: "art_director",
     name: "Art director",
     category: "creative",

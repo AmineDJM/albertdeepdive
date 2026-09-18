@@ -32,6 +32,14 @@ export const FALLBACK_ENTITLEMENTS: Entitlements = {
   webhooks: false,
   printFeatures: false,
   creativeCredits: 0,
+  audioNarration: false,
+  premiumVoices: false,
+  audioEditions: false,
+  multilingualNarration: false,
+  brandVoice: false,
+  voiceCloning: false,
+  multipleTakes: false,
+  narrationMinutes: 0,
 };
 
 export type ResolvedPlan = {
@@ -145,7 +153,27 @@ export async function requireLimit(organizationId: string, key: LimitKey, adding
   return result;
 }
 
-export type FeatureKey = "customDomain" | "removeBrieflyBranding" | "approvalWorkflows" | "advancedAnalytics" | "apiAccess" | "webhooks" | "printFeatures" | "socialCarousels" | "socialPack" | "videoGeneration" | "cinematicMode" | "customBrandSystem" | "advancedTemplates";
+export type FeatureKey =
+  | "customDomain"
+  | "removeBrieflyBranding"
+  | "approvalWorkflows"
+  | "advancedAnalytics"
+  | "apiAccess"
+  | "webhooks"
+  | "printFeatures"
+  | "socialCarousels"
+  | "socialPack"
+  | "videoGeneration"
+  | "cinematicMode"
+  | "customBrandSystem"
+  | "advancedTemplates"
+  | "audioNarration"
+  | "premiumVoices"
+  | "audioEditions"
+  | "multilingualNarration"
+  | "brandVoice"
+  | "voiceCloning"
+  | "multipleTakes";
 
 export async function hasFeature(organizationId: string, feature: FeatureKey): Promise<boolean> {
   const plan = await resolveEntitlements(organizationId);

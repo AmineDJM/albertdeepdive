@@ -45,6 +45,15 @@ export type Entitlements = {
   maxAiVideoSeconds?: number | null;
   customBrandSystem?: boolean;
   advancedTemplates?: boolean;
+  /** Spoken Briefly: narrations, metered in minutes a month. */
+  audioNarration?: boolean;
+  premiumVoices?: boolean;
+  audioEditions?: boolean;
+  multilingualNarration?: boolean;
+  brandVoice?: boolean;
+  voiceCloning?: boolean;
+  multipleTakes?: boolean;
+  narrationMinutes?: number | null;
   [key: string]: unknown;
 };
 

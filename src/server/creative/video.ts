@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { Browser } from "playwright";
 import { planMotion, type MotionSpec } from "@/lib/creative/motion";
+import { holdsForNarration, sceneStarts } from "@/lib/speech/timing";
 import type { RenderSpec } from "@/lib/creative/brief";
 import { renderFrameLayers, renderSpec } from "./render";
 import { createLogger } from "@/server/logger";
@@ -110,12 +111,21 @@ export async function renderVideo(
      * passed in, and only a scene that moves (which needs its two layers separately) is re-rendered.
      */
     stills?: Map<number, { bytes: Buffer; mimeType: string }>;
+    /**
+     * A voice-over, already mastered, with how long it speaks over each scene.
+     *
+     * A scene is held for its narration when the narration runs longer than the reading time —
+     * never the other way round: a voice cut off at a scene change is worse than a long shot, and
+     * the words were budgeted to the scene before they were spoken.
+     */
+    narration?: { path: string; sceneDurations: (number | null)[] } | null;
   },
 ): Promise<EncodedVideo> {
   const ready = await encoderReady();
   if (!ready.ok) throw new Error(`Cannot encode video. ${ready.detail}`);
 
-  const motion = planMotion(spec, options.system, { fps: options.fps });
+  const planned = planMotion(spec, options.system, { fps: options.fps });
+  const motion = options.narration ? withNarrationHolds(planned, options.narration.sceneDurations) : planned;
   const directory = await mkdtemp(join(tmpdir(), "briefly-video-"));
 
   try {
@@ -151,7 +161,7 @@ export async function renderVideo(
     }
 
     const output = join(directory, "out.mp4");
-    const args = encodeArgs(motion, scenes, output);
+    const args = encodeArgs(motion, scenes, output, options.narration ? { path: options.narration.path } : null);
     const { code, stderr } = await run(ffmpegPath(), args);
     if (code !== 0) throw new Error(`ffmpeg exited ${code}: ${stderr.split("\n").slice(-4).join(" ").slice(0, 400)}`);
 
@@ -176,7 +186,7 @@ export async function renderVideo(
  * Exported so a test can assert on it without an encoder present: the arithmetic of a filter graph is
  * where this goes wrong, and it is fully checkable as a string.
  */
-export function encodeArgs(motion: MotionSpec, scenes: SceneFiles[], output: string): string[] {
+export function encodeArgs(motion: MotionSpec, scenes: SceneFiles[], output: string, audio: { path: string } | null = null): string[] {
   const args: string[] = ["-y", "-hide_banner", "-loglevel", "error"];
 
   // Each still becomes a clip of its own length. `-loop 1` plus `-t` is how a still becomes footage.
@@ -251,11 +261,17 @@ export function encodeArgs(motion: MotionSpec, scenes: SceneFiles[], output: str
     }
   }
 
+  // The voice-over, as one more input after every picture. Padded with silence so the file runs to
+  // the last frame, and cut at the video's end so a long tail never lengthens the film.
+  const audioIndex = inputs.reduce((total, entry) => total + (entry.type === null ? 1 : 2), 0);
+  if (audio) {
+    args.push("-i", audio.path);
+    filters.push(`[${audioIndex}:a]aformat=sample_fmts=fltp:sample_rates=44100:channel_layouts=stereo,apad[aout]`);
+  }
+
+  args.push("-filter_complex", filters.join(";"), "-map", "[out]");
+  if (audio) args.push("-map", "[aout]", "-c:a", "aac", "-b:a", "160k", "-shortest");
   args.push(
-    "-filter_complex",
-    filters.join(";"),
-    "-map",
-    "[out]",
     "-c:v",
     "libx264",
     // A social platform re-encodes whatever it gets, so the job is to hand it something clean rather
@@ -277,6 +293,15 @@ export function encodeArgs(motion: MotionSpec, scenes: SceneFiles[], output: str
     output,
   );
   return args;
+}
+
+/** The timeline, with each scene held long enough for what is said over it. */
+export function withNarrationHolds(motion: MotionSpec, sceneDurations: (number | null)[]): MotionSpec {
+  const { holds } = holdsForNarration(motion.scenes, sceneDurations);
+  const starts = sceneStarts(holds, motion.transitionSeconds);
+  const scenes = motion.scenes.map((scene, index) => ({ ...scene, hold: holds[index], startsAt: starts[index] }));
+  const last = scenes[scenes.length - 1];
+  return { ...motion, scenes, duration: last ? Math.round((last.startsAt + last.hold) * 1000) / 1000 : motion.duration };
 }
 
 function run(command: string, args: string[]): Promise<{ code: number; stdout: string; stderr: string }> {

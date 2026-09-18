@@ -24,3 +24,5 @@ export * from "./edition-qa";
 export * from "./external-news-summarizer";
 export * from "./translator";
 export * from "./image-describer";
+export * from "./speech-adapter";
+export * from "./voice-director";

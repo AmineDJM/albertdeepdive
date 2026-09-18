@@ -6,6 +6,7 @@ import { db } from "@/server/db/client";
 import * as s from "@/server/db/schema";
 import { buildEditionDocument } from "@/server/publication/document-builder";
 import { mediaUrls } from "@/server/media/urls";
+import { publishedNarrationsForEdition, publishedNarrationUrl } from "@/server/speech/service";
 import type { ArticleBlock } from "@/lib/publication/document";
 import { BRAND } from "@/lib/brand";
 
@@ -108,6 +109,10 @@ export default async function WebEditionPage({ params }: { params: Promise<{ slu
     : doc.articles;
   const brand = (organization?.brandColours ?? {}) as { primary?: string; accent?: string };
   const accent = brand.primary ?? brand.accent ?? undefined;
+  // Spoken editions the newsroom chose to publish: the whole issue first, then the shorter cuts.
+  const narrations = await publishedNarrationsForEdition(edition.id);
+  const listen = (await Promise.all(narrations.map(async (narration) => ({ narration, url: await publishedNarrationUrl(narration.id) })))).filter((entry): entry is { narration: (typeof narrations)[number]; url: string } => Boolean(entry.url));
+  const language = (publication?.language ?? "en") === "fr" ? "fr" : "en";
 
   return (
     <main className="min-h-screen bg-background">
@@ -126,6 +131,22 @@ export default async function WebEditionPage({ params }: { params: Promise<{ slu
       </header>
 
       <div className="mx-auto max-w-[720px] px-6 py-12">
+        {listen.length ? (
+          <section className="mb-10 rounded-lg border border-border bg-muted/30 p-5" aria-label={language === "fr" ? "Écouter cette édition" : "Listen to this edition"}>
+            <p className="label-caps mb-3">{language === "fr" ? "Écouter cette édition" : "Listen to this edition"}</p>
+            <ul className="space-y-3">
+              {listen.map(({ narration, url }) => (
+                <li key={narration.id}>
+                  <p className="mb-1 text-[13px] text-muted-foreground">
+                    {narration.kind === "EDITION" ? (language === "fr" ? "L'édition complète" : "The whole edition") : narration.kind === "SUMMARY" ? (language === "fr" ? "L'essentiel" : "The digest") : narration.kind === "EXECUTIVE" ? (language === "fr" ? "Le briefing" : "The briefing") : narration.title}
+                    {narration.durationSeconds ? ` · ${Math.floor(narration.durationSeconds / 60)}:${String(Math.round(narration.durationSeconds % 60)).padStart(2, "0")}` : ""}
+                  </p>
+                  <audio controls preload="none" src={url} className="w-full" />
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
         {doc.meta.editorial ? (
           <section className="mb-12 border-b border-border pb-10">
             <p className="label-caps mb-3">From the editor</p>

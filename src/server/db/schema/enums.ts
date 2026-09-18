@@ -265,6 +265,16 @@ export const emailDeliveryEnum = pgEnum("email_delivery", ["PENDING", "DELIVERED
 /** A customer's sending domain, in the words the customer sees. */
 export const sendingDomainStatusEnum = pgEnum("sending_domain_status", ["SETTING_UP", "WAITING_FOR_DNS", "VERIFYING", "READY", "NEEDS_ATTENTION"]);
 
+/** What a narration is made from: a whole edition, one article, a digest, a briefing, a film's scenes, or given text. */
+export const narrationKindEnum = pgEnum("narration_kind", ["EDITION", "ARTICLE", "SUMMARY", "EXECUTIVE", "VIDEO", "CUSTOM"]);
+
+/** Preview is cheap and fast, for hearing a draft; Final is the premium voice, spent once the words are approved. */
+export const narrationQualityEnum = pgEnum("narration_quality", ["PREVIEW", "FINAL"]);
+
+export const narrationStatusEnum = pgEnum("narration_status", ["QUEUED", "ADAPTING", "NARRATING", "MASTERING", "READY", "FAILED"]);
+
+export const voiceCloneStatusEnum = pgEnum("voice_clone_status", ["PENDING", "READY", "FAILED", "REVOKED"]);
+
 export const actorTypeEnum = pgEnum("actor_type", ["USER", "SYSTEM", "AI", "CONTRIBUTOR"]);
 
 export const notificationTypeEnum = pgEnum("notification_type", [
@@ -281,5 +291,7 @@ export const notificationTypeEnum = pgEnum("notification_type", [
   "EXPORT_FAILED",
   "PROCESSING_COMPLETED",
   "EMAIL_DOMAIN_READY",
+  "NARRATION_READY",
+  "NARRATION_FAILED",
   "SYSTEM",
 ]);

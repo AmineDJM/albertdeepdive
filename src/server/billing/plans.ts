@@ -52,6 +52,14 @@ export const DEFAULT_PLANS: {
       socialPack: false,
       videoGeneration: false,
       cinematicMode: false,
+      audioNarration: false,
+      premiumVoices: false,
+      audioEditions: false,
+      multilingualNarration: false,
+      brandVoice: false,
+      voiceCloning: false,
+      multipleTakes: false,
+      narrationMinutes: 0,
     },
     highlights: ["1 publication", "2 users", "250 subscribers", "Email and web editions", "Briefly branding"],
   },
@@ -80,6 +88,14 @@ export const DEFAULT_PLANS: {
       socialPack: true,
       videoGeneration: false,
       cinematicMode: false,
+      audioNarration: true,
+      premiumVoices: true,
+      audioEditions: true,
+      multilingualNarration: false,
+      brandVoice: true,
+      voiceCloning: false,
+      multipleTakes: false,
+      narrationMinutes: 60,
     },
     // Highlights are what a customer is buying *today*. Entitlements above may describe capability
     // that is still being built; the public pricing table must not promise it.
@@ -113,6 +129,14 @@ export const DEFAULT_PLANS: {
       cinematicMode: false,
       customBrandSystem: true,
       advancedTemplates: true,
+      audioNarration: true,
+      premiumVoices: true,
+      audioEditions: true,
+      multilingualNarration: true,
+      brandVoice: true,
+      voiceCloning: true,
+      multipleTakes: true,
+      narrationMinutes: 300,
     },
     highlights: ["10 publications", "20 users", "25,000 subscribers", "Everything in Pro", "Approval workflows", "Advanced analytics", "API and webhooks", "Print delivery"],
   },
@@ -145,6 +169,14 @@ export const DEFAULT_PLANS: {
       cinematicMode: true,
       customBrandSystem: true,
       advancedTemplates: true,
+      audioNarration: true,
+      premiumVoices: true,
+      audioEditions: true,
+      multilingualNarration: true,
+      brandVoice: true,
+      voiceCloning: true,
+      multipleTakes: true,
+      narrationMinutes: null,
     },
     highlights: ["Unlimited publications and users", "Custom subscriber limits", "Multiple workspaces", "SSO", "Priority support", "Custom onboarding", "SLA"],
   },
@@ -174,6 +206,29 @@ export async function ensureDefaultPlans() {
       })),
     )
     .returning();
+}
+
+/**
+ * Teach existing plans the switches the code learned since they were seeded.
+ *
+ * A plan row is owned by the console once it exists, so a new entitlement key — narration, say —
+ * is absent from every plan on an install older than the feature, and absent reads as "off". This
+ * adds only the keys a plan does not have, with the value the code's default for that plan gives,
+ * and never touches a key somebody set.
+ */
+export async function backfillPlanEntitlements(): Promise<string[]> {
+  const rows = await db.select({ id: s.plans.id, key: s.plans.key, entitlements: s.plans.entitlements }).from(s.plans);
+  const touched: string[] = [];
+  for (const row of rows) {
+    const defaults = DEFAULT_PLANS.find((plan) => plan.key === row.key)?.entitlements;
+    if (!defaults) continue;
+    const current = (row.entitlements ?? {}) as Record<string, unknown>;
+    const missing = Object.entries(defaults).filter(([key]) => !(key in current));
+    if (!missing.length) continue;
+    await db.update(s.plans).set({ entitlements: { ...current, ...Object.fromEntries(missing) } as Entitlements, updatedAt: new Date() }).where(eq(s.plans.id, row.id));
+    touched.push(`${row.key}: ${missing.map(([key]) => key).join(", ")}`);
+  }
+  return touched;
 }
 
 export async function listPlans(includePrivate = false) {

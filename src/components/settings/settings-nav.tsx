@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { LucideIcon } from "lucide-react";
-import { Activity, AtSign, BookOpen, Building2, CreditCard, Cpu, LayoutList, Mail, Palette, ScrollText, Shield, SlidersHorizontal, UserRound, Users, Wallet } from "lucide-react";
+import { Activity, AtSign, BookOpen, Building2, CreditCard, Cpu, LayoutList, Mail, Mic, Palette, ScrollText, Shield, SlidersHorizontal, UserRound, Users, Wallet } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { roleHasPermission, type Permission, type Role } from "@/lib/auth/permissions";
 import { useUi } from "@/components/i18n/provider";
@@ -47,6 +47,7 @@ export const SETTINGS_NAV: { label: string; items: SettingsNavItem[] }[] = [
       { href: "/settings/sections", label: "Sections", icon: LayoutList, permission: "section:manage", hint: "Default section template" },
       { href: "/settings/prompts", label: "Prompts", icon: Cpu, permission: "prompt:manage", hint: "Versioned AI templates" },
       { href: "/settings/email", label: "Email sending", icon: AtSign, permission: ["settings:manage"], workspaceRoles: ["OWNER", "ADMIN"], hint: "Your domain and sender" },
+      { href: "/settings/voice", label: "Voice", icon: Mic, permission: ["settings:manage"], workspaceRoles: ["OWNER", "ADMIN"], hint: "How editions sound read aloud" },
       { href: "/settings/privacy", label: "Privacy & retention", icon: Shield, permission: "settings:manage", hint: "GDPR, consent, exports" },
     ],
   },

@@ -36,13 +36,16 @@ export type Spend = {
   aiFailed: number;
   creativeCents: number;
   creativeCredits: number;
+  /** Narration: what the voice provider charged, and the seconds of audio it produced. */
+  speechCents: number;
+  speechSeconds: number;
   emails: number;
   emailsFailed: number;
   /** Held now, not spent over the window: storage is a stock, the rest are flows. */
   storageBytes: number;
 };
 
-export const emptySpend = (): Spend => ({ aiCents: 0, aiCalls: 0, aiTokens: 0, aiFailed: 0, creativeCents: 0, creativeCredits: 0, emails: 0, emailsFailed: 0, storageBytes: 0 });
+export const emptySpend = (): Spend => ({ aiCents: 0, aiCalls: 0, aiTokens: 0, aiFailed: 0, creativeCents: 0, creativeCredits: 0, speechCents: 0, speechSeconds: 0, emails: 0, emailsFailed: 0, storageBytes: 0 });
 
 /** Revenue over a window, from a monthly figure: thirty days to the month, whatever the calendar says. */
 export const revenueOver = (mrrCents: number, days: number) => Math.round((mrrCents * days) / 30);
@@ -52,6 +55,8 @@ const aiCents = sql<number>`coalesce(sum(${s.aiJobs.costCents}), 0)`;
 const aiFailed = sql<number>`count(*) filter (where ${s.aiJobs.status} = 'FAILED')`;
 const creativeCents = sql<number>`coalesce(sum(${s.creativeCosts.costCents}), 0)`;
 const creativeCredits = sql<number>`coalesce(sum(${s.creativeCosts.credits}), 0)`;
+const speechCents = sql<number>`coalesce(sum(${s.speechUsage.costCents}), 0)`;
+const speechSeconds = sql<number>`coalesce(sum(${s.speechUsage.seconds}) filter (where ${s.speechUsage.operation} = 'tts'), 0)`;
 const dayOf = (column: AnyColumn) => sql<string>`to_char(${column} at time zone 'UTC', 'YYYY-MM-DD')`;
 const monthOf = (column: AnyColumn) => sql<string>`to_char(${column} at time zone 'UTC', 'YYYY-MM')`;
 
@@ -78,7 +83,7 @@ async function storageByWorkspace(): Promise<Map<string, number>> {
 /** Every workspace's spend over the last `days`, keyed by workspace id; `""` is nobody's. */
 export async function spendByWorkspace(days: number): Promise<Map<string, Spend>> {
   const from = since(days);
-  const [ai, creative, email, storage] = await Promise.all([
+  const [ai, creative, speech, email, storage] = await Promise.all([
     db
       .select({ id: s.aiJobs.organizationId, cents: aiCents, calls: count(), tokens, failed: aiFailed })
       .from(s.aiJobs)
@@ -89,6 +94,11 @@ export async function spendByWorkspace(days: number): Promise<Map<string, Spend>
       .from(s.creativeCosts)
       .where(gte(s.creativeCosts.createdAt, from))
       .groupBy(s.creativeCosts.organizationId),
+    db
+      .select({ id: s.speechUsage.organizationId, cents: speechCents, seconds: speechSeconds })
+      .from(s.speechUsage)
+      .where(gte(s.speechUsage.createdAt, from))
+      .groupBy(s.speechUsage.organizationId),
     db
       .select({
         id: s.emailLog.organizationId,
@@ -112,6 +122,7 @@ export async function spendByWorkspace(days: number): Promise<Map<string, Spend>
   };
   for (const row of ai) Object.assign(line(row.id), { aiCents: num(row.cents), aiCalls: num(row.calls), aiTokens: num(row.tokens), aiFailed: num(row.failed) });
   for (const row of creative) Object.assign(line(row.id), { creativeCents: num(row.cents), creativeCredits: num(row.credits) });
+  for (const row of speech) Object.assign(line(row.id), { speechCents: num(row.cents), speechSeconds: num(row.seconds) });
   for (const row of email) Object.assign(line(row.id), { emails: num(row.sent), emailsFailed: num(row.failed) });
   for (const [id, bytes] of storage) line(id || null).storageBytes = bytes;
   return spend;
@@ -158,7 +169,7 @@ export type WorkspaceSpend = Spend & {
 export type PersonSpend = { userId: string; name: string; email: string; role: Role; aiCents: number; aiCalls: number; aiTokens: number; creativeCents: number; workspaces: string[] };
 export type ModelSpend = { provider: string; model: string; calls: number; cents: number; tokens: number; failed: number };
 export type ServiceSpend = { service: string; calls: number; cents: number; tokens: number };
-export type DaySpend = { day: string; aiCents: number; creativeCents: number; calls: number };
+export type DaySpend = { day: string; aiCents: number; creativeCents: number; speechCents: number; calls: number };
 
 export type CostsBreakdown = {
   days: CostWindow;
@@ -184,7 +195,7 @@ function eachDay(from: Date, to = new Date()): string[] {
 
 export async function costsBreakdown(days: CostWindow = 30): Promise<CostsBreakdown> {
   const from = since(days);
-  const [subs, spend, people, creativePeople, models, services, aiDays, creativeDays] = await Promise.all([
+  const [subs, spend, people, creativePeople, models, services, aiDays, creativeDays, speechDays] = await Promise.all([
     subscriptionRows(),
     spendByWorkspace(days),
     aiByPerson(from),
@@ -211,6 +222,11 @@ export async function costsBreakdown(days: CostWindow = 30): Promise<CostsBreakd
       .from(s.creativeCosts)
       .where(gte(s.creativeCosts.createdAt, from))
       .groupBy(dayOf(s.creativeCosts.createdAt)),
+    db
+      .select({ day: dayOf(s.speechUsage.createdAt), cents: speechCents })
+      .from(s.speechUsage)
+      .where(gte(s.speechUsage.createdAt, from))
+      .groupBy(dayOf(s.speechUsage.createdAt)),
   ]);
 
   const byWorkspace: WorkspaceSpend[] = subs
@@ -227,10 +243,10 @@ export async function costsBreakdown(days: CostWindow = 30): Promise<CostsBreakd
         currency: sub.currency,
         mrrCents: sub.mrrCents,
         revenueCents,
-        marginCents: revenueCents - line.aiCents - line.creativeCents,
+        marginCents: revenueCents - line.aiCents - line.creativeCents - line.speechCents,
       };
     })
-    .sort((a, b) => b.aiCents + b.creativeCents - (a.aiCents + a.creativeCents) || a.name.localeCompare(b.name));
+    .sort((a, b) => b.aiCents + b.creativeCents + b.speechCents - (a.aiCents + a.creativeCents + a.speechCents) || a.name.localeCompare(b.name));
 
   const names = new Map(subs.map((sub) => [sub.organizationId, sub.name]));
   const personIds = [...new Set([...people.map((row) => row.userId), ...creativePeople.map((row) => row.userId)])];
@@ -259,7 +275,8 @@ export async function costsBreakdown(days: CostWindow = 30): Promise<CostsBreakd
 
   const aiDayMap = new Map(aiDays.map((row) => [row.day, row]));
   const creativeDayMap = new Map(creativeDays.map((row) => [row.day, row]));
-  const byDay: DaySpend[] = eachDay(from).map((day) => ({ day, aiCents: num(aiDayMap.get(day)?.cents), creativeCents: num(creativeDayMap.get(day)?.cents), calls: num(aiDayMap.get(day)?.calls) }));
+  const speechDayMap = new Map(speechDays.map((row) => [row.day, row]));
+  const byDay: DaySpend[] = eachDay(from).map((day) => ({ day, aiCents: num(aiDayMap.get(day)?.cents), creativeCents: num(creativeDayMap.get(day)?.cents), speechCents: num(speechDayMap.get(day)?.cents), calls: num(aiDayMap.get(day)?.calls) }));
 
   const totals = { ...emptySpend(), revenueCents: 0, marginCents: 0, unattributedAiCents: num(spend.get(NONE)?.aiCents), workspacesWithSpend: 0 };
   for (const [, line] of spend) {
@@ -269,13 +286,15 @@ export async function costsBreakdown(days: CostWindow = 30): Promise<CostsBreakd
     totals.aiFailed += line.aiFailed;
     totals.creativeCents += line.creativeCents;
     totals.creativeCredits += line.creativeCredits;
+    totals.speechCents += line.speechCents;
+    totals.speechSeconds += line.speechSeconds;
     totals.emails += line.emails;
     totals.emailsFailed += line.emailsFailed;
     totals.storageBytes += line.storageBytes;
   }
   totals.revenueCents = byWorkspace.reduce((total, row) => total + row.revenueCents, 0);
-  totals.marginCents = totals.revenueCents - totals.aiCents - totals.creativeCents;
-  totals.workspacesWithSpend = byWorkspace.filter((row) => row.aiCents + row.creativeCents > 0 || row.emails > 0).length;
+  totals.marginCents = totals.revenueCents - totals.aiCents - totals.creativeCents - totals.speechCents;
+  totals.workspacesWithSpend = byWorkspace.filter((row) => row.aiCents + row.creativeCents + row.speechCents > 0 || row.emails > 0).length;
 
   return {
     days,
@@ -294,7 +313,7 @@ export function costsCsv(breakdown: CostsBreakdown): string {
     const text = String(value);
     return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
   };
-  const header = ["workspace", "slug", "plan", "status", "currency", "revenue", "ai_cost", "ai_calls", "ai_tokens", "ai_failed", "creative_cost", "creative_credits", "emails_sent", "emails_failed", "storage_bytes", "margin"];
+  const header = ["workspace", "slug", "plan", "status", "currency", "revenue", "ai_cost", "ai_calls", "ai_tokens", "ai_failed", "creative_cost", "creative_credits", "speech_cost", "speech_seconds", "emails_sent", "emails_failed", "storage_bytes", "margin"];
   const rows = breakdown.byWorkspace.map((row) => [
     row.name,
     row.slug,
@@ -308,6 +327,8 @@ export function costsCsv(breakdown: CostsBreakdown): string {
     row.aiFailed,
     (row.creativeCents / 100).toFixed(4),
     row.creativeCredits,
+    row.speechCents,
+    Math.round(row.speechSeconds),
     row.emails,
     row.emailsFailed,
     row.storageBytes,

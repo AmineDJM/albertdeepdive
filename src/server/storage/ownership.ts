@@ -19,6 +19,8 @@ import * as s from "@/server/db/schema";
  *   attachments/<submission>/… submissions → editions.organization_id
  *   publications/<edition>/…   editions.organization_id
  *   creative/<pack>/…          creative_packs.organization_id
+ *   audio/<narration>/…        narrations.organization_id
+ *   voices/<clone>/…           voice_clones.organization_id
  *
  * `creative/generated/…` and `tmp/…` are deliberately unowned. Generated grounds are abstract colour
  * fields shared across organisations by content address and are only ever read by the render job,
@@ -49,6 +51,14 @@ export async function organizationOwning(key: string): Promise<string | null> {
     case "creative": {
       if (id === "generated") return null;
       const row = await db.query.creativePacks.findFirst({ where: eq(s.creativePacks.id, id), columns: { organizationId: true } });
+      return row?.organizationId ?? null;
+    }
+    case "audio": {
+      const row = await db.query.narrations.findFirst({ where: eq(s.narrations.id, id), columns: { organizationId: true } });
+      return row?.organizationId ?? null;
+    }
+    case "voices": {
+      const row = await db.query.voiceClones.findFirst({ where: eq(s.voiceClones.id, id), columns: { organizationId: true } });
       return row?.organizationId ?? null;
     }
     default:

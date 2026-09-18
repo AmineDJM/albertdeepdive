@@ -285,7 +285,93 @@ async function setUpResend(actorId?: string | null): Promise<SetupResult> {
   return { ok, summary: ok ? "Delivery is set up: every message reports back, and customers can send before their own domain is ready." : "Delivery is partly set up — see the steps below.", steps };
 }
 
-export const SETUP_SUPPORTED = ["stripe", "brevo", "resend", "openai", "storage"] as const;
+/* ── Voices ───────────────────────────────────────────────────────────────────────────────── */
+
+/**
+ * Put a real voice behind every one of Briefly's named voices.
+ *
+ * The catalogue names slots — "Premium · Female · France" — and this fills them from the account:
+ * a slot whose default voice the account already has keeps it; a slot with none is filled from the
+ * provider's shared library by language, gender and accent, added to the account, and written into
+ * the map. The map is what the narration engine reads, so a platform admin can later swap any slot
+ * for a voice they prefer by editing one line, and nothing else changes.
+ */
+async function setUpVoices(actorId?: string | null): Promise<SetupResult> {
+  const { ElevenLabsProvider } = await import("@/server/speech/providers/elevenlabs");
+  const { CURATED_VOICES, resolveCatalogue } = await import("@/lib/speech/voices");
+  const { LANGUAGE_NAMES } = await import("@/lib/speech/language");
+  const config = await integrationConfig("elevenlabs");
+  if (!config.apiKey) return fail("Add your ElevenLabs API key first, then run setup.");
+  const provider = new ElevenLabsProvider({ apiKey: config.apiKey, baseUrl: config.baseUrl });
+  const steps: SetupStep[] = [];
+
+  let mapping: Record<string, string> = {};
+  try {
+    mapping = config.voiceCatalog ? (JSON.parse(config.voiceCatalog) as Record<string, string>) : {};
+  } catch {
+    return fail("The curated voices field is not valid JSON. Clear it, or fix it, then run setup again.");
+  }
+
+  let account;
+  try {
+    account = await provider.account();
+    steps.push({ label: "Account", detail: `${account.label}${account.charactersLimit ? ` · ${(account.charactersUsed ?? 0).toLocaleString()} of ${account.charactersLimit.toLocaleString()} characters used this period` : ""}`, ok: true });
+  } catch (error) {
+    return fail(error instanceof Error ? error.message : "ElevenLabs rejected that key.");
+  }
+
+  let owned;
+  try {
+    owned = await provider.listVoices();
+  } catch (error) {
+    return fail(error instanceof Error ? error.message : "Could not list the account's voices.", steps);
+  }
+  const ownedIds = new Set(owned.map((voice) => voice.id));
+
+  const kept: string[] = [];
+  const added: string[] = [];
+  const empty: string[] = [];
+  const next: Record<string, string> = {};
+  for (const entry of resolveCatalogue(mapping)) {
+    const slot = entry.voice;
+    if (entry.providerVoiceId && ownedIds.has(entry.providerVoiceId)) {
+      if (entry.source === "mapped") next[slot.key] = entry.providerVoiceId;
+      kept.push(slot.key);
+      continue;
+    }
+    // Mapped to something the account no longer has, or a default this account lacks, or nothing:
+    // find one in the library that speaks the language natively.
+    try {
+      const candidates = (await provider.searchSharedVoices({ language: slot.search.language, gender: slot.search.gender, accent: slot.search.accent ?? null, useCase: slot.search.useCase ?? null, query: slot.search.query ?? null, pageSize: 30 }))
+        .filter((voice) => voice.languages.some((entry) => entry.language === slot.language) || voice.labels.language === slot.language)
+        .sort((a, b) => Number(b.featured) - Number(a.featured) || b.popularity - a.popularity);
+      const pick = candidates[0];
+      if (!pick) {
+        empty.push(slot.key);
+        continue;
+      }
+      const alreadyOwned = owned.find((voice) => voice.id === pick.id || voice.name === pick.name);
+      const voiceId = alreadyOwned ? alreadyOwned.id : (await provider.addSharedVoice(pick, `${pick.name} · Briefly ${slot.key}`)).voiceId;
+      next[slot.key] = voiceId;
+      added.push(`${slot.label.en} ← ${pick.name}`);
+    } catch (error) {
+      empty.push(slot.key);
+      log.warn("could not fill a voice slot", { slot: slot.key, error: error instanceof Error ? error.message : String(error) });
+    }
+  }
+
+  await saveIntegration("elevenlabs", { voiceCatalog: JSON.stringify(next) }, actorId);
+  const spoken = [...new Set(CURATED_VOICES.filter((voice) => kept.includes(voice.key) || voice.key in next).map((voice) => voice.language))];
+  const silent = [...new Set(CURATED_VOICES.map((voice) => voice.language))].filter((language) => !spoken.includes(language));
+  steps.push({ label: "Voices", detail: `${kept.length} slot${kept.length === 1 ? "" : "s"} already had a voice${added.length ? `; ${added.length} filled from the library: ${added.join(", ")}` : ""}${empty.length ? `; ${empty.length} still empty (${empty.join(", ")})` : ""}.`, ok: empty.length === 0 });
+  steps.push({ label: "Languages", detail: `Narration available in ${spoken.map((language) => LANGUAGE_NAMES.en[language]).join(", ") || "no language yet"}${silent.length ? `; not yet in ${silent.map((language) => LANGUAGE_NAMES.en[language]).join(", ")}` : ""}.`, ok: spoken.includes("fr") && spoken.includes("en") });
+
+  const ok = steps.every((step) => step.ok);
+  await audit({ action: "integration.setup", userId: actorId, metadata: { integration: "elevenlabs", ok, kept: kept.length, added: added.length, empty } });
+  return { ok, summary: ok ? "Every named voice has a real one behind it. Customers can narrate in every language Briefly offers." : "Voices are partly set up — see the steps below. Map the empty slots by hand, or run setup again later.", steps };
+}
+
+export const SETUP_SUPPORTED = ["stripe", "brevo", "resend", "openai", "elevenlabs", "storage"] as const;
 
 export async function runSetup(integrationKey: string, actorId?: string | null): Promise<SetupResult> {
   const run = async () => {
@@ -298,6 +384,8 @@ export async function runSetup(integrationKey: string, actorId?: string | null):
         return setUpResend(actorId);
       case "openai":
         return setUpOpenAi(actorId);
+      case "elevenlabs":
+        return setUpVoices(actorId);
       case "storage":
         return checkStorage();
       default:

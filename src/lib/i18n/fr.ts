@@ -69,6 +69,7 @@ export const fr: Dictionary = {
     campaign: "Campagne",
     qa: "Contrôle & publication",
     exports: "Exports",
+    audio: "Audio",
   },
 
   auth: {

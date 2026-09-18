@@ -34,6 +34,7 @@ const NEWSROOM = [
   "/settings/brand",
   "/settings/billing",
   "/settings/email",
+  "/settings/voice",
 ];
 
 /** The console has no workspace behind it, so it is checked as the person who runs the platform. */

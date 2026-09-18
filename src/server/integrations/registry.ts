@@ -28,7 +28,7 @@ export type IntegrationField = {
 export type IntegrationDefinition = {
   key: string;
   name: string;
-  category: "payments" | "email" | "ai" | "media" | "rendering" | "storage";
+  category: "payments" | "email" | "ai" | "voice" | "media" | "rendering" | "storage";
   summary: string;
   /** Where to get the credentials, so nobody has to go hunting. */
   docsUrl?: string;
@@ -118,6 +118,54 @@ export const INTEGRATIONS: IntegrationDefinition[] = [
     ],
   },
   {
+    key: "elevenlabs",
+    name: "ElevenLabs",
+    category: "voice",
+    summary: "Reads editions, articles and films aloud with premium native voices, in the language each title publishes in.",
+    docsUrl: "https://elevenlabs.io/app/settings/api-keys",
+    docsLabel: "ElevenLabs → Settings → API keys",
+    primaryField: "apiKey",
+    testable: true,
+    whenMissing: "Customers cannot make narrations, unless a fallback speech provider is chosen below.",
+    fields: [
+      { key: "apiKey", label: "API key", kind: "secret", placeholder: "sk_…", required: true, envVar: "ELEVENLABS_API_KEY" },
+      { key: "voiceCatalog", label: "Curated voices", kind: "text", placeholder: '{"fr-premium-female":"<voice id>", …}', envVar: "SPEECH_VOICE_CATALOG", help: "Which provider voice stands behind each of Briefly's named voices. “Set up voices” fills it from the account and the shared library; edit it to prefer another voice for a slot." },
+      { key: "finalModel", label: "Final model", kind: "text", placeholder: "eleven_v3", envVar: "ELEVENLABS_FINAL_MODEL", help: "The premium performance. Leave empty for v3." },
+      { key: "previewModel", label: "Preview model", kind: "text", placeholder: "eleven_flash_v2_5", envVar: "ELEVENLABS_PREVIEW_MODEL", help: "Fast and cheap, for hearing a draft." },
+      { key: "finalProvider", label: "Final provider", kind: "text", placeholder: "elevenlabs", envVar: "SPEECH_FINAL_PROVIDER", help: "elevenlabs, openai, hume or fishaudio — to benchmark another service on the same scripts." },
+      { key: "previewProvider", label: "Preview provider", kind: "text", placeholder: "elevenlabs", envVar: "SPEECH_PREVIEW_PROVIDER", help: "Falls back to OpenAI's speech model when the chosen one is not connected." },
+      { key: "centsPer1kChars", label: "Cost per 1,000 characters (cents)", kind: "text", placeholder: "30", envVar: "ELEVENLABS_CENTS_PER_1K_CHARS", help: "What the account actually pays, for the ledger and the margin." },
+      { key: "maxCharacters", label: "Longest narration (characters)", kind: "text", placeholder: "60000", envVar: "SPEECH_MAX_CHARACTERS", help: "A cap on one narration, so a mistaken request cannot spend a month's characters." },
+      { key: "retries", label: "Retries per passage", kind: "text", placeholder: "2", envVar: "SPEECH_RETRIES" },
+      { key: "cloningEnabled", label: "Voice cloning", kind: "text", placeholder: "false", envVar: "SPEECH_CLONING_ENABLED", help: "true to let workspaces whose plan includes it clone a voice — always with recorded consent, never automatically." },
+      { key: "baseUrl", label: "Base URL", kind: "url", placeholder: "https://api.elevenlabs.io", envVar: "ELEVENLABS_BASE_URL" },
+    ],
+  },
+  {
+    key: "hume",
+    name: "Hume",
+    category: "voice",
+    summary: "A second voice engine, for comparing performances. Used only when chosen as the final or preview provider above.",
+    docsUrl: "https://platform.hume.ai/settings/keys",
+    docsLabel: "Hume → API keys",
+    primaryField: "apiKey",
+    testable: false,
+    whenMissing: "Nothing. ElevenLabs carries every narration.",
+    fields: [{ key: "apiKey", label: "API key", kind: "secret", envVar: "HUME_API_KEY" }],
+  },
+  {
+    key: "fishaudio",
+    name: "Fish Audio",
+    category: "voice",
+    summary: "A third voice engine, for comparing performances. Used only when chosen as the final or preview provider.",
+    docsUrl: "https://fish.audio/go-api/",
+    docsLabel: "Fish Audio → API",
+    primaryField: "apiKey",
+    testable: false,
+    whenMissing: "Nothing. ElevenLabs carries every narration.",
+    fields: [{ key: "apiKey", label: "API key", kind: "secret", envVar: "FISH_AUDIO_API_KEY" }],
+  },
+  {
     key: "higgsfield",
     name: "Higgsfield",
     category: "media",
@@ -171,6 +219,7 @@ export const CATEGORY_LABELS: Record<IntegrationDefinition["category"], string> 
   payments: "Payments",
   email: "Email",
   ai: "Intelligence",
+  voice: "Voice",
   media: "Generated media",
   rendering: "Rendering",
   storage: "Storage",

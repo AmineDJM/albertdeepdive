@@ -55,7 +55,7 @@ export default async function WorkspaceSheetPage({ params }: { params: Promise<{
   const [overrides, plans, sendingDomain] = await Promise.all([overrideReport(id), listPlans(true), getSendingDomain(id)]);
   const { organization, subscription, counts, spend30, spendAll } = sheet;
   const currency = subscription.currency;
-  const cost30 = spend30.aiCents + spend30.creativeCents;
+  const cost30 = spend30.aiCents + spend30.creativeCents + spend30.speechCents;
   const usageLabel: Record<string, string> = { publications: tr("Titles"), users: tr("Members"), subscribers: tr("Subscribers"), editionsPerMonth: tr("Editions this month") };
   const monthPoints = sheet.byMonth.map((month) => ({ label: month.month.slice(2), value: month.aiCents + month.creativeCents, title: `${month.month}: ${formatSpend(month.aiCents + month.creativeCents, currency)} · ${month.emails} ${tr("emails")} · ${month.published} ${tr("published")}` }));
   const stripeLive = sheet.invoices !== null;
@@ -80,7 +80,7 @@ export default async function WorkspaceSheetPage({ params }: { params: Promise<{
 
         <StatGrid columns={6}>
           <Stat label={tr("Monthly revenue")} value={subscription.isCustomPriced ? tr("custom") : formatCents(subscription.mrrCents, currency)} hint={`${subscription.planName ?? tr("no plan")} · ${subscription.status.toLowerCase().replace("_", " ")}`} icon={CircleDollarSign} hue="amber" />
-          <Stat label={tr("Cost, 30 days")} value={formatSpend(cost30, currency)} hint={`${tr("models")} ${formatSpend(spend30.aiCents, currency)} · ${tr("Studio")} ${formatSpend(spend30.creativeCents, currency)}`} icon={Activity} hue="violet" />
+          <Stat label={tr("Cost, 30 days")} value={formatSpend(cost30, currency)} hint={`${tr("models")} ${formatSpend(spend30.aiCents, currency)} · ${tr("Studio")} ${formatSpend(spend30.creativeCents, currency)} · ${tr("narration")} ${formatSpend(spend30.speechCents, currency)}`} icon={Activity} hue="violet" />
           <Stat label={tr("Margin, 30 days")} value={formatCents(sheet.margin30Cents, currency)} hint={sheet.revenue30Cents ? `${Math.round((sheet.margin30Cents / sheet.revenue30Cents) * 100)}% ${tr("of revenue")}` : tr("nothing billed")} tone={sheet.margin30Cents < 0 ? "destructive" : "default"} hue={sheet.margin30Cents < 0 ? "coral" : "green"} />
           <Stat label={tr("Members")} value={counts.members} hint={`${counts.contributors} ${tr("contributors")}`} icon={Users} hue="teal" />
           <Stat label={tr("Subscribers")} value={formatNumber(counts.subscribers)} hint={counts.payingReaders ? `${counts.payingReaders} ${tr("paying readers")}` : `${counts.publications} ${tr("titles")}`} icon={Mail} hue="cobalt" />
@@ -104,7 +104,7 @@ export default async function WorkspaceSheetPage({ params }: { params: Promise<{
               <dt className="text-muted-foreground">{tr("Reader payments")}</dt>
               <dd>{organization.readerPaymentsConnected ? `${tr("connected")} · ${counts.paidPublications} ${tr("paid titles")}` : tr("not connected")}</dd>
               <dt className="text-muted-foreground">{tr("All-time cost")}</dt>
-              <dd>{formatSpend(spendAll.aiCents + spendAll.creativeCents, currency)} · {formatNumber(spendAll.aiCalls)} {tr("calls")} · {formatNumber(spendAll.emails)} {tr("emails")}</dd>
+              <dd>{formatSpend(spendAll.aiCents + spendAll.creativeCents + spendAll.speechCents, currency)} · {formatNumber(spendAll.aiCalls)} {tr("calls")} · {formatNumber(Math.round(spendAll.speechSeconds / 60))} {tr("min of narration")} · {formatNumber(spendAll.emails)} {tr("emails")}</dd>
             </dl>
             {organization.description ? <p className="mt-3 text-xs leading-5 text-muted-foreground">{organization.description}</p> : null}
           </section>

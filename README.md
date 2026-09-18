@@ -129,6 +129,7 @@ Prompts are versioned in **Settings → Prompts**.
 - **QA & publish** — quality gates (overrides require a reason), exports, versions, approval, archive.
 - **Automations** — the nine scheduled steps, the job queue (retry, cancel, inspect a dead letter) and the AI call log.
 - **Analytics** — contributions, response rates, conversion, section coverage, AI cost, time to decision.
+- **Audio** — the edition read aloud: a digest, a briefing, one article or the whole issue, checked passage by passage and published to readers.
 - **Archive** — the published back catalogue with full-text search and the PDF and DOCX of every issue.
 - **Contributors / Campuses / Settings** — organisation and system. Settings also holds the development
   mailbox (what each contributor actually received, personal link included), the job queue and the
@@ -147,6 +148,38 @@ validation and layout reports and its PDF/DOCX assets. Published versions are im
 
 PDF rendering needs Chromium. Playwright installs one with `pnpm exec playwright install chromium`,
 or set `PLAYWRIGHT_CHROMIUM_EXECUTABLE`.
+
+## Spoken editions
+
+Every edition has an **Audio** tab: the whole issue, a digest, an executive briefing or one article,
+read aloud by a voice native to the language the title publishes in. The person chooses in plain
+words — voice (auto, female, male, the brand voice), language (auto follows the publication),
+accent, style, pace — and a quality: **Preview** is a fast, cheap voice for hearing the words;
+**Final** spends the premium voice, offered once the edition is approved. Nothing names a provider,
+a model or a setting.
+
+Behind that button: the words are adapted for the ear by a model (numbers, dates, initialisms and
+abbreviations as a narrator says them, in the publication's language, never switched to English),
+the newsroom's own pronunciations are applied (Settings → Voice), a performance is directed per
+context (launch film, newsletter, briefing…) with a sparse palette of audio tags, each passage is
+performed with its neighbours for continuity, the passages are mastered into one file with ffmpeg
+(loudness, fades, a bed ducked under the voice when there is one), and a check names any passage
+that came back silent, cut short, rushed or in the wrong language so it can be regenerated on its
+own. A film's narration is timed to its scenes and mixed into the video the moment it is ready. A
+finished narration can be published to readers: the web edition then carries a player.
+
+Providers sit behind one interface (`src/server/speech/providers`): ElevenLabs v3 for the final
+performance and Flash for previews, OpenAI's speech model as the fallback, Hume and Fish Audio
+reachable for benchmarking. Platform → Integrations → ElevenLabs holds the key, the models, the
+providers per tier, the cost per thousand characters, the caps, the cloning switch and the map from
+Briefly's named voices to provider voices; **Set up voices** fills that map from the account and the
+shared library. Plans grant narration, the premium voice, audio editions, another language than the
+text's, the brand voice, consented cloning, a second take, and minutes a month; the ledger
+(`speech_usage`) is what the allowance and the platform's cost views read.
+
+Cloning a real person's voice happens only from Settings → Voice, with the person's consent written
+down, confirmed and kept with the voice; withdrawing it deletes the voice at the provider. Nothing
+is ever cloned on Briefly's initiative.
 
 ## Tests
 

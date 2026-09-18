@@ -11,4 +11,5 @@ export * from "./creative";
 export * from "./billing";
 export * from "./platform";
 export * from "./email";
+export * from "./speech";
 export * from "./relations";

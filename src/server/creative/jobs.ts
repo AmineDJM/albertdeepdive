@@ -12,6 +12,9 @@ import { FORMATS } from "@/lib/creative/formats";
 import { generateImagery, type ImageryProviderName } from "./imagery";
 import { attachRendered, failAsset, getPack, hasCreditsLeft, recordCost } from "./service";
 import type { FrameImages } from "./render-html";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 const log = createLogger("creative-jobs");
 
@@ -30,7 +33,7 @@ const log = createLogger("creative-jobs");
 
 export const CREATIVE_RENDER = "creative.render";
 
-type RenderPayload = { packId: string; force?: boolean };
+type RenderPayload = { packId: string; force?: boolean; reason?: string };
 
 /** Where a pack's files live. Grouped by pack so deleting one is a prefix delete. */
 const keyFor = (packId: string, name: string) => `creative/${packId}/${name}`;
@@ -113,7 +116,9 @@ registerJobHandler<RenderPayload, { frames: number; skipped: boolean }>(CREATIVE
       if (!ready.ok) {
         ctx.log(`no video: ${ready.detail}`);
       } else {
-        const video = await renderVideo(pack.spec, { system: pack.motionSystem, browser, images, stills });
+        const narration = await narrationForPack(pack.id);
+        const video = await renderVideo(pack.spec, { system: pack.motionSystem, browser, images, stills, narration: narration?.input ?? null });
+        await narration?.cleanup();
         const videoKey = keyFor(pack.id, "video.mp4");
         await storage.put(videoKey, video.bytes, { contentType: video.mimeType, cacheControl: "public, max-age=31536000, immutable" });
         await db
@@ -154,7 +159,7 @@ registerJobHandler<RenderPayload, { frames: number; skipped: boolean }>(CREATIVE
           unit: "second",
           costCents: 0,
         });
-        ctx.log(`encoded ${video.durationSeconds.toFixed(1)}s of video`);
+        ctx.log(`encoded ${video.durationSeconds.toFixed(1)}s of video${narration ? " with narration" : ""}`);
       }
     }
 
@@ -294,6 +299,32 @@ async function fulfilGenerated(
 }
 
 /**
+ * The film's voice-over, when one is ready.
+ *
+ * Fetched to a file for the encoder, with how long it speaks over each scene so the scenes can be
+ * held for it. Null when the pack has no finished narration: the film is encoded silent, as before,
+ * and encoded again the moment a narration finishes.
+ */
+async function narrationForPack(packId: string): Promise<{ input: { path: string; sceneDurations: (number | null)[] }; cleanup: () => Promise<void> } | null> {
+  const { readyNarrationForPack } = await import("@/server/speech/service");
+  const ready = await readyNarrationForPack(packId);
+  if (!ready?.narration.storageKey || !ready.narration.script) return null;
+  const bytes = await getStorage().get(ready.narration.storageKey);
+  if (!bytes) return null;
+  const directory = await mkdtemp(join(tmpdir(), "briefly-narration-mix-"));
+  const path = join(directory, "narration.mp3");
+  await writeFile(path, bytes);
+  const holds = ready.narration.script.timeline?.holds ?? [];
+  const sceneDurations: (number | null)[] = holds.map(() => null);
+  for (const passage of ready.narration.script.passages) {
+    if (passage.sceneIndex === null || passage.sceneIndex === undefined) continue;
+    const segment = ready.segments.find((row) => row.index === passage.index);
+    if (segment?.durationSeconds) sceneDurations[passage.sceneIndex] = (sceneDurations[passage.sceneIndex] ?? 0) + segment.durationSeconds;
+  }
+  return { input: { path, sceneDurations }, cleanup: () => rm(directory, { recursive: true, force: true }).catch(() => {}) };
+}
+
+/**
  * The organisation's own photographs, as data URIs.
  *
  * Read through the storage adapter and inlined, never fetched over HTTP. The renderer must not
@@ -340,11 +371,13 @@ async function loadImages(mediaIds: string[]): Promise<FrameImages> {
  * Keyed on the fingerprint, so pressing the button twice while the first run is still going does not
  * queue a second one, and a re-render after an edit is a genuinely different job.
  */
-export async function enqueueRender(pack: { id: string; fingerprint: string | null; organizationId: string }, actorId?: string | null) {
+export async function enqueueRender(pack: { id: string; fingerprint: string | null; organizationId: string }, actorId?: string | null, options: { force?: boolean; reason?: string } = {}) {
   return enqueueJob({
     type: CREATIVE_RENDER,
-    payload: { packId: pack.id },
-    idempotencyKey: `creative:${pack.id}:${pack.fingerprint ?? "none"}`,
+    payload: options.force ? { packId: pack.id, force: true, reason: options.reason } : { packId: pack.id },
+    // A forced render names its reason — a narration that just finished — so it is its own job
+    // rather than a second copy of the one already queued for this fingerprint.
+    idempotencyKey: `creative:${pack.id}:${pack.fingerprint ?? "none"}${options.force ? `:${options.reason ?? Date.now()}` : ""}`,
     createdById: actorId ?? null,
     priority: 4,
     maxAttempts: 2,

@@ -108,5 +108,6 @@ export const EDITION_TABS: { slug: string; label: TranslationKey; permission?: P
   { slug: "layout", label: "nav.layout" },
   { slug: "qa", label: "editionTabs.qa" },
   { slug: "exports", label: "editionTabs.exports" },
+  { slug: "audio", label: "editionTabs.audio" },
   { slug: "settings", label: "nav.settings", permission: "edition:edit" },
 ];
