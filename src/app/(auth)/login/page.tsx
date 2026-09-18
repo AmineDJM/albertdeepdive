@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/server/auth/session";
+import { homeFor } from "@/server/tenancy/context";
 import { env } from "@/server/env";
 import { LoginForm } from "./login-form";
 import { BrieflyMark } from "@/components/brand/briefly-mark";
@@ -12,7 +13,7 @@ export const metadata: Metadata = { title: "Sign in" };
 export default async function LoginPage({ searchParams }: { searchParams: Promise<{ next?: string }> }) {
   const tr = await getUi();
   const user = await getCurrentUser();
-  if (user) redirect("/overview");
+  if (user) redirect(await homeFor(user));
   const { next } = await searchParams;
   const demo = env.NODE_ENV !== "production" ? { email: env.SEED_ADMIN_EMAIL, password: env.SEED_ADMIN_PASSWORD } : null;
   return (

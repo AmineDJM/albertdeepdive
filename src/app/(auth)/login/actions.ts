@@ -11,6 +11,7 @@ import { audit } from "@/server/audit";
 import { fail, type ActionResult } from "@/lib/action-result";
 import { NEWSROOM_ROLES } from "@/lib/auth/permissions";
 import { getUi } from "@/server/i18n/locale";
+import { homeFor } from "@/server/tenancy/context";
 
 const schema = z.object({
   email: z.string().trim().toLowerCase().email("Enter a valid email address"),
@@ -59,6 +60,6 @@ export async function signInAction(_prev: ActionResult | null, formData: FormDat
   const { token, expiresAt } = await createSession(user.id, meta);
   await setSessionCookie(token, expiresAt);
   await audit({ action: "auth.login", userId: user.id, entityType: "USER", entityId: user.id });
-  const target = next && next.startsWith("/") && !next.startsWith("//") ? next : "/overview";
+  const target = next && next.startsWith("/") && !next.startsWith("//") ? next : await homeFor(user);
   redirect(target);
 }

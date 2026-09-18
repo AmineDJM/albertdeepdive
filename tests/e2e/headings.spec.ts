@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { login } from "./helpers";
+import { ADMIN, PLATFORM_ADMIN, login } from "./helpers";
 import { one } from "./db";
 
 /**
@@ -33,26 +33,35 @@ const NEWSROOM = [
   "/settings",
   "/settings/brand",
   "/settings/billing",
-  "/platform",
-  "/platform/workspaces",
-  "/platform/people",
-  "/platform/logs",
-  "/platform/integrations",
 ];
+
+/** The console has no workspace behind it, so it is checked as the person who runs the platform. */
+const PLATFORM = ["/platform", "/platform/workspaces", "/platform/people", "/platform/logs", "/platform/integrations"];
+
+async function untitledAmong(page: Parameters<typeof login>[0], routes: string[]) {
+  const untitled: string[] = [];
+  for (const route of routes) {
+    // `networkidle`, not `domcontentloaded`: several of these are redirects to the current
+    // edition's own route, and measuring before the redirect resolves counts the headings of a
+    // page nobody ever sees.
+    const response = await page.goto(route, { waitUntil: "networkidle" });
+    expect(response?.status(), `${route} did not load`).toBeLessThan(400);
+    const count = await page.locator("h1").count();
+    if (count !== 1) untitled.push(`${route}: ${count} h1`);
+  }
+  return untitled;
+}
 
 test.describe("heading outlines", () => {
   test("every newsroom page has exactly one title", async ({ page }) => {
-    await login(page);
-    const untitled: string[] = [];
-    for (const route of NEWSROOM) {
-      // `networkidle`, not `domcontentloaded`: several of these are redirects to the current
-      // edition's own route, and measuring before the redirect resolves counts the headings of a
-      // page nobody ever sees.
-      const response = await page.goto(route, { waitUntil: "networkidle" });
-      expect(response?.status(), `${route} did not load`).toBeLessThan(400);
-      const count = await page.locator("h1").count();
-      if (count !== 1) untitled.push(`${route}: ${count} h1`);
-    }
+    await login(page, ADMIN);
+    const untitled = await untitledAmong(page, NEWSROOM);
+    expect(untitled, `pages without exactly one title:\n${untitled.join("\n")}`).toEqual([]);
+  });
+
+  test("every platform page has exactly one title", async ({ page }) => {
+    await login(page, PLATFORM_ADMIN);
+    const untitled = await untitledAmong(page, PLATFORM);
     expect(untitled, `pages without exactly one title:\n${untitled.join("\n")}`).toEqual([]);
   });
 

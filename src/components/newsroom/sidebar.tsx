@@ -118,13 +118,16 @@ export function Sidebar({
   const tr = useUi();
   const pathname = usePathname();
   const t = useTranslations();
+  // With no workspace open there is no newsroom to navigate: platform staff on the console see the
+  // console alone, rather than a column of links that each lead straight back to it.
+  const items = workspace ? NAV_ITEMS : NAV_ITEMS.filter((item) => item.href === "/platform");
   return (
     <aside className="flex h-full w-[232px] shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground">
       <WorkspaceSwitcher current={workspace} options={workspaces} impersonated={impersonated} />
-      <WorkingOn current={currentEdition} editions={editions} badges={badges} />
+      {workspace ? <WorkingOn current={currentEdition} editions={editions} badges={badges} /> : <div className="pt-2" />}
       <nav className="flex-1 overflow-y-auto px-2 pb-2 scrollbar-thin" aria-label={tr("Main")}>
         <ul className="space-y-px">
-          {NAV_ITEMS.map((item) => {
+          {items.map((item) => {
             const resolved = resolveNavItem(role, item, pathname);
             if (!resolved) return null;
             return (

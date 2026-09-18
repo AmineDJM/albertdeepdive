@@ -1,6 +1,7 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 import { cache } from "react";
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import { asc, eq } from "drizzle-orm";
 import { db } from "@/server/db/client";
 import { organizationMembers, organizations } from "@/server/db/schema";
@@ -17,6 +18,10 @@ import { getCurrentUser, type CurrentUser } from "@/server/auth/session";
  * A user who belongs to several workspaces picks one; the choice is remembered in a cookie, but the
  * cookie is only ever a *hint*: it is checked against the membership table on every request, and a
  * value pointing anywhere else falls back to the default membership.
+ *
+ * Platform staff are the exception that proves the rule: they belong to no customer, so nothing is
+ * resolved for them by default. They land on the console, and a customer's workspace opens only when
+ * they ask for it by name — flagged, audited, and with a way back out.
  */
 
 export const ORG_COOKIE = "briefly_org";
@@ -57,9 +62,25 @@ export type MembershipSummary = {
   organizationId: string;
   slug: string;
   name: string;
+  locale: string;
+  timezone: string;
   role: OrganizationRole;
   isDefault: boolean;
 };
+
+type Staff = Pick<CurrentUser, "role" | "viewingAs">;
+
+/**
+ * Platform staff, by their real role.
+ *
+ * "View as" narrows the role a super admin *acts* with, and every permission check should honour
+ * that. Which workspace they are standing in is a different question: a support session that opens
+ * a customer's newsroom as one of its editors is still a staff member inside that customer, and must
+ * not be thrown out of it the moment the simulated role forgets who they really are.
+ */
+function isPlatformStaff(user: Staff): boolean {
+  return (user.viewingAs?.realRole ?? user.role) === "SUPER_ADMIN";
+}
 
 async function loadMemberships(userId: string): Promise<MembershipSummary[]> {
   const rows = await db
@@ -67,6 +88,8 @@ async function loadMemberships(userId: string): Promise<MembershipSummary[]> {
       organizationId: organizations.id,
       slug: organizations.slug,
       name: organizations.name,
+      locale: organizations.locale,
+      timezone: organizations.timezone,
       role: organizationMembers.role,
       isDefault: organizationMembers.isDefault,
       status: organizations.status,
@@ -75,7 +98,9 @@ async function loadMemberships(userId: string): Promise<MembershipSummary[]> {
     .innerJoin(organizations, eq(organizationMembers.organizationId, organizations.id))
     .where(eq(organizationMembers.userId, userId))
     .orderBy(asc(organizations.name));
-  return rows.filter((r) => r.status !== "ARCHIVED").map((r) => ({ organizationId: r.organizationId, slug: r.slug, name: r.name, role: r.role, isDefault: r.isDefault }));
+  return rows
+    .filter((r) => r.status !== "ARCHIVED")
+    .map((r) => ({ organizationId: r.organizationId, slug: r.slug, name: r.name, locale: r.locale, timezone: r.timezone, role: r.role, isDefault: r.isDefault }));
 }
 
 /**
@@ -97,29 +122,39 @@ export const listMyOrganizations = cache(async (): Promise<MembershipSummary[]> 
   return loadMemberships(user.id);
 });
 
+function memberContext(membership: MembershipSummary): TenantContext {
+  return { organizationId: membership.organizationId, slug: membership.slug, name: membership.name, locale: membership.locale, timezone: membership.timezone, role: membership.role, impersonated: false };
+}
+
 async function resolveFor(user: CurrentUser, requested: string | undefined): Promise<TenantContext | null> {
   const memberships = await loadMemberships(user.id);
-  const chosen = (requested && memberships.find((m) => m.organizationId === requested)) || memberships.find((m) => m.isDefault) || memberships[0];
+  const asked = requested ? memberships.find((m) => m.organizationId === requested) : undefined;
+  if (asked) return memberContext(asked);
 
-  if (chosen) {
-    const org = await db.query.organizations.findFirst({ where: eq(organizations.id, chosen.organizationId) });
-    if (org) {
-      return { organizationId: org.id, slug: org.slug, name: org.name, locale: org.locale, timezone: org.timezone, role: chosen.role, impersonated: false };
-    }
-  }
-
-  // Platform staff can open any workspace to support it — but only by asking for it explicitly,
-  // and it is flagged so the UI can say so and the audit trail can record it.
-  if (user.role === "SUPER_ADMIN") {
-    const org = requested
-      ? await db.query.organizations.findFirst({ where: eq(organizations.id, requested) })
-      : await db.query.organizations.findFirst({ orderBy: [asc(organizations.createdAt)] });
+  // Platform staff can open any workspace to support it — but only one they asked for by name, and
+  // it is flagged so the UI can say so and the audit trail can record it. Nothing opens by default:
+  // the people who run the platform have no newsroom of their own, and landing them in the first
+  // customer's would make that customer look like part of Briefly.
+  if (requested && isPlatformStaff(user)) {
+    const org = await db.query.organizations.findFirst({ where: eq(organizations.id, requested) });
     if (org) {
       return { organizationId: org.id, slug: org.slug, name: org.name, locale: org.locale, timezone: org.timezone, role: "OWNER", impersonated: true };
     }
   }
 
-  return null;
+  // A cookie pointing nowhere useful — a workspace the person left, or one that was archived —
+  // falls back to the membership they would get with no cookie at all.
+  const fallback = memberships.find((m) => m.isDefault) ?? memberships[0];
+  return fallback ? memberContext(fallback) : null;
+}
+
+/** The signed-in user, or null — including where `cookies()` throws because there is no request. */
+async function signedInUser(): Promise<CurrentUser | null> {
+  try {
+    return await getCurrentUser();
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -140,6 +175,41 @@ export const getTenant = cache(async (): Promise<TenantContext | null> => {
   }
 });
 
+const signedInWithoutTenant = cache(async (): Promise<boolean> => {
+  const user = await signedInUser();
+  if (!user) return false;
+  return (await getTenant()) === null;
+});
+
+/**
+ * True when somebody is signed in and looking at the app with no workspace in scope: platform staff
+ * on the console, or a newcomer who has not created one yet.
+ *
+ * The scoping helpers need the distinction because, to them, this looks exactly like a background
+ * job with no workspace declared — and a job may read every row while a person with no workspace
+ * must see none.
+ */
+export async function withoutWorkspace(): Promise<boolean> {
+  if (ambientOrganizationId()) return false;
+  return signedInWithoutTenant();
+}
+
+/** Where a signed-in person with no workspace belongs: staff on the console, anyone else creating one. */
+export function homeWithoutWorkspace(user: Staff): string {
+  return isPlatformStaff(user) ? "/platform" : "/onboarding";
+}
+
+/**
+ * The first screen after signing in.
+ *
+ * A member of a workspace gets the newsroom. Platform staff who belong to none get the console —
+ * not a customer's newsroom, which is not theirs and would make that customer look like the product.
+ */
+export async function homeFor(user: Pick<CurrentUser, "id"> & Staff): Promise<string> {
+  if ((await loadMemberships(user.id)).length) return "/overview";
+  return homeWithoutWorkspace(user);
+}
+
 /** The workspace a page or action is looking at, including an ambient one declared by a job. */
 async function activeOrganizationId(): Promise<string | null> {
   const declared = ambientOrganizationId();
@@ -155,8 +225,12 @@ export async function requireTenant(): Promise<TenantContext> {
     return { organizationId: org.id, slug: org.slug, name: org.name, locale: org.locale, timezone: org.timezone, role: "OWNER", impersonated: false };
   }
   const tenant = await getTenant();
-  if (!tenant) throw new NotFoundError("Workspace");
-  return tenant;
+  if (tenant) return tenant;
+  // A signed-in person with no workspace is sent where they belong rather than shown an error;
+  // anything else asking — a job with nothing declared — is a bug worth a loud answer.
+  const user = await signedInUser();
+  if (user) redirect(homeWithoutWorkspace(user));
+  throw new NotFoundError("Workspace");
 }
 
 /** The active workspace id — the value every scoped query filters on. */
@@ -182,8 +256,19 @@ export async function setActiveOrganization(organizationId: string) {
   const user = await getCurrentUser();
   if (!user) throw new ForbiddenError("Not signed in");
   const memberships = await loadMemberships(user.id);
-  const allowed = memberships.some((m) => m.organizationId === organizationId) || user.role === "SUPER_ADMIN";
+  const allowed = memberships.some((m) => m.organizationId === organizationId) || isPlatformStaff(user);
   if (!allowed) throw new ForbiddenError("Not a member of that workspace");
   const store = await cookies();
   store.set(ORG_COOKIE, organizationId, { httpOnly: true, sameSite: "lax", path: "/", maxAge: 60 * 60 * 24 * 365 });
+}
+
+/**
+ * Forget the workspace in scope.
+ *
+ * The next request resolves afresh: a member lands in their default workspace, platform staff on
+ * the console. It is how staff leave a customer's newsroom, and it is harmless for anyone else.
+ */
+export async function clearActiveOrganization() {
+  const store = await cookies();
+  store.set(ORG_COOKIE, "", { httpOnly: true, sameSite: "lax", path: "/", maxAge: 0 });
 }

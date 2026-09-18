@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { PATHNAME_HEADER } from "@/lib/http/pathname";
 
 // `/s` is where readers live: the subscribe page for a title, and the confirm and unsubscribe links
 // sent to them by email. None of it belongs behind a sign-in — a reader has no account.
@@ -7,18 +8,25 @@ const PUBLIC_PREFIXES = ["/login", "/contribute", "/respond", "/s", "/r", "/api/
 /** Pages anyone may open without a session: the landing page and what search engines read. */
 const PUBLIC_EXACT = new Set(["/", "/sitemap.xml", "/robots.txt", "/opengraph-image", "/icon.svg", "/manifest.webmanifest"]);
 
+/** The request, with the path it is for stamped on so layouts can read it. */
+function through(request: NextRequest) {
+  const headers = new Headers(request.headers);
+  headers.set(PATHNAME_HEADER, request.nextUrl.pathname);
+  return NextResponse.next({ request: { headers } });
+}
+
 /** Lightweight gate: unauthenticated visitors (no session cookie) are sent to /login. Real authorization happens server-side. */
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  if (PUBLIC_EXACT.has(pathname)) return NextResponse.next();
-  if (PUBLIC_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`))) return NextResponse.next();
+  if (PUBLIC_EXACT.has(pathname)) return through(request);
+  if (PUBLIC_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`))) return through(request);
   const hasSession = request.cookies.has("add_session");
   if (!hasSession) {
     const login = new URL("/login", request.url);
     if (pathname !== "/") login.searchParams.set("next", pathname);
     return NextResponse.redirect(login);
   }
-  return NextResponse.next();
+  return through(request);
 }
 
 export const config = {

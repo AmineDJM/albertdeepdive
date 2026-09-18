@@ -47,6 +47,7 @@ export const UI_FR: Record<string, string> = {
   "A4 (210 × 297 mm)": "A4 (210 × 297 mm)",
   "A4 portrait": "A4 portrait",
   "A4 — 210 × 297 mm (any campus printer)": "A4 — 210 × 297 mm (n'importe quelle imprimante de campus)",
+  "Leave workspace": "Quitter l'espace de travail",
   "abcd efgh ijkl mnop": "abcd efgh ijkl mnop",
   "Academic news": "Actualité académique",
   "Accent colour": "Couleur d'accent",
