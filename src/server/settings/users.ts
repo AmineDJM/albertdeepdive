@@ -13,6 +13,7 @@ import { hashToken } from "@/server/auth/tokens";
 import { NotFoundError, ValidationError } from "@/lib/action-result";
 import { ROLES } from "@/lib/auth/permissions";
 import { onlySent } from "@/lib/zod-patch";
+import { experienceOf, type ExperienceMode } from "@/lib/experience";
 
 export const userInputSchema = z.object({
   name: z.string().trim().min(2, "Name is too short").max(80),
@@ -137,6 +138,7 @@ export async function getOwnProfile(userId: string, currentToken?: string | null
     lastLoginAt: user.lastLoginAt,
     createdAt: user.createdAt,
     theme: (prefs.theme === "dark" ? "dark" : "light") as ThemePreference,
+    experience: experienceOf(prefs),
     sessions: sessionRows.map((s) => ({ id: s.id, userAgent: s.userAgent, createdAt: s.createdAt, lastSeenAt: s.lastSeenAt, expiresAt: s.expiresAt, current: currentHash !== null && s.tokenHash === currentHash })),
   };
 }
@@ -204,4 +206,16 @@ export async function setThemePreference(userId: string, theme: ThemePreference)
     .set({ preferences: sql`coalesce(${users.preferences}, '{}'::jsonb) || ${JSON.stringify({ theme })}::jsonb` })
     .where(eq(users.id, userId));
   return theme;
+}
+
+/**
+ * Standard or Advanced, for this person on every workspace they open. Changes what is shown and
+ * nothing else: no edition, brand, publication or setting is touched by switching.
+ */
+export async function setExperiencePreference(userId: string, experience: ExperienceMode) {
+  await db
+    .update(users)
+    .set({ preferences: sql`coalesce(${users.preferences}, '{}'::jsonb) || ${JSON.stringify({ experience })}::jsonb` })
+    .where(eq(users.id, userId));
+  await audit({ action: "user.experience", userId, entityType: "USER", entityId: userId, metadata: { experience } });
 }

@@ -84,6 +84,9 @@ export const fr: Dictionary = {
     outputs: "Sorties",
     distribution: "Diffusion",
     analytics: "Statistiques",
+    pictures: "Images",
+    publish: "Publier",
+    askForNews: "Demander des nouvelles",
   },
 
   auth: {

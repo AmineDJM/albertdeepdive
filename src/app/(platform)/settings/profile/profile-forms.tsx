@@ -3,14 +3,15 @@
 import { useState, useSyncExternalStore, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
-import { Laptop, LogOut, Moon, Sun } from "lucide-react";
+import { Laptop, LogOut, Moon, SlidersHorizontal, Sparkles, Sun } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { FieldError, SettingsCard } from "@/components/settings/key-value";
-import { changePasswordAction, setThemeAction, signOutOtherSessionsAction, updateProfileAction } from "./actions";
+import { changePasswordAction, setExperienceAction, setThemeAction, signOutOtherSessionsAction, updateProfileAction } from "./actions";
+import type { ExperienceMode } from "@/lib/experience";
 import { relativeTime, formatDateTime } from "@/lib/utils";
 import { useUi } from "@/components/i18n/provider";
 
@@ -214,6 +215,70 @@ export function SessionsCard({ sessions }: { sessions: SessionRow[] }) {
         ))}
         {!sessions.length ? <li className="py-4 text-center text-xs text-muted-foreground">{tr("No active sessions.")}</li> : null}
       </ul>
+    </SettingsCard>
+  );
+}
+
+/**
+ * Standard or Advanced.
+ *
+ * Two cards, one chosen. The choice is the person's and travels with them; it changes what the
+ * interface shows and never what the workspace holds, which the description says in so many words
+ * because it is the first thing anyone wonders before switching.
+ */
+export function ExperienceForm({ saved }: { saved: ExperienceMode }) {
+  const tr = useUi();
+  const router = useRouter();
+  const [current, setCurrent] = useState<ExperienceMode>(saved);
+  const [pending, start] = useTransition();
+  function choose(next: ExperienceMode) {
+    if (next === current) return;
+    setCurrent(next);
+    start(async () => {
+      const res = await setExperienceAction(next);
+      if (!res.ok) {
+        setCurrent(current);
+        toast.error(res.error);
+        return;
+      }
+      toast.success(res.message ?? tr("Saved"));
+      router.refresh();
+    });
+  }
+  const options: { key: ExperienceMode; title: string; body: string; icon: typeof Sparkles; tag?: string }[] = [
+    { key: "standard", title: tr("Standard"), body: tr("See what Briefly collected, choose what goes in, preview, publish. Briefly decides the rest, and you can change any decision that matters in one click."), icon: Sparkles, tag: tr("Recommended") },
+    { key: "advanced", title: tr("Advanced"), body: tr("Every door open: page plans, exports, prompts, automations, the records. For the person who wants to set things by hand."), icon: SlidersHorizontal },
+  ];
+  return (
+    <SettingsCard title={tr("Experience")} description={tr("How much of Briefly you see. Switching changes nothing in your workspace — not an edition, not the brand, not a setting.")}>
+      <div className="grid gap-2 sm:grid-cols-2" role="radiogroup" aria-label={tr("Experience")}>
+        {options.map((opt) => {
+          const active = current === opt.key;
+          return (
+            <button
+              key={opt.key}
+              type="button"
+              role="radio"
+              aria-checked={active}
+              onClick={() => choose(opt.key)}
+              disabled={pending}
+              data-testid={`experience-${opt.key}`}
+              className={`flex items-start gap-3 rounded-lg border p-3 text-left transition-colors focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none ${active ? "border-brand bg-brand-soft/50" : "border-border bg-card hover:border-foreground/20"}`}
+            >
+              <span className={`mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-md ${active ? "bg-brand text-white" : "bg-muted text-muted-foreground"}`}>
+                <opt.icon className="size-4" />
+              </span>
+              <span className="min-w-0">
+                <span className="flex items-center gap-2 text-[13px] font-semibold">
+                  {opt.title}
+                  {opt.tag ? <Badge variant="outline">{opt.tag}</Badge> : null}
+                </span>
+                <span className="mt-0.5 block text-xs text-muted-foreground">{opt.body}</span>
+              </span>
+            </button>
+          );
+        })}
+      </div>
     </SettingsCard>
   );
 }

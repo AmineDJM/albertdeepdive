@@ -8,6 +8,7 @@ import { NewsroomShell } from "@/components/newsroom/shell";
 import { listMyOrganizations, type TenantContext } from "@/server/tenancy/context";
 import { usageReport } from "@/server/billing/entitlements";
 import { getTranslations } from "@/server/i18n/locale";
+import { experienceOf } from "@/lib/experience";
 
 type Editions = Awaited<ReturnType<typeof listEditions>>;
 
@@ -52,6 +53,7 @@ export async function NewsroomFrame({ user, tenant, children }: { user: CurrentU
       notifications={notifications.rows.map((n) => ({ id: n.id, title: n.title, body: n.body, href: n.href, readAt: n.readAt, createdAt: n.createdAt, type: n.type }))}
       unread={notifications.unread}
       plan={plan}
+      experience={experienceOf(user.preferences)}
     >
       {children}
     </NewsroomShell>

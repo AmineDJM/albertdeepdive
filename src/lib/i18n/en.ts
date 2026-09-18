@@ -81,6 +81,9 @@ export const en = {
     outputs: "Outputs",
     distribution: "Distribution",
     analytics: "Analytics",
+    pictures: "Pictures",
+    publish: "Publish",
+    askForNews: "Ask for news",
   },
 
   auth: {

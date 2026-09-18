@@ -44,6 +44,9 @@ export type HomeNext = {
   outputs: OutputKind[];
   next: { label: string; href: string };
   target: Date | null;
+  /** Stories chosen for it, and updates received: the two numbers Standard's one sentence uses. */
+  stories: number;
+  updates: number;
 };
 
 export type HomeData = {
@@ -59,7 +62,12 @@ function packKind(format: string): OutputKind {
 }
 
 /** Every shape an edition takes: the formats switched on, plus the studio's films and posts. */
-async function outputsFor(editionIds: string[]): Promise<Map<string, { all: OutputKind[]; published: OutputKind[] }>> {
+export async function outputsFor(editionIds: string[]): Promise<Map<string, { all: OutputKind[]; published: OutputKind[] }>> {
+  return editionOutputKinds(editionIds);
+}
+
+/** The same, under the name the editions list uses. */
+export async function editionOutputKinds(editionIds: string[]): Promise<Map<string, { all: OutputKind[]; published: OutputKind[] }>> {
   const map = new Map<string, { all: OutputKind[]; published: OutputKind[] }>();
   if (!editionIds.length) return map;
   const [outputs, packs] = await Promise.all([
@@ -77,7 +85,8 @@ async function outputsFor(editionIds: string[]): Promise<Map<string, { all: Outp
   return map;
 }
 
-function nextActionFor(phase: EditionPhase, d: Awaited<ReturnType<typeof editionDashboard>>): { key: string; href: string } {
+/** The one thing to do next on an edition, from where it stands. */
+export function nextActionFor(phase: EditionPhase, d: Awaited<ReturnType<typeof editionDashboard>>): { key: string; href: string } {
   const ed = `/editions/${d.edition.id}`;
   switch (phase) {
     case "COLLECT":
@@ -169,6 +178,8 @@ export async function homeData(organizationId: string): Promise<HomeData> {
       outputs: outputs.get(current.id)?.all ?? [],
       next: { label: action.key, href: action.href },
       target: current.publicationTargetAt,
+      stories: d.stories.selected,
+      updates: d.submissions.total,
     };
   }
 

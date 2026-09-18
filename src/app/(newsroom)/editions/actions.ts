@@ -1,8 +1,9 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { requirePermission } from "@/server/auth/session";
-import { createEdition, deleteEditions, setEditionsHidden, transitionEdition, updateEdition, saveEditionSections, createEditionSchema, updateEditionSchema, sectionInputSchema } from "@/server/editions/service";
+import { createEdition, deleteEditions, prepareEdition, setEditionsHidden, transitionEdition, updateEdition, saveEditionSections, createEditionSchema, updateEditionSchema, sectionInputSchema } from "@/server/editions/service";
 import { ok, toActionFailure, type ActionResult } from "@/lib/action-result";
 import type { EditionStatus } from "@/lib/editorial/edition-state";
 import type { z } from "zod";
@@ -17,6 +18,29 @@ export async function createEditionAction(input: z.input<typeof createEditionSch
   } catch (err) {
     return toActionFailure(err);
   }
+}
+
+/**
+ * "+ New edition", and nothing else to fill in.
+ *
+ * Briefly prepares the next edition from what the workspace already knows and opens it. A form
+ * action rather than a dialog: one click from Home or the list lands on the edition, where every
+ * decision it took can be changed. When it cannot — the plan's limit, a month already taken — the
+ * list says why.
+ */
+export async function prepareEditionAction(): Promise<void> {
+  let target: string;
+  try {
+    const user = await requirePermission("edition:create");
+    const edition = await prepareEdition(user.id);
+    revalidatePath("/editions");
+    revalidatePath("/overview");
+    target = `/editions/${edition.id}`;
+  } catch (err) {
+    const failure = toActionFailure(err);
+    target = `/editions?error=${encodeURIComponent(failure.error)}`;
+  }
+  redirect(target);
 }
 
 export async function updateEditionAction(editionId: string, patch: z.input<typeof updateEditionSchema>): Promise<ActionResult> {

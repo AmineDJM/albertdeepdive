@@ -19,13 +19,16 @@ import { Badge } from "@/components/ui/badge";
 import { formatCurrency, formatDate, formatDateTime, relativeTime, enumLabel } from "@/lib/utils";
 import { PHASES, STATUS_LABELS, nextStatuses, phaseForStatus } from "@/lib/editorial/edition-state";
 import { getUi } from "@/server/i18n/locale";
+import { experienceOf } from "@/lib/experience";
+import { StandardOverview } from "./standard-overview";
 
 export const dynamic = "force-dynamic";
 
-export default async function ControlRoomPage({ params }: { params: Promise<{ editionId: string }> }) {
+export default async function ControlRoomPage({ params, searchParams }: { params: Promise<{ editionId: string }>; searchParams: Promise<{ view?: string }> }) {
   const tr = await getUi();
-  const { editionId } = await params;
-  const user = await getCurrentUser();
+  const [{ editionId }, sp, user] = await Promise.all([params, searchParams, getCurrentUser()]);
+  // Standard reads the edition as decisions; the control room below stays one link away.
+  if (experienceOf(user?.preferences) === "standard" && sp.view !== "full") return <StandardOverview editionId={editionId} />;
   const [d, activity, outputs, translate] = await Promise.all([editionDashboard(editionId), recentActivity(editionId, 8), outputMatrix(editionId), getTranslations()]);
   const coverUrl = d.edition.coverMediaAssetId ? await mediaUrl(d.edition.coverMediaAssetId, "WEB") : null;
   const ed = `/editions/${editionId}`;

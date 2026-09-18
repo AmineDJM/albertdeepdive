@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { login } from "./helpers";
+import { login, setExperience } from "./helpers";
 
 test.describe("newsroom smoke", () => {
   test("redirects anonymous visitors to login", async ({ page }) => {
@@ -8,11 +8,12 @@ test.describe("newsroom smoke", () => {
   });
 
   test("signs in and finds home: the pulse, the next edition, the recent ones", async ({ page }) => {
+    await setExperience("advanced");
     await login(page);
     await expect(page.locator("main").getByText("Organization pulse", { exact: true })).toBeVisible();
     await expect(page.locator("main").getByText("Next edition", { exact: true })).toBeVisible();
     await expect(page.getByRole("link", { name: /continue edition/i })).toBeVisible();
-    await expect(page.getByRole("link", { name: /new edition/i }).first()).toBeVisible();
+    await expect(page.getByRole("button", { name: /new edition/i }).first()).toBeVisible();
     await expect(page.locator("main").getByText("Recent editions", { exact: true })).toBeVisible();
   });
 
@@ -25,6 +26,7 @@ test.describe("newsroom smoke", () => {
    * suite could not start at all, so a stale test and a broken one looked identical.
    */
   test("navigates to editions, control room, contributors and campuses", async ({ page }) => {
+    await setExperience("advanced");
     await login(page);
     await page.getByRole("link", { name: "Editions", exact: true }).click();
     await expect(page.getByRole("heading", { name: "Editions" })).toBeVisible();

@@ -4,7 +4,9 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useTranslations, useUi } from "@/components/i18n/provider";
-import type { EditionDoor } from "./nav";
+import { doorsFor, type EditionDoor } from "./nav";
+import type { TranslationKey } from "@/lib/i18n";
+import { useExperience } from "@/components/experience/provider";
 
 /**
  * The two rows an edition wears: the doors, and the rooms behind the open one.
@@ -13,13 +15,16 @@ import type { EditionDoor } from "./nav";
  * stay a single line. Both rows read the path, so a link from anywhere lands with the right door
  * lit and the right room underlined.
  */
-export function EditionTabs({ editionId, doors, analyticsHref }: { editionId: string; doors: EditionDoor[]; analyticsHref: string | null }) {
+export function EditionTabs({ editionId, doors: allDoors, analyticsHref }: { editionId: string; doors: EditionDoor[]; analyticsHref: string | null }) {
   const tr = useUi();
   const t = useTranslations();
   const pathname = usePathname();
   const base = `/editions/${editionId}`;
   const rest = pathname.startsWith(base) ? pathname.slice(base.length).replace(/^\//, "") : "";
   const slug = rest.split("/")[0] ?? "";
+  const mode = useExperience();
+  const doors = doorsFor(mode, allDoors, slug);
+  const name = (item: { label: TranslationKey; standardLabel?: TranslationKey }) => t(mode === "standard" && item.standardLabel ? item.standardLabel : item.label);
   const open = doors.find((door) => door.rooms.some((room) => room.slug === slug)) ?? doors[0];
   const hrefFor = (roomSlug: string) => `${base}${roomSlug ? `/${roomSlug}` : ""}`;
 
@@ -30,7 +35,7 @@ export function EditionTabs({ editionId, doors, analyticsHref }: { editionId: st
           const active = door.key === open?.key;
           return (
             <Link key={door.key} href={hrefFor(door.rooms[0].slug)} aria-current={active ? "page" : undefined} className={cn("relative flex h-11 items-center px-2.5 text-[13px] font-medium whitespace-nowrap transition-colors duration-150", active ? "text-foreground" : "text-muted-foreground hover:text-foreground")}>
-              {t(door.label)}
+              {name(door)}
               {active ? <span className="absolute inset-x-2 bottom-0 h-0.5 rounded-t bg-brand" /> : null}
             </Link>
           );
@@ -47,7 +52,7 @@ export function EditionTabs({ editionId, doors, analyticsHref }: { editionId: st
             const active = room.slug === slug;
             return (
               <Link key={room.slug} href={hrefFor(room.slug)} aria-current={active ? "page" : undefined} className={cn("rounded-md px-2 py-1 text-xs font-medium transition-colors duration-150", active ? "bg-brand-soft text-brand-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground")}>
-                {t(room.label)}
+                {name(room)}
               </Link>
             );
           })}

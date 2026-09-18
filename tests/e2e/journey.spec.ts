@@ -1,6 +1,6 @@
 import { test, expect, type Page } from "@playwright/test";
 import { closeDb, many, one } from "./db";
-import { login } from "./helpers";
+import { login, setExperience } from "./helpers";
 
 /**
  * The critical journey, end to end, through the real interface:
@@ -65,6 +65,8 @@ async function clearToasts(page: Page) {
 
 test.describe("the critical journey", () => {
   test("1–2 · an editor signs in and finds the edition in progress", async ({ page }) => {
+    // The journey is the editor's, with every door open; Standard has its own spec.
+    await setExperience("advanced");
     await login(page);
     await expect(page.locator("main").getByText("Next edition", { exact: true })).toBeVisible();
     const editionId = await currentEditionId();

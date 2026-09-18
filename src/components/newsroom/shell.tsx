@@ -7,10 +7,13 @@ import { CommandMenu } from "./command-menu";
 import { RowLinkBehaviour } from "./row-link";
 import { ViewAsBanner } from "./view-as-banner";
 import type { Role } from "@/lib/auth/permissions";
+import type { ExperienceMode } from "@/lib/experience";
+import { ExperienceProvider } from "@/components/experience/provider";
 
-export function NewsroomShell({ user, workspace, workspaces, impersonated, currentEdition, editions, badges, notifications, unread, plan, children }: { user: SidebarUser & { viewingAs?: { role: Role; userName?: string } | null }; workspace: { name: string; role: string } | null; workspaces: WorkspaceOption[]; impersonated: boolean; currentEdition: SidebarEdition | null; editions: SidebarEdition[]; badges: { inbox: number; flags: number }; notifications: SidebarNotification[]; unread: number; plan: SidebarPlan | null; children: React.ReactNode }) {
+export function NewsroomShell({ user, workspace, workspaces, impersonated, currentEdition, editions, badges, notifications, unread, plan, experience, children }: { user: SidebarUser & { viewingAs?: { role: Role; userName?: string } | null }; workspace: { name: string; role: string } | null; workspaces: WorkspaceOption[]; impersonated: boolean; currentEdition: SidebarEdition | null; editions: SidebarEdition[]; badges: { inbox: number; flags: number }; notifications: SidebarNotification[]; unread: number; plan: SidebarPlan | null; experience: ExperienceMode; children: React.ReactNode }) {
   const [searchOpen, setSearchOpen] = useState(false);
   return (
+    <ExperienceProvider mode={experience}>
     <div className="flex h-screen flex-col overflow-hidden">
       {user.viewingAs ? <ViewAsBanner role={user.viewingAs.role} userName={user.viewingAs.userName} /> : null}
       <div className="flex min-h-0 flex-1 overflow-hidden">
@@ -20,5 +23,6 @@ export function NewsroomShell({ user, workspace, workspaces, impersonated, curre
         <RowLinkBehaviour />
       </div>
     </div>
+    </ExperienceProvider>
   );
 }

@@ -15,12 +15,16 @@ import { formatDate } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { getUi } from "@/server/i18n/locale";
+import { experienceOf } from "@/lib/experience";
+import { NewEditionButton } from "@/components/newsroom/new-edition-button";
+import { OUTPUT_KIND_LABELS, editionOutputKinds } from "@/server/home/service";
 
 export const dynamic = "force-dynamic";
 
-export default async function EditionsPage({ searchParams }: { searchParams: Promise<{ hidden?: string }> }) {
+export default async function EditionsPage({ searchParams }: { searchParams: Promise<{ hidden?: string; error?: string }> }) {
   const tr = await getUi();
   const [user, sp] = await Promise.all([getCurrentUser(), searchParams]);
+  const standard = experienceOf(user?.preferences) === "standard";
   const [all, next] = await Promise.all([listEditions({ includeHidden: true }), nextIssueNumber()]);
   // Hidden editions stay out of the way until asked for, and are marked when they are.
   const showHidden = sp.hidden === "1";
@@ -34,7 +38,26 @@ export default async function EditionsPage({ searchParams }: { searchParams: Pro
   const nextYear = now.getMonth() + 2 > 12 ? now.getFullYear() + 1 : now.getFullYear();
 
   type Row = (typeof editions)[number];
-  const columns: Column<Row>[] = [
+  const outputs = standard ? await editionOutputKinds(editions.map((e) => e.id)) : null;
+  const columns: Column<Row>[] = standard ? [
+    ...(canManage ? [{ key: "select", header: <SelectAll ids={editions.map((e) => e.id)} />, cell: (e: Row) => <SelectRow id={e.id} label={e.label} />, width: "36px" }] : []),
+    {
+      key: "label",
+      header: tr("Edition"),
+      cell: (e) => (
+        <span className="flex items-center gap-2">
+          <Link href={`/editions/${e.id}`} className="font-medium hover:underline">
+            {e.label}
+          </Link>
+          {e.isSpecialIssue ? <Badge variant="outline">{tr("Special issue")}</Badge> : null}
+          {e.hiddenAt ? <Badge variant="muted">{tr("Hidden")}</Badge> : null}
+        </span>
+      ),
+    },
+    { key: "status", header: tr("Where it stands"), cell: (e) => <EditionStatusBadge status={e.status} /> },
+    { key: "outputs", header: tr("Goes out as"), cell: (e) => { const kinds = outputs?.get(e.id); return kinds?.all.length ? <span className="text-xs">{kinds.all.map((k) => OUTPUT_KIND_LABELS[k]).join(" · ")}</span> : <span className="text-xs text-muted-foreground">{tr("not chosen yet")}</span>; } },
+    { key: "target", header: tr("Publish date"), cell: (e) => <span className="text-xs">{formatDate(e.publishedAt ?? e.publicationTargetAt)}</span> },
+  ] : [
     ...(canManage ? [{ key: "select", header: <SelectAll ids={editions.map((e) => e.id)} />, cell: (e: Row) => <SelectRow id={e.id} label={e.label} />, width: "36px" }] : []),
     { key: "issue", header: tr("Issue"), cell: (e) => <span className="tabular font-mono text-xs text-muted-foreground">N°{e.issueNumber}</span>, width: "70px" },
     {
@@ -76,18 +99,27 @@ export default async function EditionsPage({ searchParams }: { searchParams: Pro
     <>
       <PageHeader
         title={tr("Editions")}
-        description={tr("One edition per month. Special issues welcome.")}
+        description={standard ? tr("Every edition, and where it stands. One click makes the next.") : tr("One edition per month. Special issues welcome.")}
         actions={
           hasPermission(user, "edition:create") ? (
-            <Suspense>
-              <NewEditionDialog nextIssueNumber={next} defaultMonth={nextMonth} defaultYear={nextYear} />
-            </Suspense>
+            standard ? (
+              <NewEditionButton />
+            ) : (
+              <Suspense>
+                <NewEditionDialog nextIssueNumber={next} defaultMonth={nextMonth} defaultYear={nextYear} />
+              </Suspense>
+            )
           ) : null
         }
       >
         <HubTabs tabs={WORKBENCH_TABS} />
       </PageHeader>
       <PageBody className="space-y-3">
+        {sp.error ? (
+          <p role="alert" className="rounded-md border border-warning/40 bg-warning-soft px-3 py-2 text-[13px] text-warning">
+            {tr("Briefly could not prepare the edition: {reason}", { reason: sp.error })}
+          </p>
+        ) : null}
         {hiddenCount || showHidden ? (
           <div className="flex justify-end">
             <Button asChild variant="ghost" size="sm">
@@ -104,7 +136,7 @@ export default async function EditionsPage({ searchParams }: { searchParams: Pro
             rows={editions}
             rowKey={(e) => e.id}
             onRowHref={(e) => `/editions/${e.id}`}
-            empty={{ title: showHidden ? "Nothing hidden" : "No editions yet", description: showHidden ? "Every edition is in the list." : "Create the first edition to schedule a contribution campaign.", icon: Newspaper }}
+            empty={{ title: showHidden ? tr("Nothing hidden") : tr("No editions yet"), description: showHidden ? tr("Every edition is in the list.") : standard ? tr("Click New edition. Briefly prepares it from what your organization already knows.") : tr("Create the first edition to schedule a contribution campaign."), icon: Newspaper }}
             columns={columns}
           />
         </SelectionProvider>

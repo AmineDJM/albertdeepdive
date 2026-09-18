@@ -1,4 +1,5 @@
 import { expect, type Page } from "@playwright/test";
+import { one } from "./db";
 
 /**
  * Two administrators, deliberately.
@@ -20,4 +21,18 @@ export async function login(page: Page, user = ADMIN) {
   await page.getByRole("button", { name: /sign in/i }).click();
   await page.waitForURL(/\/(overview|editions|admin)/);
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+}
+
+/**
+ * Standard or Advanced, set straight in the database before signing in.
+ *
+ * Every person starts in Standard, so a spec that asserts the full control room, the pulse or a
+ * tab Standard keeps off the row says so first; a spec about Standard says that too, because one
+ * worker runs every spec against the same account and the last choice sticks. The profile page's
+ * own switch is exercised by the experience spec, through the interface.
+ */
+export async function setExperience(mode: "standard" | "advanced", email = ADMIN.email) {
+  // The object goes as a parameter the driver serialises itself; a pre-stringified value would
+  // arrive as a JSON string and turn the preferences into an array.
+  await one(`update users set preferences = coalesce(preferences, '{}'::jsonb) || $1 where email = $2`, [{ experience: mode }, email]);
 }

@@ -3,7 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { requireUser, SESSION_COOKIE } from "@/server/auth/session";
-import { changeOwnPassword, passwordChangeSchema, profileSchema, setThemePreference, signOutOtherSessions, updateOwnProfile, type ThemePreference } from "@/server/settings/users";
+import { changeOwnPassword, passwordChangeSchema, profileSchema, setExperiencePreference, setThemePreference, signOutOtherSessions, updateOwnProfile, type ThemePreference } from "@/server/settings/users";
+import { isExperienceMode, type ExperienceMode } from "@/lib/experience";
 import { ok, toActionFailure, type ActionResult } from "@/lib/action-result";
 import type { z } from "zod";
 import { getUi } from "@/server/i18n/locale";
@@ -67,6 +68,23 @@ export async function setLocaleAction(locale: "en" | "fr"): Promise<ActionResult
     await setLocalePreference(user.id, locale === "fr" ? "fr" : "en");
     revalidatePath("/", "layout");
     return ok(null);
+  } catch (err) {
+    return toActionFailure(err);
+  }
+}
+
+/**
+ * Standard or Advanced, for this person. The whole interface follows — sidebar, settings, the
+ * rooms of an edition — and nothing about the workspace changes with it.
+ */
+export async function setExperienceAction(mode: ExperienceMode): Promise<ActionResult> {
+  const tr = await getUi();
+  try {
+    const user = await requireUser();
+    if (!isExperienceMode(mode)) throw new Error("Unknown experience");
+    await setExperiencePreference(user.id, mode);
+    revalidatePath("/", "layout");
+    return ok(null, mode === "advanced" ? tr("Advanced mode is on. Every door is open.") : tr("Standard mode is on. Only what matters is shown."));
   } catch (err) {
     return toActionFailure(err);
   }

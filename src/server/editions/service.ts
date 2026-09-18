@@ -12,6 +12,7 @@ import { applyPublicationDefaults } from "@/server/outputs/service";
 import { requireLimit } from "@/server/billing/entitlements";
 import { optionalOrganizationId } from "@/server/tenancy/context";
 import { forgetFiles } from "@/server/storage/forget";
+import { logger } from "@/server/logger";
 
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
@@ -34,6 +35,46 @@ export const createEditionSchema = z.object({
   notes: z.string().max(2000).optional().nullable(),
 });
 export type CreateEditionInput = z.infer<typeof createEditionSchema>;
+
+/**
+ * The month the next edition is for.
+ *
+ * The month after the latest edition on the books, or the coming month when there is none or the
+ * latest is already behind us. It answers the one question the old dialog asked that a person
+ * could not answer faster than Briefly.
+ */
+export async function nextEditionMonth(now = new Date()): Promise<{ month: number; year: number }> {
+  const [latest] = await db
+    .select({ month: s.editions.month, year: s.editions.year })
+    .from(s.editions)
+    .where(await scoped(s.editions.organizationId, isNull(s.editions.hiddenAt)))
+    .orderBy(desc(s.editions.year), desc(s.editions.month))
+    .limit(1);
+  const coming = { month: now.getMonth() + 2 > 12 ? 1 : now.getMonth() + 2, year: now.getMonth() + 2 > 12 ? now.getFullYear() + 1 : now.getFullYear() };
+  if (!latest) return coming;
+  const after = { month: latest.month === 12 ? 1 : latest.month + 1, year: latest.month === 12 ? latest.year + 1 : latest.year };
+  return after.year * 12 + after.month >= coming.year * 12 + coming.month ? after : coming;
+}
+
+/**
+ * One click: the next edition, ready to work in.
+ *
+ * Month, issue number, title, sections, dates, the title's usual formats and the contribution
+ * campaign are all decided from what the workspace already knows. Every one of them can be
+ * changed afterwards from the edition itself; none of them needs to be asked first.
+ */
+export async function prepareEdition(userId: string) {
+  const when = await nextEditionMonth();
+  const edition = await createEdition({ month: when.month, year: when.year, isSpecialIssue: false }, userId);
+  try {
+    const { scheduleFromDefaults } = await import("@/server/campaigns/service");
+    await scheduleFromDefaults(edition.id, { id: userId });
+  } catch (err) {
+    // The edition stands without its campaign; the overview says so and offers to open one.
+    logger.warn("prepared edition without a campaign", { editionId: edition.id, err });
+  }
+  return edition;
+}
 
 export async function nextIssueNumber() {
   const [row] = await db.select({ max: sql<number>`coalesce(max(${s.editions.issueNumber}), 0)` }).from(s.editions).where(await scoped(s.editions.organizationId));

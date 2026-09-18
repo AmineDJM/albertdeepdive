@@ -1,7 +1,8 @@
 import { getCurrentUser } from "@/server/auth/session";
 import { getTranslations } from "@/server/i18n/locale";
 import { visibleTabs, type SubTab } from "./nav";
-import { TabBar } from "./tab-bar";
+import { ModeTabs } from "./mode-tabs";
+import { experienceOf } from "@/lib/experience";
 
 /**
  * The tab row a grouped workspace page shows.
@@ -17,7 +18,7 @@ export async function HubTabs({ tabs }: { tabs: readonly SubTab[] }) {
   if (allowed.length < 2) return null;
   return (
     <div className="px-3">
-      <TabBar tabs={allowed.map((tab) => ({ href: tab.href, label: t(tab.label), exact: tab.exact }))} />
+      <ModeTabs mode={experienceOf(user.preferences)} tabs={allowed.map((tab) => ({ href: tab.href, label: t(tab.label), exact: tab.exact }))} />
     </div>
   );
 }

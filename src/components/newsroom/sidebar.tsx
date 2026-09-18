@@ -6,7 +6,8 @@ import { usePathname, useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import { Bell, ChevronsUpDown, HelpCircle, Inbox, LogOut, Moon, Search, Shield, Sparkles, Sun, UserRound } from "lucide-react";
 import { WorkspaceSwitcher, type WorkspaceOption } from "./workspace-switcher";
-import { NAV_ITEMS, SETUP_ITEMS, resolveNavItem, type NavItem } from "./nav";
+import { navItemsFor, resolveNavItem, type NavItem } from "./nav";
+import { useExperience } from "@/components/experience/provider";
 import { cn, initials, relativeTime } from "@/lib/utils";
 import { ROLE_LABELS, type Role } from "@/lib/auth/permissions";
 import { STATUS_LABELS, type EditionStatus } from "@/lib/editorial/edition-state";
@@ -245,6 +246,7 @@ export function Sidebar({ user, role, workspace, workspaces, impersonated, curre
   const tr = useUi();
   const t = useTranslations();
   const pathname = usePathname();
+  const nav = navItemsFor(useExperience());
   return (
     <aside className="flex h-full w-[240px] shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground">
       <div className="flex h-12 items-center px-4">
@@ -258,13 +260,13 @@ export function Sidebar({ user, role, workspace, workspaces, impersonated, curre
         {workspace ? (
           <>
             <ul className="space-y-px">
-              {NAV_ITEMS.map((item) => (
+              {nav.primary.map((item) => (
                 <NavLink key={item.href} item={item} role={role} pathname={pathname} />
               ))}
             </ul>
             <div className="mx-2 my-2 border-t border-sidebar-border" />
             <ul className="space-y-px">
-              {SETUP_ITEMS.map((item) => (
+              {nav.secondary.map((item) => (
                 <NavLink key={item.href} item={item} role={role} pathname={pathname} />
               ))}
             </ul>

@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { ArrowRight, Inbox, Layers, Mail, Newspaper, Plus, Sparkles } from "lucide-react";
-import { getCurrentUser } from "@/server/auth/session";
+import { ArrowRight, Inbox, Layers, Mail, Newspaper, Sparkles } from "lucide-react";
+import { getCurrentUser, hasPermission } from "@/server/auth/session";
 import { requireTenant } from "@/server/tenancy/context";
 import { homeData, OUTPUT_KIND_LABELS, type HomeEditionCard, type OutputKind } from "@/server/home/service";
 import { PageBody, PageHeader, SectionTitle } from "@/components/newsroom/page-header";
@@ -11,6 +11,8 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { cn, formatDate } from "@/lib/utils";
 import { PHASES, STATUS_LABELS } from "@/lib/editorial/edition-state";
 import { getUi } from "@/server/i18n/locale";
+import { experienceOf } from "@/lib/experience";
+import { NewEditionButton } from "@/components/newsroom/new-edition-button";
 
 export const dynamic = "force-dynamic";
 
@@ -75,6 +77,11 @@ export default async function HomePage() {
   const next = data.next;
   const phaseIndex = next ? PHASES.findIndex((p) => p.key === next.phase) : -1;
   const collectHref = next ? `/editions/${next.id}/campaign` : "/editions?new=1";
+  const canCreate = hasPermission(user, "edition:create");
+
+  if (experienceOf(user?.preferences) === "standard") {
+    return <StandardHome first={first} next={next} recent={data.recent} contributions={data.pulse.contributions30} canCreate={canCreate} nextLabels={nextLabels} tr={tr} />;
+  }
 
   return (
     <>
@@ -92,11 +99,7 @@ export default async function HomePage() {
                 <Inbox /> {tr("Collect contributions")}
               </Link>
             </Button>
-            <Button asChild>
-              <Link href="/editions?new=1">
-                <Plus /> {tr("New edition")}
-              </Link>
-            </Button>
+            {canCreate ? <NewEditionButton /> : null}
           </div>
         </section>
 
@@ -183,7 +186,7 @@ export default async function HomePage() {
               </div>
             </div>
           ) : (
-            <EmptyState icon={Sparkles} title={tr("No edition in progress")} description={tr("Start one and Briefly prepares it from what your organization has been saying.")} action={<Button asChild><Link href="/editions?new=1"><Plus /> {tr("New edition")}</Link></Button>} />
+            <EmptyState icon={Sparkles} title={tr("No edition in progress")} description={tr("Start one and Briefly prepares it from what your organization has been saying.")} action={canCreate ? <NewEditionButton /> : null} />
           )}
         </section>
 
@@ -233,5 +236,93 @@ function Shortcut({ href, icon: Icon, title, body }: { href: string; icon: React
         <span className="block text-xs text-muted-foreground">{body}</span>
       </span>
     </Link>
+  );
+}
+
+/**
+ * Home, in Standard: the answer to "what should I do now?" and nothing else.
+ *
+ * One card, one sentence, one button. The edition in hand and how far it is; or, with none, what
+ * has come in and the button that turns it into the next edition. Below it the last few editions,
+ * for the person who wants to look back. No pulse, no shortcuts: the sidebar is the map.
+ */
+function StandardHome({ first, next, recent, contributions, canCreate, nextLabels, tr }: { first: string; next: Awaited<ReturnType<typeof homeData>>["next"]; recent: HomeEditionCard[]; contributions: number; canCreate: boolean; nextLabels: Record<string, string>; tr: (text: string, values?: Record<string, string | number>) => string }) {
+  const sentence = next
+    ? next.stories
+      ? next.stories === 1
+        ? tr("{edition} · 1 story ready", { edition: next.label })
+        : tr("{edition} · {count} stories ready", { edition: next.label, count: next.stories })
+      : next.updates
+        ? next.updates === 1
+          ? tr("{edition} · 1 update received", { edition: next.label })
+          : tr("{edition} · {count} updates received", { edition: next.label, count: next.updates })
+        : tr("{edition} · waiting for news", { edition: next.label })
+    : contributions
+      ? contributions === 1
+        ? tr("1 new update received")
+        : tr("{count} new updates received", { count: contributions })
+      : recent.length
+        ? tr("Nothing in progress")
+        : tr("Let’s make your first edition.");
+  const body = next
+    ? tr("Briefly keeps it up to date with everything that comes in. Open it to see what it chose, change what you like, and publish when you are happy.")
+    : contributions
+      ? tr("Briefly has been listening. One click turns what came in into your next edition.")
+      : tr("Give Briefly what happened. Briefly makes it beautiful. You publish it.");
+  return (
+    <>
+      <PageHeader title={`${tr(greeting())}, ${first}`} description={tr("What should I do now?")} />
+      <PageBody className="mx-auto w-full max-w-3xl space-y-8">
+        <section className="fade-in rounded-2xl border border-border bg-card p-6 shadow-xs" data-testid="home-now">
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="masthead text-[24px] leading-tight font-semibold tracking-tight">{sentence}</h2>
+            {next ? <EditionStatusBadge status={next.status} /> : null}
+          </div>
+          <p className="mt-2 max-w-xl text-[13.5px] text-muted-foreground">{body}</p>
+          <div className="mt-5 flex flex-wrap items-center gap-2">
+            {next ? (
+              <>
+                <Button asChild size="lg">
+                  <Link href={`/editions/${next.id}`}>
+                    {tr("Continue edition")} <ArrowRight />
+                  </Link>
+                </Button>
+                <Button asChild variant="ghost">
+                  <Link href={next.next.href}>{nextLabels[next.next.label] ?? tr("Open the edition")}</Link>
+                </Button>
+              </>
+            ) : canCreate ? (
+              <NewEditionButton size="lg" label={recent.length ? tr("Prepare my next edition") : tr("Prepare my first edition")} />
+            ) : (
+              <Button asChild variant="outline">
+                <Link href="/editions">{tr("See the editions")}</Link>
+              </Button>
+            )}
+          </div>
+          {next?.missing.length ? (
+            <ul className="mt-5 flex flex-wrap gap-2 border-t border-border/70 pt-4" aria-label={tr("Needs your attention")}>
+              {next.missing.slice(0, 3).map((item) => (
+                <li key={item.key}>
+                  <Link href={item.href} className="inline-flex items-center gap-1.5 rounded-md border border-warning/30 bg-warning-soft px-2 py-1 text-xs font-medium text-warning transition-colors duration-150 hover:border-warning/60">
+                    <span className="tabular">{item.count}</span> {({ submissions: tr("updates to look at"), stories: tr("stories missing something"), articles: tr("articles waiting for your approval"), pictures: tr("pictures with unclear rights"), facts: tr("facts that disagree") })[item.key]}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </section>
+
+        {recent.length ? (
+          <section>
+            <SectionTitle action={<Link href="/editions" className="text-xs text-muted-foreground transition-colors duration-150 hover:text-foreground">{tr("All editions")}</Link>}>{tr("Recent editions")}</SectionTitle>
+            <div className="grid gap-3 md:grid-cols-2">
+              {recent.filter((edition) => edition.id !== next?.id).slice(0, 4).map((edition) => (
+                <EditionCard key={edition.id} edition={edition} tr={tr} />
+              ))}
+            </div>
+          </section>
+        ) : null}
+      </PageBody>
+    </>
   );
 }

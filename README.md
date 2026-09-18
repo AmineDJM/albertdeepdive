@@ -19,6 +19,7 @@ chief approves every issue.
 
 - [What it does](#what-it-does)
 - [The interface](#the-interface)
+- [Standard and Advanced](#standard-and-advanced)
 - [Architecture](#architecture)
 - [Getting started](#getting-started)
 - [Configuration](#configuration)
@@ -69,6 +70,50 @@ on their new names.
 Design tokens live in `src/app/globals.css` and `src/lib/brand/palette.ts`: neutrals from the
 logo's charcoal and paper, one indigo accent read off the logo, the rest of the logo's sweep held
 for meaning (money, audience, attention, done) and never for decoration.
+
+## Standard and Advanced
+
+One rule decides what the interface shows: a reasonably smart ten-year-old should be able to run
+an organisation's newsletter with it, untrained. So every person starts in **Standard**, and the
+product in Standard is four steps — see what Briefly collected, choose what goes in, preview,
+publish — with the few decisions that change the result kept in sight and everything else on
+smart defaults read from the brand.
+
+- **The sidebar** is six words: Home, Editions, Library — Audience, Analytics, Settings. Content
+  folds into the editions, where the stories Briefly found are shown when one is opened; Brand is
+  a line under Settings.
+- **Home** answers one question, "what should I do now?": the edition in hand and how far it is
+  with `Continue edition`, or what has come in with `Prepare my next edition`.
+- **`+ New edition`** is one click. Briefly picks the month, the issue number, the title, the
+  sections, the dates, the title's usual formats and the contribution campaign from what the
+  workspace already knows, and opens the edition.
+- **An edition** is a short list of decisions, each one line with what Briefly chose and a
+  `Change`: Language, Audience, Publish date, Outputs (`✓ Email ✓ Web + Add format`), Stories,
+  Pictures, Tone, and Sender when email is on. Then `Preview` and `Publish`. The full control
+  room is one link below.
+- **Settings** reads as one line per thing with where it stands — `Brand — Ready ✓`,
+  `Email sending — Test mode`, `Audience — 412 subscribers` — and opens only the page that needs
+  you.
+- **Inside an edition** four doors: Overview, Stories (with the people who sent them and the
+  campaign as "Ask for news"), Pictures, Publish. Page plans, exports, audio and the edition's own
+  settings wait in Advanced; a link to any of them still opens, and the door it is behind appears
+  for as long as you are there.
+
+**Advanced** is the same product with every door open: the eight-entry sidebar, the control
+room, the flatplan, exports, prompts, automations, the records. The mode is chosen on
+Settings → Profile, stored per person, and changes nothing but what is shown — not an edition,
+not the brand, not a setting. Nothing was removed from the product to make Standard: what is not
+on the way is a click away in Advanced or in ⌘K.
+
+The core workflows, counted in clicks from the moment you are signed in:
+
+| Workflow | Before | Standard |
+| --- | --- | --- |
+| Onboarding → first edition | 5 (Editions, New edition, month, dates, Create) | 1 (`Prepare my first edition`) |
+| Contributions → edition | 4 (Content, Contributions, edition, inbox) | 2 (`Continue edition`, `Look at what came in`) |
+| Edition → publish | 4 (Editions, edition, Distribution, Publish) | 2 (`Continue edition`, `Publish`) |
+| Library asset → use in edition | 4 (Library, asset, edition, Media) | 3 (edition, `Pictures`, Upload) |
+| Subscriber import → first send | 6 (Audience, Import, edition, Outputs, Email, Send) | 4 (Audience, Import, edition, `Publish`) |
 
 ## Architecture
 

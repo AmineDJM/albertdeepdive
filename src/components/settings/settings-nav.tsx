@@ -7,6 +7,8 @@ import { Activity, AtSign, BookOpen, Building2, CreditCard, Cpu, LayoutList, Mai
 import { cn } from "@/lib/utils";
 import { roleHasPermission, type Permission, type Role } from "@/lib/auth/permissions";
 import { useUi } from "@/components/i18n/provider";
+import { useExperience } from "@/components/experience/provider";
+import { settingsShown } from "@/components/newsroom/nav";
 
 export type WorkspaceRole = "OWNER" | "ADMIN" | "EDITOR" | "CONTRIBUTOR" | "VIEWER";
 /**
@@ -72,14 +74,17 @@ export function canSeeSettingsItem(role: Role, item: SettingsNavItem, workspaceR
 export function SettingsNav({ role, workspaceRole = null }: { role: Role; workspaceRole?: WorkspaceRole | null }) {
   const tr = useUi();
   const pathname = usePathname();
+  const mode = useExperience();
+  // Standard reads as one short list: the group names are for a person who knows the subsystems.
+  const groups = mode === "advanced" ? SETTINGS_NAV : [{ label: "Settings", items: SETTINGS_NAV.flatMap((group) => group.items) }];
   return (
     <nav aria-label={tr("Settings")} className="flex flex-col gap-3">
-      {SETTINGS_NAV.map((group) => {
-        const items = group.items.filter((item) => canSeeSettingsItem(role, item, workspaceRole));
+      {groups.map((group) => {
+        const items = group.items.filter((item) => canSeeSettingsItem(role, item, workspaceRole) && settingsShown(mode, item.href, pathname));
         if (!items.length) return null;
         return (
           <div key={group.label}>
-            <div className="label-caps px-2 pb-1">{group.label}</div>
+            {mode === "advanced" ? <div className="label-caps px-2 pb-1">{group.label}</div> : null}
             <ul className="space-y-px">
               {items.map((item) => {
                 const active = pathname === item.href || pathname.startsWith(`${item.href}/`);

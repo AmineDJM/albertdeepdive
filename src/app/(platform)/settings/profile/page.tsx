@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { CampusChip } from "@/components/newsroom/campus-chip";
 import { ROLE_DESCRIPTIONS, ROLE_LABELS } from "@/lib/auth/permissions";
 import { formatDate } from "@/lib/utils";
-import { IdentityForm, PasswordForm, SessionsCard, ThemeForm } from "./profile-forms";
+import { ExperienceForm, IdentityForm, PasswordForm, SessionsCard, ThemeForm } from "./profile-forms";
 import { getUi } from "@/server/i18n/locale";
 
 export const dynamic = "force-dynamic";
@@ -31,6 +31,7 @@ export default async function ProfilePage() {
         }
       />
       <PageBody className="max-w-3xl space-y-4">
+        <ExperienceForm saved={profile.experience} />
         <IdentityForm name={profile.name} email={profile.email} />
         <PasswordForm />
         <ThemeForm saved={profile.theme} />

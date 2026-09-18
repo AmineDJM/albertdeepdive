@@ -22,7 +22,7 @@ test.describe("the French interface", () => {
     // The hub is "Parutions" in the sidebar; the list it opens is titled "Éditions".
     await page.getByRole("link", { name: "Parutions", exact: true }).click();
     await expect(page.getByRole("heading", { name: "Éditions" })).toBeVisible();
-    await expect(page.locator("main").getByText("Une édition par mois. Les numéros spéciaux sont bienvenus.")).toBeVisible();
+    await expect(page.locator("main").getByText(/Une édition par mois|Chaque édition, et où elle en est/)).toBeVisible();
 
     await page.getByRole("button", { name: "Menu du compte" }).click();
     await page.getByLabel("Interface language").selectOption("en");
