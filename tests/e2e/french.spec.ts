@@ -16,8 +16,9 @@ test.describe("the French interface", () => {
     // The picker lives in the account menu, under the avatar.
     await page.getByRole("button", { name: "Account menu" }).click();
     await page.getByLabel("Interface language").selectOption("fr");
-    await expect(page.getByRole("heading", { level: 1 })).toContainText(/Vue d'ensemble|Bonjour|Bon après-midi|Bonsoir/);
+    // The open menu hides the rest of the page from the accessibility tree; close it first.
     await page.keyboard.press("Escape");
+    await expect(page.getByRole("heading", { level: 1 })).toContainText(/Vue d'ensemble|Bonjour|Bon après-midi|Bonsoir/);
     // The hub is "Parutions" in the sidebar; the list it opens is titled "Éditions".
     await page.getByRole("link", { name: "Parutions", exact: true }).click();
     await expect(page.getByRole("heading", { name: "Éditions" })).toBeVisible();
@@ -25,6 +26,7 @@ test.describe("the French interface", () => {
 
     await page.getByRole("button", { name: "Menu du compte" }).click();
     await page.getByLabel("Interface language").selectOption("en");
+    await page.keyboard.press("Escape");
     await expect(page.getByRole("heading", { name: "Editions" })).toBeVisible();
   });
 });

@@ -27,6 +27,7 @@ export type SidebarEdition = { id: string; label: string; issueLabel: string; st
  * the browser will helpfully rearrange it for you.
  */
 function WorkingOn({ current, editions, badges }: { current: SidebarEdition | null; editions: SidebarEdition[]; badges: { inbox: number; flags: number } }) {
+  const tr = useUi();
   const t = useTranslations();
   return (
     <div className="px-3 pb-2 pt-2">
@@ -38,7 +39,7 @@ function WorkingOn({ current, editions, badges }: { current: SidebarEdition | nu
               <span className="block truncate text-[13px] font-medium text-foreground">
                 {current.label} · {current.issueLabel}
               </span>
-              <span className="block truncate text-2xs text-muted-foreground">{STATUS_LABELS[current.status]}</span>
+              <span className="block truncate text-2xs text-muted-foreground">{tr(STATUS_LABELS[current.status])}</span>
             </Link>
           ) : (
             <Link href="/editions" className="min-w-0 flex-1 rounded-l-md px-2.5 py-1.5 text-left transition-colors hover:bg-sidebar-accent">
@@ -61,7 +62,7 @@ function WorkingOn({ current, editions, badges }: { current: SidebarEdition | nu
                     <span className="text-[13px]">
                       {e.label} · {e.issueLabel}
                     </span>
-                    <span className="text-2xs text-muted-foreground">{STATUS_LABELS[e.status]}</span>
+                    <span className="text-2xs text-muted-foreground">{tr(STATUS_LABELS[e.status])}</span>
                   </Link>
                 </DropdownMenuItem>
               ))}

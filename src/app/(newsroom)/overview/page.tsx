@@ -39,15 +39,15 @@ export default async function OverviewPage() {
   const phases: PhaseItem[] = PHASES.map((p, i) => {
     const state = i < phaseIndex ? "done" : i === phaseIndex ? "active" : "todo";
     const details: Record<string, { detail: React.ReactNode; progress?: { value: number; max: number }; href: string }> = {
-      COLLECT: { detail: `${d.submissions.total} submissions · ${Math.round(d.requests.responseRate * 100)}% response`, href: `${ed}/campaign` },
-      ORGANISE: { detail: `${d.clusters.total} clusters · ${d.stories.selected} selected`, href: `${ed}/stories` },
-      WRITE: { detail: `${d.articles.drafted} / ${d.stories.selected} drafted`, progress: { value: d.articles.drafted, max: d.stories.selected }, href: `${ed}/articles` },
-      EDIT: { detail: `${d.articles.approved} / ${d.stories.selected} approved`, progress: { value: d.articles.approved, max: d.stories.selected }, href: `${ed}/articles?status=READY_FOR_REVIEW` },
-      LAYOUT: { detail: `${d.layout.ready} / ${d.layout.pages || d.layout.target} pages ready`, progress: { value: d.layout.ready, max: d.layout.pages || d.layout.target }, href: `${ed}/layout` },
-      QA: { detail: d.latestVersion ? `Latest ${d.latestVersion.label} · ${tr(enumLabel(d.latestVersion.status))}` : "Not started", href: `${ed}/qa` },
-      PUBLISH: { detail: d.edition.publishedAt ? `Published ${formatDate(d.edition.publishedAt)}` : d.edition.publicationTargetAt ? `Target ${formatDate(d.edition.publicationTargetAt)}` : "Scheduled", href: `${ed}/qa` },
+      COLLECT: { detail: tr("{count} submissions · {rate}% response", { count: d.submissions.total, rate: Math.round(d.requests.responseRate * 100) }), href: `${ed}/campaign` },
+      ORGANISE: { detail: tr("{clusters} clusters · {selected} selected", { clusters: d.clusters.total, selected: d.stories.selected }), href: `${ed}/stories` },
+      WRITE: { detail: tr("{done} / {total} drafted", { done: d.articles.drafted, total: d.stories.selected }), progress: { value: d.articles.drafted, max: d.stories.selected }, href: `${ed}/articles` },
+      EDIT: { detail: tr("{done} / {total} approved", { done: d.articles.approved, total: d.stories.selected }), progress: { value: d.articles.approved, max: d.stories.selected }, href: `${ed}/articles?status=READY_FOR_REVIEW` },
+      LAYOUT: { detail: tr("{ready} / {total} pages ready", { ready: d.layout.ready, total: d.layout.pages || d.layout.target }), progress: { value: d.layout.ready, max: d.layout.pages || d.layout.target }, href: `${ed}/layout` },
+      QA: { detail: d.latestVersion ? tr("Latest {version} · {status}", { version: d.latestVersion.label, status: tr(enumLabel(d.latestVersion.status)) }) : tr("Not started"), href: `${ed}/qa` },
+      PUBLISH: { detail: d.edition.publishedAt ? tr("Published {date}", { date: formatDate(d.edition.publishedAt) }) : d.edition.publicationTargetAt ? tr("Target {date}", { date: formatDate(d.edition.publicationTargetAt) }) : tr("Scheduled"), href: `${ed}/qa` },
     };
-    return { key: p.key, label: p.label, state, ...details[p.key] };
+    return { key: p.key, label: tr(p.label), state, ...details[p.key] };
   });
   const nextDeadline = d.edition.status === "FINAL_REVIEW" || d.edition.status === "LAYOUT" || d.edition.status === "EDITORIAL_REVIEW" ? { label: tr("Final editorial review"), at: d.edition.finalReviewAt } : d.campaign && d.edition.status !== "CLOSED" && d.edition.status !== "PROCESSING" ? { label: tr("Submissions close"), at: d.campaign.graceEndsAt } : { label: tr("Publication target"), at: d.edition.publicationTargetAt };
 
@@ -59,7 +59,7 @@ export default async function OverviewPage() {
           <div className="relative overflow-hidden rounded-lg border border-border bg-card shadow-xs">
             <div className="grid md:grid-cols-[168px_minmax(0,1fr)]">
               <div className="border-r border-border bg-muted/40 p-4">
-                <CoverThumbnail url={coverUrl} label={d.edition.label} issueLabel={`${d.edition.isSpecialIssue ? "Special issue" : "Issue"} N°${d.edition.issueNumber}`} headline={d.edition.coverHeadline} />
+                <CoverThumbnail url={coverUrl} label={d.edition.label} issueLabel={`${d.edition.isSpecialIssue ? tr("Special issue") : tr("Issue")} N°${d.edition.issueNumber}`} headline={d.edition.coverHeadline} />
               </div>
               <div className="flex flex-col justify-between gap-4 p-5">
                 <div>
@@ -69,13 +69,13 @@ export default async function OverviewPage() {
                     {d.edition.isSpecialIssue ? <Badge variant="outline">{tr("Special issue")}</Badge> : null}
                   </div>
                   <h2 className="masthead mt-1 text-[28px] leading-tight font-semibold tracking-tight">
-                    {d.edition.label} <span className="text-muted-foreground">· {d.edition.isSpecialIssue ? "Special issue" : "Issue"} N°{d.edition.issueNumber}</span>
+                    {d.edition.label} <span className="text-muted-foreground">· {d.edition.isSpecialIssue ? tr("Special issue") : tr("Issue")} N°{d.edition.issueNumber}</span>
                   </h2>
                   <p className="mt-1 max-w-2xl text-[13px] text-muted-foreground">{d.edition.coverHeadline ?? d.edition.title}</p>
                   <dl className="mt-4 grid grid-cols-2 gap-x-6 gap-y-2 text-xs sm:grid-cols-4">
                     <div>
                       <dt className="label-caps">{tr("Phase")}</dt>
-                      <dd className="mt-0.5 font-medium">{STATUS_LABELS[d.edition.status]}</dd>
+                      <dd className="mt-0.5 font-medium">{tr(STATUS_LABELS[d.edition.status])}</dd>
                     </div>
                     <div>
                       <dt className="label-caps">{tr("Next deadline")}</dt>
@@ -127,7 +127,7 @@ export default async function OverviewPage() {
             <div className="mt-3 flex items-center justify-between border-t pt-3 text-xs">
               <span className="text-muted-foreground">
                 {d.coverage.represented} / {d.coverage.total}{" "}{tr("campuses represented")}</span>
-              <Badge variant={d.coverage.label === "Balanced" ? "success" : d.coverage.label === "Uneven" ? "warning" : "destructive"}>{d.coverage.label}</Badge>
+              <Badge variant={d.coverage.label === "Balanced" ? "success" : d.coverage.label === "Uneven" ? "warning" : "destructive"}>{tr(d.coverage.label)}</Badge>
             </div>
             {d.coverage.underrepresented.length ? <p className="mt-2 text-2xs text-warning">{tr("Under-represented:")}{" "}{d.coverage.underrepresented.join(", ")}</p> : null}
           </div>
@@ -139,12 +139,12 @@ export default async function OverviewPage() {
         </section>
 
         <StatGrid columns={6}>
-          <Stat label={tr("Contributions")} value={d.submissions.total} hint={`${d.submissions.needsReview} to review`} icon={Inbox} hue="teal" href={`${ed}/inbox`} />
-          <Stat label={tr("Story clusters")} value={d.clusters.total} hint={`${d.stories.selected} stories selected`} icon={Sparkles} hue="violet" href={`${ed}/stories`} />
-          <Stat label={tr("Article drafts")} value={`${d.articles.drafted} / ${d.stories.selected}`} hint={`${d.articles.approved} approved`} icon={FileText} hue="violet" href={`${ed}/articles`} />
-          <Stat label={tr("Media")} value={d.media.total} hint={`${d.media.green} cleared · ${d.media.red} blocked`} icon={ImageIcon} hue="magenta" href={`${ed}/media`} />
+          <Stat label={tr("Contributions")} value={d.submissions.total} hint={tr("{count} to review", { count: d.submissions.needsReview })} icon={Inbox} hue="teal" href={`${ed}/inbox`} />
+          <Stat label={tr("Story clusters")} value={d.clusters.total} hint={tr("{count} stories selected", { count: d.stories.selected })} icon={Sparkles} hue="violet" href={`${ed}/stories`} />
+          <Stat label={tr("Article drafts")} value={`${d.articles.drafted} / ${d.stories.selected}`} hint={tr("{count} approved", { count: d.articles.approved })} icon={FileText} hue="violet" href={`${ed}/articles`} />
+          <Stat label={tr("Media")} value={d.media.total} hint={tr("{cleared} cleared · {blocked} blocked", { cleared: d.media.green, blocked: d.media.red })} icon={ImageIcon} hue="magenta" href={`${ed}/media`} />
           <Stat label={tr("Flags")} value={d.flags.total} hint={tr("requiring review")} hue={d.flags.total ? "coral" : "green"} icon={Flag} href={`${ed}/stories?flag=needs_attention`} />
-          <Stat label={tr("AI processing cost")} value={formatCurrency(d.ai.costCents / 100)} hint={`${d.ai.calls} calls · ${Math.round(d.ai.tokens / 1000)}k tokens`} icon={Coins} hue="amber" href="/analytics" />
+          <Stat label={tr("AI processing cost")} value={formatCurrency(d.ai.costCents / 100)} hint={tr("{calls} calls · {tokens}k tokens", { calls: d.ai.calls, tokens: Math.round(d.ai.tokens / 1000) })} icon={Coins} hue="amber" href="/analytics" />
         </StatGrid>
 
         <section className="grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
@@ -207,15 +207,15 @@ function describeActivity(action: string, metadata: Record<string, unknown>) {
   const tr = ui();
   switch (action) {
     case "edition.create":
-      return `Edition created (Issue N°${metadata.issueNumber ?? "?"})`;
+      return tr("Edition created (Issue N°{number})", { number: String(metadata.issueNumber ?? "?") });
     case "edition.transition":
-      return `Edition moved from ${tr(enumLabel(String(metadata.from ?? "")))} to ${tr(enumLabel(String(metadata.to ?? "")))}`;
+      return tr("Edition moved from {from} to {to}", { from: tr(enumLabel(String(metadata.from ?? ""))), to: tr(enumLabel(String(metadata.to ?? ""))) });
     case "campaign.open":
-      return `Campaign opened · ${metadata.invitations ?? 0} invitations sent`;
+      return tr("Campaign opened · {count} invitations sent", { count: Number(metadata.invitations ?? 0) });
     case "campaign.close":
-      return "Campaign closed";
+      return tr("Campaign closed");
     case "edition.process":
-      return `AI processing finished · ${metadata.clusters ?? 0} clusters`;
+      return tr("AI processing finished · {count} clusters", { count: Number(metadata.clusters ?? 0) });
     default:
       return enumLabel(action.replace(/\./g, " "));
   }
