@@ -200,6 +200,32 @@ describe("apparent size", () => {
   });
 });
 
+describe("the legibility floor", () => {
+  it("never emits type below the floor, even for a brand whose scale runs tiny", () => {
+    /*
+     * The copyfitter used to skip past the floor for every step but the last, then return the last
+     * step as it was — so a brand with a small scale could end on type below the legible minimum,
+     * and QA reported `too_small` as a defect nothing could repair. Now the smallest thing it returns
+     * is legible; if legible does not fit, the outcome is overflow, which the repair pass answers.
+     */
+    // The compiled scale is what the composer reads, so it is what is made tiny: seven steps that
+    // all sit under the 31px floor a 1080 canvas needs.
+    const compiled = compileBrandSystem(ALBERT);
+    const brand = { ...compiled, type: { ...compiled.type, scale: [9, 10, 11, 12, 14, 16, 18] } };
+    for (const system of DESIGN_SYSTEMS) {
+      const brief = localBrief({ format: "CAROUSEL", mode: "STUDIO", organizationName: "Tiny Type Co", brand: ALBERT, stories: STORIES });
+      const spec = composeSpec(brief, brand, { brandVersion: "v", system, organizationName: "Tiny Type Co" });
+      const findings = inspect(spec, brief);
+      expect(findings.filter((finding) => finding.code === "too_small"), system).toEqual([]);
+      for (const frame of spec.frames) {
+        for (const text of frame.text) {
+          expect(text.fontSize, `${system} frame ${frame.index}: "${text.content.slice(0, 20)}"`).toBeGreaterThanOrEqual(minFontSize(frame.width));
+        }
+      }
+    }
+  });
+});
+
 describe("widows", () => {
   it("knows one when it sees one", () => {
     expect(isWidow(["The alum turning satellite images", "into crop"], 40)).toBe(false);

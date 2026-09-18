@@ -298,7 +298,7 @@ Angle the editor asked for: {{angle}}
 Material:
 {{stories}}
 
-Return a brief: an intent (one sentence saying what this post must land), the frames in order, a caption for the post itself, and up to ${MAX_HASHTAGS} hashtags.
+Return a brief: an intent (one sentence saying what this post must land), the frames in order, a caption for the post itself, and up to ${MAX_HASHTAGS} hashtags written without the # sign. Leave a field null when a frame has no use for it.
 
 The rules the design system will check your brief against, so you may as well follow them:
 

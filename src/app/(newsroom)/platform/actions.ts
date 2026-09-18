@@ -7,6 +7,7 @@ import { startViewAs, stopViewAs } from "@/server/auth/view-as";
 import { setActiveOrganization } from "@/server/tenancy/context";
 import { clearOverrides, setOverrides, setPlatformRole, setUserActive } from "@/server/platform/overrides";
 import { audit } from "@/server/audit";
+import { pruneGeneratedGrounds } from "@/server/creative/service";
 import { ok, toActionFailure, type ActionResult } from "@/lib/action-result";
 import type { Role } from "@/lib/auth/permissions";
 
@@ -99,6 +100,37 @@ export async function setUserActiveAction(userId: string, isActive: boolean): Pr
     await setUserActive({ userId, isActive, actorId: user.id });
     revalidatePath("/platform/people");
     return ok(null, isActive ? "Account restored" : "Account suspended");
+  } catch (err) {
+    return toActionFailure(err);
+  }
+}
+
+/**
+ * Remove generated grounds nothing refers to any more.
+ *
+ * A ground is content-addressed and shared between packs, so no pack owns it and deleting a pack
+ * never removes one. It is the one kind of file in the bucket with no owner and no end, which makes
+ * clearing it a platform act: the walk crosses every organisation's specs, and it is recorded as
+ * such. The dry run is the same walk without the deletes, so the number on the button is the number.
+ */
+export async function pruneGroundsAction(dryRun: boolean): Promise<ActionResult<{ kept: number; removed: number; referenced: number }>> {
+  try {
+    const user = await requirePermission("settings:manage");
+    const result = await pruneGeneratedGrounds({ dryRun });
+    const count = result.removed.length;
+    if (!dryRun) {
+      await audit({
+        action: "platform.prune_grounds",
+        entityType: "SETTING",
+        userId: user.id,
+        metadata: { removed: count, kept: result.kept, referenced: result.referenced },
+      });
+      revalidatePath("/platform");
+    }
+    return ok(
+      { kept: result.kept, removed: count, referenced: result.referenced },
+      dryRun ? (count ? `${count} ground${count === 1 ? "" : "s"} nobody uses` : "Nothing to remove") : `${count} removed · ${result.kept} kept`,
+    );
   } catch (err) {
     return toActionFailure(err);
   }

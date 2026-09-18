@@ -7,6 +7,8 @@ export interface StorageAdapter {
   get(key: string): Promise<Buffer | null>;
   delete(key: string): Promise<void>;
   exists(key: string): Promise<boolean>;
+  /** Every key under a prefix. For housekeeping, which is the only caller that should ever need it. */
+  list(prefix: string): Promise<string[]>;
   /** URL usable by browsers and by the PDF renderer, valid for a limited time. */
   getSignedUrl(key: string, options?: SignedUrlOptions): Promise<string>;
   /** Absolute filesystem path when the adapter is disk-backed (used by the renderers). */

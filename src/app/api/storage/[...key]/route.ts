@@ -4,6 +4,8 @@ import { getStorage } from "@/server/storage";
 import { verifyLocalSignature } from "@/server/storage/local";
 import { getUserFromRequest } from "@/server/auth/session";
 import { parseRange } from "@/lib/http/range";
+import { organizationOwning } from "@/server/storage/ownership";
+import { organizationIdsForUser } from "@/server/tenancy/context";
 
 const MIME: Record<string, string> = {
   jpg: "image/jpeg",
@@ -34,10 +36,23 @@ export async function GET(request: Request, ctx: RouteContext<"/api/storage/[...
   const url = new URL(request.url);
   const exp = Number(url.searchParams.get("exp"));
   const sig = url.searchParams.get("sig") ?? "";
+  /*
+   * Three ways in, and "signed in" alone is not one of them.
+   *
+   * A signed URL is the sharing path: time-limited, minted by the app for a page it rendered. Failing
+   * that, the caller must be a member of the organisation that owns the file — not merely a user of
+   * Briefly. Any signed-in user could previously read any key, which meant a URL lifted from one
+   * customer's page opened in another customer's account for as long as the account existed.
+   * Platform staff keep cross-tenant read: the console and view-as depend on it, and it is audited.
+   */
   let allowed = sig ? verifyLocalSignature(key, exp, sig) : false;
   if (!allowed) {
     const user = await getUserFromRequest(request);
-    allowed = !!user;
+    if (user?.role === "SUPER_ADMIN") allowed = true;
+    else if (user) {
+      const owner = await organizationOwning(key);
+      allowed = owner !== null && (await organizationIdsForUser(user.id)).includes(owner);
+    }
   }
   if (!allowed) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 

@@ -1,4 +1,4 @@
-import { DeleteObjectCommand, GetObjectCommand, HeadObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { DeleteObjectCommand, GetObjectCommand, HeadObjectCommand, ListObjectsV2Command, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { getSignedUrl as presign } from "@aws-sdk/s3-request-presigner";
 import { env } from "@/server/env";
 import type { PutOptions, SignedUrlOptions, StorageAdapter } from "./types";
@@ -41,6 +41,17 @@ export class S3StorageAdapter implements StorageAdapter {
 
   async delete(key: string) {
     await this.client.send(new DeleteObjectCommand({ Bucket: this.bucket, Key: key }));
+  }
+
+  async list(prefix: string) {
+    const keys: string[] = [];
+    let token: string | undefined;
+    do {
+      const page = await this.client.send(new ListObjectsV2Command({ Bucket: this.bucket, Prefix: prefix, ContinuationToken: token }));
+      for (const object of page.Contents ?? []) if (object.Key) keys.push(object.Key);
+      token = page.IsTruncated ? page.NextContinuationToken : undefined;
+    } while (token);
+    return keys.sort();
   }
 
   async exists(key: string) {

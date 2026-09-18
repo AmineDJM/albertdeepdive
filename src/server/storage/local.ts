@@ -51,6 +51,26 @@ export class LocalStorageAdapter implements StorageAdapter {
     }
   }
 
+  async list(prefix: string) {
+    const root = this.localPath(prefix.replace(/\/+$/, ""));
+    let entries: import("node:fs").Dirent[];
+    try {
+      entries = await fs.readdir(root, { recursive: true, withFileTypes: true });
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code === "ENOENT") return [];
+      throw err;
+    }
+    const base = prefix.replace(/\/+$/, "");
+    return entries
+      .filter((entry) => entry.isFile())
+      .map((entry) => {
+        const parent = (entry as unknown as { parentPath?: string; path?: string }).parentPath ?? (entry as unknown as { path?: string }).path ?? root;
+        const relative = path.relative(root, path.join(parent, entry.name)).split(path.sep).join("/");
+        return `${base}/${relative}`;
+      })
+      .sort();
+  }
+
   async getSignedUrl(key: string, options?: SignedUrlOptions) {
     const k = safeKey(key);
     const exp = Math.floor(Date.now() / 1000) + (options?.expiresInSeconds ?? env.STORAGE_SIGNED_URL_TTL_SECONDS);

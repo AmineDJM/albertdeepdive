@@ -85,8 +85,12 @@ export const creativeBriefSchema = z.object({
   frames: z.array(frameBriefSchema).min(1).max(10),
   /** The post's own text, which goes in the caption box rather than on the image. */
   caption: z.string().trim().min(1).max(2200),
-  /** More is a tell, and platforms weight them less every year. The cap is the law's, not a second copy of it. */
-  hashtags: z.array(z.string().trim().regex(/^[\p{L}\p{N}_]{2,40}$/u)).max(MAX_HASHTAGS),
+  /**
+   * More is a tell, and platforms weight them less every year. The cap is the law's, not a second copy
+   * of it. A leading # is accepted and stripped by `parseBrief`: a model writes one whatever the
+   * prompt says, and refusing the whole brief over it threw away good work on the first real call.
+   */
+  hashtags: z.array(z.string().trim().regex(/^#?[\p{L}\p{N}_]{2,40}$/u)).max(MAX_HASHTAGS),
   /** How the imagery is treated, from the brand's own menu. */
   treatment: z.enum(IMAGERY_TREATMENTS).optional(),
 });
@@ -208,8 +212,11 @@ export type RenderSpec = {
 export function parseBrief(raw: unknown): { ok: true; brief: CreativeBrief } | { ok: false; problems: string[] } {
   const parsed = creativeBriefSchema.safeParse(raw);
   if (parsed.success) {
-    const problems = [...structuralProblems(parsed.data), ...unattributedQuotations(parsed.data)];
-    return problems.length ? { ok: false, problems } : { ok: true, brief: parsed.data };
+    // Stored without the sign, rendered with it. Keeping both forms in the data is how "##tag" ends
+    // up in a caption.
+    const brief: CreativeBrief = { ...parsed.data, hashtags: parsed.data.hashtags.map((tag) => tag.replace(/^#+/, "")) };
+    const problems = [...structuralProblems(brief), ...unattributedQuotations(brief)];
+    return problems.length ? { ok: false, problems } : { ok: true, brief };
   }
   return {
     ok: false,

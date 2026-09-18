@@ -10,6 +10,7 @@ import { DataTable } from "@/components/newsroom/data-table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatNumber, relativeTime } from "@/lib/utils";
+import { Housekeeping } from "./housekeeping";
 
 export const dynamic = "force-dynamic";
 
@@ -192,6 +193,11 @@ export default async function PlatformHealthPage() {
             ) : null}
           </section>
         ) : null}
+
+        <section>
+          <SectionTitle>Housekeeping</SectionTitle>
+          <Housekeeping />
+        </section>
       </PageBody>
     </>
   );

@@ -123,8 +123,17 @@ function fitToBox(
   const floor = options.canvasWidth ? minFontSize(options.canvasWidth) : 0;
 
   for (let index = maxSteps.from; index >= maxSteps.to; index -= 1) {
-    const fontSize = scale[Math.max(0, Math.min(scale.length - 1, index))];
-    if (fontSize < floor && index > maxSteps.to) continue;
+    /*
+     * Never below the floor, at any step.
+     *
+     * The floor used to be skipped past for every step but the last, and then the last was returned
+     * as it was — so a brand with a small scale could end a copyfit on a step below the legible
+     * minimum, and the QA pass reported `too_small` as a defect nothing could repair. Clamping means
+     * the smallest thing this returns is legible; if legible does not fit, the outcome is overflow,
+     * which the repair pass does know how to answer (quieter, shorter, fewer items).
+     */
+    const step = scale[Math.max(0, Math.min(scale.length - 1, index))];
+    const fontSize = Math.max(floor, step);
 
     // The measure rule, applied as a width cap rather than as a check afterwards. A 1032px box at
     // 41px body would run 90 characters, well past the point where the return sweep stops finding
@@ -145,6 +154,7 @@ function fitToBox(
       const finalLines = fixed && fixed.length * fontSize * leading <= box.height ? fixed : lines;
       return { fontSize, lines: finalLines, leading };
     }
+    if (fontSize === floor) break;
   }
 
   // Nothing fits: take the smallest step and let the caller's box clip. Reached only by text far
@@ -465,7 +475,9 @@ function composeFrame(frame: FrameBrief, index: number, ctx: Ctx): FrameSpec {
     }
 
     if (frame.attribution) {
-      push((y) => [block("label", frame.attribution!, inner.x, y, inner.width, scale[1], 1, labelStyle, subdued)], scale[1] * labelStyle.leading + gap);
+      // Sized straight from the scale rather than copyfitted, so it clamps to the floor itself.
+      const attributionSize = Math.max(minFontSize(canvas.width), scale[1]);
+      push((y) => [block("label", frame.attribution!, inner.x, y, inner.width, attributionSize, 1, labelStyle, subdued)], attributionSize * labelStyle.leading + gap);
     }
 
     const total = blocks.reduce((sum, entry) => sum + entry.height, 0);

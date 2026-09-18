@@ -3,10 +3,11 @@
 import { revalidatePath } from "next/cache";
 import { requireUser } from "@/server/auth/session";
 import { requireTenant } from "@/server/tenancy/context";
-import { createPack, deletePack, generatePack, getPack, recompose } from "@/server/creative/service";
+import { createPack, deletePack, generatePack, getPack, recompose, setBrief } from "@/server/creative/service";
 import { enqueueRender } from "@/server/creative/jobs";
 import { ok, toActionFailure, type ActionResult } from "@/lib/action-result";
 import type { CreativeFormat, CreativeMode } from "@/lib/creative/formats";
+import type { CreativeBrief } from "@/lib/creative/brief";
 
 export async function createPackAction(input: { name: string; format: CreativeFormat; mode: CreativeMode; system: string; motion?: string; editionId?: string | null }): Promise<ActionResult<{ id: string }>> {
   try {
@@ -52,6 +53,26 @@ export async function generatePackAction(packId: string, angle?: string): Promis
     revalidatePath("/studio");
     revalidatePath(`/studio/${packId}`);
     return ok({ source: result.source }, result.source === "local" ? "Built from your own editorial — no model is connected" : "Directed and queued");
+  } catch (error) {
+    return toActionFailure(error);
+  }
+}
+
+/**
+ * Change the words, keep the look.
+ *
+ * The brief is the one thing a person may want to touch after the model has spoken — a headline
+ * that is nearly right, a figure that should read "€1.2M". It goes back through the same door the
+ * model's answer came through: parsed, checked, composed, inspected, repaired, rendered again. A
+ * brief that cannot be rendered is refused with the sentences that say why, and nothing changes.
+ */
+export async function saveBriefAction(packId: string, brief: CreativeBrief): Promise<ActionResult<{ status: string }>> {
+  try {
+    const user = await requireUser();
+    const pack = await setBrief({ packId, brief, actorId: user.id });
+    if (pack.status !== "FAILED") await enqueueRender(pack, user.id);
+    revalidatePath(`/studio/${packId}`);
+    return ok({ status: pack.status }, pack.status === "FAILED" ? "Saved, but it does not fit — see what the check found" : "Saved and rendering");
   } catch (error) {
     return toActionFailure(error);
   }

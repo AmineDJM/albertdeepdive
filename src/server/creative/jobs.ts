@@ -306,18 +306,30 @@ async function loadImages(mediaIds: string[]): Promise<FrameImages> {
   if (!mediaIds.length) return images;
 
   const storage = getStorage();
+  const ids = [...new Set(mediaIds)];
   const assets = await db.query.mediaAssets.findMany({
-    where: (media, { inArray }) => inArray(media.id, [...new Set(mediaIds)]),
+    where: (media, { inArray }) => inArray(media.id, ids),
     columns: { id: true, storageKey: true, mimeType: true },
   });
+  // The 1600px web variant where one exists. A frame is 1080 wide, so the original — often a
+  // 20-megapixel phone photograph — is fifteen times the bytes for no visible gain, inlined as a
+  // data URI into a page Chromium has to parse before it can screenshot anything.
+  const variants = await db.query.mediaVariants.findMany({
+    where: (variant, { inArray: within, and: both, eq: is }) => both(within(variant.assetId, ids), is(variant.kind, "WEB")),
+    columns: { assetId: true, storageKey: true, format: true },
+  });
+  const web = new Map(variants.map((variant) => [variant.assetId, variant]));
 
   for (const asset of assets) {
-    const bytes = await storage.get(asset.storageKey).catch(() => null);
+    const variant = web.get(asset.id);
+    const key = variant?.storageKey ?? asset.storageKey;
+    const mimeType = variant ? `image/${variant.format === "jpg" ? "jpeg" : variant.format}` : asset.mimeType;
+    const bytes = await storage.get(key).catch(() => null);
     if (!bytes) {
-      log.warn("media missing for render", { mediaId: asset.id, key: asset.storageKey });
+      log.warn("media missing for render", { mediaId: asset.id, key });
       continue;
     }
-    images.set(asset.id, `data:${asset.mimeType};base64,${bytes.toString("base64")}`);
+    images.set(asset.id, `data:${mimeType};base64,${bytes.toString("base64")}`);
   }
   return images;
 }

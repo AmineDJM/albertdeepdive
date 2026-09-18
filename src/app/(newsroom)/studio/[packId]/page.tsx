@@ -12,6 +12,7 @@ import { LAWS } from "@/lib/creative/laws";
 import { MOTION } from "@/lib/creative/motion";
 import { lawFor } from "@/lib/creative/qa";
 import { formatDateTime } from "@/lib/utils";
+import { BriefEditor } from "./brief-editor";
 import { PackControls } from "./pack-controls";
 
 export const dynamic = "force-dynamic";
@@ -112,6 +113,13 @@ export default async function PackPage({ params }: { params: Promise<{ packId: s
               </p>
             )}
             </div>
+
+            {pack.brief ? (
+              <div>
+                <SectionTitle>The words</SectionTitle>
+                <BriefEditor packId={pack.id} brief={pack.brief} busy={pack.status === "RENDERING" || pack.status === "DIRECTING"} />
+              </div>
+            ) : null}
           </section>
 
           <aside className="space-y-5">
@@ -183,16 +191,6 @@ export default async function PackPage({ params }: { params: Promise<{ packId: s
                 ))}
               </ul>
             </details>
-
-            {pack.brief ? (
-              <section>
-                <SectionTitle>Caption</SectionTitle>
-                <p className="rounded-lg border border-border bg-card p-3 text-xs leading-5 whitespace-pre-wrap">{pack.brief.caption}</p>
-                {pack.brief.hashtags.length ? (
-                  <p className="mt-2 text-2xs text-muted-foreground">{pack.brief.hashtags.map((tag) => `#${tag}`).join(" ")}</p>
-                ) : null}
-              </section>
-            ) : null}
 
             <section>
               <SectionTitle>What it cost</SectionTitle>

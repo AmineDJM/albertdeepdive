@@ -482,6 +482,10 @@ export async function generatePack(input: { packId: string; actorId?: string | n
   await db.update(s.creativePacks).set({ status: "DIRECTING", error: null, updatedAt: new Date() }).where(eq(s.creativePacks.id, pack.id));
 
   const stories = await sourceStories(pack);
+  // Photographs the Art Director may place. Only in the modes that use the organisation's own
+  // media, and only ones cleared to publish — a picture with rights still to confirm is a picture
+  // that cannot go on a public feed, whatever it would do for the frame.
+  const media = MODES[pack.mode].usesOwnMedia ? await sourceMedia(pack, stories.map((story) => story.id)) : [];
   const { briefFor } = await import("@/server/ai/services/art-director");
   const directed = await briefFor({
     format: pack.format,
@@ -489,6 +493,7 @@ export async function generatePack(input: { packId: string; actorId?: string | n
     organizationName: organization?.name ?? "",
     brand: record.system,
     stories,
+    media,
     angle: input.angle ?? null,
   });
 
@@ -558,6 +563,49 @@ async function sourceStories(pack: CreativePack) {
 }
 
 /**
+ * The organisation's own photographs, offered by id with a line describing each.
+ *
+ * `briefFor` had accepted a media list from the start and was never handed one, so the modes built
+ * around "your own pictures" could not place a single picture and the two image layouts were
+ * unreachable from the interface. This is the join that was missing.
+ *
+ * The stories' own pictures first, in the order the newsroom put them, then the rest of the
+ * edition's library. GREEN rights only: YELLOW means "confirm with the contributor", and a social
+ * post is the one place nobody will. The description is whatever a person wrote, falling back to
+ * what the vision pass saw — never the file name, which a model would happily quote on a slide.
+ */
+async function sourceMedia(pack: CreativePack, storyIds: string[]): Promise<{ id: string; description: string; orientation: string | null }[]> {
+  const linked = storyIds.length
+    ? await db
+        .select({ id: s.mediaAssets.id, altText: s.mediaAssets.altText, caption: s.mediaAssets.caption, aiDescription: s.mediaAssets.aiDescription, orientation: s.mediaAssets.orientation, kind: s.mediaAssets.kind, rightsStatus: s.mediaAssets.rightsStatus, isArchived: s.mediaAssets.isArchived, order: s.storyMedia.sortOrder })
+        .from(s.storyMedia)
+        .innerJoin(s.mediaAssets, eq(s.mediaAssets.id, s.storyMedia.mediaAssetId))
+        .where(inArray(s.storyMedia.storyId, storyIds))
+        .orderBy(s.storyMedia.sortOrder)
+    : [];
+  const fromEdition = pack.editionId
+    ? await db.query.mediaAssets.findMany({
+        where: and(eq(s.mediaAssets.editionId, pack.editionId), eq(s.mediaAssets.organizationId, pack.organizationId)),
+        columns: { id: true, altText: true, caption: true, aiDescription: true, orientation: true, kind: true, rightsStatus: true, isArchived: true },
+        limit: 40,
+      })
+    : [];
+
+  const seen = new Set<string>();
+  const offered: { id: string; description: string; orientation: string | null }[] = [];
+  for (const asset of [...linked, ...fromEdition]) {
+    if (seen.has(asset.id) || asset.isArchived || asset.rightsStatus !== "GREEN") continue;
+    if (asset.kind && !["photo", "diagram", "chart"].includes(asset.kind)) continue;
+    const description = (asset.altText || asset.caption || asset.aiDescription || "").trim();
+    if (!description) continue;
+    seen.add(asset.id);
+    offered.push({ id: asset.id, description: description.slice(0, 160), orientation: asset.orientation ?? null });
+    if (offered.length >= 12) break;
+  }
+  return offered;
+}
+
+/**
  * Numbers that would carry a slide.
  *
  * Deliberately narrow: a figure frame sets one number enormous, and "2023" or "the 12 students" do
@@ -581,4 +629,56 @@ export function extractFigures(text: string): string[] {
     }
   }
   return [...found];
+}
+
+/* ── Housekeeping ─────────────────────────────────────────────────────────────────────────── */
+
+export const GENERATED_PREFIX = "creative/generated/";
+
+/**
+ * Remove generated grounds nothing refers to any more.
+ *
+ * A ground is content-addressed and shared, so it cannot go with the pack that made it — another
+ * pack may be using it. That left it with no owner and no end: a brand that changed its accent once
+ * a month left twelve fields a year in the bucket, forever. This is the end.
+ *
+ * "Referenced" means named by the spec of any pack that still exists, in any organisation. A file
+ * newer than the grace period is kept whether or not it is referenced, because a render in flight has
+ * written the ground and not yet saved the spec that names it, and deleting it from under that render
+ * is exactly the kind of race a nightly job produces and nobody can reproduce.
+ */
+export async function pruneGeneratedGrounds(options: { dryRun?: boolean; graceHours?: number } = {}): Promise<{ kept: number; removed: string[]; referenced: number }> {
+  const storage = getStorage();
+  const stored = await storage.list(GENERATED_PREFIX);
+
+  const packs = await db.query.creativePacks.findMany({ columns: { spec: true } });
+  const referenced = new Set<string>();
+  for (const pack of packs) {
+    for (const frame of pack.spec?.frames ?? []) {
+      const key = frame.image?.generate?.key;
+      if (key) referenced.add(`${GENERATED_PREFIX}${key}.jpg`);
+    }
+  }
+
+  const graceMs = (options.graceHours ?? 24) * 3_600_000;
+  const removed: string[] = [];
+  for (const key of stored) {
+    if (referenced.has(key)) continue;
+    if (await isYoungerThan(storage, key, graceMs)) continue;
+    removed.push(key);
+    if (!options.dryRun) await storage.delete(key).catch((error: unknown) => log.warn("could not prune a ground", { key, error: error instanceof Error ? error.message : String(error) }));
+  }
+  return { kept: stored.length - removed.length, removed, referenced: referenced.size };
+}
+
+/** Whether a stored file was written recently. Only disk can say; anything else is treated as old. */
+async function isYoungerThan(storage: ReturnType<typeof getStorage>, key: string, ms: number): Promise<boolean> {
+  if (!storage.localPath) return false;
+  try {
+    const { promises: fs } = await import("node:fs");
+    const stat = await fs.stat(storage.localPath(key));
+    return Date.now() - stat.mtimeMs < ms;
+  } catch {
+    return false;
+  }
 }

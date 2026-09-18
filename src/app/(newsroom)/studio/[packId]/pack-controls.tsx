@@ -3,7 +3,7 @@
 import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Palette, RefreshCw, Trash2 } from "lucide-react";
+import { Download, Palette, RefreshCw, Trash2 } from "lucide-react";
 import { deletePackAction, recomposeAction, renderPackAction } from "../actions";
 import { Button } from "@/components/ui/button";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
@@ -41,6 +41,15 @@ export function PackControls({ packId, status, hasBrief }: { packId: string; sta
       <Button variant="outline" size="sm" disabled={pending || status === "RENDERING"} onClick={() => run(() => renderPackAction(packId))}>
         <RefreshCw /> {status === "RENDERING" ? "Rendering…" : "Render again"}
       </Button>
+      {status === "READY" ? (
+        // A plain link, not an action: the browser handles a download better than a transition does,
+        // and the route does its own checking of whose pack this is.
+        <Button asChild size="sm">
+          <a href={`/api/creative/${packId}/download`}>
+            <Download /> Download
+          </a>
+        </Button>
+      ) : null}
       <AlertDialog>
         <AlertDialogTrigger asChild>
           <Button variant="ghost" size="icon" aria-label="Delete pack" disabled={pending}>

@@ -1170,7 +1170,15 @@ function localArtDirector(input: Input): unknown {
   const maxFrames = Math.max(minFrames, Number(input.maxFrames) || 10);
 
   const lead = headlines[0] ?? organizationName;
-  const frames: Record<string, unknown>[] = [{ layout: "statement", headline: lead.slice(0, 180), surface: "brand", emphasis: "loud" }];
+  // Over the organisation's own photograph when one was offered and the mode allows it. The id is
+  // taken from the offer as written, never invented: the same property the real Art Director is
+  // held to, and the reason a pack made without a model can still open on a real picture.
+  const photograph = input.mayUseOwnPhotographs === true ? parseOfferedMedia(str(input, "media"))[0] : undefined;
+  const frames: Record<string, unknown>[] = [
+    photograph
+      ? { layout: "image_full", headline: lead.slice(0, 180), surface: "ink", emphasis: "loud", mediaId: photograph.id, alt: photograph.description.slice(0, 280) }
+      : { layout: "statement", headline: lead.slice(0, 180), surface: "brand", emphasis: "loud" },
+  ];
   if (standfirst) frames.push({ layout: "heading_body", headline: "What happened", body: standfirst.slice(0, 420), surface: "paper", emphasis: "normal" });
   const figure = lines.find((line) => line.startsWith("Figures worth showing: "))?.slice(23).split(",")[0]?.trim();
   if (figure) frames.push({ layout: "figure", headline: lead.slice(0, 90), figure: figure.slice(0, 24), surface: "ink", emphasis: "loud" });
@@ -1183,13 +1191,26 @@ function localArtDirector(input: Input): unknown {
   frames.push({ layout: "cta", headline: "Read the whole thing", body: `The full edition from ${organizationName}.`, surface: "accent", emphasis: "normal" });
 
   while (frames.length < minFrames) frames.push({ layout: "statement", headline: organizationName, surface: "ink", emphasis: "normal" });
+  // Trim from the middle, never from the end: the close is the one frame that tells a reader what
+  // to do next, and the evidence between opener and close is what a set can afford to lose.
+  const trimmed = frames.length > maxFrames ? [...frames.slice(0, maxFrames - 1), frames[frames.length - 1]] : frames;
 
   return {
     format: str(input, "format") || "CAROUSEL",
     mode: str(input, "mode") || "STUDIO",
     intent: standfirst ?? lead,
-    frames: frames.slice(0, maxFrames),
+    frames: trimmed,
     caption: [lead, standfirst, `— ${organizationName}`].filter(Boolean).join("\n\n").slice(0, 2200),
     hashtags: [],
   };
+}
+
+/** One offered picture per line, "id: description (orientation)", as the prompt lays them out. */
+const OFFERED_MEDIA_LINE = /^([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}): (.+?)(?: \(([^()]*)\))?$/i;
+
+function parseOfferedMedia(text: string): { id: string; description: string }[] {
+  return text.split("\n").flatMap((line) => {
+    const match = OFFERED_MEDIA_LINE.exec(line.trim());
+    return match ? [{ id: match[1], description: match[2].trim() }] : [];
+  });
 }

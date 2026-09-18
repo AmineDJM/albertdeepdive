@@ -11,6 +11,7 @@ import { LocalProvider } from "./providers/local";
 import { OpenAiProvider } from "./providers/openai";
 import type { AiProvider, AiTaskRequest, AiTaskResult, ModelTier } from "./types";
 import { AiOutputError } from "./types";
+import { scrubEmpties } from "./json-schema";
 
 const log = createLogger("ai");
 
@@ -104,7 +105,7 @@ export async function runAiTask<T>(req: AiTaskRequest<T>): Promise<AiTaskResult<
       orderBy: [desc(aiJobs.createdAt)],
     });
     if (cachedRow) {
-      const parsed = req.schema.safeParse(cachedRow.output);
+      const parsed = req.schema.safeParse(scrubEmpties(req.schema, cachedRow.output));
       if (parsed.success) {
         const [row] = await db
           .insert(aiJobs)
@@ -171,7 +172,9 @@ export async function runAiTask<T>(req: AiTaskRequest<T>): Promise<AiTaskResult<
       const res = await prov.complete({ system, user: user + repair, model, temperature, maxOutputTokens, schema, schemaName: req.schemaName, hints: { service: req.service, input: req.input } });
       totalIn += res.inputTokens;
       totalOut += res.outputTokens;
-      const parsed = req.schema.safeParse(res.raw);
+      // Strict mode makes the model send null (or, still, "") for an optional field it has no use
+      // for. Those are the same absence, and the schema's `.optional()` is asked to see it as one.
+      const parsed = req.schema.safeParse(scrubEmpties(req.schema, res.raw));
       if (!parsed.success) {
         throw new AiOutputError(parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; "), res.raw);
       }

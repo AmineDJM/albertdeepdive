@@ -78,6 +78,18 @@ async function loadMemberships(userId: string): Promise<MembershipSummary[]> {
   return rows.filter((r) => r.status !== "ARCHIVED").map((r) => ({ organizationId: r.organizationId, slug: r.slug, name: r.name, role: r.role, isDefault: r.isDefault }));
 }
 
+/**
+ * The organisations a given user belongs to, by id.
+ *
+ * For callers that hold a user but no request scope — a route handler that authenticated from the
+ * cookie header itself, or a test invoking one directly — where `cookies()` would throw and the
+ * memoised `getTenant` would quietly answer null. Membership is the question the file route asks:
+ * not "which workspace is open" but "is this one of yours at all".
+ */
+export async function organizationIdsForUser(userId: string): Promise<string[]> {
+  return (await loadMemberships(userId)).map((membership) => membership.organizationId);
+}
+
 /** Every workspace the signed-in user can open, for the switcher. */
 export const listMyOrganizations = cache(async (): Promise<MembershipSummary[]> => {
   const user = await getCurrentUser();

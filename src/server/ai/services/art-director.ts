@@ -125,9 +125,17 @@ export function localBrief(input: DirectInput): CreativeBrief {
     };
   }
 
+  /*
+   * The opener carries the claim, as loud as the system goes — over a photograph when the newsroom
+   * has one cleared to use, on the brand's own colour when it has not. A picture is offered here
+   * only in the modes that use the organisation's own media, so a frame can never name one that
+   * was not offered; that is the whole safety property, kept by construction.
+   */
+  const photograph = MODES[input.mode].usesOwnMedia ? input.media?.[0] : undefined;
   const frames: CreativeBrief["frames"] = [
-    // The opener carries the claim, on the brand's own colour, as loud as the system goes.
-    { layout: "statement", headline: lead.headline, surface: "brand", emphasis: "loud", alt: lead.headline },
+    photograph
+      ? { layout: "image_full", headline: lead.headline, surface: "ink", emphasis: "loud", mediaId: photograph.id, alt: photograph.description }
+      : { layout: "statement", headline: lead.headline, surface: "brand", emphasis: "loud", alt: lead.headline },
   ];
 
   if (lead.standfirst) {
