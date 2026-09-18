@@ -62,6 +62,14 @@ export const creativePacks = pgTable(
     status: creativePackStatusEnum("status").notNull().default("DRAFT"),
     /** Which of the format's design systems was used. */
     designSystem: text("design_system").notNull().default("default"),
+    /**
+     * How a moving format moves. Ignored by the stills.
+     *
+     * Separate from `designSystem` because they answer different questions — one is how a frame is
+     * set, the other is how long it is held and what happens between. A Reel and a carousel of the
+     * same edition can share a look and want different pacing.
+     */
+    motionSystem: text("motion_system").notNull().default("cut"),
 
     brief: jsonb("brief").$type<CreativeBrief | null>(),
     spec: jsonb("spec").$type<RenderSpec | null>(),

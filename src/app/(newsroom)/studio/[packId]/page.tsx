@@ -9,6 +9,7 @@ import { NoAccess } from "@/components/settings/no-access";
 import { FORMATS, MODES } from "@/lib/creative/formats";
 import { SYSTEMS } from "@/lib/creative/design-systems";
 import { LAWS } from "@/lib/creative/laws";
+import { MOTION } from "@/lib/creative/motion";
 import { lawFor } from "@/lib/creative/qa";
 import { formatDateTime } from "@/lib/utils";
 import { PackControls } from "./pack-controls";
@@ -41,6 +42,11 @@ export default async function PackPage({ params }: { params: Promise<{ packId: s
       })),
   );
 
+  // The video, when the format moves. Signed alongside the frames rather than in the markup, because
+  // a signed URL built during render would be a signed URL that has expired by the time it is read.
+  const videoAsset = pack.assets.find((asset) => asset.kind === "VIDEO" && asset.storageKey);
+  const videoUrl = videoAsset?.storageKey ? await storage.getSignedUrl(videoAsset.storageKey, { expiresInSeconds: 3600 }) : null;
+
   const format = FORMATS[pack.format];
   const defects = qa.findings.filter((finding) => finding.severity === "defect");
   const notes = qa.findings.filter((finding) => finding.severity === "note");
@@ -50,7 +56,7 @@ export default async function PackPage({ params }: { params: Promise<{ packId: s
       <PageHeader
         title={pack.name}
         breadcrumbs={[{ label: "Studio", href: "/studio" }, { label: pack.name }]}
-        description={`${format.name} · ${SYSTEMS[(pack.designSystem as keyof typeof SYSTEMS) ?? "editorial"]?.name ?? "Editorial"} · ${MODES[pack.mode].name} · ${format.width}×${format.height}`}
+        description={[format.name, SYSTEMS[(pack.designSystem as keyof typeof SYSTEMS) ?? "editorial"]?.name ?? "Editorial", format.moving ? MOTION[(pack.motionSystem as keyof typeof MOTION) ?? "cut"]?.name : null, MODES[pack.mode].name, `${format.width}×${format.height}`].filter(Boolean).join(" · ")}
         meta={<Badge variant={pack.status === "READY" ? "success" : pack.status === "FAILED" ? "destructive" : "muted"}>{pack.status.toLowerCase()}</Badge>}
         actions={<PackControls packId={pack.id} status={pack.status} hasBrief={Boolean(pack.brief)} />}
       />
@@ -63,8 +69,24 @@ export default async function PackPage({ params }: { params: Promise<{ packId: s
         ) : null}
 
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
-          <section>
-            <SectionTitle>{frames.length ? `${frames.length} frame${frames.length === 1 ? "" : "s"}` : "Frames"}</SectionTitle>
+          <section className="space-y-6">
+            {videoUrl ? (
+              <div>
+                <SectionTitle>
+                  {MOTION[(pack.motionSystem as keyof typeof MOTION) ?? "cut"]?.name ?? "Cut"}
+                  {videoAsset?.durationSeconds ? ` · ${videoAsset.durationSeconds.toFixed(1)}s` : ""}
+                </SectionTitle>
+                <div className="overflow-hidden rounded-lg border border-border bg-black" style={{ maxWidth: 280 }}>
+                  <video src={videoUrl} controls playsInline className="block w-full" style={{ aspectRatio: `${format.width} / ${format.height}` }} />
+                </div>
+                <p className="mt-1.5 text-2xs text-muted-foreground">
+                  Each scene is held for as long as its words take to read. The picture moves; the words do not.
+                </p>
+              </div>
+            ) : null}
+
+            <div>
+            <SectionTitle>{frames.length ? `${frames.length} frame${frames.length === 1 ? "" : "s"}` : format.moving ? "Scenes" : "Frames"}</SectionTitle>
             {frames.length ? (
               <ul className="grid gap-3 sm:grid-cols-3 xl:grid-cols-4">
                 {frames.map((frame) => (
@@ -89,6 +111,7 @@ export default async function PackPage({ params }: { params: Promise<{ packId: s
                 {pack.status === "DRAFT" ? "Not directed yet." : "Rendering. This page updates when the frames arrive."}
               </p>
             )}
+            </div>
           </section>
 
           <aside className="space-y-5">

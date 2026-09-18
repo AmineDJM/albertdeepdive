@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { NativeSelect } from "@/components/ui/native-select";
 import { CREATIVE_FORMATS, CREATIVE_MODES, FORMATS, MODES, type CreativeFormat, type CreativeMode } from "@/lib/creative/formats";
 import { DESIGN_SYSTEMS, SYSTEMS } from "@/lib/creative/design-systems";
+import { MOTION, MOTION_SYSTEMS } from "@/lib/creative/motion";
 import { cn } from "@/lib/utils";
 
 /**
@@ -33,9 +34,13 @@ export function NewPackDialog({ editions }: { editions: { id: string; label: str
   const [format, setFormat] = useState<CreativeFormat>("CAROUSEL");
   const [system, setSystem] = useState<string>("editorial");
   const [mode, setMode] = useState<CreativeMode>("STUDIO");
+  const [motion, setMotion] = useState<string>("cut");
   const [angle, setAngle] = useState("");
 
-  const stills = CREATIVE_FORMATS.filter((key) => !FORMATS[key].moving);
+  // Every shape, moving or not. A Reel is the same frames with time added, so there is no reason to
+  // hide it behind a different flow.
+  const shapes = CREATIVE_FORMATS;
+  const moving = FORMATS[format].moving;
 
   function submit() {
     startTransition(async () => {
@@ -44,6 +49,7 @@ export function NewPackDialog({ editions }: { editions: { id: string; label: str
         format,
         mode,
         system,
+        motion,
         editionId: editionId || null,
       });
       if (!created.ok) {
@@ -97,7 +103,7 @@ export function NewPackDialog({ editions }: { editions: { id: string; label: str
           <div>
             <Label>Shape</Label>
             <div className="mt-1.5 grid gap-1.5 sm:grid-cols-3">
-              {stills.map((key) => (
+              {shapes.map((key) => (
                 <button
                   key={key}
                   type="button"
@@ -109,6 +115,7 @@ export function NewPackDialog({ editions }: { editions: { id: string; label: str
                   <span className="block text-[13px] font-medium">{FORMATS[key].name}</span>
                   <span className="block text-2xs text-muted-foreground">
                     {FORMATS[key].width}×{FORMATS[key].height}
+                    {FORMATS[key].moving ? " · moves" : ""}
                   </span>
                 </button>
               ))}
@@ -138,6 +145,38 @@ export function NewPackDialog({ editions }: { editions: { id: string; label: str
               ))}
             </div>
           </div>
+
+          {moving ? (
+            <div>
+              <Label>Moves like</Label>
+              <div className="mt-1.5 space-y-1.5">
+                {MOTION_SYSTEMS.map((key) => (
+                  <button
+                    key={key}
+                    type="button"
+                    disabled={pending}
+                    aria-pressed={motion === key}
+                    onClick={() => setMotion(key)}
+                    className={cn(
+                      "flex w-full items-start gap-2.5 rounded-lg border p-2.5 text-left transition-colors",
+                      motion === key ? "border-brand bg-brand-soft/40" : "border-border hover:bg-muted/50",
+                    )}
+                  >
+                    <span className="mt-0.5 flex size-3.5 shrink-0 items-center justify-center rounded-full border border-border bg-background">
+                      {motion === key ? <span className="size-1.5 rounded-full bg-brand" /> : null}
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block text-[13px] font-medium">{MOTION[key].name}</span>
+                      <span className="block text-2xs text-muted-foreground">{MOTION[key].description}</span>
+                    </span>
+                  </button>
+                ))}
+              </div>
+              <p className="mt-1 text-2xs text-muted-foreground">
+                Each scene is held for as long as its words take to read, so the length follows the writing rather than a stopwatch.
+              </p>
+            </div>
+          ) : null}
 
           <div>
             <Label htmlFor="pack-mode">How much we invent</Label>

@@ -135,12 +135,21 @@ export function fieldCss(palette: string[], subject: "abstract" | "texture" | "g
 
 export type FrameImages = Map<string, string>;
 
-export function renderFrameHtml(frame: FrameSpec, options: { fontCss: string; images?: FrameImages }): string {
+/**
+ * One frame, or one layer of it.
+ *
+ * `only` splits a frame into the picture and everything drawn on top. The video engine needs them
+ * apart: a slow drift has to move the photograph while the words stay still, because type that slides
+ * sideways under a reader's eye is a worse fault than no motion at all. Rendering both from the same
+ * function is what keeps the two halves in register — they are the same layout, masked differently,
+ * not two layouts that agree by inspection.
+ */
+export function renderFrameHtml(frame: FrameSpec, options: { fontCss: string; images?: FrameImages; only?: "image" | "type" }): string {
   // A frame's picture is either one of the organisation's own, looked up by media id, or a generated
   // one, looked up by the content-addressed key the composer put in the spec. Both arrive through the
   // same map, so the renderer never knows or cares which it got.
   const source = frame.image ? (frame.image.mediaId ?? frame.image.generate?.key ?? null) : null;
-  const image = frame.image ? imageHtml(frame.image, source ? (options.images?.get(source) ?? null) : null) : "";
+  const image = frame.image && options.only !== "type" ? imageHtml(frame.image, source ? (options.images?.get(source) ?? null) : null) : "";
   // Background blocks first, then shapes, then content: a ghosted numeral is meant to be under the
   // headline, and draw order is the only thing that decides which of two overlapping blocks wins.
   const background = frame.text.filter((block) => block.layer === "background");
@@ -150,8 +159,8 @@ ${options.fontCss}
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{width:${frame.width}px;height:${frame.height}px;overflow:hidden}
 body{-webkit-font-smoothing:antialiased;text-rendering:geometricPrecision;font-kerning:normal;font-variant-ligatures:common-ligatures}
-.frame{position:relative;width:${frame.width}px;height:${frame.height}px;overflow:hidden;background:${frame.background}}
-</style></head><body><div class="frame">${image}${background.map(textHtml).join("")}${frame.shapes.map(shapeHtml).join("")}${content.map(textHtml).join("")}</div></body></html>`;
+.frame{position:relative;width:${frame.width}px;height:${frame.height}px;overflow:hidden;background:${options.only === "type" ? "transparent" : frame.background}}
+</style></head><body><div class="frame">${image}${options.only === "image" ? "" : `${background.map(textHtml).join("")}${frame.shapes.map(shapeHtml).join("")}${content.map(textHtml).join("")}`}</div></body></html>`;
 }
 
 /**

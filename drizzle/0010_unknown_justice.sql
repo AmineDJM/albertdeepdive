@@ -1,0 +1,1 @@
+ALTER TABLE "creative_packs" ADD COLUMN "motion_system" text DEFAULT 'cut' NOT NULL;

@@ -3,6 +3,7 @@ import { promises as fs } from "node:fs";
 import { getStorage } from "@/server/storage";
 import { verifyLocalSignature } from "@/server/storage/local";
 import { getUserFromRequest } from "@/server/auth/session";
+import { parseRange } from "@/lib/http/range";
 
 const MIME: Record<string, string> = {
   jpg: "image/jpeg",
@@ -51,18 +52,45 @@ export async function GET(request: Request, ctx: RouteContext<"/api/storage/[...
   };
   if (download) headers["Content-Disposition"] = `attachment; filename="${download.replace(/["\r\n]/g, "")}"`;
 
+  /*
+   * Range requests, which is what makes a video seekable.
+   *
+   * A `<video>` asks for `bytes=0-` and then, the moment somebody drags the scrubber, for a range in
+   * the middle. A server that answers every request with the whole file forces the browser to
+   * download from the start again, so a ninety-second Reel cannot be scrubbed — and `Accept-Ranges`
+   * is how the player knows it may try. Images and PDFs are unaffected: nothing asks them for a
+   * range, and the whole-file path below still serves them.
+   */
+  headers["Accept-Ranges"] = "bytes";
+  const range = request.headers.get("range");
+
+  const respond = (body: Buffer, total: number) => {
+    const parsed = range ? parseRange(range, total) : null;
+    if (!parsed) {
+      headers["Content-Length"] = String(total);
+      return new NextResponse(new Uint8Array(body), { status: 200, headers });
+    }
+    if (parsed === "unsatisfiable") {
+      return new NextResponse(null, { status: 416, headers: { ...headers, "Content-Range": `bytes */${total}` } });
+    }
+    const slice = body.subarray(parsed.start, parsed.end + 1);
+    return new NextResponse(new Uint8Array(slice), {
+      status: 206,
+      headers: { ...headers, "Content-Range": `bytes ${parsed.start}-${parsed.end}/${total}`, "Content-Length": String(slice.length) },
+    });
+  };
+
   if (storage.localPath) {
     try {
       const filePath = storage.localPath(key);
       const stat = await fs.stat(filePath);
       const data = await fs.readFile(filePath);
-      headers["Content-Length"] = String(stat.size);
-      return new NextResponse(new Uint8Array(data), { status: 200, headers });
+      return respond(data, stat.size);
     } catch {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
   }
   const buffer = await storage.get(key);
   if (!buffer) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  return new NextResponse(new Uint8Array(buffer), { status: 200, headers });
+  return respond(buffer, buffer.length);
 }

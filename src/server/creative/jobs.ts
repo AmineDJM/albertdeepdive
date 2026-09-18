@@ -7,6 +7,8 @@ import { getStorage } from "@/server/storage";
 import { createLogger } from "@/server/logger";
 import { launchBrowser } from "@/server/publication/pdf";
 import { renderContactSheet, renderHtmlToImage, renderSpec } from "./render";
+import { encoderReady, renderVideo } from "./video";
+import { FORMATS } from "@/lib/creative/formats";
 import { generateImagery, type ImageryProviderName } from "./imagery";
 import { attachRendered, failAsset, getPack, hasCreditsLeft, recordCost } from "./service";
 import type { FrameImages } from "./render-html";
@@ -81,6 +83,64 @@ registerJobHandler<RenderPayload, { frames: number; skipped: boolean }>(CREATIVE
         await ctx.progress(rendered, pack.spec!.frames.length, `frame ${rendered}`);
       },
     });
+
+    /*
+     * A moving format also gets a video.
+     *
+     * After the stills rather than instead of them: the frames are the video's scenes, and a Reel
+     * whose encode failed should still leave a pack somebody can look at and re-run. An encoder that
+     * is missing fails this step alone, with a message naming the binary, rather than failing a
+     * render that otherwise worked.
+     */
+    if (FORMATS[pack.format].moving) {
+      const ready = await encoderReady();
+      if (!ready.ok) {
+        ctx.log(`no video: ${ready.detail}`);
+      } else {
+        const video = await renderVideo(pack.spec, { system: pack.motionSystem, browser, images });
+        const videoKey = keyFor(pack.id, "video.mp4");
+        await storage.put(videoKey, video.bytes, { contentType: video.mimeType, cacheControl: "public, max-age=31536000, immutable" });
+        await db
+          .insert(s.creativeAssets)
+          .values({
+            organizationId: pack.organizationId,
+            packId: pack.id,
+            kind: "VIDEO",
+            index: 0,
+            status: "READY",
+            storageKey: videoKey,
+            mimeType: video.mimeType,
+            width: video.width,
+            height: video.height,
+            durationSeconds: video.durationSeconds,
+            sizeBytes: video.bytes.length,
+            sha256: video.sha256,
+          })
+          .onConflictDoUpdate({
+            target: [s.creativeAssets.packId, s.creativeAssets.kind, s.creativeAssets.index],
+            set: {
+              status: "READY",
+              storageKey: videoKey,
+              mimeType: video.mimeType,
+              durationSeconds: video.durationSeconds,
+              sizeBytes: video.bytes.length,
+              sha256: video.sha256,
+              updatedAt: new Date(),
+            },
+          });
+        // Our own encoder, like our own renderer: free, and the ledger says so.
+        await recordCost({
+          organizationId: pack.organizationId,
+          packId: pack.id,
+          provider: "briefly",
+          operation: "video",
+          units: video.durationSeconds,
+          unit: "second",
+          costCents: 0,
+        });
+        ctx.log(`encoded ${video.durationSeconds.toFixed(1)}s of video`);
+      }
+    }
 
     // The cover is what the studio's list shows and what somebody shares before posting.
     const sheet = await renderContactSheet(pack.spec, { browser, images });

@@ -32,6 +32,14 @@ export type FormatDefinition = {
   moving: boolean;
   /** Seconds per frame when moving, so a scene count implies a duration. */
   secondsPerFrame?: number;
+  /**
+   * The longest the platform will take, in seconds.
+   *
+   * Distinct from `secondsPerFrame`, which is a default pacing. Treating the pacing as the limit
+   * reported a perfectly postable 30-second Reel as too long, because six dense scenes take longer
+   * to read than six times the default.
+   */
+  maxSeconds?: number;
   /** Where it is meant to be posted, for the labels and the export names. */
   platforms: string[];
 };
@@ -93,6 +101,7 @@ export const FORMATS: Record<CreativeFormat, FormatDefinition> = {
     maxFrames: 8,
     moving: true,
     secondsPerFrame: 3,
+    maxSeconds: 90,
     platforms: ["Instagram", "TikTok"],
   },
   LINKEDIN_VIDEO: {
@@ -106,6 +115,7 @@ export const FORMATS: Record<CreativeFormat, FormatDefinition> = {
     maxFrames: 8,
     moving: true,
     secondsPerFrame: 3.5,
+    maxSeconds: 600,
     platforms: ["LinkedIn"],
   },
 };

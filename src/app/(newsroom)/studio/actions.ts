@@ -8,7 +8,7 @@ import { enqueueRender } from "@/server/creative/jobs";
 import { ok, toActionFailure, type ActionResult } from "@/lib/action-result";
 import type { CreativeFormat, CreativeMode } from "@/lib/creative/formats";
 
-export async function createPackAction(input: { name: string; format: CreativeFormat; mode: CreativeMode; system: string; editionId?: string | null }): Promise<ActionResult<{ id: string }>> {
+export async function createPackAction(input: { name: string; format: CreativeFormat; mode: CreativeMode; system: string; motion?: string; editionId?: string | null }): Promise<ActionResult<{ id: string }>> {
   try {
     const user = await requireUser();
     const tenant = await requireTenant();
@@ -22,11 +22,14 @@ export async function createPackAction(input: { name: string; format: CreativeFo
     });
     // The design system is a property of the pack rather than of the brief, so it is set at creation
     // and changing it re-composes without re-asking the model.
-    if (input.system && input.system !== "editorial") {
+    const patch: { designSystem?: string; motionSystem?: string } = {};
+    if (input.system && input.system !== "editorial") patch.designSystem = input.system;
+    if (input.motion && input.motion !== "cut") patch.motionSystem = input.motion;
+    if (Object.keys(patch).length) {
       const { db } = await import("@/server/db/client");
       const s = await import("@/server/db/schema");
       const { eq } = await import("drizzle-orm");
-      await db.update(s.creativePacks).set({ designSystem: input.system }).where(eq(s.creativePacks.id, pack.id));
+      await db.update(s.creativePacks).set(patch).where(eq(s.creativePacks.id, pack.id));
     }
     revalidatePath("/studio");
     return ok({ id: pack.id });

@@ -115,6 +115,37 @@ export async function renderHtmlToImage(html: string, size: { width: number; hei
   }
 }
 
+/**
+ * One frame's two layers, as PNGs.
+ *
+ * The picture, and everything drawn on top of it with the background knocked out. Only the video
+ * engine wants these: it moves the picture and holds the words still, which is the whole reason the
+ * split exists. PNG with alpha, because a type layer without transparency is an opaque rectangle.
+ */
+export async function renderFrameLayers(
+  frame: FrameSpec,
+  options: { images?: FrameImages; browser?: Browser } = {},
+): Promise<{ image: Buffer; type: Buffer }> {
+  const fontCss = await loadEmbeddedFontCss();
+  const browser = options.browser ?? (await launchBrowser());
+  const owned = !options.browser;
+  try {
+    const context = await browser.newContext({ viewport: { width: frame.width, height: frame.height }, deviceScaleFactor: 1, locale: "en-GB", timezoneId: "UTC" });
+    const page = await context.newPage();
+    const shoot = async (only: "image" | "type") => {
+      await page.setContent(renderFrameHtml(frame, { fontCss, images: options.images, only }), { waitUntil: "load", timeout: 60_000 });
+      await page.evaluate(() => document.fonts.ready);
+      return page.screenshot({ type: "png", omitBackground: only === "type", clip: { x: 0, y: 0, width: frame.width, height: frame.height } });
+    };
+    const image = await shoot("image");
+    const type = await shoot("type");
+    await context.close();
+    return { image, type };
+  } finally {
+    if (owned) await browser.close().catch(() => {});
+  }
+}
+
 /** One image of the whole set, for the studio's list and for a share preview. */
 export async function renderContactSheet(spec: RenderSpec, options: { images?: FrameImages; browser?: Browser } = {}): Promise<RenderedFrame> {
   const fontCss = await loadEmbeddedFontCss();
