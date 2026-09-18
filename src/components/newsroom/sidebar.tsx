@@ -11,6 +11,7 @@ import { STATUS_LABELS, type EditionStatus } from "@/lib/editorial/edition-state
 import { Kbd } from "@/components/ui/kbd";
 import { useTranslations } from "@/components/i18n/provider";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { useUi } from "@/components/i18n/provider";
 
 export type SidebarEdition = { id: string; label: string; issueLabel: string; status: EditionStatus };
 
@@ -113,13 +114,14 @@ export function Sidebar({
   badges: { inbox: number; flags: number };
   onOpenSearch: () => void;
 }) {
+  const tr = useUi();
   const pathname = usePathname();
   const t = useTranslations();
   return (
     <aside className="flex h-full w-[232px] shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground">
       <WorkspaceSwitcher current={workspace} options={workspaces} impersonated={impersonated} />
       <WorkingOn current={currentEdition} editions={editions} badges={badges} />
-      <nav className="flex-1 overflow-y-auto px-2 pb-2 scrollbar-thin" aria-label="Main">
+      <nav className="flex-1 overflow-y-auto px-2 pb-2 scrollbar-thin" aria-label={tr("Main")}>
         <ul className="space-y-px">
           {NAV_ITEMS.map((item) => {
             const resolved = resolveNavItem(role, item, pathname);

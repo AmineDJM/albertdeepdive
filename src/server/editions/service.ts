@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, inArray, isNotNull, ne, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, inArray, isNotNull, isNull, ne, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/server/db/client";
 import * as s from "@/server/db/schema";
@@ -11,6 +11,7 @@ import { guardTenant, scoped, stampTenant } from "@/server/tenancy/scope";
 import { applyPublicationDefaults } from "@/server/outputs/service";
 import { requireLimit } from "@/server/billing/entitlements";
 import { optionalOrganizationId } from "@/server/tenancy/context";
+import { forgetFiles } from "@/server/storage/forget";
 
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
@@ -139,15 +140,63 @@ export async function getEdition(editionId: string) {
   return edition;
 }
 
-export async function listEditions() {
-  return db.query.editions.findMany({ where: await scoped(s.editions.organizationId), orderBy: [desc(s.editions.year), desc(s.editions.month), desc(s.editions.issueNumber)], with: { campaigns: { orderBy: [desc(s.submissionCampaigns.createdAt)], limit: 1 } } });
+export async function listEditions(options: { includeHidden?: boolean } = {}) {
+  return db.query.editions.findMany({
+    where: await scoped(s.editions.organizationId, options.includeHidden ? undefined : isNull(s.editions.hiddenAt)),
+    orderBy: [desc(s.editions.year), desc(s.editions.month), desc(s.editions.issueNumber)],
+    with: { campaigns: { orderBy: [desc(s.submissionCampaigns.createdAt)], limit: 1 } },
+  });
+}
+
+/**
+ * Hide editions, or bring them back. Out of the lists and the overview, not out of the record:
+ * archiving is a state in an edition's life, this is housekeeping, and it is reversible in one click.
+ */
+export async function setEditionsHidden(ids: string[], hidden: boolean, userId?: string | null) {
+  if (!ids.length) return 0;
+  const rows = await db
+    .update(s.editions)
+    .set({ hiddenAt: hidden ? new Date() : null })
+    .where(await scoped(s.editions.organizationId, inArray(s.editions.id, ids)))
+    .returning({ id: s.editions.id, organizationId: s.editions.organizationId, label: s.editions.label });
+  await Promise.all(rows.map((row) => audit({ action: hidden ? "edition.hide" : "edition.show", organizationId: row.organizationId, userId, entityType: "EDITION", entityId: row.id, editionId: row.id, metadata: { label: row.label } })));
+  return rows.length;
+}
+
+/**
+ * Delete editions, and everything that was theirs.
+ *
+ * The rows cascade: stories, submissions, campaigns, versions, outputs, the automation history.
+ * Two things do not, on purpose. The media library is the organisation's, not the edition's — a
+ * photograph used in March is still a photograph — so assets keep their files and lose only the
+ * edition they were filed under; a Studio pack survives its source for the same reason. What does
+ * go is collected before the cascade forgets where it was: the rendered PDFs and Word files of
+ * every version, and the attachments contributors sent in.
+ */
+export async function deleteEditions(ids: string[], userId?: string | null) {
+  if (!ids.length) return 0;
+  const rows = await db.query.editions.findMany({ where: await scoped(s.editions.organizationId, inArray(s.editions.id, ids)), columns: { id: true, organizationId: true, label: true } });
+  if (!rows.length) return 0;
+  const editionIds = rows.map((row) => row.id);
+  const [versionFiles, attachments] = await Promise.all([
+    db.select({ key: s.publicationAssets.storageKey }).from(s.publicationAssets).where(inArray(s.publicationAssets.editionId, editionIds)),
+    db
+      .select({ key: s.submissionAttachments.storageKey })
+      .from(s.submissionAttachments)
+      .innerJoin(s.submissions, eq(s.submissions.id, s.submissionAttachments.submissionId))
+      .where(inArray(s.submissions.editionId, editionIds)),
+  ]);
+  await db.delete(s.editions).where(inArray(s.editions.id, editionIds));
+  await forgetFiles([...versionFiles, ...attachments].map((row) => row.key));
+  await Promise.all(rows.map((row) => audit({ action: "edition.delete", organizationId: row.organizationId, userId, entityType: "EDITION", entityId: row.id, metadata: { label: row.label } })));
+  return rows.length;
 }
 
 const STATUS_PRIORITY: EditionStatus[] = ["FINAL_REVIEW", "LAYOUT", "EDITORIAL_REVIEW", "PROCESSING", "CLOSED", "GRACE_PERIOD", "REMINDER_2", "REMINDER_1", "OPEN", "UPCOMING", "PUBLISHED", "ARCHIVED"];
 
 /** The edition the newsroom is working on right now: the most advanced non-archived edition. */
 export async function getCurrentEdition() {
-  const rows = await db.query.editions.findMany({ where: await scoped(s.editions.organizationId, ne(s.editions.status, "ARCHIVED")), orderBy: [desc(s.editions.year), desc(s.editions.month)] });
+  const rows = await db.query.editions.findMany({ where: await scoped(s.editions.organizationId, ne(s.editions.status, "ARCHIVED"), isNull(s.editions.hiddenAt)), orderBy: [desc(s.editions.year), desc(s.editions.month)] });
   if (!rows.length) return null;
   const inProduction = rows.filter((r) => r.status !== "PUBLISHED" && r.status !== "UPCOMING");
   if (inProduction.length) return inProduction.sort((a, b) => STATUS_PRIORITY.indexOf(a.status) - STATUS_PRIORITY.indexOf(b.status))[0];

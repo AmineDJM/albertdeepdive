@@ -5,6 +5,7 @@ import { requirePermission } from "@/server/auth/session";
 import { campusInputSchema, createCampus, updateCampus } from "@/server/contributors/service";
 import { ok, toActionFailure, type ActionResult } from "@/lib/action-result";
 import type { z } from "zod";
+import { getUi } from "@/server/i18n/locale";
 
 export async function createCampusAction(input: z.input<typeof campusInputSchema>): Promise<ActionResult<{ id: string }>> {
   try {
@@ -18,11 +19,12 @@ export async function createCampusAction(input: z.input<typeof campusInputSchema
 }
 
 export async function updateCampusAction(id: string, patch: Partial<z.input<typeof campusInputSchema>> & { sortOrder?: number }): Promise<ActionResult> {
+  const tr = await getUi();
   try {
     const user = await requirePermission("campus:manage");
     await updateCampus(id, patch, user.id);
     revalidatePath("/campuses");
-    return ok(null, "Campus updated");
+    return ok(null, tr("Campus updated"));
   } catch (err) {
     return toActionFailure(err);
   }

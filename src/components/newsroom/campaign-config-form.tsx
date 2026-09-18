@@ -14,6 +14,7 @@ import { FieldError, SettingsCard } from "@/components/settings/key-value";
 import { applyCampaignDefaultsAction, saveCampaignAction, type CampaignFormInput } from "@/app/(newsroom)/editions/[editionId]/campaign/actions";
 import { CAMPAIGN_TIMEZONE, zonedParts, zonedTimeToUtc } from "@/lib/campaigns/schedule";
 import { cn } from "@/lib/utils";
+import { useUi } from "@/components/i18n/provider";
 
 /** The campaign as the server holds it: instants as ISO strings. */
 export type CampaignFormInitial = {
@@ -94,6 +95,7 @@ export function CampaignConfigForm({
   openingLocked: boolean;
   closed: boolean;
 }) {
+  const tr = useUi();
   const router = useRouter();
   const [values, setValues] = useState<CampaignFormValues>(() => toValues(initial));
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]> | null>(null);
@@ -162,13 +164,12 @@ export function CampaignConfigForm({
   return (
     <div className="space-y-4">
       <SettingsCard
-        title="Schedule"
+        title={tr("Schedule")}
         description={`All times are ${CAMPAIGN_TIMEZONE.replace("_", " ")} — the same clock contributors see in their invitation.`}
         action={
           canManage && !openingLocked ? (
             <Button variant="outline" size="sm" onClick={applyDefaults} loading={defaultsPending}>
-              <RotateCcw /> Monthly defaults
-            </Button>
+              <RotateCcw /> {" "}{tr("Monthly defaults")}</Button>
           ) : null
         }
       >
@@ -196,10 +197,9 @@ export function CampaignConfigForm({
           })}
           <div className="space-y-1">
             <Label htmlFor="campaign-name" className="text-xs">
-              Campaign name
-            </Label>
+              {tr("Campaign name")}</Label>
             <Input id="campaign-name" value={values.name} onChange={(e) => setValues((v) => ({ ...v, name: e.target.value }))} disabled={readOnly} maxLength={160} />
-            <p className="text-2xs text-muted-foreground">Internal label, shown in the automation log</p>
+            <p className="text-2xs text-muted-foreground">{tr("Internal label, shown in the automation log")}</p>
             <FieldError errors={fieldErrors} name="name" />
           </div>
         </div>
@@ -207,7 +207,7 @@ export function CampaignConfigForm({
 
       <div className="grid gap-4 xl:grid-cols-2">
         <SettingsCard
-          title="Contributor pools"
+          title={tr("Contributor pools")}
           description={`${selectedPool} member${selectedPool === 1 ? "" : "s"} in the selected pools — contributors are picked from these groups.`}
         >
           <ul className="space-y-1">
@@ -234,19 +234,19 @@ export function CampaignConfigForm({
                 </li>
               );
             })}
-            {groups.length === 0 ? <li className="text-xs text-muted-foreground">No contributor group exists yet.</li> : null}
+            {groups.length === 0 ? <li className="text-xs text-muted-foreground">{tr("No contributor group exists yet.")}</li> : null}
           </ul>
           <FieldError errors={fieldErrors} name="contributorGroupIds" />
         </SettingsCard>
 
-        <SettingsCard title="Campus targets" description={`How many contributors to invite per campus — ${targetTotal} in total.`}>
+        <SettingsCard title={tr("Campus targets")} description={`How many contributors to invite per campus — ${targetTotal} in total.`}>
           <ul className="space-y-1.5">
             {[...campuses.map((c) => ({ key: c.id, name: c.name, colour: c.colour, pool: c.contributors })), { key: SCHOOL_KEY, name: "Whole school (no campus)", colour: null, pool: null }].map((row) => (
               <li key={row.key} className="flex items-center justify-between gap-3 rounded-md border border-border bg-card px-2.5 py-1.5">
                 <span className="flex min-w-0 items-center gap-2">
                   <span className="size-2 shrink-0 rounded-full" style={{ backgroundColor: row.colour ?? "#94a3b8" }} />
                   <span className="truncate text-[13px]">{row.name}</span>
-                  {row.pool !== null ? <span className="tabular shrink-0 text-2xs text-muted-foreground">{row.pool} active</span> : null}
+                  {row.pool !== null ? <span className="tabular shrink-0 text-2xs text-muted-foreground">{row.pool} {" "}{tr("active")}</span> : null}
                 </span>
                 <Input
                   type="number"
@@ -265,37 +265,37 @@ export function CampaignConfigForm({
         </SettingsCard>
       </div>
 
-      <SettingsCard title="Invitation message" description="Added at the top of every invitation and reminder email.">
+      <SettingsCard title={tr("Invitation message")} description={tr("Added at the top of every invitation and reminder email.")}>
         <Textarea
           value={values.introMessage}
           onChange={(e) => setValues((v) => ({ ...v, introMessage: e.target.value }))}
           disabled={readOnly}
           rows={3}
           maxLength={2000}
-          placeholder="Tell us what happened around you this month…"
-          aria-label="Invitation message"
+          placeholder={tr("Tell us what happened around you this month…")}
+          aria-label={tr("Invitation message")}
         />
         <FieldError errors={fieldErrors} name="introMessage" />
         <label className="mt-3 flex items-center justify-between gap-3 rounded-md border border-border bg-card px-3 py-2">
           <span className="min-w-0">
-            <span className="block text-[13px] font-medium">Run the AI processing when the campaign closes</span>
-            <span className="block text-2xs text-muted-foreground">Normalises, classifies and clusters every submission as soon as the grace period ends.</span>
+            <span className="block text-[13px] font-medium">{tr("Run the AI processing when the campaign closes")}</span>
+            <span className="block text-2xs text-muted-foreground">{tr("Normalises, classifies and clusters every submission as soon as the grace period ends.")}</span>
           </span>
-          <Switch checked={values.autoProcess} onCheckedChange={(v) => setValues((s) => ({ ...s, autoProcess: v }))} disabled={readOnly} aria-label="Run the AI processing when the campaign closes" />
+          <Switch checked={values.autoProcess} onCheckedChange={(v) => setValues((s) => ({ ...s, autoProcess: v }))} disabled={readOnly} aria-label={tr("Run the AI processing when the campaign closes")} />
         </label>
         <label className="mt-3 flex items-start justify-between gap-3">
           <span className="min-w-0">
-            <span className="block text-[13px] font-medium">Re-invite last edition&rsquo;s contributors</span>
-            <span className="block text-2xs text-muted-foreground">Off by default: people invited to the previous edition are held back so the rota moves through the pool. Turn it on to let them take part again.</span>
+            <span className="block text-[13px] font-medium">{tr("Re-invite last edition’s contributors")}</span>
+            <span className="block text-2xs text-muted-foreground">{tr("Off by default: people invited to the previous edition are held back so the rota moves through the pool. Turn it on to let them take part again.")}</span>
           </span>
-          <Switch checked={values.reinvitePrevious} onCheckedChange={(v) => setValues((s) => ({ ...s, reinvitePrevious: v }))} disabled={readOnly} aria-label="Re-invite last edition's contributors" />
+          <Switch checked={values.reinvitePrevious} onCheckedChange={(v) => setValues((s) => ({ ...s, reinvitePrevious: v }))} disabled={readOnly} aria-label={tr("Re-invite last edition's contributors")} />
         </label>
       </SettingsCard>
 
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-card px-3 py-2">
         <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
           <span className="inline-flex items-center gap-1.5">
-            <Users className="size-3.5" /> {values.contributorGroupIds.length} pool{values.contributorGroupIds.length === 1 ? "" : "s"} · target {targetTotal}
+            <Users className="size-3.5" /> {values.contributorGroupIds.length} {" "}{tr("pool")}{values.contributorGroupIds.length === 1 ? "" : "s"} {" "}{tr("· target")}{" "}{targetTotal}
           </span>
           <span className="inline-flex items-center gap-1.5">
             <CalendarClock className="size-3.5" /> {closed ? "Closed — reopen it to change the dates" : dirty ? "Unsaved changes" : "Saved"}
@@ -304,12 +304,10 @@ export function CampaignConfigForm({
         <div className="flex items-center gap-2">
           {dirty && !readOnly ? (
             <Button variant="ghost" size="sm" onClick={() => setValues(pristine)} disabled={pending}>
-              Discard
-            </Button>
+              {tr("Discard")}</Button>
           ) : null}
           <Button size="sm" onClick={save} loading={pending} disabled={readOnly || !dirty}>
-            <Save /> Save campaign
-          </Button>
+            <Save /> {" "}{tr("Save campaign")}</Button>
         </div>
       </div>
     </div>

@@ -16,6 +16,7 @@ import { CampusChip } from "./campus-chip";
 import { resendInvitationAction } from "@/app/(newsroom)/editions/[editionId]/campaign/actions";
 import { formatZoned } from "@/lib/campaigns/schedule";
 import { enumLabel } from "@/lib/utils";
+import { useUi } from "@/components/i18n/provider";
 
 export type InvitationItem = {
   requestId: string;
@@ -55,6 +56,7 @@ const VIEWS = [
 ];
 
 export function CampaignInvitations({ editionId, rows, canResend }: { editionId: string; rows: InvitationItem[]; canResend: boolean }) {
+  const tr = useUi();
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [view, setView] = useState("all");
@@ -93,8 +95,8 @@ export function CampaignInvitations({ editionId, rows, canResend }: { editionId:
     return (
       <EmptyState
         icon={MailX}
-        title="Nobody has been invited yet"
-        description="Launching the campaign selects contributors from the chosen pools and emails each one a personal link."
+        title={tr("Nobody has been invited yet")}
+        description={tr("Launching the campaign selects contributors from the chosen pools and emails each one a personal link.")}
         compact
       />
     );
@@ -105,9 +107,9 @@ export function CampaignInvitations({ editionId, rows, canResend }: { editionId:
       <div className="flex flex-wrap items-center gap-2">
         <div className="relative">
           <Search className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground" />
-          <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search name or email…" className="h-8 w-56 pl-8" aria-label="Search invitations" />
+          <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder={tr("Search name or email…")} className="h-8 w-56 pl-8" aria-label={tr("Search invitations")} />
         </div>
-        <NativeSelect value={view} onChange={(e) => setView(e.target.value)} aria-label="Invitation status" className="w-auto min-w-32 pr-8">
+        <NativeSelect value={view} onChange={(e) => setView(e.target.value)} aria-label={tr("Invitation status")} className="w-auto min-w-32 pr-8">
           {VIEWS.map((v) => (
             <option key={v.key} value={v.key}>
               {v.label}
@@ -115,8 +117,8 @@ export function CampaignInvitations({ editionId, rows, canResend }: { editionId:
           ))}
         </NativeSelect>
         {campuses.length > 1 ? (
-          <NativeSelect value={campus} onChange={(e) => setCampus(e.target.value)} aria-label="Campus" className="w-auto min-w-32 pr-8">
-            <option value="all">All campuses</option>
+          <NativeSelect value={campus} onChange={(e) => setCampus(e.target.value)} aria-label={tr("Campus")} className="w-auto min-w-32 pr-8">
+            <option value="all">{tr("All campuses")}</option>
             {campuses.map((c) => (
               <option key={c} value={c}>
                 {c}
@@ -125,7 +127,7 @@ export function CampaignInvitations({ editionId, rows, canResend }: { editionId:
           </NativeSelect>
         ) : null}
         <span className="tabular text-2xs text-muted-foreground">
-          {filtered.length} of {rows.length}
+          {filtered.length} {" "}{tr("of")}{" "}{rows.length}
         </span>
       </div>
 
@@ -133,12 +135,12 @@ export function CampaignInvitations({ editionId, rows, canResend }: { editionId:
         <Table>
           <TableHeader>
             <TableRow className="hover:bg-transparent">
-              <TableHead>Contributor</TableHead>
-              <TableHead>Campus</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Activity</TableHead>
-              <TableHead>Personal link</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
+              <TableHead>{tr("Contributor")}</TableHead>
+              <TableHead>{tr("Campus")}</TableHead>
+              <TableHead>{tr("Status")}</TableHead>
+              <TableHead>{tr("Activity")}</TableHead>
+              <TableHead>{tr("Personal link")}</TableHead>
+              <TableHead className="text-right">{tr("Actions")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -151,25 +153,25 @@ export function CampaignInvitations({ editionId, rows, canResend }: { editionId:
                   <div className="text-2xs text-muted-foreground">{r.email}</div>
                 </TableCell>
                 <TableCell className="py-1.5">
-                  {r.campusName ? <CampusChip name={r.campusName} colour={r.campusColour} size="xs" /> : <span className="text-2xs text-muted-foreground">School-wide</span>}
+                  {r.campusName ? <CampusChip name={r.campusName} colour={r.campusColour} size="xs" /> : <span className="text-2xs text-muted-foreground">{tr("School-wide")}</span>}
                 </TableCell>
                 <TableCell className="py-1.5">
-                  <Badge variant={STATUS_TONE[r.status] ?? "muted"}>{enumLabel(r.status)}</Badge>
-                  {r.submissionsCount ? <span className="tabular ml-1.5 text-2xs text-muted-foreground">{r.submissionsCount} sent</span> : null}
+                  <Badge variant={STATUS_TONE[r.status] ?? "muted"}>{tr(enumLabel(r.status))}</Badge>
+                  {r.submissionsCount ? <span className="tabular ml-1.5 text-2xs text-muted-foreground">{r.submissionsCount} {" "}{tr("sent")}</span> : null}
                 </TableCell>
                 <TableCell className="py-1.5 text-2xs text-muted-foreground">
                   {r.submittedAt ? (
-                    <span>Submitted {formatZoned(r.submittedAt)}</span>
+                    <span>{tr("Submitted")}{" "}{formatZoned(r.submittedAt)}</span>
                   ) : r.openedAt ? (
-                    <span>Opened {formatZoned(r.openedAt)}</span>
+                    <span>{tr("Opened")}{" "}{formatZoned(r.openedAt)}</span>
                   ) : r.sentAt ? (
-                    <span>Sent {formatZoned(r.sentAt)}</span>
+                    <span>{tr("Sent")}{" "}{formatZoned(r.sentAt)}</span>
                   ) : (
-                    <span>Not sent yet</span>
+                    <span>{tr("Not sent yet")}</span>
                   )}
                   {r.remindedCount ? (
                     <div>
-                      {r.remindedCount} reminder{r.remindedCount === 1 ? "" : "s"}
+                      {r.remindedCount} {" "}{tr("reminder")}{r.remindedCount === 1 ? "" : "s"}
                       {r.lastRemindedAt ? ` · last ${formatZoned(r.lastRemindedAt)}` : ""}
                     </div>
                   ) : null}
@@ -187,21 +189,20 @@ export function CampaignInvitations({ editionId, rows, canResend }: { editionId:
                     </Button>
                   </div>
                   <div className="text-2xs text-muted-foreground">
-                    {r.tokenExpired ? <span className="text-warning">Link expired — resend to renew</span> : `Valid until ${formatZoned(r.tokenExpiresAt)}`}
+                    {r.tokenExpired ? <span className="text-warning">{tr("Link expired — resend to renew")}</span> : `Valid until ${formatZoned(r.tokenExpiresAt)}`}
                   </div>
                 </TableCell>
                 <TableCell className="py-1.5 text-right" data-no-row-link>
                   {canResend ? (
                     <Button variant="outline" size="xs" onClick={() => resend(r.requestId)} loading={pending && busyId === r.requestId} disabled={pending && busyId !== r.requestId}>
-                      <Send /> Resend
-                    </Button>
+                      <Send /> {" "}{tr("Resend")}</Button>
                   ) : null}
                 </TableCell>
               </TableRow>
             ))}
           </TableBody>
         </Table>
-        {filtered.length === 0 ? <p className="px-3 py-6 text-center text-xs text-muted-foreground">No invitation matches these filters.</p> : null}
+        {filtered.length === 0 ? <p className="px-3 py-6 text-center text-xs text-muted-foreground">{tr("No invitation matches these filters.")}</p> : null}
       </div>
     </div>
   );

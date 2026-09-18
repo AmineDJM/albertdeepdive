@@ -13,6 +13,7 @@ import { ProcessingButton } from "@/components/newsroom/processing-button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { STORY_TYPES } from "@/lib/constants";
 import { cn } from "@/lib/utils";
+import { getUi } from "@/server/i18n/locale";
 
 export const dynamic = "force-dynamic";
 
@@ -28,6 +29,7 @@ const VIEWS = [
 ];
 
 export default async function InboxPage({ params, searchParams }: { params: Promise<{ editionId: string }>; searchParams: Promise<Record<string, string | undefined>> }) {
+  const tr = await getUi();
   const { editionId } = await params;
   const sp = await searchParams;
   const view = sp.view ?? "needs_review";
@@ -45,21 +47,21 @@ export default async function InboxPage({ params, searchParams }: { params: Prom
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-5 py-2">
-        <h1 className="sr-only">Inbox — {edition.label}</h1>
-        <nav className="flex flex-wrap items-center gap-1" aria-label="Inbox views">
+        <h1 className="sr-only">{tr("Inbox —")}{" "}{edition.label}</h1>
+        <nav className="flex flex-wrap items-center gap-1" aria-label={tr("Inbox views")}>
           {VIEWS.map((v) => (
             <Link
               key={v.key}
               href={qs({ view: v.key, submission: undefined, page: undefined })}
               className={cn("inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium transition-colors", view === v.key ? "bg-brand-soft text-brand-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground")}
             >
-              {v.label}
+              {tr(v.label)}
               <span className="tabular text-2xs opacity-70">{facets[v.facet]}</span>
             </Link>
           ))}
         </nav>
         <div className="flex items-center gap-2">
-          {facets.unprocessed > 0 ? <span className="text-2xs text-warning">{facets.unprocessed} not processed</span> : null}
+          {facets.unprocessed > 0 ? <span className="text-2xs text-warning">{facets.unprocessed} {" "}{tr("not processed")}</span> : null}
           {canRunAi ? <ProcessingButton editionId={editionId} unprocessed={facets.unprocessed} /> : null}
         </div>
       </div>
@@ -67,13 +69,13 @@ export default async function InboxPage({ params, searchParams }: { params: Prom
       <div className="border-b border-border px-5 py-2">
         <Suspense>
           <FilterBar
-            searchPlaceholder="Search submissions…"
+            searchPlaceholder={tr("Search submissions…")}
             filters={[
-              { key: "campusId", label: "Campus", options: [...campuses.map((c) => ({ value: c.id, label: c.name })), { value: "school", label: "School-wide" }] },
-              { key: "storyType", label: "Type", options: STORY_TYPES.map((t) => ({ value: t.value, label: t.label })) },
-              { key: "hasMedia", label: "Media", options: [{ value: "true", label: "With photos" }, { value: "false", label: "Without photos" }], allLabel: "Any media" },
-              { key: "flagged", label: "Flags", options: [{ value: "true", label: "Flagged only" }], allLabel: "All" },
-              { key: "sort", label: "Sort", options: [{ value: "newest", label: "Newest" }, { value: "oldest", label: "Oldest" }, { value: "importance", label: "Importance" }, { value: "type", label: "Story type" }], allLabel: "Newest first" },
+              { key: "campusId", label: tr("Campus"), options: [...campuses.map((c) => ({ value: c.id, label: c.name })), { value: "school", label: tr("School-wide") }] },
+              { key: "storyType", label: tr("Type"), options: STORY_TYPES.map((t) => ({ value: t.value, label: tr(t.label) })) },
+              { key: "hasMedia", label: tr("Media"), options: [{ value: "true", label: tr("With photos") }, { value: "false", label: tr("Without photos") }], allLabel: tr("Any media") },
+              { key: "flagged", label: tr("Flags"), options: [{ value: "true", label: tr("Flagged only") }], allLabel: tr("All") },
+              { key: "sort", label: tr("Sort"), options: [{ value: "newest", label: tr("Newest") }, { value: "oldest", label: tr("Oldest") }, { value: "importance", label: tr("Importance") }, { value: "type", label: tr("Story type") }], allLabel: tr("Newest first") },
             ]}
           />
         </Suspense>
@@ -85,7 +87,7 @@ export default async function InboxPage({ params, searchParams }: { params: Prom
             <PageBody>
               <EmptyState
                 icon={InboxIcon}
-                title="No contributions yet"
+                title={tr("No contributions yet")}
                 description={
                   edition.status === "UPCOMING"
                     ? "The campaign has not opened. Schedule and open it to start collecting stories."
@@ -99,18 +101,15 @@ export default async function InboxPage({ params, searchParams }: { params: Prom
           {pages > 1 ? (
             <div className="flex items-center justify-between border-t border-border px-3 py-1.5 text-xs">
               <span className="text-muted-foreground">
-                Page {page} of {pages} · {total} submissions
-              </span>
+                {tr("Page")}{" "}{page} {" "}{tr("of")}{" "}{pages} · {total} {" "}{tr("submissions")}</span>
               <span className="flex gap-1">
                 {page > 1 ? (
                   <Link href={qs({ page: String(page - 1) })} className="rounded px-2 py-0.5 hover:bg-muted">
-                    Previous
-                  </Link>
+                    {tr("Previous")}</Link>
                 ) : null}
                 {page < pages ? (
                   <Link href={qs({ page: String(page + 1) })} className="rounded px-2 py-0.5 hover:bg-muted">
-                    Next
-                  </Link>
+                    {tr("Next")}</Link>
                 ) : null}
               </span>
             </div>
@@ -121,7 +120,7 @@ export default async function InboxPage({ params, searchParams }: { params: Prom
             <SubmissionDetail editionId={editionId} data={detail} canReview={canReview} onClose={qs({ submission: undefined })} />
           ) : (
             <div className="flex h-full items-center justify-center p-8">
-              <EmptyState icon={InboxIcon} title="Select a submission" description="Pick a contribution on the left to read it, check its sources and triage it." compact />
+              <EmptyState icon={InboxIcon} title={tr("Select a submission")} description={tr("Pick a contribution on the left to read it, check its sources and triage it.")} compact />
             </div>
           )}
         </aside>

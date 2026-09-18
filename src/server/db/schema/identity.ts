@@ -18,6 +18,23 @@ import { contributorTypeEnum, organizationRoleEnum, organizationStatusEnum, orga
 export type BrandColours = { primary?: string; accent?: string; ink?: string; paper?: string; palette?: string[] };
 export type OrganizationLinks = { website?: string; linkedin?: string; instagram?: string; x?: string; youtube?: string; other?: string[] };
 
+/**
+ * A customer's own Stripe account, connected from their settings.
+ *
+ * Sealed with the same cipher as every other secret typed into the interface. The hint is the last
+ * four characters, enough to recognise a key and not enough to use one.
+ */
+export type ReaderPayments = {
+  provider: "stripe";
+  secretKey: { v: 1; iv: string; tag: string; data: string };
+  keyHint: string;
+  livemode: boolean;
+  accountId: string | null;
+  accountName: string | null;
+  connectedAt: string;
+  connectedById: string | null;
+};
+
 export const organizations = pgTable(
   "organizations",
   {
@@ -40,6 +57,8 @@ export const organizations = pgTable(
     country: text("country"),
     /** Free-form workspace settings (tone, editorial defaults, white-label overrides). */
     settings: jsonb("settings").$type<Record<string, unknown>>().notNull().default({}),
+    /** The organisation's own payment account for paid titles. The key is sealed, never stored plain. */
+    readerPayments: jsonb("reader_payments").$type<ReaderPayments | null>(),
     onboardedAt: timestamp("onboarded_at", { withTimezone: true }),
     createdById: uuid("created_by_id").references((): AnyPgColumn => users.id, { onDelete: "set null" }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -89,6 +108,16 @@ export const publications = pgTable(
     /** Public subscription page slug, e.g. /s/acme-weekly. */
     subscribeSlug: text("subscribe_slug"),
     isPublic: boolean("is_public").notNull().default(true),
+    /**
+     * Whether readers pay. A paid title checks out through the organisation's own Stripe account —
+     * their key, their money, their receipts. Briefly never holds the funds.
+     */
+    access: text("access").notNull().default("free"), // free | paid
+    priceCents: integer("price_cents"),
+    priceCurrency: text("price_currency").notNull().default("eur"),
+    priceInterval: text("price_interval").notNull().default("month"), // month | year
+    /** The product and price Briefly created in the customer's Stripe for this title, so a checkout reuses them. */
+    paymentRefs: jsonb("payment_refs").$type<{ productId: string; priceId: string; fingerprint: string } | null>(),
     sortOrder: integer("sort_order").notNull().default(0),
     createdById: uuid("created_by_id").references((): AnyPgColumn => users.id, { onDelete: "set null" }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

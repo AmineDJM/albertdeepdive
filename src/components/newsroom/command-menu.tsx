@@ -7,12 +7,14 @@ import { CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, C
 import { searchAction } from "@/app/(newsroom)/actions";
 import { roleHasPermission, type Permission, type Role } from "@/lib/auth/permissions";
 import type { SearchHit } from "@/server/search/service";
+import { useUi } from "@/components/i18n/provider";
 
 type QuickLink = { label: string; href: string; icon: React.ComponentType<{ className?: string }>; need?: Permission };
 
 const ICONS: Record<string, React.ComponentType<{ className?: string }>> = { edition: Newspaper, story: Sparkles, article: FileText, submission: Inbox, media: Image, contributor: Users, person: Users, organisation: Building2, event: Archive, bdd: Sparkles };
 
 export function CommandMenu({ open, onOpenChange, currentEditionId, role }: { open: boolean; onOpenChange: (open: boolean) => void; currentEditionId: string | null; role: Role }) {
+  const tr = useUi();
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [groups, setGroups] = useState<{ group: string; hits: SearchHit[] }[]>([]);
@@ -55,42 +57,42 @@ export function CommandMenu({ open, onOpenChange, currentEditionId, role }: { op
   // The sidebar deliberately lists six destinations; this lists all of them. Anything that left the
   // sidebar has to stay one keystroke away, or the simplification is just a removal.
   const quick: QuickLink[] = [
-    { label: "Overview", href: "/overview", icon: Home },
-    { label: "Publications", href: "/publications", icon: Library },
-    { label: "Editions", href: "/editions", icon: Newspaper },
+    { label: tr("Overview"), href: "/overview", icon: Home },
+    { label: tr("Publications"), href: "/publications", icon: Library },
+    { label: tr("Editions"), href: "/editions", icon: Newspaper },
     ...(ed
       ? [
-          { label: "Control room", href: ed, icon: LayoutTemplate },
-          { label: "Inbox", href: `${ed}/inbox`, icon: Inbox },
-          { label: "Stories", href: `${ed}/stories`, icon: Sparkles },
-          { label: "Articles", href: `${ed}/articles`, icon: FileText },
-          { label: "Media", href: `${ed}/media`, icon: Image },
-          { label: "Layout", href: `${ed}/layout`, icon: LayoutTemplate },
-          { label: "QA & publish", href: `${ed}/qa`, icon: Workflow },
-          { label: "Exports", href: `${ed}/exports`, icon: FileText },
-          { label: "Campaign", href: `${ed}/campaign`, icon: Send },
+          { label: tr("Control room"), href: ed, icon: LayoutTemplate },
+          { label: tr("Inbox"), href: `${ed}/inbox`, icon: Inbox },
+          { label: tr("Stories"), href: `${ed}/stories`, icon: Sparkles },
+          { label: tr("Articles"), href: `${ed}/articles`, icon: FileText },
+          { label: tr("Media"), href: `${ed}/media`, icon: Image },
+          { label: tr("Layout"), href: `${ed}/layout`, icon: LayoutTemplate },
+          { label: tr("QA & publish"), href: `${ed}/qa`, icon: Workflow },
+          { label: tr("Exports"), href: `${ed}/exports`, icon: FileText },
+          { label: tr("Campaign"), href: `${ed}/campaign`, icon: Send },
         ]
       : []),
-    { label: "Subscribers", href: "/subscribers", icon: Mail, need: "contributor:manage" as Permission },
-    { label: "Directory", href: "/directory", icon: BookUser, need: "contributor:manage" as Permission },
-    { label: "Contributors", href: "/contributors", icon: Users, need: "contributor:manage" as Permission },
-    { label: "Campuses", href: "/campuses", icon: Building2 },
-    { label: "Analytics", href: "/analytics", icon: BarChart3, need: "analytics:view" as Permission },
-    { label: "Automations", href: "/automations", icon: Workflow },
-    { label: "Archive", href: "/archive", icon: Archive, need: "archive:view" as Permission },
-    { label: "Media library", href: "/media", icon: Image },
-    { label: "Settings", href: "/settings", icon: Settings },
-    { label: "Plan & usage", href: "/settings/billing", icon: Settings, need: "settings:manage" as Permission },
-    { label: "Users & roles", href: "/settings/users", icon: Users, need: "user:manage" as Permission },
-    { label: "Platform: customers & plans", href: "/platform", icon: Shield, need: "settings:manage" as Permission },
-    { label: "Platform: integrations", href: "/platform/integrations", icon: Plug, need: "settings:manage" as Permission },
+    { label: tr("Subscribers"), href: "/subscribers", icon: Mail, need: "contributor:manage" as Permission },
+    { label: tr("Directory"), href: "/directory", icon: BookUser, need: "contributor:manage" as Permission },
+    { label: tr("Contributors"), href: "/contributors", icon: Users, need: "contributor:manage" as Permission },
+    { label: tr("Campuses"), href: "/campuses", icon: Building2 },
+    { label: tr("Analytics"), href: "/analytics", icon: BarChart3, need: "analytics:view" as Permission },
+    { label: tr("Automations"), href: "/automations", icon: Workflow },
+    { label: tr("Archive"), href: "/archive", icon: Archive, need: "archive:view" as Permission },
+    { label: tr("Media library"), href: "/media", icon: Image },
+    { label: tr("Settings"), href: "/settings", icon: Settings },
+    { label: tr("Plan & usage"), href: "/settings/billing", icon: Settings, need: "settings:manage" as Permission },
+    { label: tr("Users & roles"), href: "/settings/users", icon: Users, need: "user:manage" as Permission },
+    { label: tr("Platform: customers & plans"), href: "/platform", icon: Shield, need: "settings:manage" as Permission },
+    { label: tr("Platform: integrations"), href: "/platform/integrations", icon: Plug, need: "settings:manage" as Permission },
   ].filter((q) => !q.need || roleHasPermission(role, q.need));
 
   return (
-    <CommandDialog open={open} onOpenChange={onOpenChange} title="Search" description="Search editions, submissions, stories, articles, people, organisations, media and events">
-      <CommandInput placeholder="Search everything or type a command…" value={query} onValueChange={setQuery} />
+    <CommandDialog open={open} onOpenChange={onOpenChange} title={tr("Search")} description={tr("Search editions, submissions, stories, articles, people, organisations, media and events")}>
+      <CommandInput placeholder={tr("Search everything or type a command…")} value={query} onValueChange={setQuery} />
       <CommandList>
-        <CommandEmpty>{pending ? <span className="inline-flex items-center gap-2"><Loader2 className="size-3.5 animate-spin" /> Searching…</span> : tooShort ? "Type at least two characters." : "No results."}</CommandEmpty>
+        <CommandEmpty>{pending ? <span className="inline-flex items-center gap-2"><Loader2 className="size-3.5 animate-spin" /> {" "}{tr("Searching…")}</span> : tooShort ? "Type at least two characters." : "No results."}</CommandEmpty>
         {visibleGroups.map((g) => (
           <CommandGroup key={g.group} heading={g.group}>
             {g.hits.map((hit) => {
@@ -116,11 +118,9 @@ export function CommandMenu({ open, onOpenChange, currentEditionId, role }: { op
         </CommandGroup>
         <CommandGroup heading="Actions">
           <CommandItem value="new edition" onSelect={() => go("/editions?new=1")}>
-            <Plus /> New edition
-          </CommandItem>
+            <Plus /> {" "}{tr("New edition")}</CommandItem>
           <CommandItem value="new contributor" onSelect={() => go("/contributors?new=1")}>
-            <Plus /> New contributor
-          </CommandItem>
+            <Plus /> {" "}{tr("New contributor")}</CommandItem>
         </CommandGroup>
       </CommandList>
     </CommandDialog>

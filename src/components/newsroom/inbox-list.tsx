@@ -15,6 +15,7 @@ import { bulkReviewAction, reviewSubmissionAction } from "@/app/(newsroom)/editi
 import { cn, formatDateTime, relativeTime, truncate } from "@/lib/utils";
 import { storyTypeShort } from "@/lib/constants";
 import type { ReviewStatus } from "@/server/editorial/submissions";
+import { useUi } from "@/components/i18n/provider";
 
 export type InboxItem = {
   id: string;
@@ -47,6 +48,7 @@ const BULK: { status: ReviewStatus; label: string; icon: React.ComponentType<{ c
 ];
 
 export function InboxList({ editionId, items, selectedId, canReview }: { editionId: string; items: InboxItem[]; selectedId?: string; canReview: boolean }) {
+  const tr = useUi();
   const router = useRouter();
   const [checked, setChecked] = useState<Set<string>>(() => new Set());
   const [pending, startTransition] = useTransition();
@@ -85,7 +87,7 @@ export function InboxList({ editionId, items, selectedId, canReview }: { edition
   }
 
   if (!items.length) {
-    return <EmptyState icon={RefreshCw} title="Nothing here" description="No submission matches these filters. Clear them, or wait for contributions to arrive." compact />;
+    return <EmptyState icon={RefreshCw} title={tr("Nothing here")} description={tr("No submission matches these filters. Clear them, or wait for contributions to arrive.")} compact />;
   }
 
   return (
@@ -125,8 +127,8 @@ export function InboxList({ editionId, items, selectedId, canReview }: { edition
                         <AlertTriangle className="size-3" /> {item.errorCount + item.warningCount}
                       </span>
                     ) : null}
-                    {item.awaitingInformation ? <Badge variant="info">Awaiting answer</Badge> : null}
-                    {!item.processedAt ? <Badge variant="muted">Not processed</Badge> : null}
+                    {item.awaitingInformation ? <Badge variant="info">{tr("Awaiting answer")}</Badge> : null}
+                    {!item.processedAt ? <Badge variant="muted">{tr("Not processed")}</Badge> : null}
                     {item.cluster ? <span className="truncate text-2xs text-brand">→ {truncate(item.cluster.title, 40)}</span> : null}
                   </div>
                 </Link>
@@ -143,10 +145,10 @@ export function InboxList({ editionId, items, selectedId, canReview }: { edition
               </div>
               {canReview ? (
                 <div className="absolute top-2 right-2 hidden gap-1 group-hover:flex" data-no-row-link>
-                  <Button size="icon-xs" variant="outline" title="Accept" aria-label="Accept" disabled={pending} onClick={() => runSingle(item.id, "ACCEPTED")}>
+                  <Button size="icon-xs" variant="outline" title={tr("Accept")} aria-label={tr("Accept")} disabled={pending} onClick={() => runSingle(item.id, "ACCEPTED")}>
                     <Check />
                   </Button>
-                  <Button size="icon-xs" variant="outline" title="Reject" aria-label="Reject" disabled={pending} onClick={() => runSingle(item.id, "REJECTED")}>
+                  <Button size="icon-xs" variant="outline" title={tr("Reject")} aria-label={tr("Reject")} disabled={pending} onClick={() => runSingle(item.id, "REJECTED")}>
                     <X />
                   </Button>
                 </div>
@@ -159,8 +161,7 @@ export function InboxList({ editionId, items, selectedId, canReview }: { edition
       {selection.size ? (
         <div className="sticky bottom-0 flex flex-wrap items-center gap-1.5 border-t border-border bg-card/95 px-3 py-2 backdrop-blur">
           <span className="text-xs font-medium">
-            {selection.size} selected
-            {pending ? <Loader2 className="ml-1.5 inline size-3 animate-spin" /> : null}
+            {selection.size} {" "}{tr("selected")}{" "}{pending ? <Loader2 className="ml-1.5 inline size-3 animate-spin" /> : null}
           </span>
           {BULK.map((b) => (
             <Button key={b.status} size="xs" variant="outline" disabled={pending} onClick={() => runBulk(b.status)}>
@@ -168,8 +169,7 @@ export function InboxList({ editionId, items, selectedId, canReview }: { edition
             </Button>
           ))}
           <Button size="xs" variant="ghost" onClick={() => setChecked(new Set())}>
-            Clear
-          </Button>
+            {tr("Clear")}</Button>
         </div>
       ) : null}
     </div>

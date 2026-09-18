@@ -3,7 +3,7 @@ import "./globals.css";
 import { fontVariables } from "@/lib/fonts";
 import { AppProviders } from "@/components/providers";
 import { BRAND } from "@/lib/brand";
-import { currentLocale } from "@/server/i18n/locale";
+import { currentLocale, getUi } from "@/server/i18n/locale";
 
 export const metadata: Metadata = {
   title: {
@@ -17,6 +17,8 @@ export const metadata: Metadata = {
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const locale = await currentLocale();
+  // Pins the request's interface language before anything beneath renders; see `ui()`.
+  await getUi();
   return (
     <html lang={locale} className={`${fontVariables} h-full antialiased`} suppressHydrationWarning>
       <body className="flex min-h-full flex-col">

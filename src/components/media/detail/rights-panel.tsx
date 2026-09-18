@@ -14,6 +14,7 @@ import { RIGHTS_STATUS_LABELS } from "@/lib/constants";
 import type { MediaConsentView } from "@/server/media/library";
 import { RIGHTS_DOT_CLASS, RIGHTS_STATUSES, type RightsStatus } from "@/server/media/constants";
 import { recordConsentAction, setRightsAction } from "@/app/(newsroom)/media/[mediaId]/actions";
+import { useUi } from "@/components/i18n/provider";
 
 const HINTS: Record<RightsStatus, string> = {
   GREEN: "Cleared for print and digital.",
@@ -44,6 +45,7 @@ export function RightsPanel({
   canRights: boolean;
   contributorName: string | null;
 }) {
+  const tr = useUi();
   const router = useRouter();
   const [draftStatus, setDraftStatus] = useState<RightsStatus | null>(null);
   const [draftNote, setDraftNote] = useState(note ?? "");
@@ -79,7 +81,7 @@ export function RightsPanel({
     <div className="border-border bg-card rounded-lg border shadow-xs">
       <div className="flex items-start justify-between gap-3 border-b px-4 py-3">
         <div>
-          <div className="label-caps">Rights</div>
+          <div className="label-caps">{tr("Rights")}</div>
           <div className="mt-1 flex items-center gap-2">
             <RightsBadge status={status} />
             <span className="text-muted-foreground text-xs">{HINTS[status]}</span>
@@ -98,7 +100,7 @@ export function RightsPanel({
       </div>
       <div className="space-y-3 px-4 py-3">
         {canRights ? (
-          <div className="grid grid-cols-3 gap-1.5" role="group" aria-label="Set rights status">
+          <div className="grid grid-cols-3 gap-1.5" role="group" aria-label={tr("Set rights status")}>
             {RIGHTS_STATUSES.map((st) => {
               const active = (draftStatus ?? status) === st;
               return (
@@ -125,14 +127,14 @@ export function RightsPanel({
           </div>
         ) : null}
         <div className="space-y-1.5">
-          <Label htmlFor="rights-note">Rights note</Label>
+          <Label htmlFor="rights-note">{tr("Rights note")}</Label>
           {canRights ? (
             <Textarea
               id="rights-note"
               rows={2}
               value={draftNote}
               onChange={(e) => setDraftNote(e.target.value)}
-              placeholder="Who confirmed what, and when (e.g. “contributor confirmed by email, 12 May”)"
+              placeholder={tr("Who confirmed what, and when (e.g. “contributor confirmed by email, 12 May”)")}
               className="min-h-0"
             />
           ) : (
@@ -144,7 +146,7 @@ export function RightsPanel({
         {canRights && draftStatus && draftStatus !== status ? (
           <div className="border-brand/40 bg-brand-soft/40 flex items-center justify-between gap-2 rounded-md border px-3 py-2">
             <span className="text-xs">
-              Set to <strong>{RIGHTS_STATUS_LABELS[draftStatus]}</strong>
+              {tr("Set to")}{" "}<strong>{RIGHTS_STATUS_LABELS[draftStatus]}</strong>
               {draftStatus === "RED" ? " — the asset will be blocked at export." : ""}
             </span>
             <div className="flex gap-1.5">
@@ -154,29 +156,26 @@ export function RightsPanel({
                 onClick={() => setDraftStatus(null)}
                 disabled={pending}
               >
-                Cancel
-              </Button>
+                {tr("Cancel")}</Button>
               <Button
                 size="sm"
                 variant={draftStatus === "RED" ? "destructive" : "default"}
                 loading={pending}
                 onClick={() => commit(draftStatus)}
               >
-                Confirm
-              </Button>
+                {tr("Confirm")}</Button>
             </div>
           </div>
         ) : canRights && noteChanged ? (
           <div className="flex justify-end">
             <Button size="sm" variant="outline" loading={pending} onClick={() => commit(status)}>
-              Save note
-            </Button>
+              {tr("Save note")}</Button>
           </div>
         ) : null}
       </div>
       <div className="border-t px-4 py-3">
         <div className="flex items-center justify-between gap-2">
-          <div className="label-caps">Consent records</div>
+          <div className="label-caps">{tr("Consent records")}</div>
           {canRights ? (
             <Button
               size="xs"
@@ -189,8 +188,7 @@ export function RightsPanel({
                   : "Record an image-rights confirmation for this asset"
               }
             >
-              <FileCheck2 /> Log confirmation
-            </Button>
+              <FileCheck2 /> {" "}{tr("Log confirmation")}</Button>
           ) : null}
         </div>
         {consents.length ? (
@@ -203,11 +201,11 @@ export function RightsPanel({
                 <div className="flex flex-wrap items-center gap-1.5">
                   <span className="font-medium">{CONSENT_LABELS[c.type]}</span>
                   {c.revokedAt ? (
-                    <Badge variant="destructive">Revoked</Badge>
+                    <Badge variant="destructive">{tr("Revoked")}</Badge>
                   ) : c.accepted ? (
-                    <Badge variant="success">Accepted</Badge>
+                    <Badge variant="success">{tr("Accepted")}</Badge>
                   ) : (
-                    <Badge variant="destructive">Declined</Badge>
+                    <Badge variant="destructive">{tr("Declined")}</Badge>
                   )}
                   <Badge variant="muted">v{c.textVersion}</Badge>
                   <Badge variant="outline">
@@ -226,8 +224,7 @@ export function RightsPanel({
           </ul>
         ) : (
           <p className="text-muted-foreground mt-1.5 text-xs">
-            No consent recorded for this image yet
-            {contributorName ? ` — ask ${contributorName} or log a confirmation` : ""}.
+            {tr("No consent recorded for this image yet")}{" "}{contributorName ? ` — ask ${contributorName} or log a confirmation` : ""}.
           </p>
         )}
       </div>

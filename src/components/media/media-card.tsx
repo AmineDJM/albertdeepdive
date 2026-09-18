@@ -16,6 +16,7 @@ import {
   RIGHTS_DOT_CLASS,
   type MediaKind,
 } from "@/server/media/constants";
+import { useUi } from "@/components/i18n/provider";
 
 export function MediaCard({
   row,
@@ -28,6 +29,7 @@ export function MediaCard({
   selectable: boolean;
   onToggle: (id: string, shift: boolean) => void;
 }) {
+  const tr = useUi();
   const shiftRef = useRef(false);
   const title = row.caption || row.fileName;
   const low = row.qualityScore !== null && row.qualityScore < LOW_QUALITY_THRESHOLD;
@@ -87,18 +89,17 @@ export function MediaCard({
           <div className="flex flex-wrap gap-1">
             {low ? <Badge variant="amber">Q {row.qualityScore}</Badge> : null}
             {isDup ? (
-              <Badge variant="red">dup</Badge>
+              <Badge variant="red">{tr("dup")}</Badge>
             ) : inGroup ? (
               <Badge variant="secondary" className="bg-card/90">
-                similar
-              </Badge>
+                {tr("similar")}</Badge>
             ) : null}
             {row.kind !== "photo" ? (
               <Badge variant="outline" className="bg-card/90">
                 {KIND_LABELS[row.kind as MediaKind] ?? row.kind}
               </Badge>
             ) : null}
-            {row.isArchived ? <Badge variant="muted">archived</Badge> : null}
+            {row.isArchived ? <Badge variant="muted">{tr("archived")}</Badge> : null}
           </div>
           {row.stories.length ? (
             <Badge
@@ -151,7 +152,7 @@ export function MediaCard({
               {row.stories.length > 1 ? ` +${row.stories.length - 1}` : ""}
             </>
           ) : (
-            <span className="text-muted-foreground/60">Not used in a story</span>
+            <span className="text-muted-foreground/60">{tr("Not used in a story")}</span>
           )}
         </div>
       </div>

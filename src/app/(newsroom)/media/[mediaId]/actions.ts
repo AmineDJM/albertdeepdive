@@ -23,6 +23,7 @@ import { recheckDuplicates } from "@/server/media/jobs";
 import type { RightsStatus, StoryMediaRole } from "@/server/media/constants";
 import { ok, toActionFailure, type ActionResult } from "@/lib/action-result";
 import { CONSENT_TEXT_VERSION, RIGHTS_STATUS_LABELS } from "@/lib/constants";
+import { getUi } from "@/server/i18n/locale";
 
 function revalidate(assetId: string, editionId: string | null, extra: string[] = []) {
   revalidatePath(`/media/${assetId}`);
@@ -35,11 +36,12 @@ export async function updateMetadataAction(
   editionId: string | null,
   patch: MediaMetadataPatch,
 ): Promise<ActionResult> {
+  const tr = await getUi();
   try {
     const user = await requirePermission("media:manage");
     await updateMediaMetadata(assetId, patch, user);
     revalidate(assetId, editionId);
-    return ok(null, "Metadata saved");
+    return ok(null, tr("Metadata saved"));
   } catch (err) {
     return toActionFailure(err);
   }
@@ -65,6 +67,7 @@ export async function recordConsentAction(
   assetId: string,
   editionId: string | null,
 ): Promise<ActionResult> {
+  const tr = await getUi();
   try {
     const user = await requirePermission("media:rights");
     await recordImageConsent(
@@ -73,7 +76,7 @@ export async function recordConsentAction(
       user.id,
     );
     revalidate(assetId, editionId);
-    return ok(null, "Image-rights consent recorded");
+    return ok(null, tr("Image-rights consent recorded"));
   } catch (err) {
     return toActionFailure(err);
   }
@@ -83,11 +86,12 @@ export async function archiveAction(
   assetId: string,
   editionId: string | null,
 ): Promise<ActionResult> {
+  const tr = await getUi();
   try {
     const user = await requirePermission("media:manage");
     await archiveMedia(assetId, user);
     revalidate(assetId, editionId);
-    return ok(null, "Asset archived");
+    return ok(null, tr("Asset archived"));
   } catch (err) {
     return toActionFailure(err);
   }
@@ -97,11 +101,12 @@ export async function restoreAction(
   assetId: string,
   editionId: string | null,
 ): Promise<ActionResult> {
+  const tr = await getUi();
   try {
     const user = await requirePermission("media:manage");
     await restoreMedia(assetId, user);
     revalidate(assetId, editionId);
-    return ok(null, "Asset restored");
+    return ok(null, tr("Asset restored"));
   } catch (err) {
     return toActionFailure(err);
   }
@@ -112,11 +117,12 @@ export async function markDuplicateAction(
   editionId: string | null,
   duplicateOfId: string,
 ): Promise<ActionResult> {
+  const tr = await getUi();
   try {
     const user = await requirePermission("media:manage");
     await markDuplicate(assetId, duplicateOfId, user);
     revalidate(assetId, editionId, [`/media/${duplicateOfId}`]);
-    return ok(null, "Marked as duplicate");
+    return ok(null, tr("Marked as duplicate"));
   } catch (err) {
     return toActionFailure(err);
   }
@@ -126,11 +132,12 @@ export async function clearDuplicateAction(
   assetId: string,
   editionId: string | null,
 ): Promise<ActionResult> {
+  const tr = await getUi();
   try {
     const user = await requirePermission("media:manage");
     await clearDuplicate(assetId, user);
     revalidate(assetId, editionId);
-    return ok(null, "Duplicate flag cleared");
+    return ok(null, tr("Duplicate flag cleared"));
   } catch (err) {
     return toActionFailure(err);
   }
@@ -163,11 +170,12 @@ export async function attachToStoryAction(
   storyId: string,
   role: StoryMediaRole,
 ): Promise<ActionResult> {
+  const tr = await getUi();
   try {
     const user = await requirePermission("media:manage");
     await attachToStory(assetId, storyId, role, user);
     revalidate(assetId, editionId, [`/stories/${storyId}`]);
-    return ok(null, "Attached to the story");
+    return ok(null, tr("Attached to the story"));
   } catch (err) {
     return toActionFailure(err);
   }
@@ -178,11 +186,12 @@ export async function detachFromStoryAction(
   editionId: string | null,
   storyId: string,
 ): Promise<ActionResult> {
+  const tr = await getUi();
   try {
     const user = await requirePermission("media:manage");
     await detachFromStory(assetId, storyId, user);
     revalidate(assetId, editionId, [`/stories/${storyId}`]);
-    return ok(null, "Detached from the story");
+    return ok(null, tr("Detached from the story"));
   } catch (err) {
     return toActionFailure(err);
   }
@@ -194,11 +203,12 @@ export async function setStoryRoleAction(
   storyId: string,
   role: StoryMediaRole,
 ): Promise<ActionResult> {
+  const tr = await getUi();
   try {
     const user = await requirePermission("media:manage");
     await setStoryMediaRole(assetId, storyId, role, user);
     revalidate(assetId, editionId, [`/stories/${storyId}`]);
-    return ok(null, "Role updated");
+    return ok(null, tr("Role updated"));
   } catch (err) {
     return toActionFailure(err);
   }
@@ -226,11 +236,12 @@ export async function clearCropAction(
   assetId: string,
   editionId: string | null,
 ): Promise<ActionResult> {
+  const tr = await getUi();
   try {
     const user = await requirePermission("media:manage");
     await clearCrop(assetId, user);
     revalidate(assetId, editionId);
-    return ok(null, "Crop removed");
+    return ok(null, tr("Crop removed"));
   } catch (err) {
     return toActionFailure(err);
   }

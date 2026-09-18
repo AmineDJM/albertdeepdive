@@ -3,15 +3,17 @@
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { useUi } from "@/components/i18n/provider";
 
 export type LinkTab = { key: string; label: string; count?: number | null };
 
 /** Underline tabs driven by a `?tab=` search param. Other params are dropped when switching. */
 export function LinkTabs({ tabs, active, param = "tab", keep = [] }: { tabs: LinkTab[]; active: string; param?: string; keep?: string[] }) {
+  const tr = useUi();
   const pathname = usePathname();
   const params = useSearchParams();
   return (
-    <nav className="flex h-9 items-center gap-4 border-b border-border" aria-label="Views">
+    <nav className="flex h-9 items-center gap-4 border-b border-border" aria-label={tr("Views")}>
       {tabs.map((t) => {
         const next = new URLSearchParams();
         next.set(param, t.key);

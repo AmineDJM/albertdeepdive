@@ -14,6 +14,7 @@ import { RecipientEditor, type RecipientEditorValue } from "./recipient-editor";
 import { deleteRecipientAction, setRecipientActiveAction } from "@/app/(newsroom)/directory/actions";
 import { enumLabel } from "@/lib/utils";
 import type { AUDIENCE_SEGMENTS } from "@/lib/constants";
+import { useUi } from "@/components/i18n/provider";
 
 export type RecipientRow = {
   id: string;
@@ -34,6 +35,7 @@ function toValue(r: RecipientRow): RecipientEditorValue {
 }
 
 export function RecipientsTable({ rows, campuses }: { rows: RecipientRow[]; campuses: { id: string; name: string }[] }) {
+  const tr = useUi();
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [confirm, setConfirm] = useState<RecipientRow | null>(null);
@@ -69,11 +71,11 @@ export function RecipientsTable({ rows, campuses }: { rows: RecipientRow[]; camp
         rows={rows}
         rowKey={(r) => r.id}
         dense
-        empty={{ title: "No recipients match", description: "Adjust the filters, add a recipient or import a file.", icon: Users }}
+        empty={{ title: tr("No recipients match"), description: tr("Adjust the filters, add a recipient or import a file."), icon: Users }}
         columns={[
           {
             key: "name",
-            header: "Recipient",
+            header: tr("Recipient"),
             cell: (r) => (
               <div className="min-w-0">
                 <div className="font-medium">{`${r.firstName} ${r.lastName}`.trim() || "—"}</div>
@@ -81,13 +83,13 @@ export function RecipientsTable({ rows, campuses }: { rows: RecipientRow[]; camp
               </div>
             ),
           },
-          { key: "segment", header: "Segment", cell: (r) => <Badge variant="outline">{enumLabel(r.segment)}</Badge> },
-          { key: "campus", header: "Campus", cell: (r) => (r.campus ? <CampusChip name={r.campus.name} colour={r.campus.colour} /> : <span className="text-2xs text-muted-foreground">School-wide</span>) },
-          { key: "organisation", header: "Organisation", cell: (r) => <span className="line-clamp-1 text-xs text-muted-foreground">{r.organisation || "—"}</span> },
-          { key: "tags", header: "Tags", cell: (r) => <span className="line-clamp-1 text-2xs text-muted-foreground">{r.tags.join(", ") || "—"}</span> },
+          { key: "segment", header: tr("Segment"), cell: (r) => <Badge variant="outline">{tr(enumLabel(r.segment))}</Badge> },
+          { key: "campus", header: tr("Campus"), cell: (r) => (r.campus ? <CampusChip name={r.campus.name} colour={r.campus.colour} /> : <span className="text-2xs text-muted-foreground">{tr("School-wide")}</span>) },
+          { key: "organisation", header: tr("Organisation"), cell: (r) => <span className="line-clamp-1 text-xs text-muted-foreground">{r.organisation || "—"}</span> },
+          { key: "tags", header: tr("Tags"), cell: (r) => <span className="line-clamp-1 text-2xs text-muted-foreground">{r.tags.join(", ") || "—"}</span> },
           {
             key: "active",
-            header: "Active",
+            header: tr("Active"),
             align: "center",
             cell: (r) => <Switch checked={r.isActive} disabled={pending} onCheckedChange={() => toggleActive(r)} aria-label={r.isActive ? `Deactivate ${r.email}` : `Activate ${r.email}`} />,
           },
@@ -110,14 +112,13 @@ export function RecipientsTable({ rows, campuses }: { rows: RecipientRow[]; camp
       <AlertDialog open={!!confirm} onOpenChange={(open) => !open && setConfirm(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Remove {confirm ? `${confirm.firstName} ${confirm.lastName}`.trim() || confirm.email : "this recipient"}?</AlertDialogTitle>
-            <AlertDialogDescription>They are removed from the audience directory and will no longer receive the magazine. This cannot be undone.</AlertDialogDescription>
+            <AlertDialogTitle>{tr("Remove")}{" "}{confirm ? `${confirm.firstName} ${confirm.lastName}`.trim() || confirm.email : "this recipient"}?</AlertDialogTitle>
+            <AlertDialogDescription>{tr("They are removed from the audience directory and will no longer receive the magazine. This cannot be undone.")}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{tr("Cancel")}</AlertDialogCancel>
             <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={() => confirm && remove(confirm)}>
-              Remove
-            </AlertDialogAction>
+              {tr("Remove")}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

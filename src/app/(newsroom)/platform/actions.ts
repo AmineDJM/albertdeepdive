@@ -10,6 +10,7 @@ import { audit } from "@/server/audit";
 import { pruneGeneratedGrounds } from "@/server/creative/service";
 import { ok, toActionFailure, type ActionResult } from "@/lib/action-result";
 import type { Role } from "@/lib/auth/permissions";
+import { getUi } from "@/server/i18n/locale";
 
 /**
  * Platform acts.
@@ -62,33 +63,36 @@ export async function leaveViewAsAction(): Promise<ActionResult> {
 }
 
 export async function setOverridesAction(organizationId: string, patch: Record<string, unknown>, reason?: string): Promise<ActionResult> {
+  const tr = await getUi();
   try {
     const user = await requirePermission("settings:manage");
     await setOverrides({ organizationId, patch, actorId: user.id, reason });
     revalidatePath("/platform/workspaces");
-    return ok(null, "Saved");
+    return ok(null, tr("Saved"));
   } catch (err) {
     return toActionFailure(err);
   }
 }
 
 export async function clearOverridesAction(organizationId: string): Promise<ActionResult> {
+  const tr = await getUi();
   try {
     const user = await requirePermission("settings:manage");
     await clearOverrides(organizationId, user.id);
     revalidatePath("/platform/workspaces");
-    return ok(null, "Back to the plan");
+    return ok(null, tr("Back to the plan"));
   } catch (err) {
     return toActionFailure(err);
   }
 }
 
 export async function setPlatformRoleAction(userId: string, role: Role): Promise<ActionResult> {
+  const tr = await getUi();
   try {
     const user = await requirePermission("settings:manage");
     await setPlatformRole({ userId, role, actorId: user.id });
     revalidatePath("/platform/people");
-    return ok(null, "Role changed");
+    return ok(null, tr("Role changed"));
   } catch (err) {
     return toActionFailure(err);
   }

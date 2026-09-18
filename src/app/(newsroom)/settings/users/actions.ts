@@ -5,6 +5,7 @@ import { requirePermission } from "@/server/auth/session";
 import { createUser, resetUserPassword, updateUser, userInputSchema, userPatchSchema } from "@/server/settings/users";
 import { ok, toActionFailure, type ActionResult } from "@/lib/action-result";
 import type { z } from "zod";
+import { getUi } from "@/server/i18n/locale";
 
 export async function createUserAction(input: z.input<typeof userInputSchema>): Promise<ActionResult<{ id: string; temporaryPassword: string; email: string }>> {
   try {
@@ -29,11 +30,12 @@ export async function updateUserAction(id: string, patch: z.input<typeof userPat
 }
 
 export async function resetPasswordAction(id: string): Promise<ActionResult<{ temporaryPassword: string }>> {
+  const tr = await getUi();
   try {
     const actor = await requirePermission("user:manage");
     const result = await resetUserPassword(id, actor.id);
     revalidatePath("/settings/users");
-    return ok(result, "Temporary password generated · all sessions signed out");
+    return ok(result, tr("Temporary password generated · all sessions signed out"));
   } catch (err) {
     return toActionFailure(err);
   }

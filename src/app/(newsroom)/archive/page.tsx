@@ -15,15 +15,17 @@ import { NoAccess } from "@/components/settings/no-access";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Badge } from "@/components/ui/badge";
 import { formatNumber } from "@/lib/utils";
+import { getUi } from "@/server/i18n/locale";
 
 export const dynamic = "force-dynamic";
 
 const FILTER_KEYS = ["q", "editionId", "section", "storyType", "campusId", "person", "organisation", "association"] as const;
 
 export default async function ArchivePage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
+  const tr = await getUi();
   const sp = await searchParams;
   const user = await getCurrentUser();
-  if (!hasPermission(user, "archive:view")) return <NoAccess title="Archive" permission="archive:view" />;
+  if (!hasPermission(user, "archive:view")) return <NoAccess title={tr("Archive")} permission="archive:view" />;
 
   const filters: ArchiveFilters = {
     q: sp.q,
@@ -49,26 +51,26 @@ export default async function ArchivePage({ searchParams }: { searchParams: Prom
 
   return (
     <>
-      <PageHeader title="Archive" description={`${shelf.length} issue${shelf.length === 1 ? "" : "s"} · ${formatNumber(options.stats.stories)} stories · ${formatNumber(options.stats.people)} people · ${formatNumber(options.stats.organisations)} organisations`}
+      <PageHeader title={tr("Archive")} description={`${shelf.length} issue${shelf.length === 1 ? "" : "s"} · ${formatNumber(options.stats.stories)} stories · ${formatNumber(options.stats.people)} people · ${formatNumber(options.stats.organisations)} organisations`}
       >
         <HubTabs tabs={WORKBENCH_TABS} />
       </PageHeader>
       <PageBody className="space-y-6">
         <StatGrid columns={4}>
-          <Stat label="Issues" value={shelf.length} hint={`${withDownloads} with a rendered export`} />
-          <Stat label="Stories" value={options.stats.stories} hint="selected, written or published" />
-          <Stat label="Business Deep Dives" value={options.stats.bdds} hint="structured company cases" />
-          <Stat label="People & organisations" value={options.stats.people + options.stats.organisations} hint={`${options.stats.people} people · ${options.stats.organisations} organisations`} />
+          <Stat label={tr("Issues")} value={shelf.length} hint={`${withDownloads} with a rendered export`} />
+          <Stat label={tr("Stories")} value={options.stats.stories} hint={tr("selected, written or published")} />
+          <Stat label={tr("Business Deep Dives")} value={options.stats.bdds} hint={tr("structured company cases")} />
+          <Stat label={tr("People & organisations")} value={options.stats.people + options.stats.organisations} hint={`${options.stats.people} people · ${options.stats.organisations} organisations`} />
         </StatGrid>
 
         <Suspense>
           <FilterBar
-            searchPlaceholder="Search headlines, standfirsts, article text, people, companies…"
+            searchPlaceholder={tr("Search headlines, standfirsts, article text, people, companies…")}
             filters={[
-              { key: "editionId", label: "Issue", options: options.editions.map((e) => ({ value: e.id, label: e.label })), allLabel: "All issues" },
-              { key: "section", label: "Section", options: options.sections.map((sec) => ({ value: sec.slug, label: sec.name })) },
-              { key: "storyType", label: "Type", options: options.storyTypes.map((t) => ({ value: t.value, label: t.label })) },
-              { key: "campusId", label: "Campus", options: options.campuses.map((c) => ({ value: c.id, label: c.name })) },
+              { key: "editionId", label: tr("Issue"), options: options.editions.map((e) => ({ value: e.id, label: e.label })), allLabel: tr("All issues") },
+              { key: "section", label: tr("Section"), options: options.sections.map((sec) => ({ value: sec.slug, label: sec.name })) },
+              { key: "storyType", label: tr("Type"), options: options.storyTypes.map((t) => ({ value: t.value, label: t.label })) },
+              { key: "campusId", label: tr("Campus"), options: options.campuses.map((c) => ({ value: c.id, label: c.name })) },
             ]}
           >
             {(["person", "organisation", "association"] as const)
@@ -93,7 +95,7 @@ export default async function ArchivePage({ searchParams }: { searchParams: Prom
               ))}
             </div>
           ) : (
-            <EmptyState icon={Archive} title="No issue in the archive yet" description="Editions appear here as soon as they exist; their PDF and Word files appear once a version has been rendered." />
+            <EmptyState icon={Archive} title={tr("No issue in the archive yet")} description={tr("Editions appear here as soon as they exist; their PDF and Word files appear once a version has been rendered.")} />
           )}
         </section>
 
@@ -112,7 +114,7 @@ export default async function ArchivePage({ searchParams }: { searchParams: Prom
                       </Link>
                       <span className="text-2xs text-muted-foreground">{group.issueLabel}</span>
                     </div>
-                    <span className="tabular text-2xs text-muted-foreground">{group.stories.length} article{group.stories.length === 1 ? "" : "s"}</span>
+                    <span className="tabular text-2xs text-muted-foreground">{group.stories.length} {" "}{tr("article")}{group.stories.length === 1 ? "" : "s"}</span>
                   </div>
                   {group.stories.map((story) => (
                     <StoryResult key={story.id} story={story} />

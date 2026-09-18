@@ -3,10 +3,12 @@ import { getOrganization, listMembers } from "@/server/tenancy/service";
 import { PageBody, PageHeader, SectionTitle } from "@/components/newsroom/page-header";
 import { Badge } from "@/components/ui/badge";
 import { WorkspaceForm } from "./workspace-form";
+import { getUi } from "@/server/i18n/locale";
 
 export const dynamic = "force-dynamic";
 
 export default async function WorkspaceSettingsPage() {
+  const tr = await getUi();
   const tenant = await requireTenant();
   const [organization, members] = await Promise.all([getOrganization(tenant.organizationId), listMembers(tenant.organizationId)]);
   const canEdit = tenant.role === "OWNER" || tenant.role === "ADMIN";
@@ -14,7 +16,7 @@ export default async function WorkspaceSettingsPage() {
 
   return (
     <>
-      <PageHeader title="Workspace" description="Who you are, and how you look to your readers." />
+      <PageHeader title={tr("Workspace")} description={tr("Who you are, and how you look to your readers.")} />
       <PageBody className="space-y-8">
         <WorkspaceForm
           canEdit={canEdit}
@@ -34,7 +36,7 @@ export default async function WorkspaceSettingsPage() {
         />
 
         <section className="max-w-2xl">
-          <SectionTitle>Members</SectionTitle>
+          <SectionTitle>{tr("Members")}</SectionTitle>
           <ul className="mt-3 divide-y divide-border rounded-lg border border-border bg-card">
             {members.map((member) => (
               <li key={member.id} className="flex items-center justify-between gap-3 px-4 py-2.5">
@@ -47,8 +49,7 @@ export default async function WorkspaceSettingsPage() {
             ))}
           </ul>
           <p className="mt-2 text-xs text-muted-foreground">
-            Workspace roles decide what someone can do here. Platform roles, in Users &amp; roles, decide what they can do in the newsroom.
-          </p>
+            {tr("Workspace roles decide what someone can do here. Platform roles, in Users & roles, decide what they can do in the newsroom.")}</p>
         </section>
       </PageBody>
     </>

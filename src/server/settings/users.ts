@@ -12,6 +12,7 @@ import { destroyAllUserSessions } from "@/server/auth/session";
 import { hashToken } from "@/server/auth/tokens";
 import { NotFoundError, ValidationError } from "@/lib/action-result";
 import { ROLES } from "@/lib/auth/permissions";
+import { onlySent } from "@/lib/zod-patch";
 
 export const userInputSchema = z.object({
   name: z.string().trim().min(2, "Name is too short").max(80),
@@ -81,7 +82,7 @@ export async function createUser(raw: z.input<typeof userInputSchema>, actorId?:
 }
 
 export async function updateUser(id: string, raw: z.input<typeof userPatchSchema>, actorId?: string | null) {
-  const patch = userPatchSchema.parse(raw);
+  const patch = onlySent(userPatchSchema.parse(raw), raw);
   const current = await db.query.users.findFirst({ where: eq(users.id, id) });
   if (!current) throw new NotFoundError("User");
   if (actorId === id) {

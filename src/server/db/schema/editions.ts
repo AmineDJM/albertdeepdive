@@ -39,6 +39,11 @@ export const editions = pgTable(
     approvedAt: timestamp("approved_at", { withTimezone: true }),
     publishedAt: timestamp("published_at", { withTimezone: true }),
     archivedAt: timestamp("archived_at", { withTimezone: true }),
+    /**
+     * Out of sight, not out of the record. A hidden edition leaves every list and the overview and
+     * comes back with one click. Archiving is a state in the edition's life; this is housekeeping.
+     */
+    hiddenAt: timestamp("hidden_at", { withTimezone: true }),
     publishedVersionId: uuid("published_version_id"),
     notes: text("notes"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

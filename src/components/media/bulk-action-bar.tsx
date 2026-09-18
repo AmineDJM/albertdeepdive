@@ -27,6 +27,7 @@ import {
   bulkDescribeAction,
   bulkSetRightsAction,
 } from "@/app/(newsroom)/editions/[editionId]/media/actions";
+import { useUi } from "@/components/i18n/provider";
 
 export function BulkActionBar({
   editionId,
@@ -41,6 +42,7 @@ export function BulkActionBar({
   canRights: boolean;
   onDone: () => void;
 }) {
+  const tr = useUi();
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [status, setStatus] = useState<RightsStatus | null>(null);
@@ -93,17 +95,16 @@ export function BulkActionBar({
   return (
     <div
       role="toolbar"
-      aria-label="Bulk actions"
+      aria-label={tr("Bulk actions")}
       className="border-border bg-card/95 supports-[backdrop-filter]:bg-card/85 sticky bottom-3 z-20 flex flex-wrap items-center gap-2 rounded-lg border px-3 py-2 shadow-lg backdrop-blur"
     >
       <span className="tabular text-[13px] font-medium">
-        {n} {plural} selected
-      </span>
+        {n} {plural} {" "}{tr("selected")}</span>
       <span className="bg-border mx-1 h-4 w-px" />
       {canRights ? (
         <Popover open={status !== null} onOpenChange={(open) => !open && setStatus(null)}>
           <div className="flex items-center gap-1">
-            <span className="label-caps mr-1">Rights</span>
+            <span className="label-caps mr-1">{tr("Rights")}</span>
             {RIGHTS_STATUSES.map((st) => (
               <PopoverTrigger asChild key={st}>
                 <Button
@@ -121,10 +122,10 @@ export function BulkActionBar({
           </div>
           <PopoverContent align="start" side="top" className="w-80 space-y-3">
             <div className="text-[13px] font-medium">
-              Set {n} {plural} to {status ? RIGHTS_STATUS_LABELS[status] : ""}
+              {tr("Set")}{" "}{n} {plural} {" "}{tr("to")}{" "}{status ? RIGHTS_STATUS_LABELS[status] : ""}
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="bulk-rights-note">Note (why)</Label>
+              <Label htmlFor="bulk-rights-note">{tr("Note (why)")}</Label>
               <Textarea
                 id="bulk-rights-note"
                 rows={2}
@@ -140,11 +141,9 @@ export function BulkActionBar({
             </div>
             <div className="flex justify-end gap-2">
               <Button variant="ghost" size="sm" onClick={() => setStatus(null)}>
-                Cancel
-              </Button>
+                {tr("Cancel")}</Button>
               <Button size="sm" loading={pending} onClick={applyRights}>
-                Apply
-              </Button>
+                {tr("Apply")}</Button>
             </div>
           </PopoverContent>
         </Popover>
@@ -153,27 +152,23 @@ export function BulkActionBar({
         <>
           <span className="bg-border mx-1 h-4 w-px" />
           <Button variant="outline" size="sm" onClick={describe} loading={pending}>
-            <Sparkles /> Describe with AI
-          </Button>
+            <Sparkles /> {" "}{tr("Describe with AI")}</Button>
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button variant="outline" size="sm">
-                <Archive /> Archive
-              </Button>
+                <Archive /> {" "}{tr("Archive")}</Button>
             </AlertDialogTrigger>
             <AlertDialogContent>
               <AlertDialogHeader>
                 <AlertDialogTitle>
-                  Archive {n} {plural}?
+                  {tr("Archive")}{" "}{n} {plural}?
                 </AlertDialogTitle>
                 <AlertDialogDescription>
-                  Archived assets disappear from the library and the pickers but keep their files,
-                  links and history. You can restore them from the Archived filter.
-                </AlertDialogDescription>
+                  {tr("Archived assets disappear from the library and the pickers but keep their files, links and history. You can restore them from the Archived filter.")}</AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={archive}>Archive</AlertDialogAction>
+                <AlertDialogCancel>{tr("Cancel")}</AlertDialogCancel>
+                <AlertDialogAction onClick={archive}>{tr("Archive")}</AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
@@ -184,10 +179,9 @@ export function BulkActionBar({
         size="sm"
         className="ml-auto"
         onClick={onDone}
-        aria-label="Clear selection"
+        aria-label={tr("Clear selection")}
       >
-        <X /> Clear
-      </Button>
+        <X /> {" "}{tr("Clear")}</Button>
     </div>
   );
 }

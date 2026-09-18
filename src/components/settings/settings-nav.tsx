@@ -3,11 +3,18 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { LucideIcon } from "lucide-react";
-import { Activity, AtSign, BookOpen, Building2, CreditCard, Cpu, LayoutList, Mail, Palette, ScrollText, Shield, SlidersHorizontal, UserRound, Users } from "lucide-react";
+import { Activity, AtSign, BookOpen, Building2, CreditCard, Cpu, LayoutList, Mail, Palette, ScrollText, Shield, SlidersHorizontal, UserRound, Users, Wallet } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { roleHasPermission, type Permission, type Role } from "@/lib/auth/permissions";
+import { useUi } from "@/components/i18n/provider";
 
-export type SettingsNavItem = { href: string; label: string; icon: LucideIcon; permission?: Permission | Permission[]; hint?: string };
+export type WorkspaceRole = "OWNER" | "ADMIN" | "EDITOR" | "CONTRIBUTOR" | "VIEWER";
+/**
+ * An item is shown for a platform permission, or for a role in the workspace, or either. The
+ * workspace's own configuration — its name, brand, plan, payment account — is the owner's to see
+ * whatever they are in Briefly; the platform-wide settings stay behind the platform permission.
+ */
+export type SettingsNavItem = { href: string; label: string; icon: LucideIcon; permission?: Permission | Permission[]; workspaceRoles?: WorkspaceRole[]; hint?: string };
 
 /**
  * Settings, in three groups instead of six.
@@ -26,9 +33,10 @@ export const SETTINGS_NAV: { label: string; items: SettingsNavItem[] }[] = [
     label: "Workspace",
     items: [
       { href: "/settings/profile", label: "Your profile", icon: UserRound, hint: "Name, password, theme" },
-      { href: "/settings/workspace", label: "Workspace", icon: Building2, permission: "settings:manage", hint: "Name, address, language" },
-      { href: "/settings/brand", label: "Brand", icon: Palette, permission: "settings:manage", hint: "Colours, type and voice" },
-      { href: "/settings/billing", label: "Plan & usage", icon: CreditCard, permission: "settings:manage", hint: "What you get and what you use" },
+      { href: "/settings/workspace", label: "Workspace", icon: Building2, permission: "settings:manage", workspaceRoles: ["OWNER", "ADMIN"], hint: "Name, address, language" },
+      { href: "/settings/brand", label: "Brand", icon: Palette, permission: "settings:manage", workspaceRoles: ["OWNER", "ADMIN"], hint: "Colours, type and voice" },
+      { href: "/settings/billing", label: "Plan & usage", icon: CreditCard, permission: "settings:manage", workspaceRoles: ["OWNER", "ADMIN"], hint: "What you get and what you use" },
+      { href: "/settings/payments", label: "Reader payments", icon: Wallet, permission: "settings:manage", workspaceRoles: ["OWNER", "ADMIN"], hint: "Charge for a title on your Stripe" },
       { href: "/settings/users", label: "Users & roles", icon: Users, permission: "user:manage", hint: "Who can do what" },
     ],
   },
@@ -53,18 +61,20 @@ export const SETTINGS_NAV: { label: string; items: SettingsNavItem[] }[] = [
   },
 ];
 
-export function canSeeSettingsItem(role: Role, item: SettingsNavItem) {
+export function canSeeSettingsItem(role: Role, item: SettingsNavItem, workspaceRole?: WorkspaceRole | null) {
+  if (item.workspaceRoles && workspaceRole && item.workspaceRoles.includes(workspaceRole)) return true;
   if (!item.permission) return true;
   const list = Array.isArray(item.permission) ? item.permission : [item.permission];
   return list.some((p) => roleHasPermission(role, p));
 }
 
-export function SettingsNav({ role }: { role: Role }) {
+export function SettingsNav({ role, workspaceRole = null }: { role: Role; workspaceRole?: WorkspaceRole | null }) {
+  const tr = useUi();
   const pathname = usePathname();
   return (
-    <nav aria-label="Settings" className="flex flex-col gap-3">
+    <nav aria-label={tr("Settings")} className="flex flex-col gap-3">
       {SETTINGS_NAV.map((group) => {
-        const items = group.items.filter((item) => canSeeSettingsItem(role, item));
+        const items = group.items.filter((item) => canSeeSettingsItem(role, item, workspaceRole));
         if (!items.length) return null;
         return (
           <div key={group.label}>

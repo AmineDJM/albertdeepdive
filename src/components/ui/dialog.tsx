@@ -4,6 +4,7 @@ import * as React from "react";
 import { Dialog as DialogPrimitive } from "radix-ui";
 import { XIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useUi } from "@/components/i18n/provider";
 
 const Dialog = DialogPrimitive.Root;
 const DialogTrigger = DialogPrimitive.Trigger;
@@ -27,6 +28,7 @@ function DialogContent({
   size = "md",
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Content> & { showCloseButton?: boolean; size?: "sm" | "md" | "lg" | "xl" }) {
+  const tr = useUi();
   const sizes = { sm: "sm:max-w-sm", md: "sm:max-w-lg", lg: "sm:max-w-2xl", xl: "sm:max-w-4xl" };
   return (
     <DialogPortal>
@@ -44,7 +46,7 @@ function DialogContent({
         {showCloseButton ? (
           <DialogPrimitive.Close className="absolute top-3.5 right-3.5 rounded-sm opacity-60 transition-opacity hover:opacity-100 focus:ring-2 focus:ring-ring/50 focus:outline-none disabled:pointer-events-none [&_svg]:size-4">
             <XIcon />
-            <span className="sr-only">Close</span>
+            <span className="sr-only">{tr("Close")}</span>
           </DialogPrimitive.Close>
         ) : null}
       </DialogPrimitive.Content>

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { assignPlanAction } from "./actions";
 import { NativeSelect } from "@/components/ui/native-select";
+import { useUi } from "@/components/i18n/provider";
 
 /**
  * Move one workspace onto a plan without going through Stripe.
@@ -14,12 +15,13 @@ import { NativeSelect } from "@/components/ui/native-select";
  * next webhook will put it back where Stripe says it belongs.
  */
 export function WorkspacePlanPicker({ organizationId, planId, plans }: { organizationId: string; planId: string | null; plans: { id: string; name: string }[] }) {
+  const tr = useUi();
   const router = useRouter();
   const [pending, startTransition] = useTransition();
 
   return (
     <NativeSelect
-      aria-label="Plan"
+      aria-label={tr("Plan")}
       value={planId ?? ""}
       disabled={pending}
       className="h-7 w-[132px] text-xs"
@@ -28,12 +30,12 @@ export function WorkspacePlanPicker({ organizationId, planId, plans }: { organiz
         startTransition(async () => {
           const result = await assignPlanAction(organizationId, next);
           if (!result.ok) toast.error(result.error);
-          else toast.success("Plan updated");
+          else toast.success(tr("Plan updated"));
           router.refresh();
         });
       }}
     >
-      <option value="">No plan</option>
+      <option value="">{tr("No plan")}</option>
       {plans.map((p) => (
         <option key={p.id} value={p.id}>
           {p.name}

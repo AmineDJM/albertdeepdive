@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
 import { addContributorsToEditionAction, searchCandidatesAction, type CandidateContributor } from "@/app/(newsroom)/editions/[editionId]/campaign/actions";
 import { enumLabel } from "@/lib/utils";
+import { useUi } from "@/components/i18n/provider";
 
 /**
  * Adds specific people from the pool to this edition's campaign, by hand — beyond the random
@@ -19,6 +20,7 @@ import { enumLabel } from "@/lib/utils";
  * are emailed their personal link as soon as they are added.
  */
 export function AddContributorsDialog({ editionId, campuses, campaignOpen }: { editionId: string; campuses: { id: string; name: string }[]; campaignOpen: boolean }) {
+  const tr = useUi();
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [loading, startLoad] = useTransition();
@@ -70,26 +72,24 @@ export function AddContributorsDialog({ editionId, campuses, campaignOpen }: { e
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogTrigger asChild>
         <Button size="xs" variant="outline">
-          <UserPlus /> Add contributors
-        </Button>
+          <UserPlus /> {" "}{tr("Add contributors")}</Button>
       </DialogTrigger>
       <DialogContent size="lg">
         <DialogHeader>
-          <DialogTitle>Add contributors to this edition</DialogTitle>
+          <DialogTitle>{tr("Add contributors to this edition")}</DialogTitle>
           <DialogDescription>
-            Pick people from the pool to invite on top of the automatic selection.
-            {campaignOpen ? " The campaign is open, so they receive their personal link straight away." : " They will be invited when the campaign opens."}
+            {tr("Pick people from the pool to invite on top of the automatic selection.")}{" "}{campaignOpen ? " The campaign is open, so they receive their personal link straight away." : " They will be invited when the campaign opens."}
           </DialogDescription>
         </DialogHeader>
 
         <div className="flex flex-wrap items-center gap-2">
           <div className="relative min-w-0 flex-1">
             <Search className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground" />
-            <Input value={q} onChange={(e) => { setQ(e.target.value); load(e.target.value, campusId); }} placeholder="Search name or email…" className="h-8 pl-8 text-xs" />
+            <Input value={q} onChange={(e) => { setQ(e.target.value); load(e.target.value, campusId); }} placeholder={tr("Search name or email…")} className="h-8 pl-8 text-xs" />
           </div>
-          <NativeSelect aria-label="Campus" className="h-8 w-40 text-xs" value={campusId} onChange={(e) => { setCampusId(e.target.value); load(q, e.target.value); }}>
-            <option value="">All campuses</option>
-            <option value="school">School-wide</option>
+          <NativeSelect aria-label={tr("Campus")} className="h-8 w-40 text-xs" value={campusId} onChange={(e) => { setCampusId(e.target.value); load(q, e.target.value); }}>
+            <option value="">{tr("All campuses")}</option>
+            <option value="school">{tr("School-wide")}</option>
             {campuses.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.name}
@@ -101,8 +101,7 @@ export function AddContributorsDialog({ editionId, campuses, campaignOpen }: { e
         <div className="max-h-[46vh] min-h-40 overflow-y-auto rounded-md border border-border">
           {loading ? (
             <div className="flex h-40 items-center justify-center text-xs text-muted-foreground">
-              <Loader2 className="mr-2 size-4 animate-spin" /> Searching…
-            </div>
+              <Loader2 className="mr-2 size-4 animate-spin" /> {" "}{tr("Searching…")}</div>
           ) : candidates.length ? (
             <ul className="divide-y divide-border">
               {candidates.map((c) => (
@@ -117,7 +116,7 @@ export function AddContributorsDialog({ editionId, campuses, campaignOpen }: { e
                     </span>
                     <span className="shrink-0 text-2xs text-muted-foreground">{c.campusName ?? "School-wide"}</span>
                     <Badge variant="outline" className="shrink-0 text-2xs">
-                      {enumLabel(c.type)}
+                      {tr(enumLabel(c.type))}
                     </Badge>
                   </label>
                 </li>
@@ -125,19 +124,18 @@ export function AddContributorsDialog({ editionId, campuses, campaignOpen }: { e
             </ul>
           ) : (
             <div className="flex h-40 flex-col items-center justify-center gap-1 text-center text-xs text-muted-foreground">
-              <p>No one left to add.</p>
-              <p className="text-2xs">Everyone matching is already invited. Add someone new on the Contributors screen first.</p>
+              <p>{tr("No one left to add.")}</p>
+              <p className="text-2xs">{tr("Everyone matching is already invited. Add someone new on the Contributors screen first.")}</p>
             </div>
           )}
         </div>
 
         <DialogFooter className="items-center">
-          <span className="mr-auto text-2xs text-muted-foreground">{selected.size} selected</span>
+          <span className="mr-auto text-2xs text-muted-foreground">{selected.size} {" "}{tr("selected")}</span>
           <Button variant="outline" onClick={() => setOpen(false)}>
-            Cancel
-          </Button>
+            {tr("Cancel")}</Button>
           <Button onClick={submit} loading={saving} disabled={!selected.size}>
-            <UserPlus /> Add {selected.size || ""} {selected.size === 1 ? "contributor" : "contributors"}
+            <UserPlus /> {" "}{tr("Add")}{" "}{selected.size || ""} {selected.size === 1 ? "contributor" : "contributors"}
           </Button>
         </DialogFooter>
       </DialogContent>

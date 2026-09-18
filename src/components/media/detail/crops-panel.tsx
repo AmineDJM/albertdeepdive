@@ -10,6 +10,7 @@ import type { CropSuggestion } from "@/server/db/schema/submissions";
 import type { MediaVariantView } from "@/server/media/library";
 import { formatBytes } from "@/server/media/constants";
 import { clearCropAction, setCropAction } from "@/app/(newsroom)/media/[mediaId]/actions";
+import { useUi } from "@/components/i18n/provider";
 
 /** Shows the region a crop would keep, using the (proportional) web preview positioned with CSS. */
 function CropPreview({
@@ -60,6 +61,7 @@ export function CropsPanel({
   crop: MediaVariantView | null;
   canManage: boolean;
 }) {
+  const tr = useUi();
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [busy, setBusy] = useState<string | null>(null);
@@ -98,7 +100,7 @@ export function CropsPanel({
   }
 
   if (!width || !height)
-    return <p className="text-muted-foreground text-xs">No dimensions known for this asset.</p>;
+    return <p className="text-muted-foreground text-xs">{tr("No dimensions known for this asset.")}</p>;
 
   return (
     <div className="space-y-3">
@@ -120,7 +122,7 @@ export function CropsPanel({
                     {c.aspect} · {c.width}×{c.height}
                   </div>
                 </div>
-                {current ? <Badge variant="brand">current</Badge> : null}
+                {current ? <Badge variant="brand">{tr("current")}</Badge> : null}
               </div>
               {canManage ? (
                 <Button
@@ -148,11 +150,11 @@ export function CropsPanel({
             style={{ aspectRatio: `${crop.width} / ${crop.height}` }}
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={crop.url} alt="Current crop" className="size-full object-cover" />
+            <img src={crop.url} alt={tr("Current crop")} className="size-full object-cover" />
           </a>
           <div className="min-w-0 flex-1 text-xs">
             <div className="font-medium">
-              Current crop{crop.cropSpec ? `: ${crop.cropSpec.name} (${crop.cropSpec.aspect})` : ""}
+              {tr("Current crop")}{crop.cropSpec ? `: ${crop.cropSpec.name} (${crop.cropSpec.aspect})` : ""}
             </div>
             <div className="tabular text-muted-foreground">
               {crop.width}×{crop.height} · {crop.format.toUpperCase()} ·{" "}
@@ -161,14 +163,13 @@ export function CropsPanel({
           </div>
           <Button asChild size="xs" variant="outline">
             <a href={crop.downloadUrl}>
-              <Download /> Download
-            </a>
+              <Download /> {" "}{tr("Download")}</a>
           </Button>
           {canManage ? (
             <Button
               size="xs"
               variant="ghost"
-              aria-label="Remove crop"
+              aria-label={tr("Remove crop")}
               loading={pending}
               onClick={remove}
             >
@@ -178,9 +179,7 @@ export function CropsPanel({
         </div>
       ) : (
         <p className="text-2xs text-muted-foreground">
-          No crop generated yet. Crops are cut from the original file at full resolution and used by
-          the layout templates.
-        </p>
+          {tr("No crop generated yet. Crops are cut from the original file at full resolution and used by the layout templates.")}</p>
       )}
     </div>
   );

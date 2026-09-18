@@ -9,7 +9,7 @@ const schema = z.object({
   DATABASE_URL_TEST: z.string().optional(),
   AUTH_SECRET: z.string().min(16).default("development-only-secret-change-me-please"),
   SESSION_TTL_DAYS: z.coerce.number().int().positive().default(30),
-  SEED_ADMIN_EMAIL: z.string().email().default("admin@albertschool.com"),
+  SEED_ADMIN_EMAIL: z.string().email().default("admin@briefly.press"),
   SEED_ADMIN_PASSWORD: z.string().min(8).default("albert-deep-dive"),
   AI_PROVIDER: z.enum(["openai", "local"]).default("local"),
   OPENAI_API_KEY: z.string().optional(),

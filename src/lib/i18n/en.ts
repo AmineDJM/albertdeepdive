@@ -128,6 +128,14 @@ export const en = {
     publishedWith: "Published with {brand}",
     subscribeTo: "Subscribe to {name}",
     getNextEdition: "to get the next edition.",
+    priceLine: "{price}. Billed by Stripe, cancelled in one click.",
+    subscribeFor: "Subscribe for {price}",
+    paidReassurance: "Secure checkout by Stripe. Leave in one click, any time; nothing further is charged.",
+    toCheckout: "Taking you to the secure checkout…",
+    paidTitle: "Welcome aboard",
+    paidBody: "Your payment went through and you're subscribed. The next edition will land in your inbox; you can leave in one click from any email.",
+    paymentFailedTitle: "That didn't go through",
+    tryAgain: "Try again",
   },
 
   editionEmail: {

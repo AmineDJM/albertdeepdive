@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { addFactAction, rejectFactAction, resolveConflictAction, settleFactAction, verifyFactAction } from "@/app/(newsroom)/stories/[storyId]/actions";
 import { cn, enumLabel, truncate } from "@/lib/utils";
+import { useUi } from "@/components/i18n/provider";
 
 export type FactItem = {
   id: string;
@@ -47,6 +48,7 @@ const CONFIDENCE_LABEL: Record<string, string> = {
  * resolved automatically — an editor picks the version that goes to print and says why.
  */
 export function FactList({ storyId, facts, submissions, canEdit }: { storyId: string; facts: FactItem[]; submissions: { id: string; title: string; contributorName: string }[]; canEdit: boolean }) {
+  const tr = useUi();
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [newFact, setNewFact] = useState("");
@@ -71,7 +73,7 @@ export function FactList({ storyId, facts, submissions, canEdit }: { storyId: st
   }
 
   if (!active.length) {
-    return <p className="rounded-lg border border-dashed border-border p-4 text-center text-xs text-muted-foreground">No facts extracted yet. Run the AI processing to build the fact sheet from the sources.</p>;
+    return <p className="rounded-lg border border-dashed border-border p-4 text-center text-xs text-muted-foreground">{tr("No facts extracted yet. Run the AI processing to build the fact sheet from the sources.")}</p>;
   }
 
   return (
@@ -89,8 +91,8 @@ export function FactList({ storyId, facts, submissions, canEdit }: { storyId: st
                   <p className="text-[13px]">{fact.statement}</p>
                   <div className="mt-1 flex flex-wrap items-center gap-1.5">
                     <Badge variant={CONFIDENCE_TONE[fact.confidence] ?? "muted"}>{CONFIDENCE_LABEL[fact.confidence] ?? enumLabel(fact.confidence)}</Badge>
-                    {fact.category ? <Badge variant="outline">{enumLabel(fact.category)}</Badge> : null}
-                    {fact.status === "RESOLVED" ? <Badge variant="success">Resolved</Badge> : null}
+                    {fact.category ? <Badge variant="outline">{tr(enumLabel(fact.category))}</Badge> : null}
+                    {fact.status === "RESOLVED" ? <Badge variant="success">{tr("Resolved")}</Badge> : null}
                     {source ? (
                       <Tooltip>
                         <TooltipTrigger asChild>
@@ -98,31 +100,29 @@ export function FactList({ storyId, facts, submissions, canEdit }: { storyId: st
                         </TooltipTrigger>
                         <TooltipContent>
                           <p className="font-medium">{source.contributorName}</p>
-                          {fact.sourceExcerpt ? <p className="mt-1 max-w-xs italic">&ldquo;{fact.sourceExcerpt}&rdquo;</p> : null}
+                          {fact.sourceExcerpt ? <p className="mt-1 max-w-xs italic">{tr("“")}{fact.sourceExcerpt}{tr("”")}</p> : null}
                         </TooltipContent>
                       </Tooltip>
                     ) : (
-                      <span className="text-2xs text-muted-foreground">No source recorded</span>
+                      <span className="text-2xs text-muted-foreground">{tr("No source recorded")}</span>
                     )}
                   </div>
                   {fact.notes ? <p className="mt-1 text-2xs text-muted-foreground">{fact.notes}</p> : null}
                   {disputed && rivals.length ? (
                     <div className="mt-1.5 rounded-md border border-border bg-card p-2">
-                      <p className="label-caps">Conflicting version{rivals.length > 1 ? "s" : ""}</p>
+                      <p className="label-caps">{tr("Conflicting version")}{rivals.length > 1 ? "s" : ""}</p>
                       {rivals.map((r) => (
                         <div key={r.id} className="mt-1 flex items-start justify-between gap-2">
                           <p className="text-xs">{r.statement}</p>
                           {canEdit ? (
                             <Button size="xs" variant="outline" disabled={pending} onClick={() => run(() => resolveConflictAction(storyId, fact.id, r.id, "Editor chose this version"))}>
-                              Keep this
-                            </Button>
+                              {tr("Keep this")}</Button>
                           ) : null}
                         </div>
                       ))}
                       {canEdit ? (
                         <Button size="xs" variant="outline" className="mt-1.5" disabled={pending} onClick={() => run(() => resolveConflictAction(storyId, fact.id, fact.id, "Editor confirmed this version"))}>
-                          Keep the statement above
-                        </Button>
+                          {tr("Keep the statement above")}</Button>
                       ) : null}
                     </div>
                   ) : null}
@@ -132,22 +132,21 @@ export function FactList({ storyId, facts, submissions, canEdit }: { storyId: st
                   {disputed && !rivals.length && canEdit ? (
                     <div className="mt-1.5 flex items-center gap-2">
                       <Button size="xs" variant="outline" disabled={pending} onClick={() => { setSettling(fact); setStatement(fact.statement); setReason(""); }}>
-                        <ShieldCheck /> Keep this
-                      </Button>
-                      <span className="text-2xs text-muted-foreground">Say which reading is right, and why.</span>
+                        <ShieldCheck /> {" "}{tr("Keep this")}</Button>
+                      <span className="text-2xs text-muted-foreground">{tr("Say which reading is right, and why.")}</span>
                     </div>
                   ) : null}
                 </div>
                 {canEdit && !disputed ? (
                   <div className="flex shrink-0 gap-1">
                     {fact.confidence !== "EDITOR_VERIFIED" ? (
-                      <Button size="icon-xs" variant="ghost" title="Mark as verified" aria-label="Mark as verified" disabled={pending} onClick={() => run(() => verifyFactAction(storyId, fact.id))}>
+                      <Button size="icon-xs" variant="ghost" title={tr("Mark as verified")} aria-label={tr("Mark as verified")} disabled={pending} onClick={() => run(() => verifyFactAction(storyId, fact.id))}>
                         <ShieldCheck />
                       </Button>
                     ) : (
                       <Check className="size-3.5 text-success" />
                     )}
-                    <Button size="icon-xs" variant="ghost" title="Reject this fact" aria-label="Reject this fact" disabled={pending} onClick={() => run(() => rejectFactAction(storyId, fact.id))}>
+                    <Button size="icon-xs" variant="ghost" title={tr("Reject this fact")} aria-label={tr("Reject this fact")} disabled={pending} onClick={() => run(() => rejectFactAction(storyId, fact.id))}>
                       <X />
                     </Button>
                   </div>
@@ -175,51 +174,45 @@ export function FactList({ storyId, facts, submissions, canEdit }: { storyId: st
               });
             }}
           >
-            <Input value={newFact} onChange={(e) => setNewFact(e.target.value)} placeholder="A fact you verified yourself…" className="text-xs" autoFocus />
+            <Input value={newFact} onChange={(e) => setNewFact(e.target.value)} placeholder={tr("A fact you verified yourself…")} className="text-xs" autoFocus />
             <Button size="sm" type="submit" loading={pending}>
-              Add
-            </Button>
+              {tr("Add")}</Button>
             <Button size="sm" variant="ghost" type="button" onClick={() => setAdding(false)}>
-              Cancel
-            </Button>
+              {tr("Cancel")}</Button>
           </form>
         ) : (
           <Button size="xs" variant="ghost" onClick={() => setAdding(true)}>
-            Add a verified fact
-          </Button>
+            {tr("Add a verified fact")}</Button>
         )
       ) : null}
     
       <Dialog open={!!settling} onOpenChange={(v) => !v && setSettling(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Settle this fact</DialogTitle>
+            <DialogTitle>{tr("Settle this fact")}</DialogTitle>
             <DialogDescription>
-              The sources disagree. Write the version that is correct and say how you know. The wording you keep is the wording the article and the printed issue will use.
-            </DialogDescription>
+              {tr("The sources disagree. Write the version that is correct and say how you know. The wording you keep is the wording the article and the printed issue will use.")}</DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
             <p className="rounded-md border border-warning/40 bg-warning-soft/40 p-2 text-2xs leading-relaxed">{settling?.statement}</p>
             <div className="space-y-1.5">
-              <Label htmlFor="settled-statement">The fact, as it should stand</Label>
+              <Label htmlFor="settled-statement">{tr("The fact, as it should stand")}</Label>
               <Textarea id="settled-statement" value={statement} onChange={(e) => setStatement(e.target.value)} rows={3} />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="settled-reason">How do you know?</Label>
-              <Textarea id="settled-reason" value={reason} onChange={(e) => setReason(e.target.value)} rows={2} placeholder="Checked against the campus register and the contributor confirmed by email." />
+              <Label htmlFor="settled-reason">{tr("How do you know?")}</Label>
+              <Textarea id="settled-reason" value={reason} onChange={(e) => setReason(e.target.value)} rows={2} placeholder={tr("Checked against the campus register and the contributor confirmed by email.")} />
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setSettling(null)}>
-              Cancel
-            </Button>
+              {tr("Cancel")}</Button>
             <Button
               loading={pending}
               disabled={!statement.trim() || !reason.trim()}
               onClick={() => settling && run(() => settleFactAction(storyId, settling.id, statement, reason), () => setSettling(null))}
             >
-              <ShieldCheck /> Keep this version
-            </Button>
+              <ShieldCheck /> {" "}{tr("Keep this version")}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

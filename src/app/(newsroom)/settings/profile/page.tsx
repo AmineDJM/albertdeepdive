@@ -8,10 +8,12 @@ import { CampusChip } from "@/components/newsroom/campus-chip";
 import { ROLE_DESCRIPTIONS, ROLE_LABELS } from "@/lib/auth/permissions";
 import { formatDate } from "@/lib/utils";
 import { IdentityForm, PasswordForm, SessionsCard, ThemeForm } from "./profile-forms";
+import { getUi } from "@/server/i18n/locale";
 
 export const dynamic = "force-dynamic";
 
 export default async function ProfilePage() {
+  const tr = await getUi();
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   const store = await cookies();
@@ -19,7 +21,7 @@ export default async function ProfilePage() {
   return (
     <>
       <PageHeader
-        title="Profile"
+        title={tr("Profile")}
         description={`${ROLE_LABELS[profile.role]} — ${ROLE_DESCRIPTIONS[profile.role]}`}
         meta={
           <>
@@ -34,7 +36,7 @@ export default async function ProfilePage() {
         <ThemeForm saved={profile.theme} />
         <SessionsCard sessions={profile.sessions} />
         <p className="text-2xs text-muted-foreground">
-          Member since {formatDate(profile.createdAt)}
+          {tr("Member since")}{" "}{formatDate(profile.createdAt)}
           {profile.lastLoginAt ? ` · last sign-in ${formatDate(profile.lastLoginAt)}` : ""}.
         </p>
       </PageBody>

@@ -15,13 +15,15 @@ import { RecipientEditor } from "@/components/directory/recipient-editor";
 import { RecipientsTable } from "@/components/directory/recipients-table";
 import { AUDIENCE_SEGMENTS } from "@/lib/constants";
 import { enumLabel } from "@/lib/utils";
+import { getUi } from "@/server/i18n/locale";
 
 export const dynamic = "force-dynamic";
 
 export default async function DirectoryPage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
+  const tr = await getUi();
   const sp = await searchParams;
   const user = await getCurrentUser();
-  if (!hasPermission(user, "contributor:manage")) return <NoAccess title="Directory" permission="contributor:manage" />;
+  if (!hasPermission(user, "contributor:manage")) return <NoAccess title={tr("Directory")} permission="contributor:manage" />;
   const [rows, campuses, facets] = await Promise.all([
     listRecipients({ q: sp.q, segment: sp.segment, campusId: sp.campusId, active: sp.active as "true" | "false" | undefined }),
     listCampusesWithStats(),
@@ -31,11 +33,11 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
   return (
     <>
       <PageHeader
-        title="Directory"
-        description="Who the finished magazine is sent to — the audience, kept separate from contributors."
+        title={tr("Directory")}
+        description={tr("Who the finished magazine is sent to — the audience, kept separate from contributors.")}
         actions={
           <div className="flex items-center gap-2">
-            <Button asChild variant="outline" size="sm"><Link href="/directory/import"><Upload /> Import from a file</Link></Button>
+            <Button asChild variant="outline" size="sm"><Link href="/directory/import"><Upload /> {" "}{tr("Import from a file")}</Link></Button>
             <Suspense><RecipientEditor campuses={campusOptions} openOnParam /></Suspense>
           </div>
         }
@@ -44,18 +46,18 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
       </PageHeader>
       <PageBody className="space-y-4">
         <StatGrid columns={4}>
-          <Stat label="Recipients" value={facets.total} hint={`${facets.active} active`} />
-          <Stat label="Active" value={facets.active} hint={`${facets.inactive} inactive`} />
-          <Stat label="Partners" value={facets.bySegment.PARTNER} hint="partner contacts" />
-          <Stat label="Parents" value={facets.bySegment.PARENT} hint="parent contacts" />
+          <Stat label={tr("Recipients")} value={facets.total} hint={`${facets.active} active`} />
+          <Stat label={tr("Active")} value={facets.active} hint={`${facets.inactive} inactive`} />
+          <Stat label={tr("Partners")} value={facets.bySegment.PARTNER} hint={tr("partner contacts")} />
+          <Stat label={tr("Parents")} value={facets.bySegment.PARENT} hint={tr("parent contacts")} />
         </StatGrid>
         <Suspense>
           <FilterBar
-            searchPlaceholder="Search name, email, organisation…"
+            searchPlaceholder={tr("Search name, email, organisation…")}
             filters={[
-              { key: "segment", label: "Segment", options: AUDIENCE_SEGMENTS.map((seg) => ({ value: seg, label: enumLabel(seg) })) },
-              { key: "campusId", label: "Campus", options: [...campuses.map((c) => ({ value: c.id, label: c.name })), { value: "school", label: "School-wide" }] },
-              { key: "active", label: "Status", options: [{ value: "true", label: "Active" }, { value: "false", label: "Inactive" }], allLabel: "Active & inactive" },
+              { key: "segment", label: tr("Segment"), options: AUDIENCE_SEGMENTS.map((seg) => ({ value: seg, label: enumLabel(seg) })) },
+              { key: "campusId", label: tr("Campus"), options: [...campuses.map((c) => ({ value: c.id, label: c.name })), { value: "school", label: tr("School-wide") }] },
+              { key: "active", label: tr("Status"), options: [{ value: "true", label: tr("Active") }, { value: "false", label: tr("Inactive") }], allLabel: tr("Active & inactive") },
             ]}
           />
         </Suspense>

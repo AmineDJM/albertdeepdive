@@ -2,6 +2,7 @@
 
 import { ChartCard } from "@/components/analytics/charts";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { useUi } from "@/components/i18n/provider";
 
 export type FunnelRow = { key: string; label: string; value: number; hint?: string };
 
@@ -14,6 +15,7 @@ const pct = (part: number, whole: number) => (whole > 0 ? `${Math.round((part / 
  * the previous stage, so nothing depends on bar length or colour alone.
  */
 export function FunnelCard({ title, description, rows, className }: { title: string; description?: string; rows: FunnelRow[]; className?: string }) {
+  const tr = useUi();
   const max = Math.max(0, ...rows.map((r) => r.value));
   const empty = !rows.length || max === 0;
   return (
@@ -28,10 +30,10 @@ export function FunnelCard({ title, description, rows, className }: { title: str
           <Table>
             <TableHeader>
               <TableRow className="hover:bg-transparent">
-                <TableHead>Stage</TableHead>
-                <TableHead className="text-right">Count</TableHead>
-                <TableHead className="text-right">Of previous</TableHead>
-                <TableHead className="text-right">Of start</TableHead>
+                <TableHead>{tr("Stage")}</TableHead>
+                <TableHead className="text-right">{tr("Count")}</TableHead>
+                <TableHead className="text-right">{tr("Of previous")}</TableHead>
+                <TableHead className="text-right">{tr("Of start")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -58,7 +60,7 @@ export function FunnelCard({ title, description, rows, className }: { title: str
                   <span className="truncate text-xs font-medium">{r.label}</span>
                   <span className="flex shrink-0 items-baseline gap-2">
                     <span className="tabular text-xs font-semibold">{nf.format(r.value)}</span>
-                    {kept ? <span className="tabular text-2xs text-muted-foreground">{kept} kept</span> : <span className="text-2xs text-muted-foreground">start</span>}
+                    {kept ? <span className="tabular text-2xs text-muted-foreground">{kept} {" "}{tr("kept")}</span> : <span className="text-2xs text-muted-foreground">{tr("start")}</span>}
                   </span>
                 </div>
                 <div className="mt-1 h-3 w-full overflow-hidden rounded-[4px] bg-[var(--viz-hover)]" title={`${r.label}: ${nf.format(r.value)}${r.hint ? ` — ${r.hint}` : ""}`}>

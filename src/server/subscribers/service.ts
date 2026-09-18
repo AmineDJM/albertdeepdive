@@ -171,6 +171,7 @@ export async function unsubscribe(unsubscribeToken: string, publicationId?: stri
       .from(s.publicationSubscriptions)
       .where(and(eq(s.publicationSubscriptions.subscriberId, subscriber.id), eq(s.publicationSubscriptions.isActive, true)));
     if (Number(remaining) > 0) {
+      await stopPaying(subscriber.id, publicationId);
       await audit({ action: "subscriber.unsubscribe", organizationId: subscriber.organizationId, actorType: "SYSTEM", entityId: subscriber.id, metadata: { publicationId } });
       return { subscriber, remaining: Number(remaining) };
     }
@@ -179,8 +180,19 @@ export async function unsubscribe(unsubscribeToken: string, publicationId?: stri
   }
 
   await db.update(s.subscribers).set({ status: "UNSUBSCRIBED", unsubscribedAt: new Date() }).where(eq(s.subscribers.id, subscriber.id));
+  await stopPaying(subscriber.id, publicationId);
   await audit({ action: "subscriber.unsubscribe", organizationId: subscriber.organizationId, actorType: "SYSTEM", entityId: subscriber.id, metadata: { publicationId: publicationId ?? "all" } });
   return { subscriber, remaining: 0 };
+}
+
+/**
+ * A paying reader who leaves stops paying: the Stripe subscription is cancelled at the end of what
+ * they paid for, so nothing further is charged and nothing has to be refunded. Loaded lazily —
+ * the payments module needs this one to record the reader in the first place.
+ */
+async function stopPaying(subscriberId: string, publicationId?: string) {
+  const { cancelPaidSubscriptions } = await import("@/server/payments/readers");
+  await cancelPaidSubscriptions(subscriberId, publicationId);
 }
 
 /** Who an edition actually goes to: confirmed readers of its title, and nobody else. */

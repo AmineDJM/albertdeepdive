@@ -8,6 +8,7 @@ import { enqueueRender } from "@/server/creative/jobs";
 import { ok, toActionFailure, type ActionResult } from "@/lib/action-result";
 import type { CreativeFormat, CreativeMode } from "@/lib/creative/formats";
 import type { CreativeBrief } from "@/lib/creative/brief";
+import { getUi } from "@/server/i18n/locale";
 
 export async function createPackAction(input: { name: string; format: CreativeFormat; mode: CreativeMode; system: string; motion?: string; editionId?: string | null }): Promise<ActionResult<{ id: string }>> {
   try {
@@ -80,35 +81,38 @@ export async function saveBriefAction(packId: string, brief: CreativeBrief): Pro
 
 /** Re-resolve an existing brief against the current brand, then re-render. */
 export async function recomposeAction(packId: string): Promise<ActionResult> {
+  const tr = await getUi();
   try {
     const user = await requireUser();
     const pack = await recompose(packId, user.id);
     if (pack.status !== "FAILED") await enqueueRender(pack, user.id);
     revalidatePath(`/studio/${packId}`);
-    return ok(null, "Re-composed against your current brand");
+    return ok(null, tr("Re-composed against your current brand"));
   } catch (error) {
     return toActionFailure(error);
   }
 }
 
 export async function renderPackAction(packId: string): Promise<ActionResult> {
+  const tr = await getUi();
   try {
     const user = await requireUser();
     const pack = await getPack(packId);
     await enqueueRender(pack, user.id);
     revalidatePath(`/studio/${packId}`);
-    return ok(null, "Rendering");
+    return ok(null, tr("Rendering"));
   } catch (error) {
     return toActionFailure(error);
   }
 }
 
 export async function deletePackAction(packId: string): Promise<ActionResult> {
+  const tr = await getUi();
   try {
     const user = await requireUser();
     await deletePack(packId, user.id);
     revalidatePath("/studio");
-    return ok(null, "Deleted");
+    return ok(null, tr("Deleted"));
   } catch (error) {
     return toActionFailure(error);
   }

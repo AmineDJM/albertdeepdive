@@ -8,6 +8,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { CoverThumbnail } from "@/components/newsroom/cover-thumbnail";
 import type { FlatplanPage, FlatplanTemplate } from "@/server/publication/flatplan";
 import { cn } from "@/lib/utils";
+import { useUi } from "@/components/i18n/provider";
 
 /**
  * One page of the flatplan: a paper-proportioned thumbnail showing what the print engine will put on
@@ -49,6 +50,7 @@ export function FlatplanPageCard({
   onToggleLock,
   onOpen,
 }: FlatplanPageCardProps) {
+  const tr = useUi();
   const errors = page.warnings.filter((w) => w.severity === "error");
   const warnings = page.warnings.filter((w) => w.severity === "warning");
   const infos = page.warnings.filter((w) => w.severity === "info");
@@ -95,17 +97,17 @@ export function FlatplanPageCard({
                 {page.fitLevel}
               </span>
             </TooltipTrigger>
-            <TooltipContent>Copyfit: the type was shrunk {page.fitLevel} step{page.fitLevel === 1 ? "" : "s"} ({(page.fitLevel * 2.5).toFixed(1)} %) so the text fits</TooltipContent>
+            <TooltipContent>{tr("Copyfit: the type was shrunk")}{" "}{page.fitLevel} {" "}{tr("step")}{page.fitLevel === 1 ? "" : "s"} ({(page.fitLevel * 2.5).toFixed(1)} {" "}{tr("%) so the text fits")}</TooltipContent>
           </Tooltip>
         ) : null}
         {page.isLocked ? (
           <Tooltip>
             <TooltipTrigger asChild>
-              <span className="text-brand" aria-label="Locked page">
+              <span className="text-brand" aria-label={tr("Locked page")}>
                 <Lock className="size-3" />
               </span>
             </TooltipTrigger>
-            <TooltipContent>Locked: re-planning keeps this page and its story here</TooltipContent>
+            <TooltipContent>{tr("Locked: re-planning keeps this page and its story here")}</TooltipContent>
           </Tooltip>
         ) : null}
         <span className="tabular shrink-0 pl-0.5 text-[13px] font-semibold">{page.number}</span>
@@ -126,7 +128,7 @@ export function FlatplanPageCard({
         </span>
         {engineMade ? (
           <span className="absolute top-1 left-1 inline-flex items-center gap-1 rounded-sm bg-foreground/80 px-1 py-0.5 text-2xs font-medium text-background">
-            <Scissors className="size-2.5" /> from p. {page.continuationOfNumber ?? "?"}
+            <Scissors className="size-2.5" /> {" "}{tr("from p.")}{" "}{page.continuationOfNumber ?? "?"}
           </span>
         ) : null}
       </button>
@@ -137,7 +139,7 @@ export function FlatplanPageCard({
           {canEdit && !engineMade && onTemplateChange ? (
             <Select value={page.template} onValueChange={onTemplateChange} disabled={pending}>
               <SelectTrigger size="sm" className="h-6 min-w-0 flex-1 truncate border-transparent bg-muted/60 px-1.5 text-2xs hover:bg-muted" aria-label={`Template of page ${page.number}`}>
-                <SelectValue placeholder="Template" />
+                <SelectValue placeholder={tr("Template")} />
               </SelectTrigger>
               <SelectContent>
                 {families.map((family) => (
@@ -150,7 +152,7 @@ export function FlatplanPageCard({
                           <span className="flex flex-col gap-0.5">
                             <span>{t.name}</span>
                             <span className="text-2xs text-muted-foreground">
-                              ≈ {t.capacityWords} words · {t.imageSlots} image{t.imageSlots === 1 ? "" : "s"}
+                              ≈ {t.capacityWords} {" "}{tr("words ·")}{" "}{t.imageSlots} {" "}{tr("image")}{t.imageSlots === 1 ? "" : "s"}
                             </span>
                           </span>
                         </SelectItem>
@@ -192,7 +194,7 @@ export function FlatplanPageCard({
               <span className={cn("tabular text-2xs", page.overflow ? "font-semibold text-destructive" : "text-muted-foreground")}>{Math.round(page.fill * 100)}%</span>
             </>
           ) : (
-            <span className="flex-1 text-2xs text-muted-foreground">No flowing text</span>
+            <span className="flex-1 text-2xs text-muted-foreground">{tr("No flowing text")}</span>
           )}
           {errors.length ? (
             <Tooltip>
@@ -235,6 +237,7 @@ export function FlatplanPageCard({
 
 /** The paper: a schematic of what the template puts on the page, using the real lead photo and headline. */
 function PageSheet({ page, editionLabel, issueLabel }: { page: FlatplanPage; editionLabel: string; issueLabel: string }) {
+  const tr = useUi();
   const lead = page.images[0] ?? null;
   const item = page.items[0] ?? null;
 
@@ -255,7 +258,7 @@ function PageSheet({ page, editionLabel, issueLabel }: { page: FlatplanPage; edi
     <div className="p-1.5">
       <div className={cn("relative flex aspect-[210/297] flex-col gap-1 overflow-hidden rounded-sm border border-border/70 p-2 shadow-inner", PAPER)}>
         <div className="absolute inset-x-0 top-0 h-[3px]" style={{ background: page.section?.colour ?? "#10203a" }} />
-        {page.continuationOfNumber ? <div className={cn("mt-1 text-[6px] font-semibold tracking-[0.1em] uppercase", INK_SOFT)}>Continued from page {page.continuationOfNumber}</div> : null}
+        {page.continuationOfNumber ? <div className={cn("mt-1 text-[6px] font-semibold tracking-[0.1em] uppercase", INK_SOFT)}>{tr("Continued from page")}{" "}{page.continuationOfNumber}</div> : null}
         {lead ? (
           <figure className={cn("relative mt-1 w-full shrink-0 overflow-hidden rounded-[2px] bg-black/5", gallery ? "aspect-[3/2]" : "aspect-[4/3]")}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -299,7 +302,7 @@ function PageSheet({ page, editionLabel, issueLabel }: { page: FlatplanPage; edi
             </div>
           ))}
         </div>
-        {page.items.length > 1 ? <div className={cn("shrink-0 text-[6px] font-medium", INK_SOFT)}>+ {page.items.length - 1} more stor{page.items.length === 2 ? "y" : "ies"}</div> : null}
+        {page.items.length > 1 ? <div className={cn("shrink-0 text-[6px] font-medium", INK_SOFT)}>+ {page.items.length - 1} {" "}{tr("more stor")}{page.items.length === 2 ? "y" : "ies"}</div> : null}
       </div>
     </div>
   );

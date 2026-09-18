@@ -20,15 +20,17 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { NoAccess } from "@/components/settings/no-access";
 import { PHASE_LABELS, formatZoned, formatZonedLong, calendarDaysUntil } from "@/lib/campaigns/schedule";
 import { enumLabel, formatDateTime } from "@/lib/utils";
+import { getUi } from "@/server/i18n/locale";
 
 export const dynamic = "force-dynamic";
 
 const PHASE_ORDER = ["OPEN", "REMINDER_1", "REMINDER_2", "GRACE_PERIOD", "CLOSED"] as const;
 
 export default async function CampaignPage({ params }: { params: Promise<{ editionId: string }> }) {
+  const tr = await getUi();
   const { editionId } = await params;
   const user = await getCurrentUser();
-  if (!hasPermission(user, "campaign:manage")) return <NoAccess title="Campaign" permission="campaign:manage" />;
+  if (!hasPermission(user, "campaign:manage")) return <NoAccess title={tr("Campaign")} permission="campaign:manage" />;
   const canManage = hasPermission(user, "campaign:manage");
 
   const screen = await campaignScreen(editionId);
@@ -38,12 +40,12 @@ export default async function CampaignPage({ params }: { params: Promise<{ editi
   if (!campaign) {
     return (
       <>
-        <PageHeader title="Campaign" description={`${edition.label} · no contribution campaign yet`} />
+        <PageHeader title={tr("Campaign")} description={`${edition.label} · no contribution campaign yet`} />
         <PageBody>
           <EmptyState
             icon={Megaphone}
-            title="No campaign has been scheduled for this edition"
-            description="A campaign invites contributors from the chosen pools, reminds them on Day 4 and Day 7, and closes after the grace period. Build one from the monthly defaults, then adjust its dates and targets."
+            title={tr("No campaign has been scheduled for this edition")}
+            description={tr("A campaign invites contributors from the chosen pools, reminds them on Day 4 and Day 7, and closes after the grace period. Build one from the monthly defaults, then adjust its dates and targets.")}
             action={canManage ? <CreateCampaignButton editionId={editionId} /> : null}
           />
         </PageBody>
@@ -63,11 +65,11 @@ export default async function CampaignPage({ params }: { params: Promise<{ editi
   const earliestExpiry = screen.invitations.length ? new Date(Math.min(...screen.invitations.map((i) => i.tokenExpiresAt.getTime()))) : null;
 
   const phases: PhaseItem[] = [
-    { key: "OPEN", label: "Day 1 · Open", detail: `Invitations — ${formatZoned(campaign.opensAt)}`, progress: { value: invited, max: Math.max(1, invited) } },
-    { key: "REMINDER_1", label: "Day 4 · Reminder", detail: `Reminder #1 — ${formatZoned(campaign.reminder1At)}` },
-    { key: "REMINDER_2", label: "Day 7 · Last day", detail: `Reminder #2 — ${formatZoned(campaign.reminder2At)}` },
-    { key: "GRACE_PERIOD", label: "Day 8 · Grace", detail: `Late entries until ${formatZoned(campaign.graceEndsAt)}` },
-    { key: "CLOSED", label: "Closed", detail: campaign.closedAt ? `Closed ${formatZoned(campaign.closedAt)}` : `${screen.submissionsTotal} submissions collected` },
+    { key: "OPEN", label: tr("Day 1 · Open"), detail: `Invitations — ${formatZoned(campaign.opensAt)}`, progress: { value: invited, max: Math.max(1, invited) } },
+    { key: "REMINDER_1", label: tr("Day 4 · Reminder"), detail: `Reminder #1 — ${formatZoned(campaign.reminder1At)}` },
+    { key: "REMINDER_2", label: tr("Day 7 · Last day"), detail: `Reminder #2 — ${formatZoned(campaign.reminder2At)}` },
+    { key: "GRACE_PERIOD", label: tr("Day 8 · Grace"), detail: `Late entries until ${formatZoned(campaign.graceEndsAt)}` },
+    { key: "CLOSED", label: tr("Closed"), detail: campaign.closedAt ? `Closed ${formatZoned(campaign.closedAt)}` : `${screen.submissionsTotal} submissions collected` },
   ].map((p, i) => ({
     ...p,
     state: phaseIndex < 0 ? "todo" : i < phaseIndex ? "done" : i === phaseIndex ? "active" : "todo",
@@ -90,7 +92,7 @@ export default async function CampaignPage({ params }: { params: Promise<{ editi
   return (
     <>
       <PageHeader
-        title="Campaign"
+        title={tr("Campaign")}
         description={
           screen.nextStep
             ? `${PHASE_LABELS[screen.phase]} · next: ${screen.nextStep.label.toLowerCase()} on ${screen.nextStep.whenLabel}`
@@ -99,7 +101,7 @@ export default async function CampaignPage({ params }: { params: Promise<{ editi
         meta={
           <Badge
             variant={screen.phase === "CLOSED" ? "muted" : screen.phase === "GRACE_PERIOD" ? "warning" : screen.phase === "SCHEDULED" ? "secondary" : "success"}
-            title={`Phase read from the campaign dates · recorded status: ${enumLabel(campaign.status)}`}
+            title={`Phase read from the campaign dates · recorded status: ${tr(enumLabel(campaign.status))}`}
           >
             {PHASE_LABELS[screen.phase]}
           </Badge>
@@ -108,8 +110,7 @@ export default async function CampaignPage({ params }: { params: Promise<{ editi
           <>
             <Button asChild size="sm" variant="ghost">
               <Link href="/contributors">
-                <Users /> Contributors
-              </Link>
+                <Users /> {" "}{tr("Contributors")}</Link>
             </Button>
             {canManage ? (
               <CampaignControls
@@ -139,28 +140,27 @@ export default async function CampaignPage({ params }: { params: Promise<{ editi
               </span>
             }
           >
-            Phase
-          </SectionTitle>
+            {tr("Phase")}</SectionTitle>
           <PhaseTimeline phases={phases} />
         </section>
 
         <StatGrid columns={6}>
-          <Stat label="Invited" value={invited} hint={`${screen.selection?.totals.target ?? 0} targeted · ${screen.selection?.totals.pool ?? 0} in the pools`} icon={Users} />
-          <Stat label="Opened" value={stats?.opened ?? 0} hint={invited ? `${Math.round(((stats?.opened ?? 0) / invited) * 100)}% of invitations` : "No invitation sent"} />
-          <Stat label="Submitted" value={submitted} tone={submitted ? "success" : "muted"} hint={`${Math.round((stats?.responseRate ?? 0) * 100)}% response rate`} />
-          <Stat label="Silent" value={silent} tone={silent ? "warning" : "success"} hint={declined ? `${declined} declined` : "Nobody declined"} />
-          <Stat label="Submissions" value={stats?.submissions ?? 0} hint="Contributions received" icon={Inbox} href={`${ed}/inbox`} />
-          <Stat label="Emails" value={emailsSent} tone={emailsFailed ? "warning" : "default"} hint={emailsFailed ? `${emailsFailed} failed` : `Provider: ${env.EMAIL_PROVIDER === "resend" ? "Resend" : "dev log"}`} />
+          <Stat label={tr("Invited")} value={invited} hint={`${screen.selection?.totals.target ?? 0} targeted · ${screen.selection?.totals.pool ?? 0} in the pools`} icon={Users} />
+          <Stat label={tr("Opened")} value={stats?.opened ?? 0} hint={invited ? `${Math.round(((stats?.opened ?? 0) / invited) * 100)}% of invitations` : "No invitation sent"} />
+          <Stat label={tr("Submitted")} value={submitted} tone={submitted ? "success" : "muted"} hint={`${Math.round((stats?.responseRate ?? 0) * 100)}% response rate`} />
+          <Stat label={tr("Silent")} value={silent} tone={silent ? "warning" : "success"} hint={declined ? `${declined} declined` : "Nobody declined"} />
+          <Stat label={tr("Submissions")} value={stats?.submissions ?? 0} hint={tr("Contributions received")} icon={Inbox} href={`${ed}/inbox`} />
+          <Stat label={tr("Emails")} value={emailsSent} tone={emailsFailed ? "warning" : "default"} hint={emailsFailed ? `${emailsFailed} failed` : `Provider: ${env.EMAIL_PROVIDER === "resend" ? "Resend" : "dev log"}`} />
         </StatGrid>
 
         <section>
-          <SectionTitle action={<span className="text-2xs text-muted-foreground">Response rate per campus</span>}>Coverage</SectionTitle>
+          <SectionTitle action={<span className="text-2xs text-muted-foreground">{tr("Response rate per campus")}</span>}>{tr("Coverage")}</SectionTitle>
           <CampaignCoverage rows={screen.byCampus} balanceLabel={screen.coverage.balance.label} />
         </section>
 
         <section className="grid gap-4 lg:grid-cols-2">
           <div>
-            <SectionTitle>Schedule</SectionTitle>
+            <SectionTitle>{tr("Schedule")}</SectionTitle>
             <ul className="divide-y divide-border overflow-hidden rounded-lg border border-border bg-card">
               {screen.schedule.map((line) => (
                 <li key={line.key} className="flex items-center justify-between gap-3 px-3 py-2 text-[13px]">
@@ -169,20 +169,20 @@ export default async function CampaignPage({ params }: { params: Promise<{ editi
                     {line.label}
                   </span>
                   <span className="tabular text-2xs text-muted-foreground">
-                    Day {line.day} · {formatZoned(line.at, { weekday: "short" })}
+                    {tr("Day")}{" "}{line.day} · {formatZoned(line.at, { weekday: "short" })}
                   </span>
                 </li>
               ))}
             </ul>
           </div>
           <div>
-            <SectionTitle action={<Link href="/automations" className="text-2xs text-brand hover:underline">Automations</Link>}>Automation steps</SectionTitle>
+            <SectionTitle action={<Link href="/automations" className="text-2xs text-brand hover:underline">{tr("Automations")}</Link>}>{tr("Automation steps")}</SectionTitle>
             <ul className="divide-y divide-border overflow-hidden rounded-lg border border-border bg-card">
-              {screen.runs.length === 0 ? <li className="px-3 py-6 text-center text-xs text-muted-foreground">No automation has run for this campaign yet.</li> : null}
+              {screen.runs.length === 0 ? <li className="px-3 py-6 text-center text-xs text-muted-foreground">{tr("No automation has run for this campaign yet.")}</li> : null}
               {screen.runs.map((r) => (
                 <li key={r.step} className="flex items-center gap-3 px-3 py-2 text-[13px]">
                   <GenericStatusBadge status={r.status} />
-                  <span className="flex-1 truncate">{enumLabel(r.step)}</span>
+                  <span className="flex-1 truncate">{tr(enumLabel(r.step))}</span>
                   <span className="shrink-0 text-2xs text-muted-foreground">
                     {r.triggeredBy === "MANUAL" ? "by hand · " : ""}
                     {r.finishedAt ? formatDateTime(r.finishedAt) : r.scheduledFor ? `scheduled ${formatDateTime(r.scheduledFor)}` : "—"}
@@ -210,8 +210,7 @@ export default async function CampaignPage({ params }: { params: Promise<{ editi
               </div>
             }
           >
-            Invitations
-          </SectionTitle>
+            {tr("Invitations")}</SectionTitle>
           <CampaignInvitations
             editionId={editionId}
             canResend={canManage && campaign.status !== "CLOSED"}
@@ -238,8 +237,7 @@ export default async function CampaignPage({ params }: { params: Promise<{ editi
 
         <section>
           <SectionTitle action={<span className="text-2xs text-muted-foreground">{campaign.status === "CLOSED" ? "Reopen the campaign to change its dates" : "Saved changes apply to the next automated step"}</span>}>
-            Configure
-          </SectionTitle>
+            {tr("Configure")}</SectionTitle>
           <CampaignConfigForm
             editionId={editionId}
             initial={initialValues}
@@ -252,9 +250,8 @@ export default async function CampaignPage({ params }: { params: Promise<{ editi
         </section>
 
         <section>
-          <SectionTitle action={<span className="text-2xs text-muted-foreground">{screen.emails.length} message{screen.emails.length === 1 ? "" : "s"} · provider “{env.EMAIL_PROVIDER}”</span>}>
-            Email log
-          </SectionTitle>
+          <SectionTitle action={<span className="text-2xs text-muted-foreground">{screen.emails.length} {" "}{tr("message")}{screen.emails.length === 1 ? "" : "s"} {" "}{tr("· provider “")}{env.EMAIL_PROVIDER}”</span>}>
+            {tr("Email log")}</SectionTitle>
           <CampaignEmailLog
             provider={env.EMAIL_PROVIDER}
             rows={screen.emails.map((e) => ({

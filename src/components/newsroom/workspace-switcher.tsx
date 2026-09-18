@@ -8,6 +8,7 @@ import { BrieflyMark } from "@/components/brand/briefly-mark";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { switchWorkspaceAction } from "@/app/(newsroom)/workspace-actions";
 import { cn } from "@/lib/utils";
+import { useUi } from "@/components/i18n/provider";
 
 export type WorkspaceOption = { organizationId: string; name: string; slug: string; role: string };
 
@@ -19,6 +20,7 @@ export type WorkspaceOption = { organizationId: string; name: string; slug: stri
  * single-workspace case — which is almost everyone — stays a plain, quiet header.
  */
 export function WorkspaceSwitcher({ current, options, impersonated }: { current: { name: string; role: string } | null; options: WorkspaceOption[]; impersonated: boolean }) {
+  const tr = useUi();
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const canSwitch = options.length > 1;
@@ -30,8 +32,7 @@ export function WorkspaceSwitcher({ current, options, impersonated }: { current:
         <span className="block truncate text-[14px] font-semibold tracking-[-0.01em] text-foreground">{current?.name ?? "Briefly"}</span>
         {impersonated ? (
           <span className="flex items-center gap-1 text-2xs text-amber-600 dark:text-amber-500">
-            <ShieldAlert className="size-3" /> Platform access
-          </span>
+            <ShieldAlert className="size-3" /> {" "}{tr("Platform access")}</span>
         ) : null}
       </span>
     </span>
@@ -50,7 +51,7 @@ export function WorkspaceSwitcher({ current, options, impersonated }: { current:
           <ChevronsUpDown className="size-3.5 shrink-0 text-muted-foreground" />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="w-[216px]">
-          <DropdownMenuLabel>Workspaces</DropdownMenuLabel>
+          <DropdownMenuLabel>{tr("Workspaces")}</DropdownMenuLabel>
           {options.map((o) => (
             <DropdownMenuItem
               key={o.organizationId}
@@ -72,8 +73,7 @@ export function WorkspaceSwitcher({ current, options, impersonated }: { current:
           <DropdownMenuSeparator />
           <DropdownMenuItem asChild>
             <Link href="/onboarding" className="flex items-center gap-2">
-              <Plus className="size-3.5" /> New workspace
-            </Link>
+              <Plus className="size-3.5" /> {" "}{tr("New workspace")}</Link>
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

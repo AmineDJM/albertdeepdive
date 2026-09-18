@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { requestStoryInformationAction } from "@/app/(newsroom)/stories/[storyId]/actions";
+import { useUi } from "@/components/i18n/provider";
 
 /**
  * "Request information": the editor picks the gaps, the contributor gets a pre-filled link and
@@ -26,6 +27,7 @@ export function InformationRequestDialog({
   contributor: { id: string; name: string };
   items: { key: string; label: string }[];
 }) {
+  const tr = useUi();
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
@@ -45,7 +47,7 @@ export function InformationRequestDialog({
     startTransition(async () => {
       const res = await requestStoryInformationAction({ storyId, contributorId: contributor.id, message, items: all });
       if (res.ok) {
-        toast.success("Request sent", { description: `${contributor.name} received a personal link.` });
+        toast.success(tr("Request sent"), { description: `${contributor.name} received a personal link.` });
         setOpen(false);
         router.refresh();
       } else toast.error(res.error);
@@ -56,26 +58,24 @@ export function InformationRequestDialog({
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button size="xs" variant="outline">
-          <Send /> Request information
-        </Button>
+          <Send /> {" "}{tr("Request information")}</Button>
       </DialogTrigger>
       <DialogContent size="lg">
         <DialogHeader>
-          <DialogTitle>Request more information</DialogTitle>
+          <DialogTitle>{tr("Request more information")}</DialogTitle>
           <DialogDescription>
-            {contributor.name} will receive an email with a secure link. Their answers come back attached to this story, ready for review.
-          </DialogDescription>
+            {contributor.name} {" "}{tr("will receive an email with a secure link. Their answers come back attached to this story, ready for review.")}</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-3">
           <div className="space-y-1.5">
-            <Label>Message</Label>
+            <Label>{tr("Message")}</Label>
             <Textarea value={message} onChange={(e) => setMessage(e.target.value)} rows={3} />
           </div>
 
           {items.length ? (
             <div className="space-y-1.5">
-              <Label>What is missing</Label>
+              <Label>{tr("What is missing")}</Label>
               <ul className="space-y-1 rounded-md border border-border p-2">
                 {items.map((item) => (
                   <li key={item.key}>
@@ -101,20 +101,18 @@ export function InformationRequestDialog({
           ) : null}
 
           <div className="space-y-1.5">
-            <Label htmlFor="extra-questions">Other questions (one per line)</Label>
-            <Textarea id="extra-questions" value={extra} onChange={(e) => setExtra(e.target.value)} rows={2} placeholder="Who took the photograph?&#10;What was the final score?" />
+            <Label htmlFor="extra-questions">{tr("Other questions (one per line)")}</Label>
+            <Textarea id="extra-questions" value={extra} onChange={(e) => setExtra(e.target.value)} rows={2} placeholder={tr("Who took the photograph?&#10;What was the final score?")} />
           </div>
 
-          <p className="text-2xs text-muted-foreground">{all.length} question{all.length === 1 ? "" : "s"} will be sent.</p>
+          <p className="text-2xs text-muted-foreground">{all.length} {" "}{tr("question")}{all.length === 1 ? "" : "s"} {" "}{tr("will be sent.")}</p>
         </div>
 
         <DialogFooter>
           <Button variant="outline" onClick={() => setOpen(false)}>
-            Cancel
-          </Button>
+            {tr("Cancel")}</Button>
           <Button onClick={submit} loading={pending} disabled={!all.length || !message.trim()}>
-            <Send /> Send request
-          </Button>
+            <Send /> {" "}{tr("Send request")}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

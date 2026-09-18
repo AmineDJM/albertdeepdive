@@ -11,10 +11,12 @@ import { Label } from "@/components/ui/label";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { createEditionAction } from "./actions";
+import { useUi } from "@/components/i18n/provider";
 
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
 export function NewEditionDialog({ nextIssueNumber, defaultMonth, defaultYear }: { nextIssueNumber: number; defaultMonth: number; defaultYear: number }) {
+  const tr = useUi();
   const params = useSearchParams();
   const router = useRouter();
   const [open, setOpen] = useState(params.get("new") === "1");
@@ -34,7 +36,7 @@ export function NewEditionDialog({ nextIssueNumber, defaultMonth, defaultYear }:
         toast.error(res.error);
         return;
       }
-      toast.success(res.message ?? "Edition created", { description: "Default sections were added. Schedule the campaign next." });
+      toast.success(res.message ?? "Edition created", { description: tr("Default sections were added. Schedule the campaign next.") });
       setOpen(false);
       router.push(`/editions/${res.data.id}/campaign`);
     });
@@ -44,17 +46,16 @@ export function NewEditionDialog({ nextIssueNumber, defaultMonth, defaultYear }:
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button>
-          <Plus /> New edition
-        </Button>
+          <Plus /> {" "}{tr("New edition")}</Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Create an edition</DialogTitle>
-          <DialogDescription>Each edition gets the default sections and its own campaign schedule. Dates can be changed later.</DialogDescription>
+          <DialogTitle>{tr("Create an edition")}</DialogTitle>
+          <DialogDescription>{tr("Each edition gets the default sections and its own campaign schedule. Dates can be changed later.")}</DialogDescription>
         </DialogHeader>
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5">
-            <Label>Month</Label>
+            <Label>{tr("Month")}</Label>
             <NativeSelect value={month} onChange={(e) => { const m = Number(e.target.value); setMonth(m); setPublication(`${year}-${String(m).padStart(2, "0")}-15`); setFinalReview(`${year}-${String(m).padStart(2, "0")}-11`); }}>
               {MONTHS.map((m, i) => (
                 <option key={m} value={i + 1}>
@@ -64,36 +65,33 @@ export function NewEditionDialog({ nextIssueNumber, defaultMonth, defaultYear }:
             </NativeSelect>
           </div>
           <div className="space-y-1.5">
-            <Label>Year</Label>
+            <Label>{tr("Year")}</Label>
             <Input type="number" value={year} onChange={(e) => { const y = Number(e.target.value); setYear(y); setPublication(`${y}-${String(month).padStart(2, "0")}-15`); setFinalReview(`${y}-${String(month).padStart(2, "0")}-11`); }} min={2024} max={2100} />
           </div>
           <div className="space-y-1.5">
-            <Label>Issue number</Label>
+            <Label>{tr("Issue number")}</Label>
             <Input type="number" value={issueNumber} onChange={(e) => setIssueNumber(Number(e.target.value))} min={1} />
           </div>
           <div className="space-y-1.5">
-            <Label>Target pages</Label>
+            <Label>{tr("Target pages")}</Label>
             <Input type="number" value={pages} onChange={(e) => setPages(Number(e.target.value))} min={4} max={96} step={2} />
           </div>
           <div className="space-y-1.5">
-            <Label>Final review</Label>
+            <Label>{tr("Final review")}</Label>
             <Input type="date" value={finalReview} onChange={(e) => setFinalReview(e.target.value)} />
           </div>
           <div className="space-y-1.5">
-            <Label>Publication target</Label>
+            <Label>{tr("Publication target")}</Label>
             <Input type="date" value={publication} onChange={(e) => setPublication(e.target.value)} />
           </div>
           <label className="col-span-2 flex items-center gap-2 text-[13px]">
-            <Checkbox checked={special} onCheckedChange={(v) => setSpecial(v === true)} /> Special issue (hors-série)
-          </label>
+            <Checkbox checked={special} onCheckedChange={(v) => setSpecial(v === true)} /> {" "}{tr("Special issue (hors-série)")}</label>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => setOpen(false)}>
-            Cancel
-          </Button>
+            {tr("Cancel")}</Button>
           <Button onClick={submit} loading={pending}>
-            Create edition
-          </Button>
+            {tr("Create edition")}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

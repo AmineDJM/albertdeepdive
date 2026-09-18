@@ -9,12 +9,14 @@ import { Button } from "@/components/ui/button";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { SortableSections, type SectionItem } from "@/components/settings/sortable-sections";
 import { resetDefaultSectionsAction, saveDefaultSectionsAction } from "./actions";
+import { useUi } from "@/components/i18n/provider";
 
 function toItems(sections: DefaultSectionInput[]): SectionItem[] {
   return sections.map((s, i) => ({ uid: `s-${i}-${s.slug}`, slug: s.slug, name: s.name, kicker: s.kicker ?? "", colour: s.colour ?? "#10203A", targetPages: s.targetPages ?? null, isHidden: s.isHidden ?? false, slugTouched: true }));
 }
 
 export function DefaultSectionsEditor({ sections }: { sections: DefaultSectionInput[] }) {
+  const tr = useUi();
   const router = useRouter();
   const [items, setItems] = useState<SectionItem[]>(() => toItems(sections));
   const storyTypesByUid = useRef(new Map(toItems(sections).map((it, i) => [it.uid, sections[i].storyTypes ?? []])));
@@ -54,23 +56,21 @@ export function DefaultSectionsEditor({ sections }: { sections: DefaultSectionIn
       <SortableSections items={items} onChange={setItems} dndId="default-sections" />
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-card px-3 py-2">
         <div className="text-xs text-muted-foreground">
-          {items.length} sections · {totalPages} target pages
-          {problems.length ? <span className="ml-2 text-destructive">{problems[0]}</span> : null}
+          {items.length} {" "}{tr("sections ·")}{" "}{totalPages} {" "}{tr("target pages")}{" "}{problems.length ? <span className="ml-2 text-destructive">{problems[0]}</span> : null}
         </div>
         <div className="flex items-center gap-2">
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button variant="outline" size="sm" disabled={pending}>
-                <RotateCcw /> Reset to defaults
-              </Button>
+                <RotateCcw /> {" "}{tr("Reset to defaults")}</Button>
             </AlertDialogTrigger>
             <AlertDialogContent>
               <AlertDialogHeader>
-                <AlertDialogTitle>Reset the section template?</AlertDialogTitle>
-                <AlertDialogDescription>The twelve sections inferred from the reference issue are restored. Existing editions keep their own sections.</AlertDialogDescription>
+                <AlertDialogTitle>{tr("Reset the section template?")}</AlertDialogTitle>
+                <AlertDialogDescription>{tr("The twelve sections inferred from the reference issue are restored. Existing editions keep their own sections.")}</AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogCancel>{tr("Cancel")}</AlertDialogCancel>
                 <AlertDialogAction
                   onClick={() =>
                     start(async () => {
@@ -84,14 +84,12 @@ export function DefaultSectionsEditor({ sections }: { sections: DefaultSectionIn
                     })
                   }
                 >
-                  Reset
-                </AlertDialogAction>
+                  {tr("Reset")}</AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
           <Button size="sm" onClick={save} loading={pending} disabled={!dirty || problems.length > 0}>
-            <Save /> Save template
-          </Button>
+            <Save /> {" "}{tr("Save template")}</Button>
         </div>
       </div>
     </div>

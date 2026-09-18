@@ -15,6 +15,7 @@ import { AUTOMATION_KEYS, type AutomationKey, type AutomationToggles } from "@/l
 import type { CampaignDefaults } from "@/lib/campaigns/schedule";
 import { computeCampaignSchedule, formatZoned, nextEditionMonth, editionLabel } from "@/lib/campaigns/schedule";
 import { saveSettingAction } from "./actions";
+import { useUi } from "@/components/i18n/provider";
 
 function useSave<T>(key: SettingKey) {
   const router = useRouter();
@@ -37,11 +38,12 @@ function useSave<T>(key: SettingKey) {
 }
 
 export function MastheadForm({ value }: { value: MastheadSettings }) {
+  const tr = useUi();
   const [form, setForm] = useState(value);
   const { pending, errors, save } = useSave<MastheadSettings>("masthead");
   const dirty = JSON.stringify(form) !== JSON.stringify(value);
   return (
-    <SettingsCard id="masthead" title="Masthead" description="Printed on the cover, the running headers and every email.">
+    <SettingsCard id="masthead" title={tr("Masthead")} description={tr("Printed on the cover, the running headers and every email.")}>
       <form
         className="grid gap-3 sm:grid-cols-2"
         onSubmit={(e) => {
@@ -50,19 +52,18 @@ export function MastheadForm({ value }: { value: MastheadSettings }) {
         }}
       >
         <div className="space-y-1.5">
-          <Label htmlFor="masthead-title">Title</Label>
+          <Label htmlFor="masthead-title">{tr("Title")}</Label>
           <Input id="masthead-title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className="font-display text-[15px]" />
           <FieldError errors={errors} name="title" />
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="masthead-tagline">Tagline</Label>
+          <Label htmlFor="masthead-tagline">{tr("Tagline")}</Label>
           <Input id="masthead-tagline" value={form.tagline} onChange={(e) => setForm({ ...form, tagline: e.target.value })} />
           <FieldError errors={errors} name="tagline" />
         </div>
         <div className="sm:col-span-2">
           <Button type="submit" size="sm" loading={pending} disabled={!dirty}>
-            <Save /> Save masthead
-          </Button>
+            <Save /> {" "}{tr("Save masthead")}</Button>
         </div>
       </form>
     </SettingsCard>
@@ -70,11 +71,12 @@ export function MastheadForm({ value }: { value: MastheadSettings }) {
 }
 
 export function ContactForm({ value }: { value: ContactSettings }) {
+  const tr = useUi();
   const [form, setForm] = useState(value);
   const { pending, errors, save } = useSave<ContactSettings>("contact");
   const dirty = JSON.stringify(form) !== JSON.stringify(value);
   return (
-    <SettingsCard id="contact" title="Contact" description="Shown in the colophon and the back page.">
+    <SettingsCard id="contact" title={tr("Contact")} description={tr("Shown in the colophon and the back page.")}>
       <form
         className="grid gap-3 sm:grid-cols-3"
         onSubmit={(e) => {
@@ -83,16 +85,16 @@ export function ContactForm({ value }: { value: ContactSettings }) {
         }}
       >
         <div className="space-y-1.5">
-          <Label htmlFor="contact-email">Email</Label>
+          <Label htmlFor="contact-email">{tr("Email")}</Label>
           <Input id="contact-email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
           <FieldError errors={errors} name="email" />
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="contact-website">Website</Label>
-          <Input id="contact-website" value={form.website} onChange={(e) => setForm({ ...form, website: e.target.value })} placeholder="www.albertschool.com" />
+          <Label htmlFor="contact-website">{tr("Website")}</Label>
+          <Input id="contact-website" value={form.website} onChange={(e) => setForm({ ...form, website: e.target.value })} placeholder={tr("www.example.com")} />
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="contact-instagram">Instagram</Label>
+          <Label htmlFor="contact-instagram">{tr("Instagram")}</Label>
           <div className="relative">
             <span className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-xs text-muted-foreground">@</span>
             <Input id="contact-instagram" value={form.instagram} onChange={(e) => setForm({ ...form, instagram: e.target.value.replace(/^@/, "") })} className="pl-6" />
@@ -100,8 +102,7 @@ export function ContactForm({ value }: { value: ContactSettings }) {
         </div>
         <div className="sm:col-span-3">
           <Button type="submit" size="sm" loading={pending} disabled={!dirty}>
-            <Save /> Save contact
-          </Button>
+            <Save /> {" "}{tr("Save contact")}</Button>
         </div>
       </form>
     </SettingsCard>
@@ -118,6 +119,7 @@ const DAY_FIELDS: { key: keyof CampaignDefaults; label: string; hint: string }[]
 ];
 
 export function CampaignDefaultsForm({ value }: { value: CampaignDefaults }) {
+  const tr = useUi();
   const [form, setForm] = useState<CampaignDefaults>(value);
   const { pending, errors, save } = useSave<CampaignDefaults>("campaign_defaults");
   const dirty = JSON.stringify(form) !== JSON.stringify(value);
@@ -129,7 +131,7 @@ export function CampaignDefaultsForm({ value }: { value: CampaignDefaults }) {
   }, [form]);
   const setDay = (key: keyof CampaignDefaults, raw: string) => setForm((f) => ({ ...f, [key]: raw === "" ? 0 : Math.max(0, Math.min(28, Number(raw))) }));
   return (
-    <SettingsCard id="campaign" title="Monthly schedule" description="Days of the month (school time, Europe/Paris). Editions created automatically use these defaults; existing campaigns keep their dates.">
+    <SettingsCard id="campaign" title={tr("Monthly schedule")} description={tr("Days of the month (school time, Europe/Paris). Editions created automatically use these defaults; existing campaigns keep their dates.")}>
       <form
         className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_260px]"
         onSubmit={(e) => {
@@ -139,7 +141,7 @@ export function CampaignDefaultsForm({ value }: { value: CampaignDefaults }) {
       >
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="space-y-1.5">
-            <Label htmlFor="cd-openHour">Send time</Label>
+            <Label htmlFor="cd-openHour">{tr("Send time")}</Label>
             <NativeSelect id="cd-openHour" value={form.openHour} onChange={(e) => setForm({ ...form, openHour: Number(e.target.value) })}>
               {Array.from({ length: 24 }, (_, h) => (
                 <option key={h} value={h}>
@@ -147,27 +149,26 @@ export function CampaignDefaultsForm({ value }: { value: CampaignDefaults }) {
                 </option>
               ))}
             </NativeSelect>
-            <p className="text-2xs text-muted-foreground">Requests and reminders go out at this hour.</p>
+            <p className="text-2xs text-muted-foreground">{tr("Requests and reminders go out at this hour.")}</p>
           </div>
           {DAY_FIELDS.map((f) => (
             <div key={f.key} className="space-y-1.5">
-              <Label htmlFor={`cd-${f.key}`}>{f.label}</Label>
+              <Label htmlFor={`cd-${f.key}`}>{tr(f.label)}</Label>
               <div className="flex items-center gap-2">
-                <span className="text-xs text-muted-foreground">Day</span>
+                <span className="text-xs text-muted-foreground">{tr("Day")}</span>
                 <Input id={`cd-${f.key}`} type="number" min={1} max={28} value={form[f.key]} onChange={(e) => setDay(f.key, e.target.value)} className="tabular w-20" aria-invalid={Boolean(issues[f.key] || errors?.[f.key])} />
               </div>
-              <p className="text-2xs text-muted-foreground">{f.hint}</p>
+              <p className="text-2xs text-muted-foreground">{tr(f.hint)}</p>
               {issues[f.key] ? <p className="text-2xs text-destructive">{issues[f.key].join(" · ")}</p> : <FieldError errors={errors} name={f.key} />}
             </div>
           ))}
           <div className="sm:col-span-2">
             <Button type="submit" size="sm" loading={pending} disabled={!dirty || invalid}>
-              <Save /> Save schedule
-            </Button>
+              <Save /> {" "}{tr("Save schedule")}</Button>
           </div>
         </div>
         <div className="rounded-md border border-border bg-muted/30 p-3 text-xs">
-          <div className="label-caps mb-2">Preview · {preview.label}</div>
+          <div className="label-caps mb-2">{tr("Preview ·")}{" "}{preview.label}</div>
           <ol className="space-y-1.5">
             {[
               ["Request", preview.schedule.opensAt],
@@ -191,11 +192,12 @@ export function CampaignDefaultsForm({ value }: { value: CampaignDefaults }) {
 }
 
 export function PrintForm({ value }: { value: PrintSettings }) {
+  const tr = useUi();
   const [form, setForm] = useState(value);
   const { pending, errors, save } = useSave<PrintSettings>("print");
   const dirty = JSON.stringify(form) !== JSON.stringify(value);
   return (
-    <SettingsCard id="print" title="Print defaults" description="New editions start with these; each edition can override them in its Settings tab.">
+    <SettingsCard id="print" title={tr("Print defaults")} description={tr("New editions start with these; each edition can override them in its Settings tab.")}>
       <form
         className="grid gap-3 sm:grid-cols-3"
         onSubmit={(e) => {
@@ -204,26 +206,25 @@ export function PrintForm({ value }: { value: PrintSettings }) {
         }}
       >
         <div className="space-y-1.5">
-          <Label htmlFor="print-size">Page size</Label>
+          <Label htmlFor="print-size">{tr("Page size")}</Label>
           <NativeSelect id="print-size" value={form.pageSize} onChange={(e) => setForm({ ...form, pageSize: e.target.value as PrintSettings["pageSize"] })}>
-            <option value="A4">A4 — 210 × 297 mm (any campus printer)</option>
-            <option value="TABLOID">Tabloid — 279 × 432 mm (newspaper feel)</option>
-            <option value="LETTER">Letter — 216 × 279 mm</option>
+            <option value="A4">{tr("A4 — 210 × 297 mm (any campus printer)")}</option>
+            <option value="TABLOID">{tr("Tabloid — 279 × 432 mm (newspaper feel)")}</option>
+            <option value="LETTER">{tr("Letter — 216 × 279 mm")}</option>
           </NativeSelect>
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="print-pages">Target page count</Label>
+          <Label htmlFor="print-pages">{tr("Target page count")}</Label>
           <Input id="print-pages" type="number" min={4} max={96} step={2} value={form.targetPageCount} onChange={(e) => setForm({ ...form, targetPageCount: Number(e.target.value) })} className="tabular" />
           <FieldError errors={errors} name="targetPageCount" />
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="print-font">Masthead font</Label>
-          <Input id="print-font" value={form.mastheadFont ?? ""} onChange={(e) => setForm({ ...form, mastheadFont: e.target.value })} placeholder="Fraunces" />
+          <Label htmlFor="print-font">{tr("Masthead font")}</Label>
+          <Input id="print-font" value={form.mastheadFont ?? ""} onChange={(e) => setForm({ ...form, mastheadFont: e.target.value })} placeholder={tr("Fraunces")} />
         </div>
         <div className="sm:col-span-3">
           <Button type="submit" size="sm" loading={pending} disabled={!dirty}>
-            <Save /> Save print defaults
-          </Button>
+            <Save /> {" "}{tr("Save print defaults")}</Button>
         </div>
       </form>
     </SettingsCard>
@@ -231,11 +232,12 @@ export function PrintForm({ value }: { value: PrintSettings }) {
 }
 
 export function AiForm({ value, provider, modelFast, modelStrong }: { value: AiSettings; provider: string; modelFast: string; modelStrong: string }) {
+  const tr = useUi();
   const [budget, setBudget] = useState(value.monthlyBudgetEur);
   const { pending, errors, save } = useSave<AiSettings>("ai");
   const dirty = budget !== value.monthlyBudgetEur;
   return (
-    <SettingsCard id="ai" title="AI" description="Provider and models come from the environment; the budget is a soft monthly ceiling surfaced in Analytics.">
+    <SettingsCard id="ai" title={tr("AI")} description={tr("Provider and models come from the environment; the budget is a soft monthly ceiling surfaced in Analytics.")}>
       <form
         className="grid gap-3 sm:grid-cols-3"
         onSubmit={(e) => {
@@ -244,24 +246,23 @@ export function AiForm({ value, provider, modelFast, modelStrong }: { value: AiS
         }}
       >
         <div className="space-y-1.5">
-          <Label htmlFor="ai-budget">Monthly budget (EUR)</Label>
+          <Label htmlFor="ai-budget">{tr("Monthly budget (EUR)")}</Label>
           <Input id="ai-budget" type="number" min={0} step={5} value={budget} onChange={(e) => setBudget(Number(e.target.value))} className="tabular" />
           <FieldError errors={errors} name="monthlyBudgetEur" />
         </div>
         <div className="space-y-1.5">
-          <Label>Provider</Label>
+          <Label>{tr("Provider")}</Label>
           <Input value={provider === "openai" ? "OpenAI (structured outputs)" : "Local deterministic (no key)"} readOnly disabled />
-          <p className="text-2xs text-muted-foreground">AI_PROVIDER in the environment.</p>
+          <p className="text-2xs text-muted-foreground">{tr("AI_PROVIDER in the environment.")}</p>
         </div>
         <div className="space-y-1.5">
-          <Label>Models</Label>
+          <Label>{tr("Models")}</Label>
           <Input value={`FAST ${modelFast} · STRONG ${modelStrong}`} readOnly disabled className="font-mono text-xs" />
-          <p className="text-2xs text-muted-foreground">AI_MODEL_FAST / AI_MODEL_STRONG.</p>
+          <p className="text-2xs text-muted-foreground">{tr("AI_MODEL_FAST / AI_MODEL_STRONG.")}</p>
         </div>
         <div className="sm:col-span-3">
           <Button type="submit" size="sm" loading={pending} disabled={!dirty}>
-            <Save /> Save budget
-          </Button>
+            <Save /> {" "}{tr("Save budget")}</Button>
         </div>
       </form>
     </SettingsCard>
@@ -281,19 +282,20 @@ const AUTOMATION_LABELS: Record<AutomationKey, { label: string; hint: string }> 
 };
 
 export function AutomationsForm({ value }: { value: AutomationToggles }) {
+  const tr = useUi();
   const [form, setForm] = useState(value);
   const { pending, save } = useSave<AutomationToggles>("automations");
   const dirty = JSON.stringify(form) !== JSON.stringify(value);
   return (
-    <SettingsCard id="automations" title="Automations" description="Disabled steps are recorded as skipped so nothing runs twice when re-enabled." action={<Button size="sm" onClick={() => save(form)} loading={pending} disabled={!dirty}><Save /> Save toggles</Button>}>
+    <SettingsCard id="automations" title={tr("Automations")} description={tr("Disabled steps are recorded as skipped so nothing runs twice when re-enabled.")} action={<Button size="sm" onClick={() => save(form)} loading={pending} disabled={!dirty}><Save /> {" "}{tr("Save toggles")}</Button>}>
       <ul className="divide-y divide-border">
         {AUTOMATION_KEYS.map((key) => (
           <li key={key} className="flex items-center justify-between gap-3 py-2">
             <div className="min-w-0">
-              <div className="text-[13px] font-medium">{AUTOMATION_LABELS[key].label}</div>
-              <div className="text-2xs text-muted-foreground">{AUTOMATION_LABELS[key].hint}</div>
+              <div className="text-[13px] font-medium">{tr(AUTOMATION_LABELS[key].label)}</div>
+              <div className="text-2xs text-muted-foreground">{tr(AUTOMATION_LABELS[key].hint)}</div>
             </div>
-            <Switch checked={form[key]} onCheckedChange={(v) => setForm({ ...form, [key]: v })} aria-label={AUTOMATION_LABELS[key].label} />
+            <Switch checked={form[key]} onCheckedChange={(v) => setForm({ ...form, [key]: v })} aria-label={tr(AUTOMATION_LABELS[key].label)} />
           </li>
         ))}
       </ul>

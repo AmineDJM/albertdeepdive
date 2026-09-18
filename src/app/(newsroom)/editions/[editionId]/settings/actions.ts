@@ -6,6 +6,7 @@ import { requirePermission } from "@/server/auth/session";
 import { saveEditionSections, sectionInputSchema, updateEdition, updateEditionSchema } from "@/server/editions/service";
 import { scheduleFromDefaults } from "@/server/campaigns/service";
 import { ValidationError, ok, toActionFailure, type ActionResult } from "@/lib/action-result";
+import { getUi } from "@/server/i18n/locale";
 
 export type EditionSettingsPatch = {
   label: string;
@@ -47,6 +48,7 @@ function revalidateEdition(editionId: string) {
 }
 
 export async function saveEditionSettingsAction(editionId: string, patch: EditionSettingsPatch): Promise<ActionResult> {
+  const tr = await getUi();
   try {
     const user = await requirePermission("edition:edit");
     // Validate here so zod issues come back as field errors instead of a thrown ZodError.
@@ -54,7 +56,7 @@ export async function saveEditionSettingsAction(editionId: string, patch: Editio
     if (!parsed.success) throw new ValidationError("Please check the edition settings", fieldErrorsOf(parsed.error));
     await updateEdition(editionId, parsed.data, user.id);
     revalidateEdition(editionId);
-    return ok(null, "Edition settings saved");
+    return ok(null, tr("Edition settings saved"));
   } catch (err) {
     return toActionFailure(err);
   }
@@ -76,12 +78,13 @@ export async function saveEditionSectionsAction(editionId: string, sections: Edi
 
 /** Rebuilds this edition's campaign schedule (and its publication dates) from the monthly defaults. */
 export async function applyMonthlyDefaultsAction(editionId: string): Promise<ActionResult> {
+  const tr = await getUi();
   try {
     const user = await requirePermission("campaign:manage");
     await scheduleFromDefaults(editionId, user);
     revalidateEdition(editionId);
     revalidatePath(`/editions/${editionId}/campaign`);
-    return ok(null, "Campaign schedule rebuilt from the monthly defaults");
+    return ok(null, tr("Campaign schedule rebuilt from the monthly defaults"));
   } catch (err) {
     return toActionFailure(err);
   }

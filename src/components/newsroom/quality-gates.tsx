@@ -13,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { clearOverrideAction, fixGateAction, overrideGateAction } from "@/app/(newsroom)/editions/[editionId]/qa/actions";
 import type { QualityGate } from "@/server/publication/validate";
 import { cn } from "@/lib/utils";
+import { useUi } from "@/components/i18n/provider";
 
 /** Gates the checklist can fix in place (the rest — RED media, factual conflicts — need a human). */
 const FIXABLE = new Set(["every_selected_article_approved", "image_rights_validated", "cover_approved", "page_layout_validated", "toc_consistent", "page_numbers_consistent", "no_text_overflow", "pdf_generated", "docx_generated"]);
@@ -30,6 +31,7 @@ const TONES = {
  * override one, and only with a written reason, which then replaces the gate's own explanation.
  */
 export function QualityGates({ editionId, gates, canOverride }: { editionId: string; gates: QualityGate[]; canOverride: boolean }) {
+  const tr = useUi();
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [target, setTarget] = useState<QualityGate | null>(null);
@@ -59,19 +61,18 @@ export function QualityGates({ editionId, gates, canOverride }: { editionId: str
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-1.5">
                   <span className="text-xs font-medium">{gate.label}</span>
-                  {gate.blocking ? <Badge variant="outline" className="text-2xs">Blocking</Badge> : <Badge variant="muted" className="text-2xs">Advisory</Badge>}
-                  {gate.overridden ? <Badge variant="warning" className="text-2xs">Overridden</Badge> : null}
+                  {gate.blocking ? <Badge variant="outline" className="text-2xs">{tr("Blocking")}</Badge> : <Badge variant="muted" className="text-2xs">{tr("Advisory")}</Badge>}
+                  {gate.overridden ? <Badge variant="warning" className="text-2xs">{tr("Overridden")}</Badge> : null}
                 </div>
                 <p className="mt-0.5 text-2xs leading-relaxed text-muted-foreground">{gate.details}</p>
               </div>
               <div className="flex shrink-0 items-center gap-1">
                 {canOverride && FIXABLE.has(gate.key) && (gate.status === "fail" || gate.status === "warn" || gate.status === "pending") ? (
-                  <Button size="xs" variant="secondary" disabled={pending} onClick={() => run(() => fixGateAction(editionId, gate.key))} title="Fix this automatically">
-                    <Wrench /> Fix
-                  </Button>
+                  <Button size="xs" variant="secondary" disabled={pending} onClick={() => run(() => fixGateAction(editionId, gate.key))} title={tr("Fix this automatically")}>
+                    <Wrench /> {" "}{tr("Fix")}</Button>
                 ) : null}
                 {gate.href ? (
-                  <Button size="icon-sm" variant="ghost" asChild title="Go and fix this by hand" aria-label="Go and fix this by hand">
+                  <Button size="icon-sm" variant="ghost" asChild title={tr("Go and fix this by hand")} aria-label={tr("Go and fix this by hand")}>
                     <Link href={gate.href}>
                       <ArrowUpRight />
                     </Link>
@@ -79,16 +80,13 @@ export function QualityGates({ editionId, gates, canOverride }: { editionId: str
                 ) : null}
                 {canOverride && gate.overridden ? (
                   <Button size="xs" variant="ghost" disabled={pending} onClick={() => run(() => clearOverrideAction(editionId, gate.key))}>
-                    <Undo2 /> Lift
-                  </Button>
+                    <Undo2 /> {" "}{tr("Lift")}</Button>
                 ) : canOverride && gate.overridable && (gate.status === "fail" || gate.status === "warn") ? (
                   <Button size="xs" variant="outline" disabled={pending} onClick={() => { setTarget(gate); setReason(""); }}>
-                    <ShieldAlert /> Override
-                  </Button>
+                    <ShieldAlert /> {" "}{tr("Override")}</Button>
                 ) : !gate.overridable && gate.status === "fail" ? (
                   <span className="flex items-center gap-1 pr-1 text-2xs text-muted-foreground">
-                    <ShieldCheck className="size-3" /> Cannot be overridden
-                  </span>
+                    <ShieldCheck className="size-3" /> {" "}{tr("Cannot be overridden")}</span>
                 ) : null}
               </div>
             </li>
@@ -99,27 +97,24 @@ export function QualityGates({ editionId, gates, canOverride }: { editionId: str
       <Dialog open={!!target} onOpenChange={(v) => !v && setTarget(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Override “{target?.label}”</DialogTitle>
+            <DialogTitle>{tr("Override “")}{target?.label}”</DialogTitle>
             <DialogDescription>
-              This gate is failing. Overriding it lets the issue go to print anyway. The reason you give is recorded against the edition and shown on the gate.
-            </DialogDescription>
+              {tr("This gate is failing. Overriding it lets the issue go to print anyway. The reason you give is recorded against the edition and shown on the gate.")}</DialogDescription>
           </DialogHeader>
           <div className="space-y-1.5">
-            <Label htmlFor="override-reason">Why is it safe to publish without this?</Label>
-            <Textarea id="override-reason" value={reason} onChange={(e) => setReason(e.target.value)} rows={3} placeholder="The photographer confirmed the rights by email on 3 May; the written licence follows." />
+            <Label htmlFor="override-reason">{tr("Why is it safe to publish without this?")}</Label>
+            <Textarea id="override-reason" value={reason} onChange={(e) => setReason(e.target.value)} rows={3} placeholder={tr("The photographer confirmed the rights by email on 3 May; the written licence follows.")} />
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setTarget(null)}>
-              Cancel
-            </Button>
+              {tr("Cancel")}</Button>
             <Button
               variant="destructive"
               loading={pending}
               disabled={!reason.trim()}
               onClick={() => target && run(() => overrideGateAction(editionId, target.key, reason), () => setTarget(null))}
             >
-              <ShieldAlert /> Override the gate
-            </Button>
+              <ShieldAlert /> {" "}{tr("Override the gate")}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

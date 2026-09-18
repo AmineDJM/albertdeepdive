@@ -7,6 +7,7 @@ import { slugify } from "@/lib/utils";
 import { audit } from "@/server/audit";
 import type { OrganizationRole } from "./context";
 import { requireLimit } from "@/server/billing/entitlements";
+import { onlySent } from "@/lib/zod-patch";
 
 export const organizationTypes = ["COMPANY", "SCHOOL", "UNIVERSITY", "ASSOCIATION", "COMMUNITY", "INVESTOR", "MEDIA", "INSTITUTION", "OTHER"] as const;
 
@@ -79,7 +80,7 @@ export async function createOrganization(raw: OrganizationInput, ownerUserId: st
 }
 
 export async function updateOrganization(organizationId: string, raw: Partial<OrganizationInput> & { brandColours?: Record<string, unknown>; links?: Record<string, unknown>; logoUrl?: string | null; faviconUrl?: string | null }, userId?: string | null) {
-  const input = organizationInputSchema.partial().parse(raw);
+  const input = onlySent(organizationInputSchema.partial().parse(raw), raw);
   const patch: Record<string, unknown> = { ...input };
   if (input.name) patch.slug = await uniqueOrganizationSlug(input.name, organizationId);
   if (raw.brandColours !== undefined) patch.brandColours = raw.brandColours;

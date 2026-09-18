@@ -14,6 +14,7 @@ import { NewArticleButton } from "@/components/newsroom/new-article-button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Button } from "@/components/ui/button";
 import { cn, formatNumber } from "@/lib/utils";
+import { getUi } from "@/server/i18n/locale";
 
 export const dynamic = "force-dynamic";
 
@@ -31,6 +32,7 @@ export default async function ArticleDeskPage({
   params: Promise<{ editionId: string }>;
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
+  const tr = await getUi();
   const { editionId } = await params;
   const raw = await searchParams;
   const sp: Record<string, string | undefined> = {};
@@ -59,7 +61,7 @@ export default async function ArticleDeskPage({
   return (
     <>
       <PageHeader
-        title="Article desk"
+        title={tr("Article desk")}
         description={`${facets.total} article${facets.total === 1 ? "" : "s"} · ${formatNumber(facets.words)} words · ${facets.approved} approved${facets.missingDrafts ? ` · ${facets.missingDrafts} selected ${facets.missingDrafts === 1 ? "story has" : "stories have"} no draft` : ""}`}
         actions={
           <div className="flex items-center gap-2">
@@ -67,13 +69,11 @@ export default async function ArticleDeskPage({
             <div className="flex items-center gap-0.5 rounded-md bg-muted p-0.5">
               <Button asChild size="sm" variant={view === "table" ? "outline" : "ghost"} className={cn(view === "table" && "bg-card")}>
                 <Link href={qs({ view: undefined })} aria-current={view === "table" ? "true" : undefined}>
-                  <Rows3 /> Table
-                </Link>
+                  <Rows3 /> {" "}{tr("Table")}</Link>
               </Button>
               <Button asChild size="sm" variant={view === "board" ? "outline" : "ghost"} className={cn(view === "board" && "bg-card")}>
                 <Link href={qs({ view: "board" })} aria-current={view === "board" ? "true" : undefined}>
-                  <LayoutGrid /> Board
-                </Link>
+                  <LayoutGrid /> {" "}{tr("Board")}</Link>
               </Button>
             </div>
           </div>
@@ -81,7 +81,7 @@ export default async function ArticleDeskPage({
       />
 
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-5 py-2">
-        <nav className="flex flex-wrap items-center gap-1" aria-label="Article views">
+        <nav className="flex flex-wrap items-center gap-1" aria-label={tr("Article views")}>
           {VIEWS.map((v) => (
             <Link
               key={v.key}
@@ -91,7 +91,7 @@ export default async function ArticleDeskPage({
                 status === v.key ? "bg-brand-soft text-brand-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground",
               )}
             >
-              {v.label}
+              {tr(v.label)}
               <span className="tabular text-2xs opacity-70">{facets[v.facet]}</span>
             </Link>
           ))}
@@ -99,34 +99,34 @@ export default async function ArticleDeskPage({
             <>
               <span className="mx-1 h-4 w-px bg-border" />
               <span className="rounded-md px-2 py-1 text-xs font-medium text-warning">
-                {facets.warnings} flagged <span className="tabular text-2xs opacity-70">article{facets.warnings === 1 ? "" : "s"}</span>
+                {facets.warnings} {" "}{tr("flagged")}{" "}<span className="tabular text-2xs opacity-70">{tr("article")}{facets.warnings === 1 ? "" : "s"}</span>
               </span>
             </>
           ) : null}
         </nav>
         <span className="text-2xs text-muted-foreground">
-          {rows.length} shown{facets.locked ? ` · ${facets.locked} locked for print` : ""}
+          {rows.length} {" "}{tr("shown")}{facets.locked ? ` · ${facets.locked} locked for print` : ""}
         </span>
       </div>
 
       <div className="border-b border-border px-5 py-2">
         <Suspense>
           <FilterBar
-            searchPlaceholder="Search headline, standfirst, story…"
+            searchPlaceholder={tr("Search headline, standfirst, story…")}
             filters={[
-              { key: "sectionId", label: "Section", options: [...sections.map((s) => ({ value: s.id, label: s.name })), { value: "none", label: "No section" }] },
-              { key: "campusId", label: "Campus", options: [...campuses.map((c) => ({ value: c.id, label: c.name })), { value: "school", label: "School-wide" }] },
-              { key: "assignee", label: "Assignee", options: [...assignees.map((a) => ({ value: a.id, label: a.name })), { value: "none", label: "Unassigned" }] },
+              { key: "sectionId", label: tr("Section"), options: [...sections.map((s) => ({ value: s.id, label: s.name })), { value: "none", label: tr("No section") }] },
+              { key: "campusId", label: tr("Campus"), options: [...campuses.map((c) => ({ value: c.id, label: c.name })), { value: "school", label: tr("School-wide") }] },
+              { key: "assignee", label: tr("Assignee"), options: [...assignees.map((a) => ({ value: a.id, label: a.name })), { value: "none", label: tr("Unassigned") }] },
               {
                 key: "sort",
-                label: "Sort",
+                label: tr("Sort"),
                 options: [
-                  { value: "status", label: "Workflow status" },
-                  { value: "recent", label: "Recently edited" },
-                  { value: "words", label: "Longest first" },
-                  { value: "manual", label: "Most rewritten" },
+                  { value: "status", label: tr("Workflow status") },
+                  { value: "recent", label: tr("Recently edited") },
+                  { value: "words", label: tr("Longest first") },
+                  { value: "manual", label: tr("Most rewritten") },
                 ],
-                allLabel: "By section",
+                allLabel: tr("By section"),
               },
             ]}
           />
@@ -135,27 +135,26 @@ export default async function ArticleDeskPage({
 
       <PageBody className="space-y-4">
         <StatGrid columns={5}>
-          <Stat label="Articles" value={facets.total} hint={`${facets.selectedStories} selected stories`} icon={FileText} />
-          <Stat label="Approved" value={facets.approved} tone={facets.approved ? "success" : "muted"} hint={facets.locked ? `${facets.locked} locked` : "Ready for layout"} href={qs({ status: "approved" })} />
-          <Stat label="In review" value={facets.inReview} tone={facets.inReview ? "warning" : "muted"} hint="Waiting for an editor" href={qs({ status: "review" })} />
-          <Stat label="Drafting" value={facets.drafting} hint={facets.missingDrafts ? `${facets.missingDrafts} not started` : "All stories drafted"} href={qs({ status: "drafting" })} />
-          <Stat label="Words" value={formatNumber(facets.words)} hint={facets.total ? `${Math.round(facets.words / facets.total)} per article` : "No article yet"} />
+          <Stat label={tr("Articles")} value={facets.total} hint={`${facets.selectedStories} selected stories`} icon={FileText} />
+          <Stat label={tr("Approved")} value={facets.approved} tone={facets.approved ? "success" : "muted"} hint={facets.locked ? `${facets.locked} locked` : "Ready for layout"} href={qs({ status: "approved" })} />
+          <Stat label={tr("In review")} value={facets.inReview} tone={facets.inReview ? "warning" : "muted"} hint={tr("Waiting for an editor")} href={qs({ status: "review" })} />
+          <Stat label={tr("Drafting")} value={facets.drafting} hint={facets.missingDrafts ? `${facets.missingDrafts} not started` : "All stories drafted"} href={qs({ status: "drafting" })} />
+          <Stat label={tr("Words")} value={formatNumber(facets.words)} hint={facets.total ? `${Math.round(facets.words / facets.total)} per article` : "No article yet"} />
         </StatGrid>
 
         {facets.total ? (
           <div className="flex items-center gap-3 rounded-lg border border-border bg-card px-3 py-2">
-            <span className="label-caps shrink-0">Progress</span>
+            <span className="label-caps shrink-0">{tr("Progress")}</span>
             <ProgressBar value={done} max={Math.max(1, target)} tone={done === target ? "success" : "brand"} />
             <span className="tabular shrink-0 text-xs text-muted-foreground">
-              {done} / {target} approved
-            </span>
+              {done} / {target} {" "}{tr("approved")}</span>
           </div>
         ) : null}
 
         {rows.length === 0 && !hasFilters ? (
           <EmptyState
             icon={FileText}
-            title="No article has been drafted yet"
+            title={tr("No article has been drafted yet")}
             description={
               facets.selectedStories
                 ? `${facets.selectedStories} ${facets.selectedStories === 1 ? "story is" : "stories are"} selected for this edition. Draft them from the stories board and they will appear here.`
@@ -163,8 +162,7 @@ export default async function ArticleDeskPage({
             }
             action={
               <Link href={`/editions/${editionId}/stories`} className="text-xs text-brand hover:underline">
-                Go to the stories board
-              </Link>
+                {tr("Go to the stories board")}</Link>
             }
           />
         ) : view === "board" ? (
@@ -175,10 +173,9 @@ export default async function ArticleDeskPage({
 
         {canEdit && facets.missingDrafts > 0 && rows.length > 0 ? (
           <p className="text-2xs text-muted-foreground">
-            {facets.missingDrafts} selected {facets.missingDrafts === 1 ? "story has" : "stories have"} no draft yet —{" "}
+            {facets.missingDrafts} {" "}{tr("selected")}{" "}{facets.missingDrafts === 1 ? "story has" : "stories have"} {" "}{tr("no draft yet —")}{" "}
             <Link href={`/editions/${editionId}/stories?status=selected`} className="text-brand hover:underline">
-              draft them from the stories board
-            </Link>
+              {tr("draft them from the stories board")}</Link>
             .
           </p>
         ) : null}

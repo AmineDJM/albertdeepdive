@@ -101,6 +101,16 @@ export async function runAutomationTick(opts: TickOptions = {}): Promise<TickRes
     result.errors.push(`MAILBOX: ${errorMessage(err)}`);
   }
 
+  // 6. Paid readers: a subscription that ended at Stripe ends here, whichever way it ended.
+  try {
+    const { syncPaidReaders } = await import("@/server/payments/readers");
+    const paid = await syncPaidReaders(now);
+    if (paid.checked || paid.errors) result.ran.push(`PAID_READERS: ${paid.checked} checked, ${paid.stopped} stopped${paid.errors ? `, ${paid.errors} could not be checked` : ""}`);
+    else result.skipped.push("PAID_READERS (nothing due)");
+  } catch (err) {
+    result.errors.push(`PAID_READERS: ${errorMessage(err)}`);
+  }
+
   log.info("tick done", { ran: result.ran.length, skipped: result.skipped.length, errors: result.errors });
   return result;
 }

@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { MAX_HASHTAGS } from "@/lib/creative/laws";
 import type { CreativeBrief, FrameBrief } from "@/lib/creative/brief";
+import { useUi } from "@/components/i18n/provider";
 
 /**
  * The words, editable. The look, not.
@@ -30,6 +31,7 @@ const draftFrom = (brief: CreativeBrief): Draft => ({
 });
 
 export function BriefEditor({ packId, brief, busy }: { packId: string; brief: CreativeBrief; busy: boolean }) {
+  const tr = useUi();
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [draft, setDraft] = useState<Draft>(() => draftFrom(brief));
@@ -67,7 +69,7 @@ export function BriefEditor({ packId, brief, busy }: { packId: string; brief: Cr
         {draft.frames.map((frame, index) => (
           <li key={index} className="rounded-lg border border-border bg-card p-3">
             <p className="mb-2 flex items-baseline gap-2 text-2xs text-muted-foreground">
-              <span className="font-medium text-foreground">Frame {index + 1}</span>
+              <span className="font-medium text-foreground">{tr("Frame")}{" "}{index + 1}</span>
               <span>
                 {frame.layout.replace("_", " ")} · {frame.surface} · {frame.emphasis}
               </span>
@@ -75,13 +77,13 @@ export function BriefEditor({ packId, brief, busy }: { packId: string; brief: Cr
             <div className="space-y-2">
               <Input aria-label={`Frame ${index + 1} headline`} value={frame.headline} maxLength={180} onChange={(event) => setFrame(index, { headline: event.target.value })} />
               {frame.layout === "figure" ? (
-                <Input aria-label={`Frame ${index + 1} figure`} placeholder="The number itself — €1.2M, 340, 3×" value={frame.figure ?? ""} maxLength={24} onChange={(event) => setFrame(index, { figure: event.target.value })} />
+                <Input aria-label={`Frame ${index + 1} figure`} placeholder={tr("The number itself — €1.2M, 340, 3×")} value={frame.figure ?? ""} maxLength={24} onChange={(event) => setFrame(index, { figure: event.target.value })} />
               ) : null}
               {frame.layout === "quote" ? (
-                <Input aria-label={`Frame ${index + 1} attribution`} placeholder="Who said it" value={frame.attribution ?? ""} maxLength={180} onChange={(event) => setFrame(index, { attribution: event.target.value })} />
+                <Input aria-label={`Frame ${index + 1} attribution`} placeholder={tr("Who said it")} value={frame.attribution ?? ""} maxLength={180} onChange={(event) => setFrame(index, { attribution: event.target.value })} />
               ) : null}
               {frame.layout === "list" ? (
-                <Textarea aria-label={`Frame ${index + 1} items`} placeholder="One item per line, two to five" value={(frame.items ?? []).join("\n")} onChange={(event) => setFrame(index, { items: event.target.value.split("\n") })} />
+                <Textarea aria-label={`Frame ${index + 1} items`} placeholder={tr("One item per line, two to five")} value={(frame.items ?? []).join("\n")} onChange={(event) => setFrame(index, { items: event.target.value.split("\n") })} />
               ) : null}
               {frame.layout === "heading_body" || frame.layout === "cta" || frame.body ? (
                 <Textarea aria-label={`Frame ${index + 1} body`} value={frame.body ?? ""} maxLength={420} onChange={(event) => setFrame(index, { body: event.target.value })} />
@@ -92,8 +94,8 @@ export function BriefEditor({ packId, brief, busy }: { packId: string; brief: Cr
       </ol>
 
       <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_220px]">
-        <Textarea aria-label="Caption" placeholder="The post's own text" value={draft.caption} maxLength={2200} onChange={(event) => setDraft((current) => ({ ...current, caption: event.target.value }))} />
-        <Input aria-label="Hashtags" placeholder={`Up to ${MAX_HASHTAGS} hashtags`} value={draft.hashtags} onChange={(event) => setDraft((current) => ({ ...current, hashtags: event.target.value }))} />
+        <Textarea aria-label={tr("Caption")} placeholder={tr("The post's own text")} value={draft.caption} maxLength={2200} onChange={(event) => setDraft((current) => ({ ...current, caption: event.target.value }))} />
+        <Input aria-label={tr("Hashtags")} placeholder={`Up to ${MAX_HASHTAGS} hashtags`} value={draft.hashtags} onChange={(event) => setDraft((current) => ({ ...current, hashtags: event.target.value }))} />
       </div>
 
       {problems.length ? (
@@ -112,8 +114,7 @@ export function BriefEditor({ packId, brief, busy }: { packId: string; brief: Cr
           <Save /> {pending ? "Saving…" : "Save and render"}
         </Button>
         <Button variant="ghost" size="sm" disabled={!dirty || pending} onClick={() => { setDraft(draftFrom(brief)); setProblems([]); }}>
-          <Undo2 /> Undo changes
-        </Button>
+          <Undo2 /> {" "}{tr("Undo changes")}</Button>
         <span className="text-2xs text-muted-foreground">{busy ? "Wait for the current render to finish." : "The look stays the brand's. Only the words change."}</span>
       </div>
     </div>

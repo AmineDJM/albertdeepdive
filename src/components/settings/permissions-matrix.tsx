@@ -1,6 +1,7 @@
 import { Check } from "lucide-react";
 import { PERMISSIONS, ROLE_DESCRIPTIONS, ROLE_LABELS, ROLES, roleHasPermission } from "@/lib/auth/permissions";
 import { cn } from "@/lib/utils";
+import { getUi } from "@/server/i18n/locale";
 
 const GROUP_LABELS: Record<string, string> = {
   edition: "Editions",
@@ -26,7 +27,8 @@ const GROUP_LABELS: Record<string, string> = {
 };
 
 /** Read-only roles × permissions grid, derived from src/lib/auth/permissions.ts. */
-export function PermissionsMatrix() {
+export async function PermissionsMatrix() {
+  const tx = await getUi();
   const groups = new Map<string, string[]>();
   for (const p of PERMISSIONS) {
     const [group] = p.split(":");
@@ -37,7 +39,7 @@ export function PermissionsMatrix() {
       <table className="w-full text-[12.5px]">
         <thead>
           <tr className="border-b border-border">
-            <th className="sticky left-0 bg-card px-3 py-2 text-left text-2xs font-medium tracking-[0.06em] text-muted-foreground uppercase">Permission</th>
+            <th className="sticky left-0 bg-card px-3 py-2 text-left text-2xs font-medium tracking-[0.06em] text-muted-foreground uppercase">{tx("Permission")}</th>
             {ROLES.map((r) => (
               <th key={r} className="px-2 py-2 text-center text-2xs font-medium tracking-[0.06em] text-muted-foreground uppercase whitespace-nowrap" title={ROLE_DESCRIPTIONS[r]}>
                 {ROLE_LABELS[r]}

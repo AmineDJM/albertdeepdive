@@ -17,6 +17,7 @@ import {
 } from "@/server/campaigns/service";
 import type { ReminderKind } from "@/server/campaigns/emails";
 import { NotFoundError, ok, toActionFailure, type ActionResult } from "@/lib/action-result";
+import { getUi } from "@/server/i18n/locale";
 
 /** The campaign form speaks ISO strings; the service coerces them and validates the ordering. */
 export type CampaignFormInput = {
@@ -48,11 +49,12 @@ async function requireCampaign(editionId: string) {
 }
 
 export async function saveCampaignAction(editionId: string, input: CampaignFormInput): Promise<ActionResult> {
+  const tr = await getUi();
   try {
     const user = await requirePermission("campaign:manage");
     await createOrUpdateCampaign(editionId, input, user);
     revalidateCampaign(editionId);
-    return ok(null, "Campaign saved");
+    return ok(null, tr("Campaign saved"));
   } catch (err) {
     return toActionFailure(err);
   }
@@ -60,11 +62,12 @@ export async function saveCampaignAction(editionId: string, input: CampaignFormI
 
 /** Rebuilds the schedule from the monthly system defaults (and keeps pools and targets). */
 export async function applyCampaignDefaultsAction(editionId: string): Promise<ActionResult> {
+  const tr = await getUi();
   try {
     const user = await requirePermission("campaign:manage");
     await scheduleFromDefaults(editionId, user);
     revalidateCampaign(editionId);
-    return ok(null, "Schedule rebuilt from the monthly defaults");
+    return ok(null, tr("Schedule rebuilt from the monthly defaults"));
   } catch (err) {
     return toActionFailure(err);
   }
@@ -140,35 +143,38 @@ export async function closeCampaignAction(editionId: string): Promise<ActionResu
 }
 
 export async function reopenCampaignAction(editionId: string, graceEndsAt?: string): Promise<ActionResult> {
+  const tr = await getUi();
   try {
     const user = await requirePermission("campaign:manage");
     const campaign = await requireCampaign(editionId);
     await reopenCampaign(campaign.id, { graceEndsAt: graceEndsAt ? new Date(graceEndsAt) : undefined, userId: user.id });
     revalidateCampaign(editionId);
-    return ok(null, "Campaign reopened — contributors can submit again");
+    return ok(null, tr("Campaign reopened — contributors can submit again"));
   } catch (err) {
     return toActionFailure(err);
   }
 }
 
 export async function extendCampaignAction(editionId: string, graceEndsAt: string): Promise<ActionResult> {
+  const tr = await getUi();
   try {
     const user = await requirePermission("campaign:manage");
     const campaign = await requireCampaign(editionId);
     await extendCampaign(campaign.id, { graceEndsAt: new Date(graceEndsAt), userId: user.id });
     revalidateCampaign(editionId);
-    return ok(null, "Deadline extended and personal links renewed");
+    return ok(null, tr("Deadline extended and personal links renewed"));
   } catch (err) {
     return toActionFailure(err);
   }
 }
 
 export async function resendInvitationAction(editionId: string, requestId: string): Promise<ActionResult> {
+  const tr = await getUi();
   try {
     const user = await requirePermission("campaign:manage");
     const result = await resendInvitation(requestId, user);
     revalidateCampaign(editionId);
-    return result.ok ? ok(null, "Invitation sent again with a fresh link") : ok(null, "The email could not be sent — check the email log");
+    return result.ok ? ok(null, tr("Invitation sent again with a fresh link")) : ok(null, tr("The email could not be sent — check the email log"));
   } catch (err) {
     return toActionFailure(err);
   }

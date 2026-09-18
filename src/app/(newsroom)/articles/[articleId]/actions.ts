@@ -6,6 +6,7 @@ import { approveArticle, lockArticle, requestChanges, restoreRevision, runArticl
 import { explainBlock, type BlockExplanation } from "@/server/editorial/facts";
 import { addComment } from "@/server/editorial/comments";
 import { ok, toActionFailure, type ActionResult } from "@/lib/action-result";
+import { getUi } from "@/server/i18n/locale";
 
 function revalidateArticle(articleId: string, editionId?: string, storyId?: string) {
   revalidatePath(`/articles/${articleId}`);
@@ -49,33 +50,36 @@ export async function explainBlockAction(articleId: string, blockId: string): Pr
 }
 
 export async function submitForReviewAction(articleId: string, ctx: { editionId?: string; storyId?: string } = {}): Promise<ActionResult> {
+  const tr = await getUi();
   try {
     const user = await requirePermission("article:edit");
     await submitForReview(articleId, user.id);
     revalidateArticle(articleId, ctx.editionId, ctx.storyId);
-    return ok(null, "Sent for review");
+    return ok(null, tr("Sent for review"));
   } catch (err) {
     return toActionFailure(err);
   }
 }
 
 export async function approveArticleAction(articleId: string, options: { force?: boolean; reason?: string } = {}, ctx: { editionId?: string; storyId?: string } = {}): Promise<ActionResult> {
+  const tr = await getUi();
   try {
     const user = await requirePermission("article:approve");
     await approveArticle(articleId, user.id, { force: options.force, reason: options.reason ?? null });
     revalidateArticle(articleId, ctx.editionId, ctx.storyId);
-    return ok(null, "Article approved");
+    return ok(null, tr("Article approved"));
   } catch (err) {
     return toActionFailure(err);
   }
 }
 
 export async function requestChangesAction(articleId: string, note: string, ctx: { editionId?: string; storyId?: string } = {}): Promise<ActionResult> {
+  const tr = await getUi();
   try {
     const user = await requirePermission("article:approve");
     await requestChanges(articleId, user.id, note);
     revalidateArticle(articleId, ctx.editionId, ctx.storyId);
-    return ok(null, "Changes requested");
+    return ok(null, tr("Changes requested"));
   } catch (err) {
     return toActionFailure(err);
   }
@@ -105,11 +109,12 @@ export async function toggleLockAction(articleId: string, lock: boolean, reason?
 }
 
 export async function commentOnArticleAction(articleId: string, editionId: string, body: string): Promise<ActionResult> {
+  const tr = await getUi();
   try {
     const user = await requirePermission("article:edit");
     await addComment("ARTICLE", articleId, body, user.id, editionId);
     revalidateArticle(articleId);
-    return ok(null, "Note added");
+    return ok(null, tr("Note added"));
   } catch (err) {
     return toActionFailure(err);
   }

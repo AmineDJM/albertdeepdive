@@ -15,6 +15,7 @@ import { ViewToggle, type MediaView } from "@/components/media/view-toggle";
 import { FilterChips } from "@/components/media/filter-chips";
 import { MediaPagination } from "@/components/media/pagination";
 import { DescribeMissingButton } from "@/components/media/describe-missing-button";
+import { getUi } from "@/server/i18n/locale";
 
 export const dynamic = "force-dynamic";
 
@@ -40,6 +41,7 @@ export default async function MediaLibraryPage({
   params: Promise<{ editionId: string }>;
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
+  const tr = await getUi();
   const { editionId } = await params;
   const raw = await searchParams;
   const sp: Record<string, string | undefined> = {};
@@ -64,7 +66,7 @@ export default async function MediaLibraryPage({
   return (
     <>
       <PageHeader
-        title="Media"
+        title={tr("Media")}
         description={`${stats.total} asset${stats.total === 1 ? "" : "s"} · ${stats.printReady} print-ready · ${stats.unused} unused · ${stats.described} described${stats.archived ? ` · ${stats.archived} archived` : ""}`}
         actions={
           <>
@@ -88,41 +90,41 @@ export default async function MediaLibraryPage({
       <PageBody className="space-y-4">
         <StatGrid columns={6}>
           <Stat
-            label="Assets"
+            label={tr("Assets")}
             value={stats.total}
             hint={`${stats.printReady} print-ready (≥ 1400 px, approved)`}
             href={basePath}
           />
           <Stat
-            label="Cleared"
+            label={tr("Cleared")}
             value={stats.byRights.GREEN}
             tone="success"
             hint={RIGHTS_STATUS_LABELS.GREEN}
             href={`${basePath}?rights=GREEN`}
           />
           <Stat
-            label="Unclear"
+            label={tr("Unclear")}
             value={stats.byRights.YELLOW}
             tone={stats.byRights.YELLOW ? "warning" : "muted"}
-            hint="rights to confirm"
+            hint={tr("rights to confirm")}
             href={`${basePath}?rights=YELLOW`}
           />
           <Stat
-            label="Blocked"
+            label={tr("Blocked")}
             value={stats.byRights.RED}
             tone={stats.byRights.RED ? "destructive" : "muted"}
             hint={RIGHTS_STATUS_LABELS.RED.toLowerCase()}
             href={`${basePath}?rights=RED`}
           />
           <Stat
-            label="Low quality"
+            label={tr("Low quality")}
             value={stats.lowQuality}
             tone={stats.lowQuality ? "warning" : "muted"}
-            hint="score under 60"
+            hint={tr("score under 60")}
             href={`${basePath}?quality=low`}
           />
           <Stat
-            label="Duplicates"
+            label={tr("Duplicates")}
             value={stats.duplicates}
             tone={stats.duplicates ? "warning" : "muted"}
             hint={`${stats.inGroups} in similarity groups`}
@@ -132,11 +134,11 @@ export default async function MediaLibraryPage({
 
         <Suspense>
           <FilterBar
-            searchPlaceholder="Search caption, file name, description…"
+            searchPlaceholder={tr("Search caption, file name, description…")}
             filters={[
               {
                 key: "rights",
-                label: "Rights",
+                label: tr("Rights"),
                 options: [
                   {
                     value: "GREEN",
@@ -154,7 +156,7 @@ export default async function MediaLibraryPage({
               },
               {
                 key: "kind",
-                label: "Kinds",
+                label: tr("Kinds"),
                 options: MEDIA_KINDS.map((k) => ({
                   value: k,
                   label: `${KIND_LABELS[k]}${list.facets.kind[k] ? ` (${list.facets.kind[k]})` : ""}`,
@@ -162,29 +164,29 @@ export default async function MediaLibraryPage({
               },
               {
                 key: "quality",
-                label: "Quality",
+                label: tr("Quality"),
                 options: [
-                  { value: "low", label: "Low quality (< 60)" },
-                  { value: "ok", label: "Usable (≥ 60)" },
+                  { value: "low", label: tr("Low quality (< 60)") },
+                  { value: "ok", label: tr("Usable (≥ 60)") },
                 ],
-                allLabel: "Any quality",
+                allLabel: tr("Any quality"),
               },
               {
                 key: "storyId",
-                label: "Stories",
+                label: tr("Stories"),
                 options: stories.map((st) => ({ value: st.id, label: st.title })),
-                allLabel: "Any story",
+                allLabel: tr("Any story"),
               },
               {
                 key: "sort",
-                label: "Sort",
+                label: tr("Sort"),
                 options: [
-                  { value: "oldest", label: "Oldest first" },
-                  { value: "quality", label: "Best quality first" },
-                  { value: "size", label: "Largest first" },
-                  { value: "name", label: "File name" },
+                  { value: "oldest", label: tr("Oldest first") },
+                  { value: "quality", label: tr("Best quality first") },
+                  { value: "size", label: tr("Largest first") },
+                  { value: "name", label: tr("File name") },
                 ],
-                allLabel: "Newest first",
+                allLabel: tr("Newest first"),
               },
             ]}
           >
@@ -213,14 +215,14 @@ export default async function MediaLibraryPage({
         ) : hasFilters ? (
           <EmptyState
             icon={Images}
-            title="No media match these filters"
-            description="Try a broader search, clear a filter, or check the archived assets."
+            title={tr("No media match these filters")}
+            description={tr("Try a broader search, clear a filter, or check the archived assets.")}
           />
         ) : (
           <EmptyState
             icon={Images}
-            title="No media in this edition yet"
-            description="Photos sent through the contribution form land here automatically. You can also upload files from your computer."
+            title={tr("No media in this edition yet")}
+            description={tr("Photos sent through the contribution form land here automatically. You can also upload files from your computer.")}
             action={
               canManage ? (
                 <UploadDialog

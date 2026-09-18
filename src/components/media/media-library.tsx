@@ -6,6 +6,7 @@ import type { MediaListRow } from "@/server/media/library";
 import { MediaCard } from "./media-card";
 import { MediaListTable } from "./media-list-table";
 import { BulkActionBar } from "./bulk-action-bar";
+import { useUi } from "@/components/i18n/provider";
 
 function isEditable(target: EventTarget | null) {
   const el = target as HTMLElement | null;
@@ -32,6 +33,7 @@ export function MediaLibrary({
   canManage: boolean;
   canRights: boolean;
 }) {
+  const tr = useUi();
   const [rawSelected, setSelected] = useState<Set<string>>(() => new Set());
   const lastClicked = useRef<string | null>(null);
   const gridRef = useRef<HTMLDivElement>(null);
@@ -140,7 +142,7 @@ export function MediaLibrary({
         <div
           ref={gridRef}
           role="list"
-          aria-label="Media assets"
+          aria-label={tr("Media assets")}
           className="grid grid-cols-[repeat(auto-fill,minmax(196px,1fr))] gap-3"
         >
           {rows.map((row) => (
@@ -156,8 +158,7 @@ export function MediaLibrary({
       )}
       {selectable && !selected.size ? (
         <p className="text-2xs text-muted-foreground hidden items-center gap-1.5 md:flex">
-          Select with the checkbox or <Kbd>Space</Kbd>, ranges with <Kbd>Shift</Kbd>, everything
-          with <Kbd>⌘A</Kbd>, move with the arrow keys, open with <Kbd>Enter</Kbd>.
+          {tr("Select with the checkbox or")}{" "}<Kbd>{tr("Space")}</Kbd>{tr(", ranges with")}{" "}<Kbd>{tr("Shift")}</Kbd>{tr(", everything with")}{" "}<Kbd>⌘A</Kbd>{tr(", move with the arrow keys, open with")}{" "}<Kbd>{tr("Enter")}</Kbd>.
         </p>
       ) : null}
       {selected.size ? (

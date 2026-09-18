@@ -5,10 +5,12 @@ import { env } from "@/server/env";
 import { LoginForm } from "./login-form";
 import { BrieflyMark } from "@/components/brand/briefly-mark";
 import { BRAND } from "@/lib/brand";
+import { getUi } from "@/server/i18n/locale";
 
 export const metadata: Metadata = { title: "Sign in" };
 
 export default async function LoginPage({ searchParams }: { searchParams: Promise<{ next?: string }> }) {
+  const tr = await getUi();
   const user = await getCurrentUser();
   if (user) redirect("/overview");
   const { next } = await searchParams;
@@ -22,29 +24,27 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
         </div>
         <div className="relative z-10 max-w-lg">
           <h1 className="masthead text-[64px] leading-[0.95] font-semibold text-white">
-            Your organization,
-            <br />
-            published.
-          </h1>
+            {tr("Your organization,")}{" "}<br />
+            {tr("published.")}</h1>
           <p className="mt-6 max-w-md text-[15px] leading-6 text-white/70">
             {BRAND.description}
           </p>
           <dl className="mt-10 grid grid-cols-3 gap-6 text-sm">
             <div>
-              <dt className="text-2xs uppercase tracking-[0.12em] text-white/50">Collect</dt>
-              <dd className="mt-1 text-white/85">Contribution links, reminders, uploads</dd>
+              <dt className="text-2xs uppercase tracking-[0.12em] text-white/50">{tr("Collect")}</dt>
+              <dd className="mt-1 text-white/85">{tr("Contribution links, reminders, uploads")}</dd>
             </div>
             <div>
-              <dt className="text-2xs uppercase tracking-[0.12em] text-white/50">Verify</dt>
-              <dd className="mt-1 text-white/85">Story clusters, fact sheets, provenance</dd>
+              <dt className="text-2xs uppercase tracking-[0.12em] text-white/50">{tr("Verify")}</dt>
+              <dd className="mt-1 text-white/85">{tr("Story clusters, fact sheets, provenance")}</dd>
             </div>
             <div>
-              <dt className="text-2xs uppercase tracking-[0.12em] text-white/50">Publish</dt>
-              <dd className="mt-1 text-white/85">Email, web, magazine and print</dd>
+              <dt className="text-2xs uppercase tracking-[0.12em] text-white/50">{tr("Publish")}</dt>
+              <dd className="mt-1 text-white/85">{tr("Email, web, magazine and print")}</dd>
             </div>
           </dl>
         </div>
-        <p className="text-xs text-white/40">One edition. Every format your organization publishes in.</p>
+        <p className="text-xs text-white/40">{tr("One edition. Every format your organization publishes in.")}</p>
         <div className="pointer-events-none absolute -right-40 -bottom-40 size-[520px] rounded-full bg-brand/30 blur-3xl" />
         <div className="pointer-events-none absolute -right-10 top-1/3 size-56 rounded-full bg-brand/60" />
         <div className="pointer-events-none absolute right-40 top-[calc(33%+80px)] size-10 rounded-full bg-[oklch(0.2_0.04_262)]" />
@@ -55,14 +55,16 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
             <BrieflyMark className="size-7" />
             <span className="text-xl font-semibold tracking-[-0.02em]">{BRAND.name}</span>
           </div>
-          <h2 className="text-lg font-semibold tracking-tight">Sign in</h2>
-          <p className="mt-1 mb-6 text-[13px] text-muted-foreground">Sign in to your workspace. Contributors use their personal link instead.</p>
+          <h2 className="text-lg font-semibold tracking-tight">{tr("Sign in")}</h2>
+          <p className="mt-1 mb-6 text-[13px] text-muted-foreground">{tr("Sign in to your workspace. Contributors use their personal link instead.")}</p>
           <LoginForm next={next} demo={demo} />
           {demo ? (
+            // Development only. The sign-in page belongs to Briefly, so it names no customer: the
+            // sample workspace's accounts are in the README, not here.
             <div className="mt-6 rounded-md border border-border bg-muted/40 p-3 text-xs text-muted-foreground">
-              <p className="font-medium text-foreground">Demo accounts (development)</p>
+              <p className="font-medium text-foreground">{tr("Development sign-in")}</p>
               <p className="mt-1">
-                {demo.email} (super admin), eic@albertschool.com, editor@albertschool.com, lyon@albertschool.com, viewer@albertschool.com — password <span className="font-mono">{demo.password}</span>
+                {tr("Platform admin")}{" "}<span className="font-mono">{demo.email}</span> {" "}{tr("— password")}{" "}<span className="font-mono">{demo.password}</span>
               </p>
             </div>
           ) : null}

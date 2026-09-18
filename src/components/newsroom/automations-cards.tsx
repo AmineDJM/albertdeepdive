@@ -11,6 +11,7 @@ import { GenericStatusBadge } from "@/components/newsroom/status-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { useUi } from "@/components/i18n/provider";
 
 /**
  * Dates are formatted on the server and handed over as strings: a relative time recomputed during
@@ -35,6 +36,7 @@ const SENDS_EMAIL: AutomationKey[] = ["contributionRequest", "reminder1", "remin
 const TICK_ONLY: AutomationKey[] = ["editorialAlert", "coverageCheck", "deadlineAlert"];
 
 function AutomationTile({ item, canManage }: { item: AutomationTileView; canManage: boolean }) {
+  const tr = useUi();
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
@@ -60,23 +62,21 @@ function AutomationTile({ item, canManage }: { item: AutomationTileView; canMana
         <h3 className="text-[13px] font-semibold">{item.label}</h3>
         {item.enabled ? (
           <Badge variant="success" className="gap-1">
-            <CircleCheck className="size-3" /> Active
-          </Badge>
+            <CircleCheck className="size-3" /> {" "}{tr("Active")}</Badge>
         ) : (
           <Badge variant="muted" className="gap-1">
-            <CirclePause className="size-3" /> Paused
-          </Badge>
+            <CirclePause className="size-3" /> {" "}{tr("Paused")}</Badge>
         )}
       </div>
       <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{item.description}</p>
 
       <dl className="mt-3 space-y-1.5 text-2xs">
         <div className="flex items-baseline justify-between gap-2">
-          <dt className="shrink-0 text-muted-foreground">Schedule</dt>
+          <dt className="shrink-0 text-muted-foreground">{tr("Schedule")}</dt>
           <dd className="truncate text-right font-medium">{item.when}</dd>
         </div>
         <div className="flex items-baseline justify-between gap-2">
-          <dt className="shrink-0 text-muted-foreground">Next run</dt>
+          <dt className="shrink-0 text-muted-foreground">{tr("Next run")}</dt>
           <dd className="truncate text-right font-medium">
             {item.nextLabel ? (
               <span title={item.nextExact ?? undefined}>
@@ -84,12 +84,12 @@ function AutomationTile({ item, canManage }: { item: AutomationTileView; canMana
                 {item.editionLabel ? <span className="ml-1 text-muted-foreground">· {item.editionLabel}</span> : null}
               </span>
             ) : (
-              <span className="text-muted-foreground">Not scheduled</span>
+              <span className="text-muted-foreground">{tr("Not scheduled")}</span>
             )}
           </dd>
         </div>
         <div className="flex items-baseline justify-between gap-2">
-          <dt className="shrink-0 text-muted-foreground">Last run</dt>
+          <dt className="shrink-0 text-muted-foreground">{tr("Last run")}</dt>
           <dd className="flex items-center justify-end gap-1.5 text-right">
             {last ? (
               <>
@@ -99,7 +99,7 @@ function AutomationTile({ item, canManage }: { item: AutomationTileView; canMana
                 </span>
               </>
             ) : (
-              <span className="text-muted-foreground">Never</span>
+              <span className="text-muted-foreground">{tr("Never")}</span>
             )}
           </dd>
         </div>
@@ -116,26 +116,24 @@ function AutomationTile({ item, canManage }: { item: AutomationTileView; canMana
         ) : null}
         {canManage ? (
           <Button size="xs" variant="outline" className="ml-auto" loading={pending} onClick={() => setOpen(true)}>
-            <Play /> Run now
-          </Button>
+            <Play /> {" "}{tr("Run now")}</Button>
         ) : null}
       </div>
 
       <AlertDialog open={open} onOpenChange={(o) => !pending && setOpen(o)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Run &ldquo;{item.label}&rdquo; now?</AlertDialogTitle>
+            <AlertDialogTitle>{tr("Run “")}{item.label}{tr("” now?")}</AlertDialogTitle>
             <AlertDialogDescription>
               {item.description}{" "}
               {TICK_ONLY.includes(item.key)
                 ? "This automation is evaluated by a full scheduler pass, so the pass runs now and every automation that is due executes."
                 : "It normally runs on its own schedule; running it now does exactly the same work."}{" "}
               {SENDS_EMAIL.includes(item.key) ? "Emails are sent for real. " : ""}
-              A step that has already succeeded for this edition is skipped rather than repeated.
-            </AlertDialogDescription>
+              {tr("A step that has already succeeded for this edition is skipped rather than repeated.")}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={pending}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={pending}>{tr("Cancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={(e) => {
                 e.preventDefault();
@@ -163,27 +161,26 @@ export function AutomationGrid({ items, canManage }: { items: AutomationTileView
 
 /** Header control: one scheduler pass, the same one the cron endpoint triggers. */
 export function RunSchedulerButton() {
+  const tr = useUi();
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
   return (
     <>
       <Button size="sm" variant="outline" loading={pending} onClick={() => setOpen(true)}>
-        <CalendarClock /> Run scheduler
-      </Button>
+        <CalendarClock /> {" "}{tr("Run scheduler")}</Button>
       <AlertDialog open={open} onOpenChange={(o) => !pending && setOpen(o)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Run one scheduler pass?</AlertDialogTitle>
+            <AlertDialogTitle>{tr("Run one scheduler pass?")}</AlertDialogTitle>
             <AlertDialogDescription>
               <span className="flex items-start gap-2">
                 <Mail className="mt-0.5 size-3.5 shrink-0" />
-                Every automation that is due right now executes, exactly as the cron endpoint would run it — including the emails it sends. Steps that already succeeded are skipped.
-              </span>
+                {tr("Every automation that is due right now executes, exactly as the cron endpoint would run it — including the emails it sends. Steps that already succeeded are skipped.")}</span>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={pending}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={pending}>{tr("Cancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={(e) => {
                 e.preventDefault();
@@ -191,7 +188,7 @@ export function RunSchedulerButton() {
                   const res = await runSchedulerTickAction();
                   if (!res.ok) toast.error(res.error);
                   else {
-                    toast.success("Scheduler pass finished", { description: res.message });
+                    toast.success(tr("Scheduler pass finished"), { description: res.message });
                     setOpen(false);
                     router.refresh();
                   }

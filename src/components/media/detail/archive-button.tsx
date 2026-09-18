@@ -17,6 +17,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { archiveAction, restoreAction } from "@/app/(newsroom)/media/[mediaId]/actions";
+import { useUi } from "@/components/i18n/provider";
 
 export function ArchiveButton({
   assetId,
@@ -29,6 +30,7 @@ export function ArchiveButton({
   isArchived: boolean;
   usedIn: number;
 }) {
+  const tr = useUi();
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   function run(fn: typeof archiveAction) {
@@ -45,31 +47,27 @@ export function ArchiveButton({
   if (isArchived) {
     return (
       <Button variant="outline" size="sm" loading={pending} onClick={() => run(restoreAction)}>
-        <ArchiveRestore /> Restore
-      </Button>
+        <ArchiveRestore /> {" "}{tr("Restore")}</Button>
     );
   }
   return (
     <AlertDialog>
       <AlertDialogTrigger asChild>
         <Button variant="outline" size="sm" loading={pending}>
-          <Archive /> Archive
-        </Button>
+          <Archive /> {" "}{tr("Archive")}</Button>
       </AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Archive this asset?</AlertDialogTitle>
+          <AlertDialogTitle>{tr("Archive this asset?")}</AlertDialogTitle>
           <AlertDialogDescription>
-            It disappears from the library and the pickers but keeps its files, story links and
-            history.
-            {usedIn
+            {tr("It disappears from the library and the pickers but keeps its files, story links and history.")}{" "}{usedIn
               ? ` It is currently used in ${usedIn} stor${usedIn === 1 ? "y" : "ies"}; detach it first if it must not be exported.`
               : ""}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction onClick={() => run(archiveAction)}>Archive</AlertDialogAction>
+          <AlertDialogCancel>{tr("Cancel")}</AlertDialogCancel>
+          <AlertDialogAction onClick={() => run(archiveAction)}>{tr("Archive")}</AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

@@ -14,6 +14,7 @@ import { CREATIVE_FORMATS, CREATIVE_MODES, FORMATS, MODES, type CreativeFormat, 
 import { DESIGN_SYSTEMS, SYSTEMS } from "@/lib/creative/design-systems";
 import { MOTION, MOTION_SYSTEMS } from "@/lib/creative/motion";
 import { cn } from "@/lib/utils";
+import { useUi } from "@/components/i18n/provider";
 
 /**
  * Making something.
@@ -26,6 +27,7 @@ import { cn } from "@/lib/utils";
  * would expose a pipeline nobody asked to see.
  */
 export function NewPackDialog({ editions }: { editions: { id: string; label: string }[] }) {
+  const tr = useUi();
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
@@ -72,21 +74,20 @@ export function NewPackDialog({ editions }: { editions: { id: string; label: str
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button size="sm">
-          <Plus /> Make something
-        </Button>
+          <Plus /> {" "}{tr("Make something")}</Button>
       </DialogTrigger>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>Make something</DialogTitle>
-          <DialogDescription>Briefly reads what you published, writes the frames and draws every one of them in your own colours and type.</DialogDescription>
+          <DialogTitle>{tr("Make something")}</DialogTitle>
+          <DialogDescription>{tr("Briefly reads what you published, writes the frames and draws every one of them in your own colours and type.")}</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
-              <Label htmlFor="pack-edition">From</Label>
+              <Label htmlFor="pack-edition">{tr("From")}</Label>
               <NativeSelect id="pack-edition" value={editionId} disabled={pending} onChange={(e) => setEditionId(e.target.value)} className="mt-1">
-                {editions.length ? null : <option value="">No editions yet</option>}
+                {editions.length ? null : <option value="">{tr("No editions yet")}</option>}
                 {editions.map((edition) => (
                   <option key={edition.id} value={edition.id}>
                     {edition.label}
@@ -95,13 +96,13 @@ export function NewPackDialog({ editions }: { editions: { id: string; label: str
               </NativeSelect>
             </div>
             <div>
-              <Label htmlFor="pack-name">Called</Label>
-              <Input id="pack-name" value={name} disabled={pending} placeholder="October carousel" onChange={(e) => setName(e.target.value)} className="mt-1" />
+              <Label htmlFor="pack-name">{tr("Called")}</Label>
+              <Input id="pack-name" value={name} disabled={pending} placeholder={tr("October carousel")} onChange={(e) => setName(e.target.value)} className="mt-1" />
             </div>
           </div>
 
           <div>
-            <Label>Shape</Label>
+            <Label>{tr("Shape")}</Label>
             <div className="mt-1.5 grid gap-1.5 sm:grid-cols-3">
               {shapes.map((key) => (
                 <button
@@ -123,7 +124,7 @@ export function NewPackDialog({ editions }: { editions: { id: string; label: str
           </div>
 
           <div>
-            <Label>Set like</Label>
+            <Label>{tr("Set like")}</Label>
             <div className="mt-1.5 space-y-1.5">
               {DESIGN_SYSTEMS.map((key) => (
                 <button
@@ -148,7 +149,7 @@ export function NewPackDialog({ editions }: { editions: { id: string; label: str
 
           {moving ? (
             <div>
-              <Label>Moves like</Label>
+              <Label>{tr("Moves like")}</Label>
               <div className="mt-1.5 space-y-1.5">
                 {MOTION_SYSTEMS.map((key) => (
                   <button
@@ -173,13 +174,12 @@ export function NewPackDialog({ editions }: { editions: { id: string; label: str
                 ))}
               </div>
               <p className="mt-1 text-2xs text-muted-foreground">
-                Each scene is held for as long as its words take to read, so the length follows the writing rather than a stopwatch.
-              </p>
+                {tr("Each scene is held for as long as its words take to read, so the length follows the writing rather than a stopwatch.")}</p>
             </div>
           ) : null}
 
           <div>
-            <Label htmlFor="pack-mode">How much we invent</Label>
+            <Label htmlFor="pack-mode">{tr("How much we invent")}</Label>
             <NativeSelect id="pack-mode" value={mode} disabled={pending} onChange={(e) => setMode(e.target.value as CreativeMode)} className="mt-1">
               {CREATIVE_MODES.map((key) => (
                 <option key={key} value={key}>
@@ -191,16 +191,15 @@ export function NewPackDialog({ editions }: { editions: { id: string; label: str
           </div>
 
           <div>
-            <Label htmlFor="pack-angle">Angle</Label>
-            <Input id="pack-angle" value={angle} disabled={pending} placeholder="Lead with the alum, keep it short" onChange={(e) => setAngle(e.target.value)} className="mt-1" />
-            <p className="mt-1 text-2xs text-muted-foreground">Optional. A steer for what to lead with, not a description of how it should look.</p>
+            <Label htmlFor="pack-angle">{tr("Angle")}</Label>
+            <Input id="pack-angle" value={angle} disabled={pending} placeholder={tr("Lead with the alum, keep it short")} onChange={(e) => setAngle(e.target.value)} className="mt-1" />
+            <p className="mt-1 text-2xs text-muted-foreground">{tr("Optional. A steer for what to lead with, not a description of how it should look.")}</p>
           </div>
         </div>
 
         <DialogFooter>
           <Button variant="outline" size="sm" onClick={() => setOpen(false)} disabled={pending}>
-            Cancel
-          </Button>
+            {tr("Cancel")}</Button>
           <Button size="sm" onClick={submit} loading={pending} disabled={!editions.length}>
             <Sparkles /> {pending ? "Making…" : "Make it"}
           </Button>

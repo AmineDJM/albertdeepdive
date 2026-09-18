@@ -22,6 +22,7 @@ import {
 import type { Flatplan, FlatplanPage, FlatplanTemplate } from "@/server/publication/flatplan";
 import type { ActionResult } from "@/lib/action-result";
 import { cn } from "@/lib/utils";
+import { useUi } from "@/components/i18n/provider";
 
 /**
  * The flatplan grid: spreads in reading order (page 1 alone, then 2-3, 4-5 …). Pages produced by the
@@ -49,6 +50,7 @@ export function FlatplanBoard({
   templates: FlatplanTemplate[];
   canEdit: boolean;
 }) {
+  const tr = useUi();
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -130,8 +132,7 @@ export function FlatplanBoard({
       {pending ? (
         <div className="sticky top-14 z-20 mb-2 flex items-center justify-center" aria-live="polite">
           <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1 text-xs shadow-md">
-            <Loader2 className="size-3.5 animate-spin text-brand" /> Saving the plan and re-running the copyfit pass…
-          </span>
+            <Loader2 className="size-3.5 animate-spin text-brand" /> {" "}{tr("Saving the plan and re-running the copyfit pass…")}</span>
         </div>
       ) : null}
       <DndContext id="flatplan-board" sensors={sensors} collisionDetection={closestCenter} onDragStart={onDragStart} onDragEnd={onDragEnd}>
@@ -194,9 +195,10 @@ function PageCell({ draggingId, pending, ...props }: Parameters<typeof FlatplanP
 }
 
 function EmptyHalf() {
+  const tr = useUi();
   return (
     <div className="flex items-center justify-center rounded-lg border border-dashed border-border/70 p-2 text-2xs text-muted-foreground">
-      <span className="flex aspect-[210/297] w-full items-center justify-center">Outside cover</span>
+      <span className="flex aspect-[210/297] w-full items-center justify-center">{tr("Outside cover")}</span>
     </div>
   );
 }

@@ -7,6 +7,7 @@ import { exportContributorData } from "@/server/settings/privacy";
 import type { PrivacySettings } from "@/server/settings/schemas";
 import { CONSENT_TEXT_VERSION } from "@/lib/constants";
 import { ok, toActionFailure, type ActionResult } from "@/lib/action-result";
+import { getUi } from "@/server/i18n/locale";
 
 export async function saveRetentionAction(retentionDays: number): Promise<ActionResult> {
   try {
@@ -21,10 +22,11 @@ export async function saveRetentionAction(retentionDays: number): Promise<Action
 
 /** Returns the contributor's data as a JSON string (the browser turns it into a download). */
 export async function exportContributorDataAction(email: string): Promise<ActionResult<{ fileName: string; json: string }>> {
+  const tr = await getUi();
   try {
     const user = await requirePermission("settings:manage");
     const result = await exportContributorData(String(email ?? "").slice(0, 200), user.id);
-    return ok({ fileName: result.fileName, json: result.json }, "Export ready");
+    return ok({ fileName: result.fileName, json: result.json }, tr("Export ready"));
   } catch (err) {
     return toActionFailure(err);
   }

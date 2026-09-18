@@ -35,6 +35,7 @@ import {
   type RightsStatus,
   type StoryMediaRole,
 } from "@/server/media/constants";
+import { useUi } from "@/components/i18n/provider";
 
 type QueuedFile = {
   key: string;
@@ -103,6 +104,7 @@ export function UploadDialog({
   defaultStoryId?: string | null;
   maxFileMb: number;
 }) {
+  const tr = useUi();
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<QueuedFile[]>([]);
@@ -192,7 +194,7 @@ export function UploadDialog({
     if (ok)
       toast.success(
         `${ok} file${ok === 1 ? "" : "s"} uploaded${failed ? ` · ${failed} failed` : ""}`,
-        { description: "AI description and duplicate check run in the background." },
+        { description: tr("AI description and duplicate check run in the background.") },
       );
     else if (failed) toast.error(`${failed} upload${failed === 1 ? "" : "s"} failed`);
     router.refresh();
@@ -211,23 +213,20 @@ export function UploadDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogTrigger asChild>
         <Button>
-          <Upload /> Upload
-        </Button>
+          <Upload /> {" "}{tr("Upload")}</Button>
       </DialogTrigger>
       <DialogContent size="xl" className="max-h-[92vh] overflow-hidden p-0">
         <div className="flex max-h-[92vh] flex-col">
           <DialogHeader className="px-5 pt-5">
-            <DialogTitle>Upload media</DialogTitle>
+            <DialogTitle>{tr("Upload media")}</DialogTitle>
             <DialogDescription>
-              JPEG, PNG, WebP, GIF, TIFF or AVIF, up to {maxFileMb} MB each. Rights default to
-              “Unclear” until you confirm them.
-            </DialogDescription>
+              {tr("JPEG, PNG, WebP, GIF, TIFF or AVIF, up to")}{" "}{maxFileMb} {" "}{tr("MB each. Rights default to “Unclear” until you confirm them.")}</DialogDescription>
           </DialogHeader>
           <div className="min-h-0 flex-1 scrollbar-thin space-y-4 overflow-y-auto px-5 py-4">
             <div
               role="button"
               tabIndex={0}
-              aria-label="Add files"
+              aria-label={tr("Add files")}
               onClick={() => inputRef.current?.click()}
               onKeyDown={(e) => {
                 if (e.key === "Enter" || e.key === " ") {
@@ -253,10 +252,9 @@ export function UploadDialog({
               )}
             >
               <UploadCloud className="text-muted-foreground size-5" />
-              <div className="text-[13px] font-medium">Drop images here, or click to browse</div>
+              <div className="text-[13px] font-medium">{tr("Drop images here, or click to browse")}</div>
               <div className="text-2xs text-muted-foreground">
-                Several files at once are fine — each gets its own caption, credit and rights.
-              </div>
+                {tr("Several files at once are fine — each gets its own caption, credit and rights.")}</div>
               <input
                 ref={inputRef}
                 type="file"
@@ -269,13 +267,13 @@ export function UploadDialog({
 
             <div className="grid gap-3 sm:grid-cols-3">
               <div className="space-y-1.5 sm:col-span-2">
-                <Label htmlFor="upload-story">Attach to a story (optional)</Label>
+                <Label htmlFor="upload-story">{tr("Attach to a story (optional)")}</Label>
                 <NativeSelect
                   id="upload-story"
                   value={storyId}
                   onChange={(e) => setStoryId(e.target.value)}
                 >
-                  <option value="">— No story —</option>
+                  <option value="">{tr("— No story —")}</option>
                   {stories.map((st) => (
                     <option key={st.id} value={st.id}>
                       {st.title}
@@ -285,7 +283,7 @@ export function UploadDialog({
                 </NativeSelect>
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="upload-role">Role</Label>
+                <Label htmlFor="upload-role">{tr("Role")}</Label>
                 <NativeSelect
                   id="upload-role"
                   value={role}
@@ -300,11 +298,11 @@ export function UploadDialog({
                 </NativeSelect>
               </div>
               <div className="space-y-1.5 sm:col-span-3">
-                <Label htmlFor="upload-photographer">Photographer for all files (optional)</Label>
+                <Label htmlFor="upload-photographer">{tr("Photographer for all files (optional)")}</Label>
                 <Input
                   id="upload-photographer"
                   value={sharedPhotographer}
-                  placeholder="Applied to every queued file without a photographer"
+                  placeholder={tr("Applied to every queued file without a photographer")}
                   onChange={(e) => {
                     const v = e.target.value;
                     setSharedPhotographer(v);
@@ -331,7 +329,7 @@ export function UploadDialog({
             </div>
 
             {items.length ? (
-              <ul className="space-y-2" aria-label="Files to upload">
+              <ul className="space-y-2" aria-label={tr("Files to upload")}>
                 {items.map((it) => (
                   <li
                     key={it.key}
@@ -366,12 +364,10 @@ export function UploadDialog({
                               ) : null}
                               {it.result.duplicateOfId ? (
                                 <Badge variant="red">
-                                  <AlertTriangle /> duplicate
-                                </Badge>
+                                  <AlertTriangle /> {" "}{tr("duplicate")}</Badge>
                               ) : null}
                               <Badge variant="success">
-                                <CheckCircle2 /> Uploaded
-                              </Badge>
+                                <CheckCircle2 /> {" "}{tr("Uploaded")}</Badge>
                             </>
                           ) : it.status === "error" ? (
                             <Badge variant="destructive">{it.error ?? "Failed"}</Badge>
@@ -394,15 +390,15 @@ export function UploadDialog({
                       {it.status === "queued" ? (
                         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_120px_120px]">
                           <Input
-                            aria-label="Caption"
-                            placeholder="Caption"
+                            aria-label={tr("Caption")}
+                            placeholder={tr("Caption")}
                             value={it.caption}
                             onChange={(e) => update(it.key, { caption: e.target.value })}
                             className="h-7 text-xs"
                           />
                           <Input
-                            aria-label="Photographer"
-                            placeholder="Photographer"
+                            aria-label={tr("Photographer")}
+                            placeholder={tr("Photographer")}
                             value={it.photographer}
                             onChange={(e) =>
                               update(it.key, {
@@ -418,14 +414,14 @@ export function UploadDialog({
                             className="h-7 text-xs"
                           />
                           <Input
-                            aria-label="Credit"
-                            placeholder="© Credit"
+                            aria-label={tr("Credit")}
+                            placeholder={tr("© Credit")}
                             value={it.credit}
                             onChange={(e) => update(it.key, { credit: e.target.value })}
                             className="h-7 text-xs"
                           />
                           <NativeSelect
-                            aria-label="Rights"
+                            aria-label={tr("Rights")}
                             value={it.rightsStatus}
                             onChange={(e) =>
                               update(it.key, { rightsStatus: e.target.value as RightsStatus })
@@ -439,14 +435,14 @@ export function UploadDialog({
                             ))}
                           </NativeSelect>
                           <NativeSelect
-                            aria-label="Kind"
+                            aria-label={tr("Kind")}
                             value={it.kind}
                             onChange={(e) =>
                               update(it.key, { kind: e.target.value as MediaKind | "" })
                             }
                             className="h-7 text-xs"
                           >
-                            <option value="">Auto-detect</option>
+                            <option value="">{tr("Auto-detect")}</option>
                             {MEDIA_KINDS.map((k) => (
                               <option key={k} value={k}>
                                 {KIND_LABELS[k]}
@@ -461,8 +457,7 @@ export function UploadDialog({
               </ul>
             ) : (
               <div className="text-muted-foreground flex items-center gap-2 text-xs">
-                <ImagePlus className="size-3.5" /> No files queued yet.
-              </div>
+                <ImagePlus className="size-3.5" /> {" "}{tr("No files queued yet.")}</div>
             )}
           </div>
           <DialogFooter className="border-t px-5 py-3">
@@ -474,7 +469,7 @@ export function UploadDialog({
               {done.length && !queued.length ? "Done" : "Cancel"}
             </Button>
             <Button onClick={start} disabled={!queued.length} loading={uploading}>
-              <Upload /> Upload{" "}
+              <Upload /> {" "}{tr("Upload")}{" "}
               {queued.length ? `${queued.length} file${queued.length === 1 ? "" : "s"}` : ""}
             </Button>
           </DialogFooter>

@@ -13,6 +13,7 @@ import { DataTable } from "@/components/newsroom/data-table";
 import { Stat, StatGrid } from "@/components/newsroom/stat";
 import { Badge } from "@/components/ui/badge";
 import { formatDate } from "@/lib/utils";
+import { getUi } from "@/server/i18n/locale";
 
 export const dynamic = "force-dynamic";
 
@@ -25,13 +26,14 @@ const STATUS_VARIANT: Record<string, "default" | "muted" | "success" | "warning"
 };
 
 export default async function SubscribersPage() {
+  const tr = await getUi();
   const [user, tenant] = await Promise.all([getCurrentUser(), requireTenant()]);
   if (!hasPermission(user, "contributor:manage")) {
     return (
       <>
-        <PageHeader title="Subscribers" />
+        <PageHeader title={tr("Subscribers")} />
         <PageBody>
-          <p className="text-[14px] text-muted-foreground">You do not have access to the subscriber list.</p>
+          <p className="text-[14px] text-muted-foreground">{tr("You do not have access to the subscriber list.")}</p>
         </PageBody>
       </>
     );
@@ -51,6 +53,7 @@ export default async function SubscribersPage() {
         createdAt: s.subscribers.createdAt,
         confirmedAt: s.subscribers.confirmedAt,
         titles: sql<number>`(select count(*) from ${s.publicationSubscriptions} ps where ps.subscriber_id = ${s.subscribers.id} and ps.is_active)`,
+        paying: sql<number>`(select count(*) from ${s.publicationSubscriptions} ps where ps.subscriber_id = ${s.subscribers.id} and ps.is_active and ps.payment_status in ('active', 'past_due'))`,
       })
       .from(s.subscribers)
       .where(eq(s.subscribers.organizationId, tenant.organizationId))
@@ -64,21 +67,22 @@ export default async function SubscribersPage() {
 
   return (
     <>
-      <PageHeader title="Subscribers" description="The people who asked to receive your publications. Everyone here confirmed their address."
+      <PageHeader title={tr("Subscribers")} description={tr("The people who asked to receive your publications. Everyone here confirmed their address.")}
       >
         <HubTabs tabs={AUDIENCE_TABS} />
       </PageHeader>
       <PageBody className="space-y-5">
         <StatGrid>
-          <Stat label="Confirmed" value={stats.subscribed} />
-          <Stat label="Awaiting confirmation" value={stats.pending} />
-          <Stat label="Unsubscribed" value={stats.unsubscribed} />
-          <Stat label="Bounced" value={stats.bounced} />
+          <Stat label={tr("Confirmed")} value={stats.subscribed} />
+          <Stat label={tr("Paying")} value={rows.filter((r) => Number(r.paying) > 0).length} hint={tr("through your Stripe")} href="/settings/payments" />
+          <Stat label={tr("Awaiting confirmation")} value={stats.pending} />
+          <Stat label={tr("Unsubscribed")} value={stats.unsubscribed} />
+          <Stat label={tr("Bounced")} value={stats.bounced} />
         </StatGrid>
 
         {titles.length ? (
           <div className="rounded-lg border border-border bg-card p-4">
-            <p className="label-caps mb-2">Share these links</p>
+            <p className="label-caps mb-2">{tr("Share these links")}</p>
             <ul className="space-y-1">
               {titles.map((t) => (
                 <li key={t.id} className="flex items-center gap-2 text-[13px]">
@@ -96,14 +100,14 @@ export default async function SubscribersPage() {
           rows={rows}
           rowKey={(r) => r.id}
           empty={{
-            title: "No subscribers yet",
-            description: "Share a title's subscribe link and people can sign themselves up.",
+            title: tr("No subscribers yet"),
+            description: tr("Share a title's subscribe link and people can sign themselves up."),
             icon: Users,
           }}
           columns={[
             {
               key: "who",
-              header: "Reader",
+              header: tr("Reader"),
               cell: (r) => (
                 <span className="flex flex-col">
                   <span className="font-medium">{[r.firstName, r.lastName].filter(Boolean).join(" ") || r.email}</span>
@@ -111,11 +115,20 @@ export default async function SubscribersPage() {
                 </span>
               ),
             },
-            { key: "status", header: "Status", cell: (r) => <Badge variant={STATUS_VARIANT[r.status] ?? "muted"}>{r.status.toLowerCase()}</Badge> },
-            { key: "titles", header: "Titles", cell: (r) => <span className="tabular">{Number(r.titles)}</span>, align: "right" },
-            { key: "locale", header: "Language", cell: (r) => <span className="text-xs uppercase">{r.locale}</span> },
-            { key: "source", header: "Source", cell: (r) => <span className="text-xs text-muted-foreground">{r.source}</span> },
-            { key: "since", header: "Since", cell: (r) => <span className="text-xs text-muted-foreground">{formatDate(r.confirmedAt ?? r.createdAt)}</span>, align: "right" },
+            {
+              key: "status",
+              header: tr("Status"),
+              cell: (r) => (
+                <span className="flex items-center gap-1.5">
+                  <Badge variant={STATUS_VARIANT[r.status] ?? "muted"}>{r.status.toLowerCase()}</Badge>
+                  {Number(r.paying) > 0 ? <Badge variant="brand">{tr("paying")}</Badge> : null}
+                </span>
+              ),
+            },
+            { key: "titles", header: tr("Titles"), cell: (r) => <span className="tabular">{Number(r.titles)}</span>, align: "right" },
+            { key: "locale", header: tr("Language"), cell: (r) => <span className="text-xs uppercase">{r.locale}</span> },
+            { key: "source", header: tr("Source"), cell: (r) => <span className="text-xs text-muted-foreground">{r.source}</span> },
+            { key: "since", header: tr("Since"), cell: (r) => <span className="text-xs text-muted-foreground">{formatDate(r.confirmedAt ?? r.createdAt)}</span>, align: "right" },
           ]}
         />
       </PageBody>

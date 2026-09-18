@@ -18,6 +18,7 @@ import { WorkspacePlanPicker } from "./workspace-plan-picker";
 import { WorkspaceControls } from "./workspace-controls";
 import { overrideReport } from "@/server/platform/overrides";
 import { formatDate } from "@/lib/utils";
+import { getUi } from "@/server/i18n/locale";
 
 export const dynamic = "force-dynamic";
 
@@ -30,13 +31,14 @@ const money = (cents: number, currency = "EUR") => new Intl.NumberFormat("en-GB"
  * deliberately reads across workspaces, so the check is explicit rather than inherited.
  */
 export default async function PlatformPage() {
+  const tr = await getUi();
   const user = await getCurrentUser();
   if (!hasPermission(user, "settings:manage")) {
     return (
       <>
-        <PageHeader title="Platform" />
+        <PageHeader title={tr("Platform")} />
         <PageBody>
-          <p className="text-[14px] text-muted-foreground">This is the platform console. You need to be a Briefly super admin to see it.</p>
+          <p className="text-[14px] text-muted-foreground">{tr("This is the platform console. You need to be a Briefly super admin to see it.")}</p>
         </PageBody>
       </>
     );
@@ -70,57 +72,57 @@ export default async function PlatformPage() {
   return (
     <>
       <PageHeader
-        title="Customers & plans"
+        title={tr("Customers & plans")}
         description={stripeReady ? "Every customer on this Briefly." : "Every customer on this Briefly. Payments are not connected, so nothing can be charged yet."}
       >
         <HubTabs tabs={PLATFORM_TABS} />
       </PageHeader>
       <PageBody className="space-y-6">
         <StatGrid>
-          <Stat label="Workspaces" value={organizations.length} />
-          <Stat label="On a paid plan" value={payingWorkspaces} />
-          <Stat label="Monthly recurring" value={money(summary.mrrCents)} />
-          <Stat label="Plans" value={plans.length} />
+          <Stat label={tr("Workspaces")} value={organizations.length} />
+          <Stat label={tr("On a paid plan")} value={payingWorkspaces} />
+          <Stat label={tr("Monthly recurring")} value={money(summary.mrrCents)} />
+          <Stat label={tr("Plans")} value={plans.length} />
         </StatGrid>
 
         <section>
-          <SectionTitle>Plans</SectionTitle>
+          <SectionTitle>{tr("Plans")}</SectionTitle>
           <div className="mt-3">
             <DataTable
               rows={plans}
               rowKey={(p) => p.id}
-              empty={{ title: "No plans", description: "Plans are seeded on migration.", icon: CreditCard }}
+              empty={{ title: tr("No plans"), description: tr("Plans are seeded on migration."), icon: CreditCard }}
               columns={[
                 {
                   key: "name",
-                  header: "Plan",
+                  header: tr("Plan"),
                   cell: (p) => (
                     <span className="flex items-center gap-2">
                       <span className="font-medium">{p.name}</span>
-                      {p.isDefault ? <Badge variant="muted">default</Badge> : null}
-                      {p.isFeatured ? <Badge>popular</Badge> : null}
-                      {!p.isPublic ? <Badge variant="muted">hidden</Badge> : null}
+                      {p.isDefault ? <Badge variant="muted">{tr("default")}</Badge> : null}
+                      {p.isFeatured ? <Badge>{tr("popular")}</Badge> : null}
+                      {!p.isPublic ? <Badge variant="muted">{tr("hidden")}</Badge> : null}
                     </span>
                   ),
                 },
-                { key: "key", header: "Key", cell: (p) => <span className="font-mono text-2xs text-muted-foreground">{p.key}</span> },
-                { key: "monthly", header: "Monthly", cell: (p) => <span className="tabular">{p.isCustomPriced ? "Custom" : money(p.priceMonthlyCents, p.currency)}</span>, align: "right" },
-                { key: "yearly", header: "Yearly", cell: (p) => <span className="tabular">{p.isCustomPriced ? "—" : money(p.priceYearlyCents, p.currency)}</span>, align: "right" },
+                { key: "key", header: tr("Key"), cell: (p) => <span className="font-mono text-2xs text-muted-foreground">{p.key}</span> },
+                { key: "monthly", header: tr("Monthly"), cell: (p) => <span className="tabular">{p.isCustomPriced ? "Custom" : money(p.priceMonthlyCents, p.currency)}</span>, align: "right" },
+                { key: "yearly", header: tr("Yearly"), cell: (p) => <span className="tabular">{p.isCustomPriced ? "—" : money(p.priceYearlyCents, p.currency)}</span>, align: "right" },
                 {
                   key: "stripe",
-                  header: "Stripe",
+                  header: tr("Stripe"),
                   cell: (p) =>
                     p.isCustomPriced ? (
                       <span className="text-2xs text-muted-foreground">n/a</span>
                     ) : p.stripeMonthlyPriceId || p.stripeYearlyPriceId ? (
-                      <Badge variant="muted">linked</Badge>
+                      <Badge variant="muted">{tr("linked")}</Badge>
                     ) : (
-                      <span className="text-2xs text-muted-foreground">not linked</span>
+                      <span className="text-2xs text-muted-foreground">{tr("not linked")}</span>
                     ),
                 },
                 {
                   key: "workspaces",
-                  header: "Workspaces",
+                  header: tr("Workspaces"),
                   cell: (p) => <span className="tabular">{summary.rows.find((r) => r.planKey === p.key)?.workspaces ?? 0}</span>,
                   align: "right",
                 },
@@ -161,20 +163,18 @@ export default async function PlatformPage() {
         </section>
 
         <section>
-          <SectionTitle>Workspaces</SectionTitle>
+          <SectionTitle>{tr("Workspaces")}</SectionTitle>
           <p className="mb-2 text-xs text-muted-foreground">
-            The menu at the end of a row opens a customer&rsquo;s workspace — with full rights to fix something, or wearing one of their roles to see exactly what they see — and
-            grants limits or features their plan does not include.
-          </p>
+            {tr("The menu at the end of a row opens a customer’s workspace — with full rights to fix something, or wearing one of their roles to see exactly what they see — and grants limits or features their plan does not include.")}</p>
           <div className="mt-3">
             <DataTable
               rows={organizations}
               rowKey={(o) => o.id}
-              empty={{ title: "No workspaces", description: "The first one is created by onboarding.", icon: Building2 }}
+              empty={{ title: tr("No workspaces"), description: tr("The first one is created by onboarding."), icon: Building2 }}
               columns={[
                 {
                   key: "name",
-                  header: "Workspace",
+                  header: tr("Workspace"),
                   cell: (o) => (
                     <span className="flex flex-col">
                       <span className="font-medium">{o.name}</span>
@@ -182,26 +182,26 @@ export default async function PlatformPage() {
                     </span>
                   ),
                 },
-                { key: "type", header: "Type", cell: (o) => <span className="text-xs capitalize">{o.type.toLowerCase()}</span> },
-                { key: "members", header: "Members", cell: (o) => <span className="tabular">{o.members}</span>, align: "right" },
-                { key: "publications", header: "Titles", cell: (o) => <span className="tabular">{o.publications}</span>, align: "right" },
+                { key: "type", header: tr("Type"), cell: (o) => <span className="text-xs capitalize">{o.type.toLowerCase()}</span> },
+                { key: "members", header: tr("Members"), cell: (o) => <span className="tabular">{o.members}</span>, align: "right" },
+                { key: "publications", header: tr("Titles"), cell: (o) => <span className="tabular">{o.publications}</span>, align: "right" },
                 {
                   key: "status",
-                  header: "Billing",
+                  header: tr("Billing"),
                   cell: (o) => {
                     const sub = byOrg.get(o.id);
                     if (!sub) return <span className="text-2xs text-muted-foreground">—</span>;
                     return (
                       <span className="flex flex-col">
                         <Badge variant={sub.status === "ACTIVE" || sub.status === "TRIALING" ? "default" : sub.status === "PAST_DUE" ? "warning" : "muted"}>{sub.status.toLowerCase().replace("_", " ")}</Badge>
-                        {sub.currentPeriodEnd ? <span className="mt-0.5 text-2xs text-muted-foreground">to {formatDate(sub.currentPeriodEnd)}</span> : null}
+                        {sub.currentPeriodEnd ? <span className="mt-0.5 text-2xs text-muted-foreground">{tr("to")}{" "}{formatDate(sub.currentPeriodEnd)}</span> : null}
                       </span>
                     );
                   },
                 },
                 {
                   key: "plan",
-                  header: "Plan",
+                  header: tr("Plan"),
                   cell: (o) => (
                     <span data-no-row-link>
                       <WorkspacePlanPicker organizationId={o.id} planId={byOrg.get(o.id)?.planId ?? null} plans={planOptions} />
@@ -209,7 +209,7 @@ export default async function PlatformPage() {
                   ),
                   align: "right",
                 },
-                { key: "created", header: "Since", cell: (o) => <span className="text-xs text-muted-foreground">{formatDate(o.createdAt)}</span>, align: "right" },
+                { key: "created", header: tr("Since"), cell: (o) => <span className="text-xs text-muted-foreground">{formatDate(o.createdAt)}</span>, align: "right" },
                 {
                   key: "manage",
                   header: "",

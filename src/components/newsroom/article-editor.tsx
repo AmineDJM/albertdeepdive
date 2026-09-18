@@ -18,6 +18,7 @@ import type { ArticleAction, ArticleProposal } from "@/server/editorial/articles
 import type { BlockExplanation } from "@/server/editorial/facts";
 import { countWords, type ArticleBlock } from "@/lib/publication/document";
 import { cn, relativeTime, truncate } from "@/lib/utils";
+import { useUi } from "@/components/i18n/provider";
 
 const AI_ACTIONS: { action: ArticleAction; label: string; icon: React.ComponentType<{ className?: string }>; hint: string }[] = [
   { action: "shorten", label: "Shorten", icon: Scissors, hint: "Tighten the text without losing a fact" },
@@ -105,6 +106,7 @@ export function ArticleEditor({
   canEdit: boolean;
   canApprove: boolean;
 }) {
+  const tr = useUi();
   const router = useRouter();
   const [kicker, setKicker] = useState(article.kicker ?? "");
   const [headline, setHeadline] = useState(article.headline);
@@ -154,7 +156,7 @@ export function ArticleEditor({
           : type === "list"
             ? { ...base, type: "list", items: [""] }
             : type === "box"
-              ? { ...base, type: "box", title: "In a nutshell", items: [""] }
+              ? { ...base, type: "box", title: tr("In a nutshell"), items: [""] }
               : type === "qa"
                 ? { ...base, type: "qa", question: "QUESTION?", answer: "" }
                 : type === "testimony"
@@ -216,7 +218,7 @@ export function ArticleEditor({
     }
     setDirty(true);
     setProposal(null);
-    toast.success("Proposal applied to your draft — review it and save.");
+    toast.success(tr("Proposal applied to your draft — review it and save."));
   }
 
   function explain(blockId: string) {
@@ -235,26 +237,23 @@ export function ArticleEditor({
           <div className="flex items-center gap-2">
             <ArticleStatusBadge status={article.status} />
             <span className="text-2xs text-muted-foreground">
-              {words} words · revision {article.currentRevision}
+              {words} {" "}{tr("words · revision")}{" "}{article.currentRevision}
               {article.manualEditRatio !== null ? ` · ${Math.round(article.manualEditRatio * 100)}% edited by hand` : ""}
             </span>
-            {dirty ? <Badge variant="warning">Unsaved changes</Badge> : null}
+            {dirty ? <Badge variant="warning">{tr("Unsaved changes")}</Badge> : null}
           </div>
           <div className="flex items-center gap-1.5">
             {canEdit ? (
               <Button size="sm" onClick={() => save()} loading={saving} disabled={!dirty}>
-                <Save /> Save
-              </Button>
+                <Save /> {" "}{tr("Save")}</Button>
             ) : null}
             {canEdit && article.status !== "READY_FOR_REVIEW" && article.status !== "APPROVED" ? (
               <Button size="sm" variant="outline" disabled={saving} onClick={() => startSave(async () => { const r = await submitForReviewAction(article.id, { editionId: article.editionId, storyId: article.storyId }); if (r.ok) { toast.success(r.message); router.refresh(); } else toast.error(r.error); })}>
-                Send for review
-              </Button>
+                {tr("Send for review")}</Button>
             ) : null}
             {canApprove && article.status !== "APPROVED" ? (
-              <Button size="sm" variant="brand" disabled={saving} onClick={() => startSave(async () => { const r = await approveArticleAction(article.id, {}, { editionId: article.editionId, storyId: article.storyId }); if (r.ok) { toast.success(r.message); router.refresh(); } else toast.error(r.error, { description: "Resolve the disputed facts on the story first, or approve with a reason." }); })}>
-                <Check /> Approve
-              </Button>
+              <Button size="sm" variant="brand" disabled={saving} onClick={() => startSave(async () => { const r = await approveArticleAction(article.id, {}, { editionId: article.editionId, storyId: article.storyId }); if (r.ok) { toast.success(r.message); router.refresh(); } else toast.error(r.error, { description: tr("Resolve the disputed facts on the story first, or approve with a reason.") }); })}>
+                <Check /> {" "}{tr("Approve")}</Button>
             ) : null}
           </div>
         </div>
@@ -272,14 +271,14 @@ export function ArticleEditor({
           ) : null}
 
           <div className="space-y-1.5">
-            <Label htmlFor="kicker">Kicker</Label>
-            <Input id="kicker" value={kicker} onChange={(e) => { setKicker(e.target.value); setDirty(true); }} disabled={locked} placeholder="People discover — student" className="label-caps h-8 text-brand" />
+            <Label htmlFor="kicker">{tr("Kicker")}</Label>
+            <Input id="kicker" value={kicker} onChange={(e) => { setKicker(e.target.value); setDirty(true); }} disabled={locked} placeholder={tr("People discover — student")} className="label-caps h-8 text-brand" />
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="headline">Headline</Label>
+            <Label htmlFor="headline">{tr("Headline")}</Label>
             <Textarea id="headline" value={headline} onChange={(e) => { setHeadline(e.target.value); setDirty(true); }} disabled={locked} rows={2} className="font-display text-2xl leading-tight font-semibold" />
-            <p className={cn("text-2xs", headline.length > 90 ? "text-destructive" : "text-muted-foreground")}>{headline.length} characters {headline.length > 90 ? "— too long for print (max 90)" : ""}</p>
+            <p className={cn("text-2xs", headline.length > 90 ? "text-destructive" : "text-muted-foreground")}>{headline.length} {" "}{tr("characters")}{" "}{headline.length > 90 ? "— too long for print (max 90)" : ""}</p>
             {article.headlineAlternatives.length ? (
               <div className="flex flex-wrap gap-1">
                 {article.headlineAlternatives.filter((h) => h !== headline).slice(0, 4).map((h) => (
@@ -292,13 +291,13 @@ export function ArticleEditor({
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="standfirst">Standfirst</Label>
-            <Textarea id="standfirst" value={standfirst} onChange={(e) => { setStandfirst(e.target.value); setDirty(true); }} disabled={locked} rows={2} className="font-serif text-[15px]" placeholder="20 to 35 words that add information to the headline." />
+            <Label htmlFor="standfirst">{tr("Standfirst")}</Label>
+            <Textarea id="standfirst" value={standfirst} onChange={(e) => { setStandfirst(e.target.value); setDirty(true); }} disabled={locked} rows={2} className="font-serif text-[15px]" placeholder={tr("20 to 35 words that add information to the headline.")} />
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="byline">Byline</Label>
-            <Input id="byline" value={byline} onChange={(e) => { setByline(e.target.value); setDirty(true); }} disabled={locked} placeholder="Milan Viallet" className="h-8" />
+            <Label htmlFor="byline">{tr("Byline")}</Label>
+            <Input id="byline" value={byline} onChange={(e) => { setByline(e.target.value); setDirty(true); }} disabled={locked} placeholder={tr("Milan Viallet")} className="h-8" />
           </div>
 
           <Separator />
@@ -309,18 +308,18 @@ export function ArticleEditor({
                 <div className="mb-1 flex items-center gap-1.5">
                   <span className="label-caps">{BLOCK_LABELS[block.type] ?? block.type}</span>
                   <div className="ml-auto hidden items-center gap-0.5 group-hover:flex">
-                    <Button size="icon-xs" variant="ghost" title="Why is this here?" aria-label="Why is this here?" onClick={() => explain(block.id)}>
+                    <Button size="icon-xs" variant="ghost" title={tr("Why is this here?")} aria-label={tr("Why is this here?")} onClick={() => explain(block.id)}>
                       <HelpCircle />
                     </Button>
                     {canEdit && !locked ? (
                       <>
-                        <Button size="icon-xs" variant="ghost" title="Move up" aria-label="Move up" onClick={() => moveBlock(index, -1)}>
+                        <Button size="icon-xs" variant="ghost" title={tr("Move up")} aria-label={tr("Move up")} onClick={() => moveBlock(index, -1)}>
                           <ArrowUp />
                         </Button>
-                        <Button size="icon-xs" variant="ghost" title="Move down" aria-label="Move down" onClick={() => moveBlock(index, 1)}>
+                        <Button size="icon-xs" variant="ghost" title={tr("Move down")} aria-label={tr("Move down")} onClick={() => moveBlock(index, 1)}>
                           <ArrowDown />
                         </Button>
-                        <Button size="icon-xs" variant="ghost" title="Delete block" aria-label="Delete block" onClick={() => removeBlock(block.id)}>
+                        <Button size="icon-xs" variant="ghost" title={tr("Delete block")} aria-label={tr("Delete block")} onClick={() => removeBlock(block.id)}>
                           <Trash2 />
                         </Button>
                       </>
@@ -345,8 +344,7 @@ export function ArticleEditor({
 
           {canEdit && !locked && blocks.length === 0 ? (
             <Button variant="outline" size="sm" onClick={() => addBlock("paragraph", -1)}>
-              <Plus /> Add the first paragraph
-            </Button>
+              <Plus /> {" "}{tr("Add the first paragraph")}</Button>
           ) : null}
         </div>
       </div>
@@ -354,18 +352,17 @@ export function ArticleEditor({
       {/* ── Sidebar ────────────────────────────────────────────── */}
       <aside className="min-w-0 space-y-4 overflow-y-auto px-4 py-4 scrollbar-thin">
         <section>
-          <h3 className="label-caps mb-1.5">Story</h3>
+          <h3 className="label-caps mb-1.5">{tr("Story")}</h3>
           <Link href={`/stories/${story.id}`} className="block rounded-md border border-border bg-card px-2.5 py-2 text-xs hover:border-brand/50">
             <p className="font-medium">{story.title}</p>
             <p className="text-2xs text-muted-foreground">
-              {story.editionLabel} · {story.sectionName ?? "Unassigned"} · sources and facts
-            </p>
+              {story.editionLabel} · {story.sectionName ?? "Unassigned"} {" "}{tr("· sources and facts")}</p>
           </Link>
         </section>
 
         <section>
-          <h3 className="label-caps mb-1.5">Assistant</h3>
-          <p className="mb-1.5 text-2xs text-muted-foreground">Every action returns a proposal. Nothing changes until you accept it.</p>
+          <h3 className="label-caps mb-1.5">{tr("Assistant")}</h3>
+          <p className="mb-1.5 text-2xs text-muted-foreground">{tr("Every action returns a proposal. Nothing changes until you accept it.")}</p>
           <div className="grid gap-1">
             {AI_ACTIONS.map((a) => (
               <Button key={a.action} size="xs" variant="outline" className="justify-start" disabled={aiPending || locked} onClick={() => runAi(a.action)} title={a.hint}>
@@ -377,12 +374,12 @@ export function ArticleEditor({
         </section>
 
         <section>
-          <h3 className="label-caps mb-1.5">Revisions ({revisions.length})</h3>
+          <h3 className="label-caps mb-1.5">{tr("Revisions (")}{revisions.length})</h3>
           <ul className="space-y-1">
             {revisions.slice(0, 8).map((r) => (
               <li key={r.version} className="flex items-center justify-between gap-2 rounded-md border border-border px-2 py-1 text-2xs">
                 <span className="min-w-0">
-                  <span className="font-medium">v{r.version}</span> {r.createdByAi ? <Badge variant="info">AI</Badge> : <span className="text-muted-foreground">{r.createdByName ?? "editor"}</span>}
+                  <span className="font-medium">v{r.version}</span> {r.createdByAi ? <Badge variant="info">{tr("AI")}</Badge> : <span className="text-muted-foreground">{r.createdByName ?? "editor"}</span>}
                   <span className="block truncate text-muted-foreground">{r.changeSummary ?? `${r.wordCount} words`}</span>
                 </span>
                 <span className="flex shrink-0 items-center gap-1">
@@ -399,7 +396,7 @@ export function ArticleEditor({
         </section>
 
         <section>
-          <h3 className="label-caps mb-1.5">Desk notes</h3>
+          <h3 className="label-caps mb-1.5">{tr("Desk notes")}</h3>
           {comments.map((c) => (
             <div key={c.id} className="mb-1 rounded-md border border-border px-2 py-1 text-2xs">
               <div className="flex justify-between gap-2">
@@ -425,17 +422,16 @@ export function ArticleEditor({
                 });
               }}
             >
-              <Textarea value={comment} onChange={(e) => setComment(e.target.value)} rows={2} placeholder="Note for the desk… use @userId to mention" className="text-xs" />
+              <Textarea value={comment} onChange={(e) => setComment(e.target.value)} rows={2} placeholder={tr("Note for the desk… use @userId to mention")} className="text-xs" />
               <Button size="xs" type="submit" variant="outline" disabled={!comment.trim()}>
-                Add note
-              </Button>
+                {tr("Add note")}</Button>
             </form>
           ) : null}
         </section>
 
         {canApprove && article.status === "READY_FOR_REVIEW" ? (
           <section>
-            <h3 className="label-caps mb-1.5">Review</h3>
+            <h3 className="label-caps mb-1.5">{tr("Review")}</h3>
             <RequestChangesForm articleId={article.id} editionId={article.editionId} storyId={article.storyId} />
           </section>
         ) : null}
@@ -448,6 +444,7 @@ export function ArticleEditor({
 }
 
 function BlockFields({ block, disabled, onChange }: { block: ArticleBlock; disabled: boolean; onChange: (patch: Partial<ArticleBlock>) => void }) {
+  const tr = useUi();
   switch (block.type) {
     case "paragraph":
       return <Textarea value={block.text} disabled={disabled} onChange={(e) => onChange({ text: e.target.value } as Partial<ArticleBlock>)} rows={3} className="font-serif text-[14px] leading-6" />;
@@ -457,14 +454,14 @@ function BlockFields({ block, disabled, onChange }: { block: ArticleBlock; disab
       return (
         <div className="space-y-1 border-l-2 border-brand pl-3">
           <Textarea value={block.text} disabled={disabled} onChange={(e) => onChange({ text: e.target.value } as Partial<ArticleBlock>)} rows={2} className="font-display text-base italic" />
-          <Input value={block.attribution ?? ""} disabled={disabled} onChange={(e) => onChange({ attribution: e.target.value } as Partial<ArticleBlock>)} placeholder="Attribution" className="h-7 text-xs" />
+          <Input value={block.attribution ?? ""} disabled={disabled} onChange={(e) => onChange({ attribution: e.target.value } as Partial<ArticleBlock>)} placeholder={tr("Attribution")} className="h-7 text-xs" />
         </div>
       );
     case "testimony":
       return (
         <div className="space-y-1 rounded-md bg-muted/40 p-2">
           <Textarea value={block.text} disabled={disabled} onChange={(e) => onChange({ text: e.target.value } as Partial<ArticleBlock>)} rows={3} className="font-serif text-[14px] italic" />
-          <Input value={block.speaker ?? ""} disabled={disabled} onChange={(e) => onChange({ speaker: e.target.value } as Partial<ArticleBlock>)} placeholder="Speaker" className="h-7 text-xs" />
+          <Input value={block.speaker ?? ""} disabled={disabled} onChange={(e) => onChange({ speaker: e.target.value } as Partial<ArticleBlock>)} placeholder={tr("Speaker")} className="h-7 text-xs" />
         </div>
       );
     case "qa":
@@ -482,21 +479,21 @@ function BlockFields({ block, disabled, onChange }: { block: ArticleBlock; disab
           onChange={(e) => onChange({ items: e.target.value.split("\n") } as Partial<ArticleBlock>)}
           rows={Math.max(2, block.items.length)}
           className="font-serif text-[14px]"
-          placeholder="One item per line"
+          placeholder={tr("One item per line")}
         />
       );
     case "box":
       return (
         <div className="space-y-1 rounded-md border border-border bg-muted/30 p-2">
-          <Input value={block.title ?? ""} disabled={disabled} onChange={(e) => onChange({ title: e.target.value } as Partial<ArticleBlock>)} placeholder="In a nutshell" className="h-7 text-xs font-semibold" />
-          <Textarea value={(block.items ?? []).join("\n")} disabled={disabled} onChange={(e) => onChange({ items: e.target.value.split("\n") } as Partial<ArticleBlock>)} rows={Math.max(2, (block.items ?? []).length)} className="text-xs" placeholder="One item per line" />
+          <Input value={block.title ?? ""} disabled={disabled} onChange={(e) => onChange({ title: e.target.value } as Partial<ArticleBlock>)} placeholder={tr("In a nutshell")} className="h-7 text-xs font-semibold" />
+          <Textarea value={(block.items ?? []).join("\n")} disabled={disabled} onChange={(e) => onChange({ items: e.target.value.split("\n") } as Partial<ArticleBlock>)} rows={Math.max(2, (block.items ?? []).length)} className="text-xs" placeholder={tr("One item per line")} />
         </div>
       );
     case "image":
       return (
         <div className="rounded-md border border-dashed border-border p-2 text-2xs text-muted-foreground">
-          Image block · asset {truncate(block.assetId, 12)}
-          <Input value={block.caption ?? ""} disabled={disabled} onChange={(e) => onChange({ caption: e.target.value } as Partial<ArticleBlock>)} placeholder="Caption" className="mt-1 h-7 text-xs" />
+          {tr("Image block · asset")}{" "}{truncate(block.assetId, 12)}
+          <Input value={block.caption ?? ""} disabled={disabled} onChange={(e) => onChange({ caption: e.target.value } as Partial<ArticleBlock>)} placeholder={tr("Caption")} className="mt-1 h-7 text-xs" />
         </div>
       );
     default:
@@ -505,6 +502,7 @@ function BlockFields({ block, disabled, onChange }: { block: ArticleBlock; disab
 }
 
 function ProposalDialog({ proposal, onClose, onApply }: { proposal: ArticleProposal | null; onClose: () => void; onApply: (p: ArticleProposal, choice?: string) => void }) {
+  const tr = useUi();
   if (!proposal) return null;
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
@@ -526,7 +524,7 @@ function ProposalDialog({ proposal, onClose, onApply }: { proposal: ArticlePropo
                 <li key={h.text}>
                   <button type="button" onClick={() => onApply(proposal, h.text)} className="w-full rounded-md border border-border px-3 py-2 text-left hover:border-brand hover:bg-accent/40">
                     <span className="font-display block text-[15px] font-semibold">{h.text}</span>
-                    <span className="text-2xs text-muted-foreground">{h.angle} · {h.text.length} characters</span>
+                    <span className="text-2xs text-muted-foreground">{h.angle} · {h.text.length} {" "}{tr("characters")}</span>
                   </button>
                 </li>
               ))}
@@ -536,11 +534,10 @@ function ProposalDialog({ proposal, onClose, onApply }: { proposal: ArticlePropo
           {proposal.kind === "pullQuote" ? (
             proposal.pullQuote ? (
               <blockquote className="font-display border-l-2 border-brand pl-3 text-base italic">
-                &ldquo;{proposal.pullQuote.text}&rdquo;
-                <footer className="mt-1 text-2xs text-muted-foreground not-italic">{proposal.pullQuote.attribution}</footer>
+                {tr("“")}{proposal.pullQuote.text}{tr("”")}{" "}<footer className="mt-1 text-2xs text-muted-foreground not-italic">{proposal.pullQuote.attribution}</footer>
               </blockquote>
             ) : (
-              <p className="text-xs text-muted-foreground">No quote is strong enough to pull out.</p>
+              <p className="text-xs text-muted-foreground">{tr("No quote is strong enough to pull out.")}</p>
             )
           ) : null}
 
@@ -577,7 +574,7 @@ function ProposalDialog({ proposal, onClose, onApply }: { proposal: ArticlePropo
                 ))}
               </ul>
             ) : (
-              <p className="text-xs text-success">Nothing to flag. Every statement matches the sources.</p>
+              <p className="text-xs text-success">{tr("Nothing to flag. Every statement matches the sources.")}</p>
             )
           ) : null}
         </div>
@@ -588,8 +585,7 @@ function ProposalDialog({ proposal, onClose, onApply }: { proposal: ArticlePropo
           </Button>
           {proposal.kind !== "issues" && proposal.kind !== "headlines" ? (
             <Button onClick={() => onApply(proposal)}>
-              <Check /> Apply to my draft
-            </Button>
+              <Check /> {" "}{tr("Apply to my draft")}</Button>
           ) : null}
         </DialogFooter>
       </DialogContent>
@@ -598,19 +594,20 @@ function ProposalDialog({ proposal, onClose, onApply }: { proposal: ArticlePropo
 }
 
 function ExplanationDialog({ explanation, onClose }: { explanation: { blockId: string; data: BlockExplanation } | null; onClose: () => void }) {
+  const tr = useUi();
   if (!explanation) return null;
   const { data } = explanation;
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent size="lg">
         <DialogHeader>
-          <DialogTitle>Why is this here?</DialogTitle>
+          <DialogTitle>{tr("Why is this here?")}</DialogTitle>
           <DialogDescription>{data.note ?? "The sources behind this passage."}</DialogDescription>
         </DialogHeader>
         <div className="max-h-[55vh] space-y-3 overflow-y-auto scrollbar-thin">
           {data.facts.length ? (
             <section>
-              <h4 className="label-caps mb-1">Facts</h4>
+              <h4 className="label-caps mb-1">{tr("Facts")}</h4>
               <ul className="space-y-1">
                 {data.facts.map((f) => (
                   <li key={f.id} className="rounded-md border border-border px-2.5 py-1.5 text-xs">
@@ -623,37 +620,36 @@ function ExplanationDialog({ explanation, onClose }: { explanation: { blockId: s
           ) : null}
           {data.quotes.length ? (
             <section>
-              <h4 className="label-caps mb-1">Quotes</h4>
+              <h4 className="label-caps mb-1">{tr("Quotes")}</h4>
               <ul className="space-y-1">
                 {data.quotes.map((q) => (
                   <li key={q.id} className="rounded-md border border-border px-2.5 py-1.5 text-xs italic">
-                    &ldquo;{q.text}&rdquo; <span className="not-italic text-muted-foreground">— {q.speakerName ?? "unattributed"}</span>
+                    {tr("“")}{q.text}{tr("”")}{" "}<span className="not-italic text-muted-foreground">— {q.speakerName ?? "unattributed"}</span>
                   </li>
                 ))}
               </ul>
             </section>
           ) : null}
           <section>
-            <h4 className="label-caps mb-1">Submissions</h4>
+            <h4 className="label-caps mb-1">{tr("Submissions")}</h4>
             {data.submissions.length ? (
               <ul className="space-y-1">
                 {data.submissions.map((sub) => (
                   <li key={sub.id} className="rounded-md border border-border px-2.5 py-1.5 text-xs">
                     <p className="font-medium">{sub.title}</p>
                     <p className="text-2xs text-muted-foreground">{sub.contributorName ?? "Unknown"}</p>
-                    {sub.excerpt ? <p className="mt-1 text-2xs italic text-muted-foreground">&ldquo;{sub.excerpt}&rdquo;</p> : null}
+                    {sub.excerpt ? <p className="mt-1 text-2xs italic text-muted-foreground">{tr("“")}{sub.excerpt}{tr("”")}</p> : null}
                   </li>
                 ))}
               </ul>
             ) : (
-              <p className="text-xs text-warning">No source is recorded for this block. Check it before publication.</p>
+              <p className="text-xs text-warning">{tr("No source is recorded for this block. Check it before publication.")}</p>
             )}
           </section>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>
-            Close
-          </Button>
+            {tr("Close")}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -661,6 +657,7 @@ function ExplanationDialog({ explanation, onClose }: { explanation: { blockId: s
 }
 
 function RequestChangesForm({ articleId, editionId, storyId }: { articleId: string; editionId: string; storyId: string }) {
+  const tr = useUi();
   const router = useRouter();
   const [note, setNote] = useState("");
   const [pending, start] = useTransition();
@@ -680,10 +677,9 @@ function RequestChangesForm({ articleId, editionId, storyId }: { articleId: stri
         });
       }}
     >
-      <Textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} placeholder="What should change before approval?" className="text-xs" />
+      <Textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} placeholder={tr("What should change before approval?")} className="text-xs" />
       <Button size="xs" type="submit" variant="outline" loading={pending} disabled={!note.trim()}>
-        <X /> Request changes
-      </Button>
+        <X /> {" "}{tr("Request changes")}</Button>
     </form>
   );
 }

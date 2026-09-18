@@ -76,9 +76,16 @@ pnpm db:seed                    # loads the May 2025 special issue as a working 
 pnpm dev                        # http://localhost:3000
 ```
 
-Sign in with `admin@albertschool.com` / `albert-deep-dive` (see `SEED_ADMIN_*`). The seed also
-creates `eic@`, `editor@`, `lyon@` (campus editor) and `viewer@albertschool.com` with the same
-password.
+Two administrators, because running Briefly and running a newsroom are different jobs:
+
+- **Platform admin** — `admin@briefly.press` / `albert-deep-dive` (see `SEED_ADMIN_*`). Briefly's
+  own account: the **Platform** console (customers, people, payments, integrations, logs) and the
+  right to open any workspace as support. Belongs to no workspace.
+- **Workspace admin** — `admin@albertschool.com` / `albert-deep-dive`. The owner of the sample
+  newsroom, with everything a customer can do and nothing a customer cannot.
+
+The seed also creates `eic@`, `editor@`, `lyon@` (campus editor) and `viewer@albertschool.com`
+with the same password.
 
 > The seed is reconstructed from the real *Special issue N°1 — May 2025*: 26 stories, 31 raw
 > submissions, 58 photographs, facts, quotes, people, organisations, a 25-page flatplan and the
@@ -176,15 +183,16 @@ in front.
 
 Then, in the application:
 
-1. Sign in as `admin@albertschool.com` with the password you gave Render when you created the
-   blueprint. Change it in **Settings → Profile**.
+1. Sign in as the platform admin (`SEED_ADMIN_EMAIL`, `admin@briefly.press` unless you changed
+   it) with the password you gave Render when you created the blueprint. Change it in
+   **Settings → Profile**. The sample newsroom's own owner is `admin@albertschool.com`, same password.
 2. Go to **Settings → Email** and connect the newsroom mailbox (below). Until you do, invitations
    are only recorded, so nothing is sent by accident.
 
 Render prompts you for two values when it creates the blueprint: your `OPENAI_API_KEY` and the
-first administrator's password (`SEED_ADMIN_PASSWORD`, used with `admin@albertschool.com`). If you
-ever need to reset that password, open the web service's **Shell** and run
-`pnpm reset-admin admin@albertschool.com <new-password>`; it touches only that one account.
+first administrator's password (`SEED_ADMIN_PASSWORD`, used with `SEED_ADMIN_EMAIL`). If you ever
+need to reset that password, open the web service's **Shell** and run
+`pnpm reset-admin <email> <new-password>`; it touches only that one account.
 
 Nothing else has to be configured. No email provider account, no object storage, no cron service.
 

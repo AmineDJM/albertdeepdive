@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { enumLabel } from "@/lib/utils";
+import { useUi } from "@/components/i18n/provider";
 
 export type MailMessage = {
   id: string;
@@ -34,6 +35,7 @@ function contributionLink(html: string): string | null {
 }
 
 export function MailboxList({ messages }: { messages: MailMessage[] }) {
+  const tr = useUi();
   const [open, setOpen] = useState<MailMessage | null>(null);
   const link = open ? contributionLink(open.html) : null;
 
@@ -50,10 +52,10 @@ export function MailboxList({ messages }: { messages: MailMessage[] }) {
                   <Badge variant={TONE[m.status] ?? "muted"} className="text-2xs">
                     {m.status.toLowerCase()}
                   </Badge>
-                  {m.template ? <Badge variant="outline" className="text-2xs">{enumLabel(m.template)}</Badge> : null}
+                  {m.template ? <Badge variant="outline" className="text-2xs">{tr(enumLabel(m.template))}</Badge> : null}
                 </div>
                 <p className="mt-0.5 truncate text-2xs text-muted-foreground">
-                  To {m.to}
+                  {tr("To")}{" "}{m.to}
                   {m.editionLabel ? ` · ${m.editionLabel}` : ""}
                   {m.error ? ` · ${m.error}` : ""}
                 </p>
@@ -69,13 +71,13 @@ export function MailboxList({ messages }: { messages: MailMessage[] }) {
           <DialogHeader>
             <DialogTitle>{open?.subject}</DialogTitle>
             <DialogDescription>
-              To {open?.to} · {open?.template ? enumLabel(open.template) : "no template"} · sent through “{open?.provider ?? "unknown"}”
+              {tr("To")}{" "}{open?.to} · {open?.template ? enumLabel(open.template) : "no template"} {" "}{tr("· sent through “")}{open?.provider ?? "unknown"}”
             </DialogDescription>
           </DialogHeader>
           {link ? (
             <Button size="sm" variant="outline" asChild className="self-start">
               <a href={link} target="_blank" rel="noreferrer">
-                Open the personal link <ExternalLink />
+                {tr("Open the personal link")}{" "}<ExternalLink />
               </a>
             </Button>
           ) : null}

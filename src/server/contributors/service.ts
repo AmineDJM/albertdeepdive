@@ -6,6 +6,7 @@ import { audit } from "@/server/audit";
 import { NotFoundError, ValidationError } from "@/lib/action-result";
 import { slugify } from "@/lib/utils";
 import { guardTenant, scoped, stampTenant } from "@/server/tenancy/scope";
+import { onlySent } from "@/lib/zod-patch";
 
 export const contributorInputSchema = z.object({
   firstName: z.string().trim().min(1).max(80),
@@ -59,7 +60,7 @@ export async function createContributor(raw: z.input<typeof contributorInputSche
 }
 
 export async function updateContributor(id: string, raw: Partial<z.input<typeof contributorInputSchema>>, userId?: string | null) {
-  const input = contributorInputSchema.partial().parse(raw);
+  const input = onlySent(contributorInputSchema.partial().parse(raw), raw);
   const { groupIds, ...values } = input;
   const orgScope = await scoped(s.contributors.organizationId, eq(s.contributors.id, id));
   const row = await db.transaction(async (tx) => {
@@ -80,6 +81,36 @@ export async function setContributorActive(id: string, isActive: boolean, userId
   if (!row) throw new NotFoundError("Contributor");
   await audit({ action: isActive ? "contributor.activate" : "contributor.deactivate", userId, entityType: "CONTRIBUTOR", entityId: id });
   return row;
+}
+
+/** Several at once. Inactive contributors are not invited and stay out of the list by default. */
+export async function setContributorsActive(ids: string[], isActive: boolean, userId?: string | null) {
+  if (!ids.length) return 0;
+  const rows = await db
+    .update(s.contributors)
+    .set({ isActive })
+    .where(await scoped(s.contributors.organizationId, inArray(s.contributors.id, ids)))
+    .returning({ id: s.contributors.id });
+  await Promise.all(rows.map((row) => audit({ action: isActive ? "contributor.activate" : "contributor.deactivate", userId, entityType: "CONTRIBUTOR", entityId: row.id })));
+  return rows.length;
+}
+
+/**
+ * Delete contributors outright.
+ *
+ * Their submissions, and the stories those became, stay with the author reference cleared: the
+ * newsroom's record of what it published is not theirs to take away. Their invitations and group
+ * memberships go with them. For the person who asked to be forgotten while the provenance must
+ * hold, `anonymiseContributor` is the right tool.
+ */
+export async function deleteContributors(ids: string[], userId?: string | null) {
+  if (!ids.length) return 0;
+  const rows = await db
+    .delete(s.contributors)
+    .where(await scoped(s.contributors.organizationId, inArray(s.contributors.id, ids)))
+    .returning({ id: s.contributors.id, email: s.contributors.email });
+  await Promise.all(rows.map((row) => audit({ action: "contributor.delete", userId, entityType: "CONTRIBUTOR", entityId: row.id, metadata: { email: row.email } })));
+  return rows.length;
 }
 
 /** GDPR: anonymise a contributor (keeps editorial provenance, removes personal data). */
@@ -155,7 +186,7 @@ export async function createCampus(raw: z.input<typeof campusInputSchema>, userI
 }
 
 export async function updateCampus(id: string, raw: Partial<z.input<typeof campusInputSchema>> & { sortOrder?: number }, userId?: string | null) {
-  const input = campusInputSchema.partial().extend({ sortOrder: z.number().int().optional() }).parse(raw);
+  const input = onlySent(campusInputSchema.partial().extend({ sortOrder: z.number().int().optional() }).parse(raw), raw);
   const [row] = await db.update(s.campuses).set(input).where(await scoped(s.campuses.organizationId, eq(s.campuses.id, id))).returning();
   if (!row) throw new NotFoundError("Campus");
   await audit({ action: "campus.update", userId, entityType: "CAMPUS", entityId: id, metadata: { fields: Object.keys(input) } });

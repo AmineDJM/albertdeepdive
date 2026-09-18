@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import type { IntegrationStatus } from "@/server/integrations/service";
+import { useUi } from "@/components/i18n/provider";
 
 /**
  * One service, one card.
@@ -23,6 +24,7 @@ import type { IntegrationStatus } from "@/server/integrations/service";
  * install that sets secrets at deploy time should see that, not silently have them ignored.
  */
 export function IntegrationCard({ integration, setupLabel }: { integration: IntegrationStatus; setupLabel?: string }) {
+  const tr = useUi();
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [edits, setEdits] = useState<Record<string, string>>({});
@@ -93,14 +95,13 @@ export function IntegrationCard({ integration, setupLabel }: { integration: Inte
             {integration.name}
             {integration.configured ? (
               <span className="inline-flex items-center gap-1 rounded-sm bg-emerald-600/10 px-1.5 py-0.5 text-2xs font-medium text-emerald-700 dark:text-emerald-400">
-                <Check className="size-2.5" /> Connected
-              </span>
+                <Check className="size-2.5" /> {" "}{tr("Connected")}</span>
             ) : (
-              <span className="rounded-sm bg-muted px-1.5 py-0.5 text-2xs font-medium text-muted-foreground">Not connected</span>
+              <span className="rounded-sm bg-muted px-1.5 py-0.5 text-2xs font-medium text-muted-foreground">{tr("Not connected")}</span>
             )}
           </h3>
           <p className="mt-1 max-w-prose text-xs leading-5 text-muted-foreground">{integration.summary}</p>
-          {!integration.configured ? <p className="mt-1 max-w-prose text-xs leading-5 text-muted-foreground">Without it: {integration.whenMissing}</p> : null}
+          {!integration.configured ? <p className="mt-1 max-w-prose text-xs leading-5 text-muted-foreground">{tr("Without it:")}{" "}{integration.whenMissing}</p> : null}
         </div>
         {integration.docsUrl ? (
           <a href={integration.docsUrl} target="_blank" rel="noreferrer" className="inline-flex shrink-0 items-center gap-1 text-xs text-muted-foreground underline-offset-4 hover:underline">
@@ -121,7 +122,7 @@ export function IntegrationCard({ integration, setupLabel }: { integration: Inte
                 {field.required ? <span className="text-destructive">*</span> : null}
                 {locked ? (
                   <span className="inline-flex items-center gap-1 text-2xs font-normal text-muted-foreground">
-                    <Lock className="size-2.5" /> set by {field.envVar}
+                    <Lock className="size-2.5" /> {" "}{tr("set by")}{" "}{field.envVar}
                   </span>
                 ) : null}
               </Label>
@@ -178,8 +179,7 @@ export function IntegrationCard({ integration, setupLabel }: { integration: Inte
 
       <div className="mt-4 flex flex-wrap items-center gap-2">
         <Button size="sm" onClick={save} loading={pending && dirty} disabled={!dirty}>
-          <Plug /> Save
-        </Button>
+          <Plug /> {" "}{tr("Save")}</Button>
         {setupLabel ? (
           <Button size="sm" variant={integration.configured ? "outline" : "ghost"} onClick={runSetup} loading={pending && !dirty} disabled={pending || !integration.configured}>
             <Wand2 /> {setupLabel}
@@ -187,13 +187,11 @@ export function IntegrationCard({ integration, setupLabel }: { integration: Inte
         ) : null}
         {integration.testable ? (
           <Button size="sm" variant="ghost" onClick={test} disabled={pending || !integration.configured}>
-            Test connection
-          </Button>
+            {tr("Test connection")}</Button>
         ) : null}
         {integration.configured && integration.fields.some((f) => f.source === "stored") ? (
           <Button size="sm" variant="ghost" onClick={disconnect} disabled={pending}>
-            <Unplug /> Disconnect
-          </Button>
+            <Unplug /> {" "}{tr("Disconnect")}</Button>
         ) : null}
       </div>
     </section>

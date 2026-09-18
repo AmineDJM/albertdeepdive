@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn, slugify } from "@/lib/utils";
+import { useUi } from "@/components/i18n/provider";
 
 export type SectionItem = {
   /** Local key for drag & drop (stable while editing). */
@@ -32,6 +33,7 @@ export function newSectionItem(partial: Partial<SectionItem> = {}): SectionItem 
 }
 
 export function SortableSections({ items, onChange, counts, dndId = "sections", readOnly = false }: { items: SectionItem[]; onChange: (next: SectionItem[]) => void; counts?: SectionCounts; dndId?: string; readOnly?: boolean }) {
+  const tr = useUi();
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }), useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }));
   const ids = useMemo(() => items.map((i) => i.uid), [items]);
   const slugCounts = useMemo(() => {
@@ -61,11 +63,11 @@ export function SortableSections({ items, onChange, counts, dndId = "sections", 
       <div className="hidden grid-cols-[28px_28px_minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1.2fr)_72px_64px_32px] items-center gap-2 px-2 md:grid">
         <span />
         <span />
-        <span className="label-caps">Name</span>
-        <span className="label-caps">Slug</span>
-        <span className="label-caps">Kicker</span>
-        <span className="label-caps">Pages</span>
-        <span className="label-caps">Shown</span>
+        <span className="label-caps">{tr("Name")}</span>
+        <span className="label-caps">{tr("Slug")}</span>
+        <span className="label-caps">{tr("Kicker")}</span>
+        <span className="label-caps">{tr("Pages")}</span>
+        <span className="label-caps">{tr("Shown")}</span>
         <span />
       </div>
       <DndContext id={dndId} sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
@@ -93,14 +95,14 @@ export function SortableSections({ items, onChange, counts, dndId = "sections", 
       </DndContext>
       {!readOnly ? (
         <Button type="button" variant="outline" size="sm" onClick={() => onChange([...items, newSectionItem()])}>
-          <Plus /> Add section
-        </Button>
+          <Plus /> {" "}{tr("Add section")}</Button>
       ) : null}
     </div>
   );
 }
 
 function SortableRow({ item, index, readOnly, duplicate, stories, onUpdate, onRemove }: { item: SectionItem; index: number; readOnly: boolean; duplicate: boolean; stories: number | null; onUpdate: (patch: Partial<SectionItem>) => void; onRemove: () => void }) {
+  const tr = useUi();
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({ id: item.uid, disabled: readOnly });
   const style = { transform: CSS.Transform.toString(transform), transition };
   const blocked = stories !== null && stories > 0;
@@ -129,8 +131,8 @@ function SortableRow({ item, index, readOnly, duplicate, stories, onUpdate, onRe
         <Input
           value={item.name}
           onChange={(e) => onUpdate({ name: e.target.value, ...(item.slugTouched || item.id ? {} : { slug: slugify(e.target.value) }) })}
-          placeholder="Section name"
-          aria-label="Section name"
+          placeholder={tr("Section name")}
+          aria-label={tr("Section name")}
           className="h-7"
           disabled={readOnly}
         />
@@ -139,8 +141,7 @@ function SortableRow({ item, index, readOnly, duplicate, stories, onUpdate, onRe
             {stories} {stories === 1 ? "story" : "stories"}
             {item.isHidden ? (
               <span className="inline-flex items-center gap-0.5">
-                · <EyeOff className="size-3" /> hidden
-              </span>
+                · <EyeOff className="size-3" /> {" "}{tr("hidden")}</span>
             ) : null}
           </div>
         ) : null}
@@ -149,23 +150,23 @@ function SortableRow({ item, index, readOnly, duplicate, stories, onUpdate, onRe
         <Input
           value={item.slug}
           onChange={(e) => onUpdate({ slug: slugify(e.target.value.toLowerCase()).replace(/-+$/, "") || e.target.value.toLowerCase(), slugTouched: true })}
-          placeholder="slug"
-          aria-label="Section slug"
+          placeholder={tr("slug")}
+          aria-label={tr("Section slug")}
           aria-invalid={duplicate || !item.slug}
           className="h-7 font-mono text-xs"
           disabled={readOnly || Boolean(item.id)}
           title={item.id ? "Slugs of existing sections are stable" : undefined}
         />
-        {duplicate ? <p className="mt-0.5 text-2xs text-destructive">Duplicate slug</p> : null}
+        {duplicate ? <p className="mt-0.5 text-2xs text-destructive">{tr("Duplicate slug")}</p> : null}
       </div>
-      <Input value={item.kicker} onChange={(e) => onUpdate({ kicker: e.target.value })} placeholder="Kicker" aria-label="Kicker" className="h-7" disabled={readOnly} />
+      <Input value={item.kicker} onChange={(e) => onUpdate({ kicker: e.target.value })} placeholder={tr("Kicker")} aria-label={tr("Kicker")} className="h-7" disabled={readOnly} />
       <Input
         type="number"
         min={0}
         max={40}
         value={item.targetPages ?? ""}
         onChange={(e) => onUpdate({ targetPages: e.target.value === "" ? null : Math.max(0, Math.min(40, Number(e.target.value))) })}
-        aria-label="Target pages"
+        aria-label={tr("Target pages")}
         className="tabular h-7"
         disabled={readOnly}
       />
@@ -178,12 +179,12 @@ function SortableRow({ item, index, readOnly, duplicate, stories, onUpdate, onRe
         <Tooltip>
           <TooltipTrigger asChild>
             <span className="inline-flex">
-              <Button type="button" variant="ghost" size="icon-sm" disabled aria-label="Cannot remove a section that holds stories">
+              <Button type="button" variant="ghost" size="icon-sm" disabled aria-label={tr("Cannot remove a section that holds stories")}>
                 <Trash2 />
               </Button>
             </span>
           </TooltipTrigger>
-          <TooltipContent>Move its {stories} {stories === 1 ? "story" : "stories"} to another section first</TooltipContent>
+          <TooltipContent>{tr("Move its")}{" "}{stories} {stories === 1 ? "story" : "stories"} {" "}{tr("to another section first")}</TooltipContent>
         </Tooltip>
       ) : (
         <Button type="button" variant="ghost" size="icon-sm" onClick={onRemove} aria-label={`Remove ${item.name || "section"}`}>

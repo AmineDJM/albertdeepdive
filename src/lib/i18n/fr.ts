@@ -130,7 +130,15 @@ export const fr: Dictionary = {
     unsubscribeFailedTitle: "Lien introuvable",
     publishedWith: "Publié avec {brand}",
     subscribeTo: "S'abonner à {name}",
-    getNextEdition: "pour recevoir la prochaine parution.",
+    getNextEdition: "pour recevoir la prochaine édition.",
+    priceLine: "{price}. Facturé par Stripe, résiliable en un clic.",
+    subscribeFor: "S'abonner pour {price}",
+    paidReassurance: "Paiement sécurisé par Stripe. Partez en un clic, à tout moment ; rien de plus n'est prélevé.",
+    toCheckout: "Direction le paiement sécurisé…",
+    paidTitle: "Bienvenue à bord",
+    paidBody: "Votre paiement est passé et vous êtes abonné·e. La prochaine édition arrivera dans votre boîte ; vous pouvez partir en un clic depuis n'importe quel email.",
+    paymentFailedTitle: "Ça n'est pas passé",
+    tryAgain: "Réessayer",
   },
 
   editionEmail: {

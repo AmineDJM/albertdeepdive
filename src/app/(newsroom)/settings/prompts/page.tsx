@@ -8,12 +8,14 @@ import { Stat, StatGrid } from "@/components/newsroom/stat";
 import { Badge } from "@/components/ui/badge";
 import { NoAccess } from "@/components/settings/no-access";
 import { formatCurrency, formatDate, formatNumber } from "@/lib/utils";
+import { getUi } from "@/server/i18n/locale";
 
 export const dynamic = "force-dynamic";
 
 export default async function PromptsPage() {
+  const tr = await getUi();
   const user = await getCurrentUser();
-  if (!hasPermission(user, "prompt:manage")) return <NoAccess title="Prompts" permission="prompt:manage" />;
+  if (!hasPermission(user, "prompt:manage")) return <NoAccess title={tr("Prompts")} permission="prompt:manage" />;
   const prompts = await listPrompts();
   const categories = [...new Set(prompts.map((p) => p.category))].sort((a, b) => CATEGORY_ORDER.indexOf(a) - CATEGORY_ORDER.indexOf(b));
   const customised = prompts.filter((p) => !p.isDefault).length;
@@ -21,13 +23,13 @@ export default async function PromptsPage() {
   const cost = prompts.reduce((n, p) => n + p.usage.costCents, 0);
   return (
     <>
-      <PageHeader title="Prompts" description="Every AI step runs a versioned template. Edit, test, activate — the pipeline picks up the active version within 30 seconds." />
+      <PageHeader title={tr("Prompts")} description={tr("Every AI step runs a versioned template. Edit, test, activate — the pipeline picks up the active version within 30 seconds.")} />
       <PageBody className="space-y-5">
         <StatGrid columns={4}>
-          <Stat label="Prompt templates" value={prompts.length} hint={`${customised} customised · ${prompts.length - customised} on shipped defaults`} />
-          <Stat label="Versions" value={prompts.reduce((n, p) => n + p.versions, 0)} hint="kept forever, one active per key" />
-          <Stat label="Calls (all time)" value={formatNumber(calls)} hint="from the AI trace" />
-          <Stat label="Estimated cost" value={formatCurrency(cost / 100)} hint="sum of ai_jobs.cost_cents" />
+          <Stat label={tr("Prompt templates")} value={prompts.length} hint={`${customised} customised · ${prompts.length - customised} on shipped defaults`} />
+          <Stat label={tr("Versions")} value={prompts.reduce((n, p) => n + p.versions, 0)} hint={tr("kept forever, one active per key")} />
+          <Stat label={tr("Calls (all time)")} value={formatNumber(calls)} hint={tr("from the AI trace")} />
+          <Stat label={tr("Estimated cost")} value={formatCurrency(cost / 100)} hint={tr("sum of ai_jobs.cost_cents")} />
         </StatGrid>
         {categories.map((category) => (
           <section key={category}>
@@ -37,11 +39,11 @@ export default async function PromptsPage() {
               rowKey={(p) => p.key}
               onRowHref={(p) => `/settings/prompts/${p.key}`}
               dense
-              empty={{ title: "No prompts", icon: Cpu }}
+              empty={{ title: tr("No prompts"), icon: Cpu }}
               columns={[
                 {
                   key: "name",
-                  header: "Prompt",
+                  header: tr("Prompt"),
                   cell: (p) => (
                     <div className="min-w-0">
                       <Link href={`/settings/prompts/${p.key}`} className="font-medium hover:underline">
@@ -51,14 +53,14 @@ export default async function PromptsPage() {
                     </div>
                   ),
                 },
-                { key: "description", header: "Does", cell: (p) => <span className="line-clamp-1 max-w-md text-xs text-muted-foreground">{p.description ?? "—"}</span> },
-                { key: "version", header: "Active", cell: (p) => (p.activeVersion ? <Badge variant={p.isDefault ? "outline" : "brand"}>v{p.activeVersion}{p.isDefault ? " · default" : ""}</Badge> : <Badge variant="muted">code default</Badge>) },
-                { key: "tier", header: "Tier", cell: (p) => <Badge variant={p.modelTier === "STRONG" ? "default" : "secondary"}>{p.modelTier}</Badge> },
-                { key: "temp", header: "Temp.", cell: (p) => <span className="tabular text-xs">{p.temperature}</span>, align: "right" },
-                { key: "tokens", header: "Max tokens", cell: (p) => <span className="tabular text-xs">{formatNumber(p.maxOutputTokens)}</span>, align: "right" },
-                { key: "calls", header: "Calls", cell: (p) => <span className="tabular text-xs">{formatNumber(p.usage.calls)}</span>, align: "right" },
-                { key: "cost", header: "Cost", cell: (p) => <span className="tabular text-xs">{p.usage.costCents ? formatCurrency(p.usage.costCents / 100) : "—"}</span>, align: "right" },
-                { key: "updated", header: "Updated", cell: (p) => <span className="text-xs text-muted-foreground">{p.updatedAt ? formatDate(p.updatedAt) : "—"}</span> },
+                { key: "description", header: tr("Does"), cell: (p) => <span className="line-clamp-1 max-w-md text-xs text-muted-foreground">{p.description ?? "—"}</span> },
+                { key: "version", header: tr("Active"), cell: (p) => (p.activeVersion ? <Badge variant={p.isDefault ? "outline" : "brand"}>v{p.activeVersion}{p.isDefault ? " · default" : ""}</Badge> : <Badge variant="muted">{tr("code default")}</Badge>) },
+                { key: "tier", header: tr("Tier"), cell: (p) => <Badge variant={p.modelTier === "STRONG" ? "default" : "secondary"}>{p.modelTier}</Badge> },
+                { key: "temp", header: tr("Temp."), cell: (p) => <span className="tabular text-xs">{p.temperature}</span>, align: "right" },
+                { key: "tokens", header: tr("Max tokens"), cell: (p) => <span className="tabular text-xs">{formatNumber(p.maxOutputTokens)}</span>, align: "right" },
+                { key: "calls", header: tr("Calls"), cell: (p) => <span className="tabular text-xs">{formatNumber(p.usage.calls)}</span>, align: "right" },
+                { key: "cost", header: tr("Cost"), cell: (p) => <span className="tabular text-xs">{p.usage.costCents ? formatCurrency(p.usage.costCents / 100) : "—"}</span>, align: "right" },
+                { key: "updated", header: tr("Updated"), cell: (p) => <span className="text-xs text-muted-foreground">{p.updatedAt ? formatDate(p.updatedAt) : "—"}</span> },
               ]}
             />
           </section>

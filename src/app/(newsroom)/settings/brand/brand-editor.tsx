@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { SectionTitle } from "@/components/newsroom/page-header";
 import { cn } from "@/lib/utils";
+import { useUi } from "@/components/i18n/provider";
 
 type Origin = Record<string, "discovered" | "default" | undefined>;
 
@@ -44,6 +45,7 @@ export function BrandEditor({
   notes: string[];
   website: string;
 }) {
+  const tr = useUi();
   const router = useRouter();
   const [system, setSystem] = useState<BrandSystem>(initial);
   const [saving, startSaving] = useTransition();
@@ -73,7 +75,7 @@ export function BrandEditor({
         toast.error(result.error);
         return;
       }
-      toast.success("Brand saved");
+      toast.success(tr("Brand saved"));
       router.refresh();
     });
   }
@@ -87,7 +89,7 @@ export function BrandEditor({
       }
       setSystem(result.data.system);
       setProposalNotes(result.data.notes);
-      toast.success("Read from your website — nothing is saved until you say so");
+      toast.success(tr("Read from your website — nothing is saved until you say so"));
     });
   }
 
@@ -110,13 +112,11 @@ export function BrandEditor({
             action={
               canEdit && website ? (
                 <Button variant="ghost" size="xs" onClick={rediscover} disabled={discovering}>
-                  <RefreshCw className={cn("size-3", discovering && "animate-spin")} /> Read my site again
-                </Button>
+                  <RefreshCw className={cn("size-3", discovering && "animate-spin")} /> {" "}{tr("Read my site again")}</Button>
               ) : null
             }
           >
-            Colours
-          </SectionTitle>
+            {tr("Colours")}</SectionTitle>
           <div className="grid gap-3 sm:grid-cols-2">
             {(
               [
@@ -129,7 +129,7 @@ export function BrandEditor({
               <div key={key}>
                 <Label htmlFor={`brand-${key}`} className="flex items-center gap-1.5">
                   {label}
-                  {origin[key] === "discovered" ? <Badge variant="muted" className="font-normal">from your site</Badge> : null}
+                  {origin[key] === "discovered" ? <Badge variant="muted" className="font-normal">{tr("from your site")}</Badge> : null}
                 </Label>
                 <div className="mt-1 flex items-center gap-2">
                   <input
@@ -149,7 +149,7 @@ export function BrandEditor({
         </section>
 
         <section>
-          <SectionTitle>Personality</SectionTitle>
+          <SectionTitle>{tr("Personality")}</SectionTitle>
           <div className="space-y-1.5">
             {PERSONALITY_KEYS.map((key) => {
               const personality = PERSONALITIES[key];
@@ -180,12 +180,12 @@ export function BrandEditor({
         </section>
 
         <section>
-          <SectionTitle>Shape and imagery</SectionTitle>
+          <SectionTitle>{tr("Shape and imagery")}</SectionTitle>
           <div className="space-y-4">
-            <Slider label="Roundness" hint="Square reads institutional; round reads friendly." value={system.shape.roundness} min={0} max={1} step={0.05} disabled={!canEdit} onChange={(v) => set("shape", { ...system.shape, roundness: v })} />
-            <Slider label="Grain" hint="A little noise is what stops a render looking synthetic." value={system.imagery.grain} min={0} max={1} step={0.02} disabled={!canEdit} onChange={(v) => set("imagery", { ...system.imagery, grain: v })} />
+            <Slider label={tr("Roundness")} hint={tr("Square reads institutional; round reads friendly.")} value={system.shape.roundness} min={0} max={1} step={0.05} disabled={!canEdit} onChange={(v) => set("shape", { ...system.shape, roundness: v })} />
+            <Slider label={tr("Grain")} hint={tr("A little noise is what stops a render looking synthetic.")} value={system.imagery.grain} min={0} max={1} step={0.02} disabled={!canEdit} onChange={(v) => set("imagery", { ...system.imagery, grain: v })} />
             <div>
-              <Label>Photographs</Label>
+              <Label>{tr("Photographs")}</Label>
               <div className="mt-1.5 flex flex-wrap gap-1.5">
                 {IMAGERY_TREATMENTS.map((treatment) => (
                   <Chip key={treatment} active={system.imagery.treatment === treatment} disabled={!canEdit} onClick={() => set("imagery", { ...system.imagery, treatment })}>
@@ -195,7 +195,7 @@ export function BrandEditor({
               </div>
             </div>
             <div>
-              <Label>Motion</Label>
+              <Label>{tr("Motion")}</Label>
               <div className="mt-1.5 flex flex-wrap gap-1.5">
                 {MOTION_PACES.map((pace) => (
                   <Chip key={pace} active={system.motion.pace === pace} disabled={!canEdit} onClick={() => set("motion", { pace })}>
@@ -208,11 +208,11 @@ export function BrandEditor({
         </section>
 
         <section>
-          <SectionTitle>Voice</SectionTitle>
+          <SectionTitle>{tr("Voice")}</SectionTitle>
           <div className="space-y-3">
             <div>
-              <Label>Tone</Label>
-              <p className="mb-1.5 text-2xs text-muted-foreground">Up to three. Applied to everything written for you.</p>
+              <Label>{tr("Tone")}</Label>
+              <p className="mb-1.5 text-2xs text-muted-foreground">{tr("Up to three. Applied to everything written for you.")}</p>
               <div className="flex flex-wrap gap-1.5">
                 {TONE_WORDS.map((word) => {
                   const active = system.voice.tone.includes(word);
@@ -230,27 +230,26 @@ export function BrandEditor({
               </div>
             </div>
             <div>
-              <Label htmlFor="brand-person">You are</Label>
+              <Label htmlFor="brand-person">{tr("You are")}</Label>
               <div className="mt-1.5 flex gap-1.5">
                 <Chip active={system.voice.person === "first"} disabled={!canEdit} onClick={() => set("voice", { ...system.voice, person: "first" })}>
-                  “we”
-                </Chip>
+                  {tr("“we”")}</Chip>
                 <Chip active={system.voice.person === "third"} disabled={!canEdit} onClick={() => set("voice", { ...system.voice, person: "third" })}>
                   “{organizationName}”
                 </Chip>
               </div>
             </div>
             <div>
-              <Label htmlFor="brand-avoid">Words you never use</Label>
+              <Label htmlFor="brand-avoid">{tr("Words you never use")}</Label>
               <Input
                 id="brand-avoid"
-                placeholder="synergy, disruptive, best-in-class"
+                placeholder={tr("synergy, disruptive, best-in-class")}
                 disabled={!canEdit}
                 value={system.voice.avoid.join(", ")}
                 onChange={(e) => set("voice", { ...system.voice, avoid: e.target.value.split(",").map((w) => w.trim()).filter(Boolean).slice(0, 24) })}
                 className="mt-1"
               />
-              <p className="mt-1 text-2xs text-muted-foreground">Enforced on generated copy, not suggested to it.</p>
+              <p className="mt-1 text-2xs text-muted-foreground">{tr("Enforced on generated copy, not suggested to it.")}</p>
             </div>
           </div>
         </section>
@@ -262,12 +261,11 @@ export function BrandEditor({
             </Button>
             {dirty ? (
               <Button variant="ghost" onClick={() => setSystem(initial)} disabled={saving}>
-                Discard
-              </Button>
+                {tr("Discard")}</Button>
             ) : null}
           </div>
         ) : (
-          <p className="text-xs text-muted-foreground">Only an owner or admin of this workspace can change the brand.</p>
+          <p className="text-xs text-muted-foreground">{tr("Only an owner or admin of this workspace can change the brand.")}</p>
         )}
       </div>
 
@@ -314,6 +312,7 @@ function Slider({ label, hint, value, min, max, step, disabled, onChange }: { la
  * the promise this system makes — that no renderer can produce unreadable text — shown being kept.
  */
 function BrandPreview({ tokens, contrast, failures, organizationName }: { tokens: BrandTokens; contrast: ReturnType<typeof contrastReport>; failures: number; organizationName: string }) {
+  const tr = useUi();
   const [display, text, label] = [tokens.type.display, tokens.type.text, tokens.type.label];
   const scale = tokens.type.scale;
   const font = (role: typeof display, size: number) => ({
@@ -336,10 +335,9 @@ function BrandPreview({ tokens, contrast, failures, organizationName }: { tokens
                 {organizationName}
               </div>
               <p className="mt-2" style={{ ...font(text, scale[1]), color: surface.subdued }}>
-                Every edition, email and export is set in these colours.
-              </p>
+                {tr("Every edition, email and export is set in these colours.")}</p>
               <div className="mt-3 flex items-center gap-2">
-                <span style={{ backgroundColor: surface.highlight, color: surface.background, borderRadius: tokens.shape.radiusSm, padding: "4px 10px", ...font(label, 10) }}>highlight</span>
+                <span style={{ backgroundColor: surface.highlight, color: surface.background, borderRadius: tokens.shape.radiusSm, padding: "4px 10px", ...font(label, 10) }}>{tr("highlight")}</span>
                 <span className="h-px flex-1" style={{ backgroundColor: surface.rule }} />
               </div>
             </div>
@@ -349,20 +347,17 @@ function BrandPreview({ tokens, contrast, failures, organizationName }: { tokens
 
       <div className="rounded-xl border border-border bg-card p-4">
         <div className="mb-2 flex items-center justify-between">
-          <h2 className="label-caps">Readability</h2>
+          <h2 className="label-caps">{tr("Readability")}</h2>
           {failures ? (
             <span className="flex items-center gap-1.5 text-xs text-amber-600">
-              <AlertTriangle className="size-3.5" /> {failures} pair{failures === 1 ? "" : "s"} below target
-            </span>
+              <AlertTriangle className="size-3.5" /> {failures} {" "}{tr("pair")}{failures === 1 ? "" : "s"} {" "}{tr("below target")}</span>
           ) : (
             <span className="flex items-center gap-1.5 text-xs text-emerald-600">
-              <Check className="size-3.5" /> Every pair passes
-            </span>
+              <Check className="size-3.5" /> {" "}{tr("Every pair passes")}</span>
           )}
         </div>
         <p className="mb-3 text-xs text-muted-foreground">
-          Text colours are corrected against the surface they sit on before anything is rendered, so your colours can be whatever they are and still be read.
-        </p>
+          {tr("Text colours are corrected against the surface they sit on before anything is rendered, so your colours can be whatever they are and still be read.")}</p>
         <div className="grid grid-cols-2 gap-x-4 gap-y-1 sm:grid-cols-4">
           {contrast.map((row) => (
             <div key={`${row.surface}-${row.role}`} className="flex items-baseline justify-between gap-2 text-2xs">
@@ -376,13 +371,12 @@ function BrandPreview({ tokens, contrast, failures, organizationName }: { tokens
       </div>
 
       <div className="rounded-xl border border-border bg-card p-4">
-        <h2 className="label-caps mb-3">Type</h2>
+        <h2 className="label-caps mb-3">{tr("Type")}</h2>
         <div className="space-y-2" style={{ color: "var(--foreground)" }}>
-          <div style={font(display, scale[5])}>A headline, set the way yours will be</div>
-          <div style={font(display, scale[3])}>A second-level heading</div>
+          <div style={font(display, scale[5])}>{tr("A headline, set the way yours will be")}</div>
+          <div style={font(display, scale[3])}>{tr("A second-level heading")}</div>
           <p style={font(text, scale[1])}>
-            Body text, at reading size. The scale has seven steps and a layout only ever picks one of them — the difference between type that is set and type that has been fitted is whether anybody was allowed to choose 41 pixels.
-          </p>
+            {tr("Body text, at reading size. The scale has seven steps and a layout only ever picks one of them — the difference between type that is set and type that has been fitted is whether anybody was allowed to choose 41 pixels.")}</p>
           <div className="pt-1" style={{ ...font(label, 11), color: "var(--muted-foreground)" }}>
             {tokens.type.personality} · {scale.map((n) => Math.round(n)).join(" / ")}
           </div>

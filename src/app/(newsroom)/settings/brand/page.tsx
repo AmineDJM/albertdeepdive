@@ -4,6 +4,7 @@ import { ensureBrand } from "@/server/brand/service";
 import { compileBrandSystem } from "@/lib/brand/system";
 import { PageBody, PageHeader } from "@/components/newsroom/page-header";
 import { BrandEditor } from "./brand-editor";
+import { getUi } from "@/server/i18n/locale";
 
 export const dynamic = "force-dynamic";
 
@@ -15,6 +16,7 @@ export const dynamic = "force-dynamic";
  * less "fill in a form" than "check what we found and change what is wrong".
  */
 export default async function BrandSettingsPage() {
+  const tr = await getUi();
   const tenant = await requireTenant();
   const [organization, record] = await Promise.all([getOrganization(tenant.organizationId), ensureBrand(tenant.organizationId)]);
   const canEdit = tenant.role === "OWNER" || tenant.role === "ADMIN";
@@ -22,7 +24,7 @@ export default async function BrandSettingsPage() {
 
   return (
     <>
-      <PageHeader title="Brand" description="Your colours, your type and your voice — used by every edition, email, page and export." />
+      <PageHeader title={tr("Brand")} description={tr("Your colours, your type and your voice — used by every edition, email, page and export.")} />
       <PageBody>
         <BrandEditor
           canEdit={canEdit}

@@ -55,7 +55,7 @@ services:
       # prompted like the OpenAI key), so there is no generated string to hunt for and copy.
       # Change it from Settings → Profile after signing in.
       - key: SEED_ADMIN_EMAIL
-        value: admin@albertschool.com
+        value: admin@briefly.press
       - key: SEED_ADMIN_PASSWORD
         sync: false
 

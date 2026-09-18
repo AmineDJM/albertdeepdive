@@ -8,6 +8,7 @@ import { PLATFORM_TABS } from "@/components/newsroom/nav";
 import { FilterBar } from "@/components/newsroom/filter-bar";
 import { EmptyState } from "@/components/ui/empty-state";
 import { cn, formatDateTime } from "@/lib/utils";
+import { getUi } from "@/server/i18n/locale";
 
 export const dynamic = "force-dynamic";
 
@@ -24,13 +25,14 @@ const HUES: Record<LogSource, string> = { audit: "cobalt", jobs: "violet", email
  * Reading, never writing. Nothing on this page has a button.
  */
 export default async function PlatformLogsPage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
+  const tr = await getUi();
   const user = await getCurrentUser();
   if (!hasPermission(user, "settings:manage")) {
     return (
       <>
-        <PageHeader title="Logs" />
+        <PageHeader title={tr("Logs")} />
         <PageBody>
-          <p className="text-[14px] text-muted-foreground">Reading every customer&rsquo;s logs is a platform job. You need to be a Briefly super admin.</p>
+          <p className="text-[14px] text-muted-foreground">{tr("Reading every customer’s logs is a platform job. You need to be a Briefly super admin.")}</p>
         </PageBody>
       </>
     );
@@ -56,26 +58,26 @@ export default async function PlatformLogsPage({ searchParams }: { searchParams:
 
   return (
     <>
-      <PageHeader title="Logs" description="Actions, jobs, email and model calls across every workspace, on one timeline.">
+      <PageHeader title={tr("Logs")} description={tr("Actions, jobs, email and model calls across every workspace, on one timeline.")}>
         <HubTabs tabs={PLATFORM_TABS} />
       </PageHeader>
       <PageBody className="space-y-4">
         <Suspense>
           <FilterBar
-            searchPlaceholder="Search an action, a recipient, an error…"
+            searchPlaceholder={tr("Search an action, a recipient, an error…")}
             filters={[
-              { key: "source", label: "Source", options: LOG_SOURCES.map((value) => ({ value, label: LOG_SOURCE_LABELS[value] })) },
-              { key: "workspace", label: "Workspace", options: workspaces.map((workspace) => ({ value: workspace.id, label: workspace.name })) },
+              { key: "source", label: tr("Source"), options: LOG_SOURCES.map((value) => ({ value, label: LOG_SOURCE_LABELS[value] })) },
+              { key: "workspace", label: tr("Workspace"), options: workspaces.map((workspace) => ({ value: workspace.id, label: workspace.name })) },
               {
                 key: "days",
-                label: "Window",
+                label: tr("Window"),
                 options: [
-                  { value: "1", label: "Last 24 hours" },
-                  { value: "7", label: "Last 7 days" },
-                  { value: "30", label: "Last 30 days" },
+                  { value: "1", label: tr("Last 24 hours") },
+                  { value: "7", label: tr("Last 7 days") },
+                  { value: "30", label: tr("Last 30 days") },
                 ],
               },
-              { key: "failures", label: "Only failures", options: [{ value: "1", label: "Failures only" }] },
+              { key: "failures", label: tr("Only failures"), options: [{ value: "1", label: tr("Failures only") }] },
             ]}
           />
         </Suspense>
@@ -104,7 +106,7 @@ export default async function PlatformLogsPage({ searchParams }: { searchParams:
                     </span>
                     {entry.detail ? <span className="mt-0.5 line-clamp-2 block text-xs text-muted-foreground">{entry.detail}</span> : null}
                     <span className="mt-0.5 flex flex-wrap gap-x-2 text-2xs text-muted-foreground">
-                      {entry.workspace ? <span>{entry.workspace}</span> : <span>platform</span>}
+                      {entry.workspace ? <span>{entry.workspace}</span> : <span>{tr("platform")}</span>}
                       {entry.actor ? <span>· {entry.actor}</span> : null}
                     </span>
                   </span>
@@ -113,12 +115,11 @@ export default async function PlatformLogsPage({ searchParams }: { searchParams:
             })}
           </ol>
         ) : (
-          <EmptyState title="Nothing in that window" description="Widen the window, clear a filter, or enjoy the quiet." icon={Activity} />
+          <EmptyState title={tr("Nothing in that window")} description={tr("Widen the window, clear a filter, or enjoy the quiet.")} icon={Activity} />
         )}
 
         <p className="text-2xs text-muted-foreground">
-          Showing the {entries.length} most recent. Logs are kept as long as each workspace&rsquo;s retention policy allows.
-        </p>
+          {tr("Showing the")}{" "}{entries.length} {" "}{tr("most recent. Logs are kept as long as each workspace’s retention policy allows.")}</p>
       </PageBody>
     </>
   );

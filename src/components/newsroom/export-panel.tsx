@@ -14,6 +14,7 @@ import { compareVersionsAction, downloadAssetAction, requestExportAction, retryR
 import type { PublicationKind } from "@/server/publication/versions";
 import { formatBytes } from "@/server/media/constants";
 import { cn, formatDateTime, relativeTime } from "@/lib/utils";
+import { useUi } from "@/components/i18n/provider";
 
 export type VersionView = {
   id: string;
@@ -58,6 +59,7 @@ export function ExportPanel({
   allowedKinds: PublicationKind[];
   canRun: boolean;
 }) {
+  const tr = useUi();
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [kind, setKind] = useState<PublicationKind>(allowedKinds[0] ?? "DRAFT");
@@ -99,7 +101,7 @@ export function ExportPanel({
         <section className="rounded-lg border border-border bg-card p-3.5">
           <div className="grid gap-3 sm:grid-cols-[200px_minmax(0,1fr)_auto] sm:items-end">
             <div className="space-y-1.5">
-              <Label htmlFor="export-kind">Version type</Label>
+              <Label htmlFor="export-kind">{tr("Version type")}</Label>
               <NativeSelect id="export-kind" value={kind} onChange={(e) => setKind(e.target.value as PublicationKind)}>
                 {allowedKinds.map((k) => (
                   <option key={k} value={k}>
@@ -109,8 +111,8 @@ export function ExportPanel({
               </NativeSelect>
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="export-notes">What changed (optional)</Label>
-              <Textarea id="export-notes" value={notes} onChange={(e) => setNotes(e.target.value)} rows={1} placeholder="Second pass after the Carrefour corrections" />
+              <Label htmlFor="export-notes">{tr("What changed (optional)")}</Label>
+              <Textarea id="export-notes" value={notes} onChange={(e) => setNotes(e.target.value)} rows={1} placeholder={tr("Second pass after the Carrefour corrections")} />
             </div>
             <Button
               variant="brand"
@@ -123,12 +125,10 @@ export function ExportPanel({
                 })
               }
             >
-              <Play /> Generate PDF and DOCX
-            </Button>
+              <Play /> {" "}{tr("Generate PDF and DOCX")}</Button>
           </div>
           <p className="mt-2 text-2xs text-muted-foreground">
-            Both files are rendered from one snapshot of the edition, so the PDF and the Word document always describe the same issue.
-          </p>
+            {tr("Both files are rendered from one snapshot of the edition, so the PDF and the Word document always describe the same issue.")}</p>
         </section>
       ) : null}
 
@@ -144,8 +144,7 @@ export function ExportPanel({
                 <Badge variant="outline">{KIND_LABELS[v.kind as PublicationKind] ?? v.kind}</Badge>
                 {v.isImmutable ? (
                   <Badge variant="brand" className="gap-1">
-                    <Lock className="size-2.5" /> Immutable
-                  </Badge>
+                    <Lock className="size-2.5" /> {" "}{tr("Immutable")}</Badge>
                 ) : null}
                 <span className="ml-auto text-2xs text-muted-foreground">
                   {v.createdByName ?? "System"} · {relativeTime(v.createdAt)}
@@ -155,39 +154,35 @@ export function ExportPanel({
               {v.notes ? <p className="mt-1.5 text-xs text-muted-foreground">{v.notes}</p> : null}
 
               <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-2xs text-muted-foreground">
-                {v.pageCount ? <span className="tabular">{v.pageCount} pages</span> : null}
-                {v.renderMs ? <span className="tabular">rendered in {(v.renderMs / 1000).toFixed(1)}s</span> : null}
-                {v.layoutStats?.continuationPagesAdded ? <span className="tabular">{v.layoutStats.continuationPagesAdded} continuation pages</span> : null}
-                {v.layoutStats?.paragraphsSplit ? <span className="tabular">{v.layoutStats.paragraphsSplit} paragraphs split</span> : null}
+                {v.pageCount ? <span className="tabular">{v.pageCount} {" "}{tr("pages")}</span> : null}
+                {v.renderMs ? <span className="tabular">{tr("rendered in")}{" "}{(v.renderMs / 1000).toFixed(1)}s</span> : null}
+                {v.layoutStats?.continuationPagesAdded ? <span className="tabular">{v.layoutStats.continuationPagesAdded} {" "}{tr("continuation pages")}</span> : null}
+                {v.layoutStats?.paragraphsSplit ? <span className="tabular">{v.layoutStats.paragraphsSplit} {" "}{tr("paragraphs split")}</span> : null}
                 <span>{formatDateTime(v.createdAt)}</span>
               </div>
 
               <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
                 {pdf ? (
                   <Button size="xs" variant="outline" disabled={pending} onClick={() => download(pdf.id)}>
-                    <Download /> PDF
-                    <span className="text-muted-foreground">{pdf.sizeBytes ? formatBytes(pdf.sizeBytes) : ""}</span>
+                    <Download /> {" "}{tr("PDF")}{" "}<span className="text-muted-foreground">{pdf.sizeBytes ? formatBytes(pdf.sizeBytes) : ""}</span>
                   </Button>
                 ) : null}
                 {docx ? (
                   <Button size="xs" variant="outline" disabled={pending} onClick={() => download(docx.id)}>
-                    <FileText /> DOCX
-                    <span className="text-muted-foreground">{docx.sizeBytes ? formatBytes(docx.sizeBytes) : ""}</span>
+                    <FileText /> {" "}{tr("DOCX")}{" "}<span className="text-muted-foreground">{docx.sizeBytes ? formatBytes(docx.sizeBytes) : ""}</span>
                   </Button>
                 ) : null}
                 {canRun && v.status === "FAILED" && !v.isImmutable ? (
                   <Button size="xs" variant="outline" loading={pending} onClick={() => run(() => retryRenderAction(editionId, v.id))}>
-                    <RefreshCw /> Render again
-                  </Button>
+                    <RefreshCw /> {" "}{tr("Render again")}</Button>
                 ) : null}
                 {canRun && v.status === "PENDING" && !v.isImmutable ? (
                   <Button size="xs" variant="outline" loading={pending} onClick={() => run(() => retryRenderAction(editionId, v.id))}>
-                    <Play /> Render now
-                  </Button>
+                    <Play /> {" "}{tr("Render now")}</Button>
                 ) : null}
                 {v.renderLog.length ? (
                   <Button size="xs" variant="ghost" onClick={() => setLogFor(v)}>
-                    <ScrollText /> Render log ({v.renderLog.length})
+                    <ScrollText /> {" "}{tr("Render log (")}{v.renderLog.length})
                   </Button>
                 ) : null}
               </div>
@@ -200,7 +195,7 @@ export function ExportPanel({
         <section className="rounded-lg border border-border bg-card p-3.5">
           <div className="flex flex-wrap items-end gap-2">
             <div className="space-y-1.5">
-              <Label htmlFor="cmp-a">Compare</Label>
+              <Label htmlFor="cmp-a">{tr("Compare")}</Label>
               <NativeSelect id="cmp-a" className="w-40" value={compare?.a ?? versions[1].id} onChange={(e) => setCompare((c) => ({ a: e.target.value, b: c?.b ?? versions[0].id }))}>
                 {versions.map((v) => (
                   <option key={v.id} value={v.id}>
@@ -210,7 +205,7 @@ export function ExportPanel({
               </NativeSelect>
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="cmp-b">with</Label>
+              <Label htmlFor="cmp-b">{tr("with")}</Label>
               <NativeSelect id="cmp-b" className="w-40" value={compare?.b ?? versions[0].id} onChange={(e) => setCompare((c) => ({ a: c?.a ?? versions[1].id, b: e.target.value }))}>
                 {versions.map((v) => (
                   <option key={v.id} value={v.id}>
@@ -228,19 +223,17 @@ export function ExportPanel({
                 runCompare();
               }}
             >
-              <GitCompare /> Compare
-            </Button>
+              <GitCompare /> {" "}{tr("Compare")}</Button>
           </div>
           {comparison?.ok ? (
             <dl className="mt-3 grid gap-2 text-xs sm:grid-cols-2">
-              <Diff label="Articles added" items={comparison.data.articlesAdded.map((a) => a.headline)} />
-              <Diff label="Articles removed" items={comparison.data.articlesRemoved.map((a) => a.headline)} />
-              <Diff label="Headlines changed" items={comparison.data.headlineChanges.map((h) => `${h.from} → ${h.to}`)} />
+              <Diff label={tr("Articles added")} items={comparison.data.articlesAdded.map((a) => a.headline)} />
+              <Diff label={tr("Articles removed")} items={comparison.data.articlesRemoved.map((a) => a.headline)} />
+              <Diff label={tr("Headlines changed")} items={comparison.data.headlineChanges.map((h) => `${h.from} → ${h.to}`)} />
               <div>
-                <dt className="label-caps">Size</dt>
+                <dt className="label-caps">{tr("Size")}</dt>
                 <dd className="tabular mt-1 text-muted-foreground">
-                  {signed(comparison.data.pageCountChange)} pages, {signed(comparison.data.wordCountChange)} words
-                </dd>
+                  {signed(comparison.data.pageCountChange)} {" "}{tr("pages,")}{" "}{signed(comparison.data.wordCountChange)} {" "}{tr("words")}</dd>
               </div>
             </dl>
           ) : null}
@@ -250,8 +243,8 @@ export function ExportPanel({
       <Dialog open={!!logFor} onOpenChange={(v) => !v && setLogFor(null)}>
         <DialogContent size="lg">
           <DialogHeader>
-            <DialogTitle>Render log — {logFor?.label}</DialogTitle>
-            <DialogDescription>Every step the renderer recorded for this version.</DialogDescription>
+            <DialogTitle>{tr("Render log —")}{" "}{logFor?.label}</DialogTitle>
+            <DialogDescription>{tr("Every step the renderer recorded for this version.")}</DialogDescription>
           </DialogHeader>
           <ol className="max-h-[50vh] space-y-1 overflow-y-auto rounded-md border border-border bg-muted/30 p-2 font-mono text-2xs">
             {logFor?.renderLog.map((entry, i) => (
@@ -272,13 +265,14 @@ function signed(n: number) {
 }
 
 function Diff({ label, items }: { label: string; items: string[] }) {
+  const tr = useUi();
   return (
     <div>
       <dt className="label-caps">
         {label} <span className="tabular">({items.length})</span>
       </dt>
       <dd className="mt-1 space-y-0.5 text-muted-foreground">
-        {items.length ? items.map((t, i) => <p key={i}>{t}</p>) : <p>None</p>}
+        {items.length ? items.map((t, i) => <p key={i}>{t}</p>) : <p>{tr("None")}</p>}
       </dd>
     </div>
   );

@@ -15,6 +15,7 @@ import {
   markDuplicateAction,
   recheckDuplicatesAction,
 } from "@/app/(newsroom)/media/[mediaId]/actions";
+import { useUi } from "@/components/i18n/provider";
 
 function relationLabel(s: SimilarAsset) {
   if (s.relation === "exact") return "Identical file";
@@ -36,6 +37,7 @@ export function SimilarStrip({
   duplicateOf: MediaDetail["duplicateOf"];
   canManage: boolean;
 }) {
+  const tr = useUi();
   const router = useRouter();
   const [pending, startTransition] = useTransition();
 
@@ -60,17 +62,16 @@ export function SimilarStrip({
             <img src={duplicateOf.thumbUrl} alt="" className="size-10 rounded object-cover" />
           ) : null}
           <div className="min-w-0 flex-1 text-xs">
-            <div className="font-medium">Marked as a duplicate</div>
+            <div className="font-medium">{tr("Marked as a duplicate")}</div>
             <div className="text-muted-foreground truncate">
-              of{" "}
+              {tr("of")}{" "}
               <Link
                 href={`/media/${duplicateOf.id}`}
                 className="underline-offset-2 hover:underline"
               >
                 {duplicateOf.caption || duplicateOf.fileName}
               </Link>
-              . Duplicates are hidden from pickers and never exported.
-            </div>
+              {tr(". Duplicates are hidden from pickers and never exported.")}</div>
           </div>
           {canManage ? (
             <Button
@@ -79,15 +80,14 @@ export function SimilarStrip({
               loading={pending}
               onClick={() => run(() => clearDuplicateAction(assetId, editionId))}
             >
-              <Undo2 /> Not a duplicate
-            </Button>
+              <Undo2 /> {" "}{tr("Not a duplicate")}</Button>
           ) : null}
         </div>
       ) : null}
       {similar.length ? (
         <ul
           className="flex scrollbar-thin gap-2.5 overflow-x-auto pb-1"
-          aria-label="Similar assets"
+          aria-label={tr("Similar assets")}
         >
           {similar.map((s) => (
             <li
@@ -111,8 +111,7 @@ export function SimilarStrip({
                 />
                 {s.duplicateOfId === assetId ? (
                   <Badge variant="red" className="absolute bottom-1.5 left-1.5">
-                    duplicate of this
-                  </Badge>
+                    {tr("duplicate of this")}</Badge>
                 ) : null}
               </Link>
               <div className="space-y-1 px-2 py-1.5">
@@ -131,15 +130,14 @@ export function SimilarStrip({
                     loading={pending}
                     onClick={() => run(() => markDuplicateAction(assetId, editionId, s.id))}
                   >
-                    <Copy /> Duplicate of this
-                  </Button>
+                    <Copy /> {" "}{tr("Duplicate of this")}</Button>
                 ) : null}
               </div>
             </li>
           ))}
         </ul>
       ) : (
-        <p className="text-muted-foreground text-xs">No similar asset in this edition.</p>
+        <p className="text-muted-foreground text-xs">{tr("No similar asset in this edition.")}</p>
       )}
       {canManage ? (
         <Button
@@ -148,8 +146,7 @@ export function SimilarStrip({
           loading={pending}
           onClick={() => run(() => recheckDuplicatesAction(assetId, editionId))}
         >
-          <RefreshCw /> Re-check duplicates
-        </Button>
+          <RefreshCw /> {" "}{tr("Re-check duplicates")}</Button>
       ) : null}
     </div>
   );

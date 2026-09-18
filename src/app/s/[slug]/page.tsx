@@ -5,6 +5,7 @@ import { showsBrieflyBranding } from "@/server/billing/entitlements";
 import { SubscribeForm } from "./subscribe-form";
 import { BRAND } from "@/lib/brand";
 import { translator } from "@/lib/i18n";
+import { formatPrice, describePrice } from "@/lib/payments";
 
 export const dynamic = "force-dynamic";
 
@@ -47,7 +48,11 @@ export default async function SubscribePage({ params }: { params: Promise<{ slug
     quarterly: { en: "every quarter", fr: "chaque trimestre" },
     irregular: { en: "when there is something worth sending", fr: "quand il y a quelque chose à dire" },
   };
-  const cadence = (cadenceLabel[publication.cadence] ?? cadenceLabel.monthly)[publication.language === "fr" ? "fr" : "en"];
+  const locale = publication.language === "fr" ? "fr" : "en";
+  const cadence = (cadenceLabel[publication.cadence] ?? cadenceLabel.monthly)[locale];
+  // What it costs, said plainly and before the form. A price discovered on Stripe's page is a
+  // reader who feels tricked.
+  const paid = publication.access === "paid" && publication.priceCents ? { short: formatPrice(publication.priceCents, publication.priceCurrency, locale), long: describePrice(publication.priceCents, publication.priceCurrency, publication.priceInterval, locale) } : null;
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-background px-6 py-16">
@@ -61,8 +66,9 @@ export default async function SubscribePage({ params }: { params: Promise<{ slug
           <h1 className="masthead mt-1 text-[30px] leading-tight font-semibold tracking-[-0.02em]">{publication.name}</h1>
           {publication.description ? <p className="mt-3 text-[14px] leading-6 text-muted-foreground">{publication.description}</p> : null}
           <p className="mt-2 text-xs text-muted-foreground">{t("subscribe.publishedEvery", { cadence })}</p>
+          {paid ? <p className="mt-1 text-xs font-medium">{t("subscribe.priceLine", { price: paid.long })}</p> : null}
         </div>
-        <SubscribeForm slug={slug} accent={accent} locale={publication.language === "fr" ? "fr" : "en"} />
+        <SubscribeForm slug={slug} accent={accent} locale={locale} price={paid?.long ?? null} />
         {showBriefly ? <p className="mt-10 text-center text-2xs text-muted-foreground">{t("subscribe.publishedWith", { brand: BRAND.name })}</p> : null}
       </div>
     </main>

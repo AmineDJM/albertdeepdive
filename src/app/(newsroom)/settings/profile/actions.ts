@@ -6,6 +6,7 @@ import { requireUser, SESSION_COOKIE } from "@/server/auth/session";
 import { changeOwnPassword, passwordChangeSchema, profileSchema, setThemePreference, signOutOtherSessions, updateOwnProfile, type ThemePreference } from "@/server/settings/users";
 import { ok, toActionFailure, type ActionResult } from "@/lib/action-result";
 import type { z } from "zod";
+import { getUi } from "@/server/i18n/locale";
 
 async function currentToken() {
   const store = await cookies();
@@ -13,12 +14,13 @@ async function currentToken() {
 }
 
 export async function updateProfileAction(input: z.input<typeof profileSchema>): Promise<ActionResult> {
+  const tr = await getUi();
   try {
     const user = await requireUser();
     await updateOwnProfile(user.id, input);
     revalidatePath("/settings/profile");
     revalidatePath("/", "layout");
-    return ok(null, "Profile updated");
+    return ok(null, tr("Profile updated"));
   } catch (err) {
     return toActionFailure(err);
   }

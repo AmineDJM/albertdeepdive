@@ -8,8 +8,10 @@ import { proposeFromEvidence, saveBrand } from "@/server/brand/service";
 import { discoverOrganization } from "@/server/tenancy/discovery";
 import type { BrandSystem } from "@/lib/brand/system";
 import { ok, toActionFailure, type ActionResult } from "@/lib/action-result";
+import { getUi } from "@/server/i18n/locale";
 
 export async function saveBrandAction(system: BrandSystem): Promise<ActionResult> {
+  const tr = await getUi();
   try {
     const user = await requireUser();
     const tenant = await requireOrganizationRole("ADMIN");
@@ -17,7 +19,7 @@ export async function saveBrandAction(system: BrandSystem): Promise<ActionResult
     // business-rule boundary, and the rule has to hold for the seeder and the API too.
     await saveBrand({ organizationId: tenant.organizationId, system, actorId: user.id });
     revalidatePath("/settings/brand");
-    return ok(null, "Brand saved");
+    return ok(null, tr("Brand saved"));
   } catch (error) {
     return toActionFailure(error);
   }

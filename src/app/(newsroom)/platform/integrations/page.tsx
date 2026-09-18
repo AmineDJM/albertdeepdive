@@ -7,6 +7,7 @@ import { HubTabs } from "@/components/newsroom/hub-tabs";
 import { PLATFORM_TABS } from "@/components/newsroom/nav";
 import { IntegrationCard } from "./integration-card";
 import { SETUP_SUPPORTED } from "@/server/integrations/setup";
+import { getUi } from "@/server/i18n/locale";
 
 export const dynamic = "force-dynamic";
 
@@ -28,13 +29,14 @@ const SETUP_LABELS: Record<string, string> = {
   storage: "Check storage",
 };
 export default async function IntegrationsPage() {
+  const tr = await getUi();
   const user = await getCurrentUser();
   if (!hasPermission(user, "settings:manage")) {
     return (
       <>
-        <PageHeader title="Integrations" />
+        <PageHeader title={tr("Integrations")} />
         <PageBody>
-          <p className="text-[14px] text-muted-foreground">Connecting services is a platform-level job. You need to be a Briefly super admin to see this.</p>
+          <p className="text-[14px] text-muted-foreground">{tr("Connecting services is a platform-level job. You need to be a Briefly super admin to see this.")}</p>
         </PageBody>
       </>
     );
@@ -48,7 +50,7 @@ export default async function IntegrationsPage() {
   return (
     <>
       <PageHeader
-        title="Integrations"
+        title={tr("Integrations")}
         description={`${connected} of ${statuses.length} connected. Keys are encrypted before they are stored and never shown again — change one without redeploying.`}
       >
         <HubTabs tabs={PLATFORM_TABS} />
@@ -70,9 +72,7 @@ export default async function IntegrationsPage() {
             </div>
             {category === "payments" ? (
               <p className="mt-3 text-xs leading-5 text-muted-foreground">
-                &ldquo;Set up billing&rdquo; creates the webhook at <span className="font-mono text-foreground">{webhookUrl}</span>, stores its signing secret, and gives
-                every priced plan a Stripe product and prices. Run it again after you change a price — it is safe to repeat.
-              </p>
+                {tr("“Set up billing” creates the webhook at")}{" "}<span className="font-mono text-foreground">{webhookUrl}</span>{tr(", stores its signing secret, and gives every priced plan a Stripe product and prices. Run it again after you change a price — it is safe to repeat.")}</p>
             ) : null}
           </section>
         ))}

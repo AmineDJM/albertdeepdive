@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Eye } from "lucide-react";
 import { leaveViewAsAction } from "@/app/(newsroom)/platform/actions";
 import { ROLE_LABELS, type Role } from "@/lib/auth/permissions";
+import { useUi } from "@/components/i18n/provider";
 
 /**
  * A reminder that you are not yourself.
@@ -18,6 +19,7 @@ import { ROLE_LABELS, type Role } from "@/lib/auth/permissions";
  * stuck inside it.
  */
 export function ViewAsBanner({ role, userName }: { role: Role; userName?: string }) {
+  const tr = useUi();
   const router = useRouter();
   const [pending, startTransition] = useTransition();
 
@@ -25,9 +27,7 @@ export function ViewAsBanner({ role, userName }: { role: Role; userName?: string
     <div className="flex items-center gap-2 bg-coral px-3 py-1.5 text-white">
       <Eye className="size-3.5 shrink-0" aria-hidden />
       <span className="min-w-0 flex-1 truncate text-xs">
-        You are seeing Briefly as {userName ? <strong className="font-semibold">{userName}</strong> : "a"} <strong className="font-semibold">{ROLE_LABELS[role]}</strong>. Anything
-        you change is recorded under your own name.
-      </span>
+        {tr("You are seeing Briefly as")}{" "}{userName ? <strong className="font-semibold">{userName}</strong> : "a"} <strong className="font-semibold">{ROLE_LABELS[role]}</strong>{tr(". Anything you change is recorded under your own name.")}</span>
       <button
         type="button"
         disabled={pending}

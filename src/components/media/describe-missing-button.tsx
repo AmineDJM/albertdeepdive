@@ -6,6 +6,7 @@ import { Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { describeMissingAction } from "@/app/(newsroom)/editions/[editionId]/media/actions";
+import { useUi } from "@/components/i18n/provider";
 
 export function DescribeMissingButton({
   editionId,
@@ -14,6 +15,7 @@ export function DescribeMissingButton({
   editionId: string;
   missing: number;
 }) {
+  const tr = useUi();
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   return (
@@ -39,7 +41,6 @@ export function DescribeMissingButton({
         })
       }
     >
-      <Sparkles /> Describe {missing ? `${missing} ` : ""}with AI
-    </Button>
+      <Sparkles /> {" "}{tr("Describe")}{" "}{missing ? `${missing} ` : ""}{tr("with AI")}</Button>
   );
 }

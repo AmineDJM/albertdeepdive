@@ -29,6 +29,7 @@ import { AuditTrail } from "@/components/media/detail/audit-trail";
 import { VariantsList } from "@/components/media/detail/variants-list";
 import { cn, enumLabel, formatDate, formatDateTime } from "@/lib/utils";
 import { storyTypeLabel } from "@/lib/constants";
+import { getUi } from "@/server/i18n/locale";
 
 export const dynamic = "force-dynamic";
 
@@ -46,6 +47,7 @@ export default async function MediaDetailPage({
 }: {
   params: Promise<{ mediaId: string }>;
 }) {
+  const tr = await getUi();
   const { mediaId } = await params;
   const user = await getCurrentUser();
   const detail = await getMediaDetail(mediaId).catch(() => null);
@@ -72,11 +74,11 @@ export default async function MediaDetailPage({
     <>
       <PageHeader
         breadcrumbs={[
-          { label: "Editions", href: "/editions" },
+          { label: tr("Editions"), href: "/editions" },
           ...(detail.edition
             ? [{ label: detail.edition.label, href: `/editions/${detail.edition.id}` }]
             : []),
-          { label: "Media", href: mediaBase },
+          { label: tr("Media"), href: mediaBase },
           { label: a.fileName },
         ]}
         title={title}
@@ -84,9 +86,9 @@ export default async function MediaDetailPage({
           <>
             <RightsBadge status={a.rightsStatus} />
             <Badge variant="outline">{KIND_LABELS[a.kind as MediaKind] ?? enumLabel(a.kind)}</Badge>
-            {printReady ? <Badge variant="success">Print-ready</Badge> : null}
-            {a.duplicateOfId ? <Badge variant="red">Duplicate</Badge> : null}
-            {a.isArchived ? <Badge variant="muted">Archived</Badge> : null}
+            {printReady ? <Badge variant="success">{tr("Print-ready")}</Badge> : null}
+            {a.duplicateOfId ? <Badge variant="red">{tr("Duplicate")}</Badge> : null}
+            {a.isArchived ? <Badge variant="muted">{tr("Archived")}</Badge> : null}
           </>
         }
         description={`${a.fileName} · ${formatDimensions(a.width, a.height)} · ${formatBytes(a.sizeBytes)} · added ${formatDate(a.createdAt)}${detail.contributor ? ` by ${detail.contributor.name}` : detail.uploadedBy ? ` by ${detail.uploadedBy.name}` : ""}`}
@@ -94,8 +96,7 @@ export default async function MediaDetailPage({
           <>
             <Button asChild variant="outline" size="sm">
               <a href={detail.originalDownloadUrl}>
-                <Download /> Original
-              </a>
+                <Download /> {" "}{tr("Original")}</a>
             </Button>
             {canManage ? (
               <ArchiveButton
@@ -119,7 +120,7 @@ export default async function MediaDetailPage({
                   rel="noreferrer"
                   className="flex max-h-[560px] items-center justify-center"
                   style={{ background: CHECKER }}
-                  title="Open the original in a new tab"
+                  title={tr("Open the original in a new tab")}
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
@@ -133,28 +134,28 @@ export default async function MediaDetailPage({
                 </a>
                 <dl className="grid grid-cols-2 gap-x-4 gap-y-2 border-t px-4 py-3 text-xs sm:grid-cols-3 lg:grid-cols-6">
                   <div>
-                    <dt className="label-caps">Dimensions</dt>
+                    <dt className="label-caps">{tr("Dimensions")}</dt>
                     <dd className="tabular mt-0.5 font-medium">
                       {formatDimensions(a.width, a.height)}
                     </dd>
                   </div>
                   <div>
-                    <dt className="label-caps">Aspect</dt>
+                    <dt className="label-caps">{tr("Aspect")}</dt>
                     <dd className="tabular mt-0.5 font-medium">
                       {a.width && a.height ? aspectLabel(a.width, a.height) : "—"}{" "}
                       <span className="text-muted-foreground">{a.orientation ?? ""}</span>
                     </dd>
                   </div>
                   <div>
-                    <dt className="label-caps">Format</dt>
+                    <dt className="label-caps">{tr("Format")}</dt>
                     <dd className="mt-0.5 font-medium uppercase">{a.format ?? a.mimeType}</dd>
                   </div>
                   <div>
-                    <dt className="label-caps">Size</dt>
+                    <dt className="label-caps">{tr("Size")}</dt>
                     <dd className="tabular mt-0.5 font-medium">{formatBytes(a.sizeBytes)}</dd>
                   </div>
                   <div>
-                    <dt className="label-caps">Quality</dt>
+                    <dt className="label-caps">{tr("Quality")}</dt>
                     <dd
                       className={cn(
                         "tabular mt-0.5 font-medium",
@@ -166,7 +167,7 @@ export default async function MediaDetailPage({
                     </dd>
                   </div>
                   <div>
-                    <dt className="label-caps">Print</dt>
+                    <dt className="label-caps">{tr("Print")}</dt>
                     <dd
                       className={cn(
                         "mt-0.5 font-medium",
@@ -183,7 +184,7 @@ export default async function MediaDetailPage({
                 </dl>
                 {a.qualityFlags.length || lowQuality ? (
                   <div className="flex flex-wrap items-center gap-2 border-t px-4 py-2.5">
-                    <span className="label-caps">Flags</span>
+                    <span className="label-caps">{tr("Flags")}</span>
                     <QualityFlags flags={a.qualityFlags} />
                   </div>
                 ) : null}
@@ -191,7 +192,7 @@ export default async function MediaDetailPage({
             </section>
 
             <section>
-              <SectionTitle>Similar & duplicates</SectionTitle>
+              <SectionTitle>{tr("Similar & duplicates")}</SectionTitle>
               <SimilarStrip
                 assetId={a.id}
                 editionId={editionId}
@@ -202,7 +203,7 @@ export default async function MediaDetailPage({
             </section>
 
             <section>
-              <SectionTitle>Crops</SectionTitle>
+              <SectionTitle>{tr("Crops")}</SectionTitle>
               <CropsPanel
                 assetId={a.id}
                 editionId={editionId}
@@ -216,7 +217,7 @@ export default async function MediaDetailPage({
             </section>
 
             <section>
-              <SectionTitle>Files</SectionTitle>
+              <SectionTitle>{tr("Files")}</SectionTitle>
               <VariantsList
                 original={{
                   url: detail.originalUrl,
@@ -231,7 +232,7 @@ export default async function MediaDetailPage({
             </section>
 
             <section>
-              <SectionTitle>History</SectionTitle>
+              <SectionTitle>{tr("History")}</SectionTitle>
               <AuditTrail entries={detail.audit} />
             </section>
           </div>
@@ -248,7 +249,7 @@ export default async function MediaDetailPage({
             />
 
             <section>
-              <SectionTitle>Caption & credit</SectionTitle>
+              <SectionTitle>{tr("Caption & credit")}</SectionTitle>
               <div className="border-border bg-card rounded-lg border p-4 shadow-xs">
                 <MetadataForm
                   key={a.updatedAt.toISOString()}
@@ -267,7 +268,7 @@ export default async function MediaDetailPage({
             </section>
 
             <section>
-              <SectionTitle>Used in</SectionTitle>
+              <SectionTitle>{tr("Used in")}</SectionTitle>
               <UsagePanel
                 assetId={a.id}
                 editionId={editionId}
@@ -280,7 +281,7 @@ export default async function MediaDetailPage({
             </section>
 
             <section>
-              <SectionTitle>AI description</SectionTitle>
+              <SectionTitle>{tr("AI description")}</SectionTitle>
               <div className="border-border bg-card rounded-lg border p-4 shadow-xs">
                 <AiPanel
                   assetId={a.id}
@@ -294,9 +295,9 @@ export default async function MediaDetailPage({
             </section>
 
             <section>
-              <SectionTitle>Provenance</SectionTitle>
+              <SectionTitle>{tr("Provenance")}</SectionTitle>
               <dl className="border-border bg-card grid grid-cols-[96px_minmax(0,1fr)] gap-x-3 gap-y-1.5 rounded-lg border p-4 text-xs shadow-xs">
-                <dt className="label-caps self-center">Edition</dt>
+                <dt className="label-caps self-center">{tr("Edition")}</dt>
                 <dd>
                   {detail.edition ? (
                     <Link
@@ -308,10 +309,10 @@ export default async function MediaDetailPage({
                       {detail.edition.issueNumber}
                     </Link>
                   ) : (
-                    <span className="text-muted-foreground">Not attached to an edition</span>
+                    <span className="text-muted-foreground">{tr("Not attached to an edition")}</span>
                   )}
                 </dd>
-                <dt className="label-caps self-center">Submission</dt>
+                <dt className="label-caps self-center">{tr("Submission")}</dt>
                 <dd className="min-w-0">
                   {detail.submission ? (
                     <>
@@ -323,14 +324,14 @@ export default async function MediaDetailPage({
                       </Link>
                       <span className="text-muted-foreground">
                         {storyTypeLabel(detail.submission.storyType)} ·{" "}
-                        {enumLabel(detail.submission.status)}
+                        {tr(enumLabel(detail.submission.status))}
                       </span>
                     </>
                   ) : (
-                    <span className="text-muted-foreground">Uploaded directly</span>
+                    <span className="text-muted-foreground">{tr("Uploaded directly")}</span>
                   )}
                 </dd>
-                <dt className="label-caps self-center">Contributor</dt>
+                <dt className="label-caps self-center">{tr("Contributor")}</dt>
                 <dd className="min-w-0">
                   {detail.contributor ? (
                     <>
@@ -349,7 +350,7 @@ export default async function MediaDetailPage({
                     <span className="text-muted-foreground">—</span>
                   )}
                 </dd>
-                <dt className="label-caps self-center">Uploaded by</dt>
+                <dt className="label-caps self-center">{tr("Uploaded by")}</dt>
                 <dd>
                   {detail.uploadedBy ? (
                     detail.uploadedBy.name
@@ -359,23 +360,23 @@ export default async function MediaDetailPage({
                     <span className="text-muted-foreground">—</span>
                   )}
                 </dd>
-                <dt className="label-caps self-center">Added</dt>
+                <dt className="label-caps self-center">{tr("Added")}</dt>
                 <dd className="tabular">{formatDateTime(a.createdAt)}</dd>
-                <dt className="label-caps self-center">Updated</dt>
+                <dt className="label-caps self-center">{tr("Updated")}</dt>
                 <dd className="tabular">{formatDateTime(a.updatedAt)}</dd>
               </dl>
             </section>
 
             <section>
-              <SectionTitle>Technical details</SectionTitle>
+              <SectionTitle>{tr("Technical details")}</SectionTitle>
               <dl className="border-border bg-card grid grid-cols-[96px_minmax(0,1fr)] gap-x-3 gap-y-1.5 rounded-lg border p-4 text-xs shadow-xs">
-                <dt className="label-caps self-center">File</dt>
+                <dt className="label-caps self-center">{tr("File")}</dt>
                 <dd className="truncate font-medium" title={a.fileName}>
                   {a.fileName}
                 </dd>
-                <dt className="label-caps self-center">MIME</dt>
+                <dt className="label-caps self-center">{tr("MIME")}</dt>
                 <dd className="text-2xs font-mono">{a.mimeType}</dd>
-                <dt className="label-caps self-center">Colour</dt>
+                <dt className="label-caps self-center">{tr("Colour")}</dt>
                 <dd className="flex items-center gap-1.5">
                   {a.dominantColour ? (
                     <span
@@ -387,9 +388,9 @@ export default async function MediaDetailPage({
                   {meta.space ? (
                     <span className="text-muted-foreground">· {meta.space}</span>
                   ) : null}
-                  {meta.hasAlpha ? <span className="text-muted-foreground">· alpha</span> : null}
+                  {meta.hasAlpha ? <span className="text-muted-foreground">{tr("· alpha")}</span> : null}
                 </dd>
-                <dt className="label-caps self-center">Orientation</dt>
+                <dt className="label-caps self-center">{tr("Orientation")}</dt>
                 <dd>
                   {a.orientation ? enumLabel(a.orientation) : "—"}
                   <span className="text-muted-foreground">
@@ -397,22 +398,22 @@ export default async function MediaDetailPage({
                     · {meta.exifBytes ? "EXIF present, auto-rotated" : "no EXIF data"}
                   </span>
                 </dd>
-                <dt className="label-caps self-center">Density</dt>
+                <dt className="label-caps self-center">{tr("Density")}</dt>
                 <dd className="tabular">{meta.density ? `${meta.density} dpi` : "—"}</dd>
-                <dt className="label-caps self-center">Perceptual</dt>
+                <dt className="label-caps self-center">{tr("Perceptual")}</dt>
                 <dd
                   className="text-2xs font-mono"
-                  title="dHash, 64 bits — assets within 6 bits are near-duplicates"
+                  title={tr("dHash, 64 bits — assets within 6 bits are near-duplicates")}
                 >
                   {a.phash ?? "—"}
                 </dd>
-                <dt className="label-caps self-center">SHA-256</dt>
+                <dt className="label-caps self-center">{tr("SHA-256")}</dt>
                 <dd className="text-2xs truncate font-mono" title={a.sha256 ?? undefined}>
                   {a.sha256 ? `${a.sha256.slice(0, 16)}…` : "—"}
                 </dd>
                 {a.similarityGroup ? (
                   <>
-                    <dt className="label-caps self-center">Group</dt>
+                    <dt className="label-caps self-center">{tr("Group")}</dt>
                     <dd className="text-2xs font-mono">{a.similarityGroup.slice(0, 8)}</dd>
                   </>
                 ) : null}

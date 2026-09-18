@@ -1,6 +1,7 @@
 import { formatDateTime } from "@/lib/utils";
 import type { MediaAuditEntry } from "@/server/media/library";
 import { MEDIA_AUDIT_LABELS } from "@/server/media/constants";
+import { getUi } from "@/server/i18n/locale";
 
 function details(entry: MediaAuditEntry) {
   const m = entry.metadata;
@@ -17,9 +18,10 @@ function details(entry: MediaAuditEntry) {
   return parts.join(" · ");
 }
 
-export function AuditTrail({ entries }: { entries: MediaAuditEntry[] }) {
+export async function AuditTrail({ entries }: { entries: MediaAuditEntry[] }) {
+  const tr = await getUi();
   if (!entries.length)
-    return <p className="text-muted-foreground text-xs">No action recorded on this asset yet.</p>;
+    return <p className="text-muted-foreground text-xs">{tr("No action recorded on this asset yet.")}</p>;
   return (
     <ol className="border-border bg-card divide-y rounded-lg border">
       {entries.map((e) => (

@@ -5,6 +5,7 @@ import { useTransition } from "react";
 import { CalendarRange } from "lucide-react";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Input } from "@/components/ui/input";
+import { useUi } from "@/components/i18n/provider";
 
 const PRESETS: { value: string; label: string; days: number | null }[] = [
   { value: "all", label: "All time", days: null },
@@ -22,6 +23,7 @@ function isoDay(date: Date) {
  * the server from the same two params, so the control has no state of its own to drift.
  */
 export function DateRangeFilter({ preset }: { preset: string }) {
+  const tr = useUi();
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
@@ -59,22 +61,22 @@ export function DateRangeFilter({ preset }: { preset: string }) {
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <NativeSelect aria-label="Activity window" value={PRESETS.some((p) => p.value === preset) ? preset : "custom"} onChange={(e) => choosePreset(e.target.value)} className="w-auto min-w-36 pr-8">
+      <NativeSelect aria-label={tr("Activity window")} value={PRESETS.some((p) => p.value === preset) ? preset : "custom"} onChange={(e) => choosePreset(e.target.value)} className="w-auto min-w-36 pr-8">
         {PRESETS.map((p) => (
           <option key={p.value} value={p.value}>
             {p.label}
           </option>
         ))}
-        <option value="custom">Custom range</option>
+        <option value="custom">{tr("Custom range")}</option>
       </NativeSelect>
       <div className="flex items-center gap-1.5 rounded-md border border-input bg-card px-2 shadow-xs">
         <CalendarRange className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
         {/* The browser paints its own chrome (caret, spin buttons) into a date field before React hydrates, which React would otherwise report as a mismatch. */}
-        <Input suppressHydrationWarning type="date" aria-label="From date" value={from} max={to || undefined} onChange={(e) => setBound("from", e.target.value)} className="h-7 w-[8.5rem] border-0 bg-transparent px-0 shadow-none focus-visible:ring-0" />
-        <span className="text-2xs text-muted-foreground">to</span>
-        <Input suppressHydrationWarning type="date" aria-label="To date" value={to} min={from || undefined} onChange={(e) => setBound("to", e.target.value)} className="h-7 w-[8.5rem] border-0 bg-transparent px-0 shadow-none focus-visible:ring-0" />
+        <Input suppressHydrationWarning type="date" aria-label={tr("From date")} value={from} max={to || undefined} onChange={(e) => setBound("from", e.target.value)} className="h-7 w-[8.5rem] border-0 bg-transparent px-0 shadow-none focus-visible:ring-0" />
+        <span className="text-2xs text-muted-foreground">{tr("to")}</span>
+        <Input suppressHydrationWarning type="date" aria-label={tr("To date")} value={to} min={from || undefined} onChange={(e) => setBound("to", e.target.value)} className="h-7 w-[8.5rem] border-0 bg-transparent px-0 shadow-none focus-visible:ring-0" />
       </div>
-      {pending ? <span className="text-2xs text-muted-foreground">Updating…</span> : null}
+      {pending ? <span className="text-2xs text-muted-foreground">{tr("Updating…")}</span> : null}
     </div>
   );
 }

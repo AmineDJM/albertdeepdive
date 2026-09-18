@@ -20,6 +20,7 @@ import {
 } from "@/app/(newsroom)/editions/[editionId]/campaign/actions";
 import { toLocalInput } from "./campaign-config-form";
 import { CAMPAIGN_TIMEZONE, zonedTimeToUtc } from "@/lib/campaigns/schedule";
+import { useUi } from "@/components/i18n/provider";
 
 type ReminderKind = "REMINDER_1" | "REMINDER_2" | "GRACE_PERIOD";
 
@@ -42,6 +43,7 @@ function inTwoDays(): string {
 
 /** Creates the campaign of an edition that has none, from the monthly system defaults. */
 export function CreateCampaignButton({ editionId }: { editionId: string }) {
+  const tr = useUi();
   const router = useRouter();
   const [pending, start] = useTransition();
   return (
@@ -60,8 +62,7 @@ export function CreateCampaignButton({ editionId }: { editionId: string }) {
         })
       }
     >
-      <CalendarPlus /> Schedule the campaign
-    </Button>
+      <CalendarPlus /> {" "}{tr("Schedule the campaign")}</Button>
   );
 }
 
@@ -84,6 +85,7 @@ export function CampaignControls({
   /** Automation steps that already succeeded for this edition. */
   sentSteps: string[];
 }) {
+  const tr = useUi();
   const router = useRouter();
   const [pending, start] = useTransition();
   const [confirm, setConfirm] = useState<"launch" | "close" | null>(null);
@@ -115,8 +117,7 @@ export function CampaignControls({
     <>
       {notStarted ? (
         <Button size="sm" loading={pending} onClick={() => setConfirm("launch")}>
-          <Send /> Launch campaign
-        </Button>
+          <Send /> {" "}{tr("Launch campaign")}</Button>
       ) : null}
 
       {!notStarted && !closed ? (
@@ -124,11 +125,11 @@ export function CampaignControls({
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button size="sm" variant="outline" loading={pending}>
-                <Bell /> Send a reminder <ChevronDown />
+                <Bell /> {" "}{tr("Send a reminder")}{" "}<ChevronDown />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-64">
-              <DropdownMenuLabel>{silent} contributor{silent === 1 ? "" : "s"} still silent</DropdownMenuLabel>
+              <DropdownMenuLabel>{silent} {" "}{tr("contributor")}{silent === 1 ? "" : "s"} {" "}{tr("still silent")}</DropdownMenuLabel>
               {REMINDERS.map((r) => {
                 const done = sentSteps.includes(r.kind);
                 return (
@@ -146,18 +147,15 @@ export function CampaignControls({
             </DropdownMenuContent>
           </DropdownMenu>
           <Button size="sm" variant="outline" onClick={() => openDateDialog("extend")} disabled={pending}>
-            <CalendarPlus /> Extend
-          </Button>
+            <CalendarPlus /> {" "}{tr("Extend")}</Button>
           <Button size="sm" variant="outline" onClick={() => setConfirm("close")} loading={pending}>
-            <Lock /> Close
-          </Button>
+            <Lock /> {" "}{tr("Close")}</Button>
         </>
       ) : null}
 
       {closed ? (
         <Button size="sm" variant="outline" onClick={() => openDateDialog("reopen")} disabled={pending}>
-          <Undo2 /> Reopen
-        </Button>
+          <Undo2 /> {" "}{tr("Reopen")}</Button>
       ) : null}
 
       <AlertDialog open={confirm !== null} onOpenChange={(o) => !o && !pending && setConfirm(null)}>
@@ -171,7 +169,7 @@ export function CampaignControls({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={pending}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={pending}>{tr("Cancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={(e) => {
                 e.preventDefault();
@@ -197,21 +195,20 @@ export function CampaignControls({
           </DialogHeader>
           <div className="space-y-1.5">
             <Label htmlFor="campaign-new-date" className="text-xs">
-              Closes on ({CAMPAIGN_TIMEZONE.replace("_", " ")})
+              {tr("Closes on (")}{CAMPAIGN_TIMEZONE.replace("_", " ")})
             </Label>
             <Input id="campaign-new-date" type="datetime-local" value={dateValue} onChange={(e) => setDateValue(e.target.value)} className="tabular" />
           </div>
           <DialogFooter>
             <Button variant="outline" size="sm" onClick={() => setDateDialog(null)} disabled={pending}>
-              Cancel
-            </Button>
+              {tr("Cancel")}</Button>
             <Button
               size="sm"
               loading={pending}
               onClick={() => {
                 const iso = fromLocalInput(dateValue);
                 if (!iso) {
-                  toast.error("Enter a valid date");
+                  toast.error(tr("Enter a valid date"));
                   return;
                 }
                 const mode = dateDialog;

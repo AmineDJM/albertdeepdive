@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { closeAndProcessAction, runToPublishedAction } from "@/app/(newsroom)/editions/[editionId]/actions";
 import type { AutopilotResult, AutopilotStepStatus } from "@/server/editorial/autopilot";
+import { useUi } from "@/components/i18n/provider";
 
 const STEP_ICON: Record<AutopilotStepStatus, { icon: typeof Check; className: string }> = {
   done: { icon: Check, className: "text-emerald-600" },
@@ -22,6 +23,7 @@ const STEP_ICON: Record<AutopilotStepStatus, { icon: typeof Check; className: st
  * reader. Shows a step-by-step log of what it did.
  */
 export function AutopilotButton({ editionId }: { editionId: string }) {
+  const tr = useUi();
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [running, startRun] = useTransition();
@@ -60,23 +62,20 @@ export function AutopilotButton({ editionId }: { editionId: string }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogTrigger asChild>
-        <Button size="sm" variant="brand" title="Build the whole issue automatically and publish it">
-          <Rocket /> Auto-pilot
-        </Button>
+        <Button size="sm" variant="brand" title={tr("Build the whole issue automatically and publish it")}>
+          <Rocket /> {" "}{tr("Auto-pilot")}</Button>
       </DialogTrigger>
       <DialogContent size="lg">
         <DialogHeader>
-          <DialogTitle>Run the whole issue automatically</DialogTitle>
+          <DialogTitle>{tr("Run the whole issue automatically")}</DialogTitle>
           <DialogDescription>
-            The pilot closes the collection, runs the AI, writes and approves every article, lays the pages out, exports the PDF and DOCX and publishes the issue — clearing the quality gates it is allowed to.
-            It never emails anyone. You can stop at editorial review instead and take over by hand.
-          </DialogDescription>
+            {tr("The pilot closes the collection, runs the AI, writes and approves every article, lays the pages out, exports the PDF and DOCX and publishes the issue — clearing the quality gates it is allowed to. It never emails anyone. You can stop at editorial review instead and take over by hand.")}</DialogDescription>
         </DialogHeader>
 
         {running ? (
           <div className="flex items-center gap-3 rounded-md border border-border bg-muted/40 px-4 py-6 text-sm">
             <Loader2 className="size-4 animate-spin" />
-            <span>Building the issue — this can take a minute. Please keep this open…</span>
+            <span>{tr("Building the issue — this can take a minute. Please keep this open…")}</span>
           </div>
         ) : result ? (
           <div className="space-y-3">
@@ -104,20 +103,18 @@ export function AutopilotButton({ editionId }: { editionId: string }) {
           </div>
         ) : (
           <div className="rounded-md border border-dashed border-border px-4 py-4 text-xs text-muted-foreground">
-            Tip: fill the edition with the “Simulate returns” button first if it has no submissions yet.
-          </div>
+            {tr("Tip: fill the edition with the “Simulate returns” button first if it has no submissions yet.")}</div>
         )}
 
         <DialogFooter>
           {result ? (
-            <Button onClick={() => onOpenChange(false)}>Close</Button>
+            <Button onClick={() => onOpenChange(false)}>{tr("Close")}</Button>
           ) : (
             <>
               <Button variant="outline" onClick={() => run("organise")} loading={running} disabled={running}>
-                Organise only
-              </Button>
+                {tr("Organise only")}</Button>
               <Button variant="brand" onClick={() => run("publish")} loading={running} disabled={running}>
-                <Rocket /> Build &amp; publish <ChevronRight />
+                <Rocket /> {" "}{tr("Build & publish")}{" "}<ChevronRight />
               </Button>
             </>
           )}

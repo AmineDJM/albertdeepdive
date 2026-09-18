@@ -6,6 +6,7 @@ import { ArticleStatusBadge } from "./status-badge";
 import { CampusList } from "./campus-chip";
 import { enumLabel, relativeTime } from "@/lib/utils";
 import { cn } from "@/lib/utils";
+import { getUi } from "@/server/i18n/locale";
 
 export function ManualEditMeter({ ratio }: { ratio: number | null }) {
   if (ratio === null) return <span className="text-2xs text-muted-foreground">—</span>;
@@ -38,15 +39,16 @@ export function WarningCell({ row }: { row: ArticleDeskRow }) {
 }
 
 /** Dense desk view: one row per article of the edition. */
-export function ArticleDeskTable({ rows }: { rows: ArticleDeskRow[] }) {
+export async function ArticleDeskTable({ rows }: { rows: ArticleDeskRow[] }) {
+  const tr = await getUi();
   const columns: Column<ArticleDeskRow>[] = [
     {
       key: "headline",
-      header: "Headline",
+      header: tr("Headline"),
       cell: (r) => (
         <div className="min-w-0">
           <div className="flex items-center gap-1.5">
-            {r.story.isCover ? <Star className="size-3 shrink-0 text-warning" aria-label="Cover story" /> : null}
+            {r.story.isCover ? <Star className="size-3 shrink-0 text-warning" aria-label={tr("Cover story")} /> : null}
             <span className="truncate font-medium">{r.headline}</span>
           </div>
           <div className="flex min-w-0 items-center gap-1.5">
@@ -63,7 +65,7 @@ export function ArticleDeskTable({ rows }: { rows: ArticleDeskRow[] }) {
     },
     {
       key: "section",
-      header: "Section",
+      header: tr("Section"),
       width: "158px",
       cell: (r) =>
         r.section ? (
@@ -72,37 +74,37 @@ export function ArticleDeskTable({ rows }: { rows: ArticleDeskRow[] }) {
             <span className="truncate text-xs">{r.section.name}</span>
           </span>
         ) : (
-          <Badge variant="muted">Unassigned</Badge>
+          <Badge variant="muted">{tr("Unassigned")}</Badge>
         ),
     },
-    { key: "status", header: "Status", width: "124px", cell: (r) => <ArticleStatusBadge status={r.status} /> },
+    { key: "status", header: tr("Status"), width: "124px", cell: (r) => <ArticleStatusBadge status={r.status} /> },
     {
       key: "words",
-      header: "Words",
+      header: tr("Words"),
       width: "78px",
       align: "right",
       cell: (r) => (
-        <span className="tabular" title={`Target length: ${enumLabel(r.story.targetLength)}`}>
+        <span className="tabular" title={`Target length: ${tr(enumLabel(r.story.targetLength))}`}>
           {r.wordCount || "—"}
         </span>
       ),
     },
-    { key: "manual", header: "By hand", width: "96px", align: "right", cell: (r) => <ManualEditMeter ratio={r.manualEditRatio} /> },
-    { key: "warnings", header: "Flags", width: "62px", align: "center", cell: (r) => <WarningCell row={r} /> },
+    { key: "manual", header: tr("By hand"), width: "96px", align: "right", cell: (r) => <ManualEditMeter ratio={r.manualEditRatio} /> },
+    { key: "warnings", header: tr("Flags"), width: "62px", align: "center", cell: (r) => <WarningCell row={r} /> },
     {
       key: "assignee",
-      header: "Assignee",
+      header: tr("Assignee"),
       width: "116px",
-      cell: (r) => (r.assignee ? <span className="truncate text-xs">{r.assignee.name}</span> : <span className="text-2xs text-muted-foreground">Unassigned</span>),
+      cell: (r) => (r.assignee ? <span className="truncate text-xs">{r.assignee.name}</span> : <span className="text-2xs text-muted-foreground">{tr("Unassigned")}</span>),
     },
     {
       key: "edited",
-      header: "Last edited",
+      header: tr("Last edited"),
       width: "126px",
       cell: (r) => (
         <span className="block text-2xs text-muted-foreground">
           {relativeTime(r.lastEditedAt ?? r.updatedAt)}
-          {r.lastEditedByName ? <span className="block truncate">by {r.lastEditedByName}</span> : r.aiDraftedAt && !r.lastEditedAt ? <span className="block">AI draft</span> : null}
+          {r.lastEditedByName ? <span className="block truncate">{tr("by")}{" "}{r.lastEditedByName}</span> : r.aiDraftedAt && !r.lastEditedAt ? <span className="block">{tr("AI draft")}</span> : null}
         </span>
       ),
     },
@@ -116,7 +118,7 @@ export function ArticleDeskTable({ rows }: { rows: ArticleDeskRow[] }) {
       className="[&_table]:table-fixed"
       rowKey={(r) => r.id}
       onRowHref={(r) => `/articles/${r.id}`}
-      empty={{ title: "No article matches these filters", description: "Clear a filter, or draft the missing articles from the stories board." }}
+      empty={{ title: tr("No article matches these filters"), description: tr("Clear a filter, or draft the missing articles from the stories board.") }}
     />
   );
 }

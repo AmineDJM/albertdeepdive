@@ -14,6 +14,7 @@ import { lawFor } from "@/lib/creative/qa";
 import { formatDateTime } from "@/lib/utils";
 import { BriefEditor } from "./brief-editor";
 import { PackControls } from "./pack-controls";
+import { getUi } from "@/server/i18n/locale";
 
 export const dynamic = "force-dynamic";
 
@@ -24,9 +25,10 @@ export const dynamic = "force-dynamic";
  * own layout pass is a preview that can disagree with what gets posted.
  */
 export default async function PackPage({ params }: { params: Promise<{ packId: string }> }) {
+  const tr = await getUi();
   const { packId } = await params;
   const user = await getCurrentUser();
-  if (!hasPermission(user, "edition:view")) return <NoAccess title="Studio" permission="edition:view" />;
+  if (!hasPermission(user, "edition:view")) return <NoAccess title={tr("Studio")} permission="edition:view" />;
 
   const pack = await getPack(packId).catch(() => null);
   if (!pack) notFound();
@@ -56,7 +58,7 @@ export default async function PackPage({ params }: { params: Promise<{ packId: s
     <>
       <PageHeader
         title={pack.name}
-        breadcrumbs={[{ label: "Studio", href: "/studio" }, { label: pack.name }]}
+        breadcrumbs={[{ label: tr("Studio"), href: "/studio" }, { label: pack.name }]}
         description={[format.name, SYSTEMS[(pack.designSystem as keyof typeof SYSTEMS) ?? "editorial"]?.name ?? "Editorial", format.moving ? MOTION[(pack.motionSystem as keyof typeof MOTION) ?? "cut"]?.name : null, MODES[pack.mode].name, `${format.width}×${format.height}`].filter(Boolean).join(" · ")}
         meta={<Badge variant={pack.status === "READY" ? "success" : pack.status === "FAILED" ? "destructive" : "muted"}>{pack.status.toLowerCase()}</Badge>}
         actions={<PackControls packId={pack.id} status={pack.status} hasBrief={Boolean(pack.brief)} />}
@@ -81,8 +83,7 @@ export default async function PackPage({ params }: { params: Promise<{ packId: s
                   <video src={videoUrl} controls playsInline className="block w-full" style={{ aspectRatio: `${format.width} / ${format.height}` }} />
                 </div>
                 <p className="mt-1.5 text-2xs text-muted-foreground">
-                  Each scene is held for as long as its words take to read. The picture moves; the words do not.
-                </p>
+                  {tr("Each scene is held for as long as its words take to read. The picture moves; the words do not.")}</p>
               </div>
             ) : null}
 
@@ -116,7 +117,7 @@ export default async function PackPage({ params }: { params: Promise<{ packId: s
 
             {pack.brief ? (
               <div>
-                <SectionTitle>The words</SectionTitle>
+                <SectionTitle>{tr("The words")}</SectionTitle>
                 <BriefEditor packId={pack.id} brief={pack.brief} busy={pack.status === "RENDERING" || pack.status === "DIRECTING"} />
               </div>
             ) : null}
@@ -143,7 +144,7 @@ export default async function PackPage({ params }: { params: Promise<{ packId: s
                         )}
                         <span>
                           <span className={finding.severity === "defect" ? "text-foreground" : "text-muted-foreground"}>
-                            {finding.frame !== null ? <span className="font-medium">Frame {finding.frame + 1}: </span> : null}
+                            {finding.frame !== null ? <span className="font-medium">{tr("Frame")}{" "}{finding.frame + 1}: </span> : null}
                             {finding.message}
                           </span>
                           {law ? (
@@ -157,7 +158,7 @@ export default async function PackPage({ params }: { params: Promise<{ packId: s
                   })}
                 </ul>
               ) : (
-                <p className="text-xs text-muted-foreground">Everything fits, everything is readable.</p>
+                <p className="text-xs text-muted-foreground">{tr("Everything fits, everything is readable.")}</p>
               )}
             </section>
 
@@ -174,8 +175,7 @@ export default async function PackPage({ params }: { params: Promise<{ packId: s
                 <SectionTitle>
                   <span className="flex items-center gap-1.5">
                     <ChevronRight className="size-3 transition-transform group-open:rotate-90" />
-                    What Briefly held to · {LAWS.length} rules
-                  </span>
+                    {tr("What Briefly held to ·")}{" "}{LAWS.length} {" "}{tr("rules")}</span>
                 </SectionTitle>
               </summary>
               <ul className="space-y-2">
@@ -193,11 +193,11 @@ export default async function PackPage({ params }: { params: Promise<{ packId: s
             </details>
 
             <section>
-              <SectionTitle>What it cost</SectionTitle>
+              <SectionTitle>{tr("What it cost")}</SectionTitle>
               <p className="text-xs text-muted-foreground">
                 {Number(pack.costCents) > 0 ? `€${(Number(pack.costCents) / 100).toFixed(4)} so far.` : "Nothing — drawn entirely by Briefly."}
               </p>
-              <p className="mt-1 text-2xs text-muted-foreground">Last change {formatDateTime(pack.updatedAt)}.</p>
+              <p className="mt-1 text-2xs text-muted-foreground">{tr("Last change")}{" "}{formatDateTime(pack.updatedAt)}.</p>
             </section>
           </aside>
         </div>

@@ -15,6 +15,7 @@ import { Switch } from "@/components/ui/switch";
 import { createContributorAction, updateContributorAction } from "./actions";
 import { enumLabel } from "@/lib/utils";
 import { CONTRIBUTOR_TYPES } from "@/lib/constants";
+import { useUi } from "@/components/i18n/provider";
 
 
 export type ContributorEditorValue = {
@@ -34,6 +35,7 @@ export type ContributorEditorValue = {
 };
 
 export function ContributorEditor({ value, campuses, programs, groups, openOnParam = false }: { value?: ContributorEditorValue; campuses: { id: string; name: string }[]; programs: { id: string; code: string; name: string }[]; groups: { id: string; name: string }[]; openOnParam?: boolean }) {
+  const tr = useUi();
   const router = useRouter();
   const params = useSearchParams();
   const [open, setOpen] = useState(openOnParam && params.get("new") === "1");
@@ -59,50 +61,50 @@ export function ContributorEditor({ value, campuses, programs, groups, openOnPar
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         {value ? (
-          <Button size="sm" variant="outline"><Pencil /> Edit</Button>
+          <Button size="sm" variant="outline"><Pencil /> {" "}{tr("Edit")}</Button>
         ) : (
-          <Button><Plus /> New contributor</Button>
+          <Button><Plus /> {" "}{tr("New contributor")}</Button>
         )}
       </DialogTrigger>
       <DialogContent size="lg">
         <DialogHeader>
           <DialogTitle>{value ? `Edit ${value.firstName} ${value.lastName}` : "Add a contributor"}</DialogTitle>
-          <DialogDescription>Contributors receive personal contribution links each month. Groups define who gets invited.</DialogDescription>
+          <DialogDescription>{tr("Contributors receive personal contribution links each month. Groups define who gets invited.")}</DialogDescription>
         </DialogHeader>
         <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-1.5"><Label>First name</Label><Input value={form.firstName} onChange={(e) => set("firstName", e.target.value)} /></div>
-          <div className="space-y-1.5"><Label>Last name</Label><Input value={form.lastName} onChange={(e) => set("lastName", e.target.value)} /></div>
-          <div className="col-span-2 space-y-1.5"><Label>Email</Label><Input type="email" value={form.email} onChange={(e) => set("email", e.target.value)} /></div>
+          <div className="space-y-1.5"><Label>{tr("First name")}</Label><Input value={form.firstName} onChange={(e) => set("firstName", e.target.value)} /></div>
+          <div className="space-y-1.5"><Label>{tr("Last name")}</Label><Input value={form.lastName} onChange={(e) => set("lastName", e.target.value)} /></div>
+          <div className="col-span-2 space-y-1.5"><Label>{tr("Email")}</Label><Input type="email" value={form.email} onChange={(e) => set("email", e.target.value)} /></div>
           <div className="space-y-1.5">
-            <Label>Campus</Label>
+            <Label>{tr("Campus")}</Label>
             <NativeSelect value={form.campusId ?? ""} onChange={(e) => set("campusId", e.target.value || null)}>
-              <option value="">School-wide</option>
+              <option value="">{tr("School-wide")}</option>
               {campuses.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </NativeSelect>
           </div>
           <div className="space-y-1.5">
-            <Label>Programme</Label>
+            <Label>{tr("Programme")}</Label>
             <NativeSelect value={form.programId ?? ""} onChange={(e) => set("programId", e.target.value || null)}>
               <option value="">—</option>
               {programs.map((p) => <option key={p.id} value={p.id}>{p.code} — {p.name}</option>)}
             </NativeSelect>
           </div>
           <div className="space-y-1.5">
-            <Label>Type</Label>
+            <Label>{tr("Type")}</Label>
             <NativeSelect value={form.type} onChange={(e) => set("type", e.target.value as ContributorEditorValue["type"])}>
-              {CONTRIBUTOR_TYPES.map((t) => <option key={t} value={t}>{enumLabel(t)}</option>)}
+              {CONTRIBUTOR_TYPES.map((t) => <option key={t} value={t}>{tr(enumLabel(t))}</option>)}
             </NativeSelect>
           </div>
           <div className="space-y-1.5">
-            <Label>Preferred language</Label>
+            <Label>{tr("Preferred language")}</Label>
             <NativeSelect value={form.preferredLanguage} onChange={(e) => set("preferredLanguage", e.target.value as "en" | "fr")}>
-              <option value="en">English</option>
-              <option value="fr">Français</option>
+              <option value="en">{tr("English")}</option>
+              <option value="fr">{tr("Français")}</option>
             </NativeSelect>
           </div>
-          <div className="col-span-2 space-y-1.5"><Label>Organisation / association</Label><Input value={form.organisationName ?? ""} onChange={(e) => set("organisationName", e.target.value || null)} placeholder="e.g. Albertine, KÆRN, Corporate Relations" /></div>
+          <div className="col-span-2 space-y-1.5"><Label>{tr("Organisation / association")}</Label><Input value={form.organisationName ?? ""} onChange={(e) => set("organisationName", e.target.value || null)} placeholder={tr("e.g. Albertine, KÆRN, Corporate Relations")} /></div>
           <div className="col-span-2 space-y-1.5">
-            <Label>Groups</Label>
+            <Label>{tr("Groups")}</Label>
             <div className="grid grid-cols-2 gap-1.5 rounded-md border p-2 sm:grid-cols-3">
               {groups.map((g) => (
                 <label key={g.id} className="flex items-center gap-2 text-xs">
@@ -112,12 +114,12 @@ export function ContributorEditor({ value, campuses, programs, groups, openOnPar
               ))}
             </div>
           </div>
-          <div className="col-span-2 space-y-1.5"><Label>Tags</Label><Input value={form.tags.join(", ")} onChange={(e) => set("tags", e.target.value.split(",").map((t) => t.trim()).filter(Boolean))} placeholder="photographer, translator" /></div>
-          <div className="col-span-2 space-y-1.5"><Label>Notes</Label><Textarea value={form.notes ?? ""} onChange={(e) => set("notes", e.target.value || null)} rows={2} /></div>
-          <label className="col-span-2 flex items-center justify-between rounded-md border px-3 py-2 text-[13px]"><span>Active — receives contribution requests</span><Switch checked={form.isActive} onCheckedChange={(v) => set("isActive", v)} /></label>
+          <div className="col-span-2 space-y-1.5"><Label>{tr("Tags")}</Label><Input value={form.tags.join(", ")} onChange={(e) => set("tags", e.target.value.split(",").map((t) => t.trim()).filter(Boolean))} placeholder={tr("photographer, translator")} /></div>
+          <div className="col-span-2 space-y-1.5"><Label>{tr("Notes")}</Label><Textarea value={form.notes ?? ""} onChange={(e) => set("notes", e.target.value || null)} rows={2} /></div>
+          <label className="col-span-2 flex items-center justify-between rounded-md border px-3 py-2 text-[13px]"><span>{tr("Active — receives contribution requests")}</span><Switch checked={form.isActive} onCheckedChange={(v) => set("isActive", v)} /></label>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+          <Button variant="outline" onClick={() => setOpen(false)}>{tr("Cancel")}</Button>
           <Button onClick={submit} loading={pending} disabled={!form.firstName || !form.lastName || !form.email}>{value ? "Save changes" : "Add contributor"}</Button>
         </DialogFooter>
       </DialogContent>

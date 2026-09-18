@@ -18,6 +18,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { addPageAction, regeneratePlanAction, runCopyfitAction, setPlanStatusAction } from "@/app/(newsroom)/editions/[editionId]/layout/actions";
+import { useUi } from "@/components/i18n/provider";
 
 /**
  * The two things an editor triggers from the flatplan: re-running the page allocation (which pages
@@ -25,6 +26,7 @@ import { addPageAction, regeneratePlanAction, runCopyfitAction, setPlanStatusAct
  * the text actually flows on those pages).
  */
 export function FlatplanToolbar({ editionId, lockedPages, planned, planStatus = "DRAFT", onlyPlan = false }: { editionId: string; lockedPages: number; planned: number; planStatus?: "DRAFT" | "VALIDATED" | "LOCKED"; onlyPlan?: boolean }) {
+  const tr = useUi();
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [open, setOpen] = useState(false);
@@ -68,7 +70,7 @@ export function FlatplanToolbar({ editionId, lockedPages, planned, planStatus = 
       const result = await runCopyfitAction(editionId);
       setBusy(null);
       if (result.ok) {
-        toast.success("Copyfit pass finished", { description: result.message });
+        toast.success(tr("Copyfit pass finished"), { description: result.message });
         router.refresh();
       } else {
         toast.error(result.error);
@@ -99,30 +101,25 @@ export function FlatplanToolbar({ editionId, lockedPages, planned, planStatus = 
     <>
       {onlyPlan ? null : (
         <Button size="sm" variant="outline" onClick={copyfit} loading={pending && busy === "copyfit"} disabled={pending}>
-          <RefreshCw /> Run copyfit
-        </Button>
+          <RefreshCw /> {" "}{tr("Run copyfit")}</Button>
       )}
       {onlyPlan ? null : signedOff ? (
         <Button size="sm" variant="outline" onClick={() => signOff("DRAFT")} loading={pending && busy === "signoff"} disabled={pending}>
-          <Undo2 /> Reopen the plan
-        </Button>
+          <Undo2 /> {" "}{tr("Reopen the plan")}</Button>
       ) : (
         <Button size="sm" variant="outline" onClick={() => signOff("VALIDATED")} loading={pending && busy === "signoff"} disabled={pending}>
-          <CheckCheck /> Validate the plan
-        </Button>
+          <CheckCheck /> {" "}{tr("Validate the plan")}</Button>
       )}
       {onlyPlan ? null : (
         <Button size="sm" variant="outline" onClick={addPage} loading={pending && busy === "addpage"} disabled={pending}>
-          <Plus /> Add page
-        </Button>
+          <Plus /> {" "}{tr("Add page")}</Button>
       )}
       <Button size="sm" variant="brand" onClick={() => setOpen(true)} disabled={pending} loading={pending && busy === "plan"}>
-        <Wand2 /> Re-plan pages
-      </Button>
+        <Wand2 /> {" "}{tr("Re-plan pages")}</Button>
       {onlyPlan ? null : (
         <Button asChild size="sm" variant="ghost">
           <a href={`/print/edition/${editionId}`} target="_blank" rel="noreferrer">
-            Print preview <ExternalLink />
+            {tr("Print preview")}{" "}<ExternalLink />
           </a>
         </Button>
       )}
@@ -130,11 +127,9 @@ export function FlatplanToolbar({ editionId, lockedPages, planned, planStatus = 
       <AlertDialog open={open} onOpenChange={(next) => !pending && setOpen(next)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Rebuild the page allocation?</AlertDialogTitle>
+            <AlertDialogTitle>{tr("Rebuild the page allocation?")}</AlertDialogTitle>
             <AlertDialogDescription>
-              The deterministic allocator rebuilds the whole flatplan from the sections and the selected stories: cover, contents, one page per story (short items packed
-              two to four per news page), Business Deep Dives kept together, and a back page.
-              {lockedPages > 0
+              {tr("The deterministic allocator rebuilds the whole flatplan from the sections and the selected stories: cover, contents, one page per story (short items packed two to four per news page), Business Deep Dives kept together, and a back page.")}{" "}{lockedPages > 0
                 ? lockedPages === 1
                   ? " One locked page keeps its number and its story; everything else is re-flowed around it."
                   : ` ${lockedPages} locked pages keep their number and their story; everything else is re-flowed around them.`
@@ -144,11 +139,10 @@ export function FlatplanToolbar({ editionId, lockedPages, planned, planStatus = 
           <div className="flex items-start gap-2 rounded-md border border-border bg-muted/40 p-2.5">
             <Checkbox id="include-candidates" checked={includeCandidates} onCheckedChange={(value) => setIncludeCandidates(value === true)} />
             <Label htmlFor="include-candidates" className="text-xs leading-snug font-normal">
-              Also place story candidates that have not been selected yet
-            </Label>
+              {tr("Also place story candidates that have not been selected yet")}</Label>
           </div>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={pending}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={pending}>{tr("Cancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={(event) => {
                 event.preventDefault();

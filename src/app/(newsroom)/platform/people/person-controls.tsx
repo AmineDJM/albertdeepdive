@@ -8,6 +8,7 @@ import { enterWorkspaceAction, setPlatformRoleAction, setUserActiveAction } from
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { ROLES, ROLE_LABELS, type Role } from "@/lib/auth/permissions";
+import { useUi } from "@/components/i18n/provider";
 
 /**
  * What a platform admin can do to one account.
@@ -27,6 +28,7 @@ export function PersonControls({
   person: { id: string; name: string; role: Role; isActive: boolean; workspaces: { organizationId: string; name: string; role: string }[] };
   isSelf: boolean;
 }) {
+  const tr = useUi();
   const router = useRouter();
   const [pending, startTransition] = useTransition();
 
@@ -51,7 +53,7 @@ export function PersonControls({
       <DropdownMenuContent align="end" className="w-60">
         {person.workspaces.length ? (
           <>
-            <DropdownMenuLabel>See what they see</DropdownMenuLabel>
+            <DropdownMenuLabel>{tr("See what they see")}</DropdownMenuLabel>
             {person.workspaces.map((workspace) => (
               <DropdownMenuItem
                 key={workspace.organizationId}
@@ -70,8 +72,7 @@ export function PersonControls({
 
         <DropdownMenuSub>
           <DropdownMenuSubTrigger>
-            <Shield /> Platform role
-          </DropdownMenuSubTrigger>
+            <Shield /> {" "}{tr("Platform role")}</DropdownMenuSubTrigger>
           <DropdownMenuSubContent>
             {ROLES.map((role) => (
               <DropdownMenuItem key={role} disabled={role === person.role} onSelect={() => run(() => setPlatformRoleAction(person.id, role))}>
@@ -85,12 +86,10 @@ export function PersonControls({
         <DropdownMenuSeparator />
         {person.isActive ? (
           <DropdownMenuItem variant="destructive" disabled={isSelf} onSelect={() => run(() => setUserActiveAction(person.id, false))}>
-            <UserMinus /> Suspend account
-          </DropdownMenuItem>
+            <UserMinus /> {" "}{tr("Suspend account")}</DropdownMenuItem>
         ) : (
           <DropdownMenuItem onSelect={() => run(() => setUserActiveAction(person.id, true))}>
-            <UserPlus /> Restore account
-          </DropdownMenuItem>
+            <UserPlus /> {" "}{tr("Restore account")}</DropdownMenuItem>
         )}
       </DropdownMenuContent>
     </DropdownMenu>

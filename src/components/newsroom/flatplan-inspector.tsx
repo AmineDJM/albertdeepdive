@@ -16,6 +16,7 @@ import { ArticleStatusBadge, RightsBadge, SeverityBadge } from "@/components/new
 import type { Flatplan, FlatplanPage, FlatplanTemplate } from "@/server/publication/flatplan";
 import { storyTypeLabel } from "@/lib/constants";
 import { cn } from "@/lib/utils";
+import { useUi } from "@/components/i18n/provider";
 
 const NONE = "__none";
 
@@ -53,6 +54,7 @@ export function FlatplanInspector({
   onAddAfter: (pageId: string) => void;
   onRemove: (pageId: string) => void;
 }) {
+  const tr = useUi();
   const [confirmRemove, setConfirmRemove] = useState(false);
   const engineMade = page?.kind === "engine-continuation";
   const anchors = pages.filter((p) => p.anchorIndex !== null);
@@ -68,12 +70,11 @@ export function FlatplanInspector({
           <>
             <SheetHeader className="border-b border-border">
               <SheetTitle className="flex items-center gap-2">
-                <span className="tabular">Page {page.number}</span>
+                <span className="tabular">{tr("Page")}{" "}{page.number}</span>
                 <Badge variant={engineMade ? "info" : "muted"}>{page.templateName}</Badge>
                 {page.isLocked ? (
                   <Badge variant="brand" className="gap-1">
-                    <Lock className="size-3" /> Locked
-                  </Badge>
+                    <Lock className="size-3" /> {" "}{tr("Locked")}</Badge>
                 ) : null}
               </SheetTitle>
               <SheetDescription>
@@ -89,16 +90,16 @@ export function FlatplanInspector({
             <div className="space-y-5 p-4">
               {/* ── fit ── */}
               <div>
-                <SectionTitle>Copyfit</SectionTitle>
+                <SectionTitle>{tr("Copyfit")}</SectionTitle>
                 <dl className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-xs">
-                  <Row label="Words on the page" value={<span className="tabular">{page.words}</span>} />
-                  <Row label="Template budget" value={<span className="tabular">≈ {page.capacityWords}</span>} />
+                  <Row label={tr("Words on the page")} value={<span className="tabular">{page.words}</span>} />
+                  <Row label={tr("Template budget")} value={<span className="tabular">≈ {page.capacityWords}</span>} />
                   <Row
                     label={page.fillSource === "measured" ? "Measured fill" : "Estimated fill"}
                     value={<span className={cn("tabular", page.overflow && "font-semibold text-destructive")}>{Math.round(page.fill * 100)} %</span>}
                   />
-                  <Row label="Type shrunk" value={<span className="tabular">{page.fitLevel ? `${(page.fitLevel * 2.5).toFixed(1)} %` : "—"}</span>} />
-                  {page.overflowBlocks ? <Row label="Overset blocks" value={<span className="tabular text-destructive">{page.overflowBlocks}</span>} /> : null}
+                  <Row label={tr("Type shrunk")} value={<span className="tabular">{page.fitLevel ? `${(page.fitLevel * 2.5).toFixed(1)} %` : "—"}</span>} />
+                  {page.overflowBlocks ? <Row label={tr("Overset blocks")} value={<span className="tabular text-destructive">{page.overflowBlocks}</span>} /> : null}
                 </dl>
                 <p className="mt-1.5 text-2xs text-muted-foreground">
                   {page.fillSource === "measured"
@@ -109,7 +110,7 @@ export function FlatplanInspector({
 
               {/* ── content ── */}
               <div>
-                <SectionTitle>On this page</SectionTitle>
+                <SectionTitle>{tr("On this page")}</SectionTitle>
                 {page.items.length ? (
                   <ul className="space-y-2">
                     {page.items.map((item) => (
@@ -119,15 +120,14 @@ export function FlatplanInspector({
                             {item.kicker ? <div className="label-caps">{item.kicker}</div> : null}
                             <p className="text-[13px] leading-snug font-medium">{item.headline}</p>
                             <p className="mt-0.5 text-2xs text-muted-foreground">
-                              {storyTypeLabel(item.storyType)} · <span className="tabular">{item.wordCount}</span> words
-                            </p>
+                              {storyTypeLabel(item.storyType)} · <span className="tabular">{item.wordCount}</span> {" "}{tr("words")}</p>
                           </div>
                           {item.articleStatus ? <ArticleStatusBadge status={item.articleStatus} /> : null}
                         </div>
                         <div className="mt-1.5 flex gap-2">
                           <Button asChild size="xs" variant="outline">
                             <Link href={`/stories/${item.storyId}`}>
-                              Open story <ExternalLink />
+                              {tr("Open story")}{" "}<ExternalLink />
                             </Link>
                           </Button>
                         </div>
@@ -135,7 +135,7 @@ export function FlatplanInspector({
                     ))}
                   </ul>
                 ) : (
-                  <p className="text-xs text-muted-foreground">No story is placed on this page.</p>
+                  <p className="text-xs text-muted-foreground">{tr("No story is placed on this page.")}</p>
                 )}
               </div>
 
@@ -143,7 +143,7 @@ export function FlatplanInspector({
               {page.images.length ? (
                 <div>
                   <SectionTitle>
-                    Images <span className="text-muted-foreground">({page.images.length})</span>
+                    {tr("Images")}{" "}<span className="text-muted-foreground">({page.images.length})</span>
                   </SectionTitle>
                   <ul className="grid grid-cols-4 gap-1.5">
                     {page.images.slice(0, 8).map((image) => (
@@ -167,7 +167,7 @@ export function FlatplanInspector({
                     ))}
                   </ul>
                   {page.images.some((i) => i.rightsStatus === "RED") ? (
-                    <p className="mt-1.5 text-2xs text-destructive">An image on this page is marked “do not publish”. The renderer skips it and exports are blocked until it is replaced or cleared.</p>
+                    <p className="mt-1.5 text-2xs text-destructive">{tr("An image on this page is marked “do not publish”. The renderer skips it and exports are blocked until it is replaced or cleared.")}</p>
                   ) : null}
                 </div>
               ) : null}
@@ -175,7 +175,7 @@ export function FlatplanInspector({
               {/* ── warnings ── */}
               {page.warnings.length ? (
                 <div>
-                  <SectionTitle>Warnings</SectionTitle>
+                  <SectionTitle>{tr("Warnings")}</SectionTitle>
                   <ul className="space-y-1.5">
                     {page.warnings.map((warning, i) => (
                       <li key={`${warning.code}-${i}`} className="flex items-start gap-2 rounded-md border border-border bg-card p-2 text-xs">
@@ -191,7 +191,7 @@ export function FlatplanInspector({
               {editable ? (
                 <div className="space-y-4 border-t border-border pt-4">
                   <div className="space-y-1.5">
-                    <Label htmlFor="inspector-template">Template</Label>
+                    <Label htmlFor="inspector-template">{tr("Template")}</Label>
                     <Select value={page.template} onValueChange={(value) => onTemplateChange(page.id, value)} disabled={pending}>
                       <SelectTrigger id="inspector-template" className="w-full">
                         <SelectValue />
@@ -217,20 +217,20 @@ export function FlatplanInspector({
                   </div>
 
                   <div className="space-y-1.5">
-                    <Label htmlFor="inspector-story">Pinned story</Label>
+                    <Label htmlFor="inspector-story">{tr("Pinned story")}</Label>
                     <Select
                       value={page.items[0]?.storyId ?? NONE}
                       onValueChange={(value) => onPinStory(page.id, value === NONE ? null : value, true)}
                       disabled={pending || page.anchorIndex === null}
                     >
                       <SelectTrigger id="inspector-story" className="w-full">
-                        <SelectValue placeholder="No story" />
+                        <SelectValue placeholder={tr("No story")} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value={NONE}>No story on this page</SelectItem>
+                        <SelectItem value={NONE}>{tr("No story on this page")}</SelectItem>
                         {stories.some((s) => s.page === null) ? (
                           <SelectGroup>
-                            <SelectLabel>Not yet placed</SelectLabel>
+                            <SelectLabel>{tr("Not yet placed")}</SelectLabel>
                             {stories
                               .filter((s) => s.page === null)
                               .map((s) => (
@@ -241,7 +241,7 @@ export function FlatplanInspector({
                           </SelectGroup>
                         ) : null}
                         <SelectGroup>
-                          <SelectLabel>Already on a page</SelectLabel>
+                          <SelectLabel>{tr("Already on a page")}</SelectLabel>
                           {stories
                             .filter((s) => s.page !== null)
                             .map((s) => (
@@ -252,30 +252,30 @@ export function FlatplanInspector({
                         </SelectGroup>
                       </SelectContent>
                     </Select>
-                    <p className="text-2xs text-muted-foreground">The story is moved to this page, the page is locked, and re-planning leaves both alone.</p>
+                    <p className="text-2xs text-muted-foreground">{tr("The story is moved to this page, the page is locked, and re-planning leaves both alone.")}</p>
                   </div>
 
                   <div className="space-y-2">
                     <Toggle
                       id="lock-page"
-                      label="Lock the page"
-                      hint="Keeps this page number and its story when the plan is regenerated."
+                      label={tr("Lock the page")}
+                      hint={tr("Keeps this page number and its story when the plan is regenerated.")}
                       checked={page.isLocked}
                       disabled={pending}
                       onChange={(checked) => onToggleFlag(page.id, { isLocked: checked })}
                     />
                     <Toggle
                       id="lock-article"
-                      label="Lock the story choice"
-                      hint="The automatic allocation may not swap the story on this page."
+                      label={tr("Lock the story choice")}
+                      hint={tr("The automatic allocation may not swap the story on this page.")}
                       checked={page.isArticleLocked}
                       disabled={pending}
                       onChange={(checked) => onToggleFlag(page.id, { isArticleLocked: checked })}
                     />
                     <Toggle
                       id="lock-image"
-                      label="Lock the images"
-                      hint="Keeps the pictures chosen for this page."
+                      label={tr("Lock the images")}
+                      hint={tr("Keeps the pictures chosen for this page.")}
                       checked={page.isImageLocked}
                       disabled={pending}
                       onChange={(checked) => onToggleFlag(page.id, { isImageLocked: checked })}
@@ -284,24 +284,20 @@ export function FlatplanInspector({
 
                   {page.anchorIndex !== null ? (
                     <div className="space-y-2">
-                      <Label>Pages</Label>
+                      <Label>{tr("Pages")}</Label>
                       <div className="flex gap-2">
                         <Button variant="outline" size="sm" disabled={pending || isFirst} onClick={() => onMove(page.id, "up")}>
-                          <ArrowUp /> Move earlier
-                        </Button>
+                          <ArrowUp /> {" "}{tr("Move earlier")}</Button>
                         <Button variant="outline" size="sm" disabled={pending || isLast} onClick={() => onMove(page.id, "down")}>
-                          <ArrowDown /> Move later
-                        </Button>
+                          <ArrowDown /> {" "}{tr("Move later")}</Button>
                       </div>
                       <div className="flex gap-2">
                         <Button variant="outline" size="sm" disabled={pending} onClick={() => onAddAfter(page.id)}>
-                          <Plus /> Add page after
-                        </Button>
+                          <Plus /> {" "}{tr("Add page after")}</Button>
                         <Button variant="outline" size="sm" disabled={pending || page.isLocked} onClick={() => setConfirmRemove(true)} className="text-destructive hover:text-destructive">
-                          <Trash2 /> Remove page
-                        </Button>
+                          <Trash2 /> {" "}{tr("Remove page")}</Button>
                       </div>
-                      {page.isLocked ? <p className="text-2xs text-muted-foreground">Unlock the page above to remove it.</p> : null}
+                      {page.isLocked ? <p className="text-2xs text-muted-foreground">{tr("Unlock the page above to remove it.")}</p> : null}
                     </div>
                   ) : null}
 
@@ -313,11 +309,10 @@ export function FlatplanInspector({
                       onNotes(page.id, typeof value === "string" ? value : "");
                     }}
                   >
-                    <Label htmlFor="inspector-notes">Note for the layout</Label>
-                    <Textarea id="inspector-notes" name="notes" key={page.id} defaultValue={page.notes ?? ""} rows={3} maxLength={500} placeholder="e.g. keep the portrait full bleed" />
+                    <Label htmlFor="inspector-notes">{tr("Note for the layout")}</Label>
+                    <Textarea id="inspector-notes" name="notes" key={page.id} defaultValue={page.notes ?? ""} rows={3} maxLength={500} placeholder={tr("e.g. keep the portrait full bleed")} />
                     <Button type="submit" size="sm" variant="outline" disabled={pending}>
-                      Save note
-                    </Button>
+                      {tr("Save note")}</Button>
                   </form>
                 </div>
               ) : (
@@ -331,13 +326,12 @@ export function FlatplanInspector({
               <div className="flex items-center gap-2 border-t border-border pt-4">
                 <Button asChild size="sm" variant="ghost">
                   <a href={`/print/edition/${editionId}`} target="_blank" rel="noreferrer">
-                    Print preview <ExternalLink />
+                    {tr("Print preview")}{" "}<ExternalLink />
                   </a>
                 </Button>
                 {page.isLocked ? (
                   <span className="flex items-center gap-1 text-2xs text-muted-foreground">
-                    <Pin className="size-3" /> pinned
-                  </span>
+                    <Pin className="size-3" /> {" "}{tr("pinned")}</span>
                 ) : null}
               </div>
             </div>
@@ -345,13 +339,12 @@ export function FlatplanInspector({
             <AlertDialog open={confirmRemove} onOpenChange={(v) => !pending && setConfirmRemove(v)}>
               <AlertDialogContent>
                 <AlertDialogHeader>
-                  <AlertDialogTitle>Remove page {page.number}?</AlertDialogTitle>
+                  <AlertDialogTitle>{tr("Remove page")}{" "}{page.number}?</AlertDialogTitle>
                   <AlertDialogDescription>
-                    The page is deleted from the flat-plan and the pages after it are renumbered. Any story on it goes back to the pool of unplaced stories. You can add a page again or re-plan at any time.
-                  </AlertDialogDescription>
+                    {tr("The page is deleted from the flat-plan and the pages after it are renumbered. Any story on it goes back to the pool of unplaced stories. You can add a page again or re-plan at any time.")}</AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogCancel>{tr("Cancel")}</AlertDialogCancel>
                   <AlertDialogAction
                     className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                     onClick={(event) => {
@@ -360,8 +353,7 @@ export function FlatplanInspector({
                       onRemove(page.id);
                     }}
                   >
-                    <Trash2 /> Remove page
-                  </AlertDialogAction>
+                    <Trash2 /> {" "}{tr("Remove page")}</AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>

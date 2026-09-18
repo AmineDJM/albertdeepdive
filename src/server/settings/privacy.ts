@@ -48,7 +48,7 @@ export async function exportContributorData(email: string, actorId?: string | nu
 
   const document = {
     exportedAt: new Date().toISOString(),
-    scope: "Personal data held by Albert Deep Dive about one contributor (GDPR art. 15)",
+    scope: "Personal data held by Briefly about one contributor (GDPR art. 15)",
     contributor: {
       id: contributor.id,
       firstName: contributor.firstName,

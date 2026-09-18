@@ -8,6 +8,7 @@ import { FlatplanBoard } from "@/components/newsroom/flatplan-board";
 import { FlatplanReport } from "@/components/newsroom/flatplan-report";
 import { FlatplanRunningOrder } from "@/components/newsroom/flatplan-running-order";
 import { FlatplanToolbar } from "@/components/newsroom/flatplan-toolbar";
+import { getUi } from "@/server/i18n/locale";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +18,7 @@ export const dynamic = "force-dynamic";
  * pages the printer will see, including the continuation pages the paginator adds.
  */
 export default async function FlatplanPage({ params }: { params: Promise<{ editionId: string }> }) {
+  const tr = await getUi();
   const { editionId } = await params;
   const user = await getCurrentUser();
   const canEdit = hasPermission(user, "layout:edit");
@@ -26,7 +28,7 @@ export default async function FlatplanPage({ params }: { params: Promise<{ editi
   return (
     <>
       <PageHeader
-        title="Flatplan"
+        title={tr("Flatplan")}
         description={`${stats.pages} pages · ${stats.spreads} spreads · ${stats.plannedPages} planned + ${stats.continuationPages} continuation · ${edition.pageSize}`}
         actions={canEdit ? <FlatplanToolbar editionId={editionId} lockedPages={stats.lockedPages} planned={stats.plannedPages} planStatus={(flatplan.plan?.status as "DRAFT" | "VALIDATED" | "LOCKED") ?? "DRAFT"} /> : null}
       />
@@ -45,13 +47,13 @@ export default async function FlatplanPage({ params }: { params: Promise<{ editi
         ) : (
           <>
             <StatGrid columns={6}>
-              <Stat label="Pages" value={stats.pages} hint={`${stats.plannedPages} planned · ${stats.continuationPages} continuation`} />
-              <Stat label="Spreads" value={stats.spreads} hint={stats.signaturePadding ? `${stats.signaturePadding} more page${stats.signaturePadding === 1 ? "" : "s"} for a full signature` : "a clean multiple of four"} tone={stats.signaturePadding ? "warning" : "success"} />
-              <Stat label="Target" value={edition.targetPageCount} hint={stats.pages > edition.targetPageCount ? `${stats.pages - edition.targetPageCount} over target` : "pages planned for this issue"} tone={stats.pages > edition.targetPageCount ? "warning" : "muted"} />
-              <Stat label="Average fill" value={`${Math.round(stats.fill * 100)}%`} hint={`${stats.words.toLocaleString("en-GB")} words on the pages`} tone={stats.fill >= 0.8 ? "success" : stats.fill >= 0.5 ? "default" : "warning"} />
-              <Stat label="Locked" value={stats.lockedPages} hint="pages re-planning will not move" tone={stats.lockedPages ? "brand" : "muted"} />
+              <Stat label={tr("Pages")} value={stats.pages} hint={`${stats.plannedPages} planned · ${stats.continuationPages} continuation`} />
+              <Stat label={tr("Spreads")} value={stats.spreads} hint={stats.signaturePadding ? `${stats.signaturePadding} more page${stats.signaturePadding === 1 ? "" : "s"} for a full signature` : "a clean multiple of four"} tone={stats.signaturePadding ? "warning" : "success"} />
+              <Stat label={tr("Target")} value={edition.targetPageCount} hint={stats.pages > edition.targetPageCount ? `${stats.pages - edition.targetPageCount} over target` : "pages planned for this issue"} tone={stats.pages > edition.targetPageCount ? "warning" : "muted"} />
+              <Stat label={tr("Average fill")} value={`${Math.round(stats.fill * 100)}%`} hint={`${stats.words.toLocaleString("en-GB")} words on the pages`} tone={stats.fill >= 0.8 ? "success" : stats.fill >= 0.5 ? "default" : "warning"} />
+              <Stat label={tr("Locked")} value={stats.lockedPages} hint={tr("pages re-planning will not move")} tone={stats.lockedPages ? "brand" : "muted"} />
               <Stat
-                label="Warnings"
+                label={tr("Warnings")}
                 value={stats.errors + stats.warnings}
                 hint={stats.errors ? `${stats.errors} blocking · ${stats.warnings} to check` : `${stats.warnings} to check · ${stats.infos} notes`}
                 tone={stats.errors ? "destructive" : stats.warnings ? "warning" : "success"}
@@ -74,8 +76,7 @@ export default async function FlatplanPage({ params }: { params: Promise<{ editi
                 <FlatplanRunningOrder editionId={editionId} sectionRuns={flatplan.sectionRuns} stories={flatplan.stories} canEdit={canEdit} />
                 {report ? (
                   <p className="mt-3 text-2xs text-muted-foreground">
-                    Plan “{plan?.name}” · {plan?.status.toLowerCase()} · {stats.images} images available on the planned pages.
-                  </p>
+                    {tr("Plan “")}{plan?.name}” · {plan?.status.toLowerCase()} · {stats.images} {" "}{tr("images available on the planned pages.")}</p>
                 ) : null}
               </aside>
             </div>

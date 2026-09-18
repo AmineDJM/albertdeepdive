@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Textarea } from "@/components/ui/textarea";
 import { useTranslations } from "@/components/i18n/provider";
+import { useUi } from "@/components/i18n/provider";
 
 const TYPES = [
   ["COMPANY", "Company"],
@@ -26,6 +27,7 @@ const TYPES = [
 export type WorkspaceValues = WorkspaceInput & { slug: string };
 
 export function WorkspaceForm({ initial, canEdit }: { initial: WorkspaceValues; canEdit: boolean }) {
+  const tr = useUi();
   const router = useRouter();
   const t = useTranslations();
   const [pending, startTransition] = useTransition();
@@ -40,7 +42,7 @@ export function WorkspaceForm({ initial, canEdit }: { initial: WorkspaceValues; 
         toast.error(result.error);
         return;
       }
-      toast.success("Workspace saved");
+      toast.success(tr("Workspace saved"));
       router.refresh();
     });
   }
@@ -68,13 +70,13 @@ export function WorkspaceForm({ initial, canEdit }: { initial: WorkspaceValues; 
         <div className="space-y-1.5">
           <Label htmlFor="ws-locale">{t("workspace.interfaceLanguage")}</Label>
           <NativeSelect id="ws-locale" value={values.locale} onChange={(e) => set("locale", e.target.value as WorkspaceInput["locale"])} disabled={!canEdit}>
-            <option value="en">English</option>
-            <option value="fr">Français</option>
+            <option value="en">{tr("English")}</option>
+            <option value="fr">{tr("Français")}</option>
           </NativeSelect>
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="ws-website">{t("workspace.website")}</Label>
-          <Input id="ws-website" value={values.website ?? ""} onChange={(e) => set("website", e.target.value)} placeholder="https://acme.com" disabled={!canEdit} />
+          <Input id="ws-website" value={values.website ?? ""} onChange={(e) => set("website", e.target.value)} placeholder={tr("https://acme.com")} disabled={!canEdit} />
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="ws-timezone">{t("workspace.timezone")}</Label>
@@ -91,7 +93,7 @@ export function WorkspaceForm({ initial, canEdit }: { initial: WorkspaceValues; 
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-1.5 sm:col-span-2">
             <Label htmlFor="ws-logo">{t("workspace.logoUrl")}</Label>
-            <Input id="ws-logo" value={values.logoUrl ?? ""} onChange={(e) => set("logoUrl", e.target.value)} placeholder="https://acme.com/logo.svg" disabled={!canEdit} />
+            <Input id="ws-logo" value={values.logoUrl ?? ""} onChange={(e) => set("logoUrl", e.target.value)} placeholder={tr("https://acme.com/logo.svg")} disabled={!canEdit} />
           </div>
           {(
             [
@@ -110,7 +112,7 @@ export function WorkspaceForm({ initial, canEdit }: { initial: WorkspaceValues; 
                   disabled={!canEdit}
                   className="size-8 shrink-0 cursor-pointer rounded-md border border-border bg-transparent p-0.5"
                 />
-                <Input id={`ws-${key}`} value={values[key] ?? ""} onChange={(e) => set(key, e.target.value)} placeholder="#2BAFE0" className="font-mono" disabled={!canEdit} />
+                <Input id={`ws-${key}`} value={values[key] ?? ""} onChange={(e) => set(key, e.target.value)} placeholder={tr("#2BAFE0")} className="font-mono" disabled={!canEdit} />
               </div>
             </div>
           ))}

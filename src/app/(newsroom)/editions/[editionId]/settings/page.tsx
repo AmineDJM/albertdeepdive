@@ -13,15 +13,17 @@ import { EditionStatusBadge } from "@/components/newsroom/status-badge";
 import { Button } from "@/components/ui/button";
 import { NoAccess } from "@/components/settings/no-access";
 import { computeCampaignSchedule, formatZoned } from "@/lib/campaigns/schedule";
+import { getUi } from "@/server/i18n/locale";
 
 export const dynamic = "force-dynamic";
 
 const LANGUAGE_NAMES: Record<string, string> = { en: "English", fr: "French", es: "Spanish", de: "German", it: "Italian" };
 
 export default async function EditionSettingsPage({ params }: { params: Promise<{ editionId: string }> }) {
+  const tr = await getUi();
   const { editionId } = await params;
   const user = await getCurrentUser();
-  if (!hasPermission(user, "edition:edit")) return <NoAccess title="Edition settings" permission="edition:edit" />;
+  if (!hasPermission(user, "edition:edit")) return <NoAccess title={tr("Edition settings")} permission="edition:edit" />;
   const canEdit = hasPermission(user, "edition:edit");
   const canManageSections = hasPermission(user, "section:manage");
   const canManageCampaign = hasPermission(user, "campaign:manage");
@@ -39,12 +41,12 @@ export default async function EditionSettingsPage({ params }: { params: Promise<
 
   const sameDay = (a: Date | null | undefined, b: Date) => (a ? formatZoned(a) === formatZoned(b) : false);
   const scheduleRows: ScheduleComparison[] = [
-    { key: "opensAt", label: "Contribution request", current: campaign ? formatZoned(campaign.opensAt) : null, fromDefaults: formatZoned(schedule.opensAt), matches: sameDay(campaign?.opensAt, schedule.opensAt) },
-    { key: "reminder1At", label: "Reminder #1", current: campaign ? formatZoned(campaign.reminder1At) : null, fromDefaults: formatZoned(schedule.reminder1At), matches: sameDay(campaign?.reminder1At, schedule.reminder1At) },
-    { key: "reminder2At", label: "Reminder #2", current: campaign ? formatZoned(campaign.reminder2At) : null, fromDefaults: formatZoned(schedule.reminder2At), matches: sameDay(campaign?.reminder2At, schedule.reminder2At) },
-    { key: "graceEndsAt", label: "Campaign closes", current: campaign ? formatZoned(campaign.graceEndsAt) : null, fromDefaults: formatZoned(schedule.graceEndsAt), matches: sameDay(campaign?.graceEndsAt, schedule.graceEndsAt) },
-    { key: "finalReviewAt", label: "Final review", current: edition.finalReviewAt ? formatZoned(edition.finalReviewAt) : null, fromDefaults: formatZoned(schedule.finalReviewAt), matches: sameDay(edition.finalReviewAt, schedule.finalReviewAt) },
-    { key: "publicationTargetAt", label: "Publication", current: edition.publicationTargetAt ? formatZoned(edition.publicationTargetAt) : null, fromDefaults: formatZoned(schedule.publicationTargetAt), matches: sameDay(edition.publicationTargetAt, schedule.publicationTargetAt) },
+    { key: "opensAt", label: tr("Contribution request"), current: campaign ? formatZoned(campaign.opensAt) : null, fromDefaults: formatZoned(schedule.opensAt), matches: sameDay(campaign?.opensAt, schedule.opensAt) },
+    { key: "reminder1At", label: tr("Reminder #1"), current: campaign ? formatZoned(campaign.reminder1At) : null, fromDefaults: formatZoned(schedule.reminder1At), matches: sameDay(campaign?.reminder1At, schedule.reminder1At) },
+    { key: "reminder2At", label: tr("Reminder #2"), current: campaign ? formatZoned(campaign.reminder2At) : null, fromDefaults: formatZoned(schedule.reminder2At), matches: sameDay(campaign?.reminder2At, schedule.reminder2At) },
+    { key: "graceEndsAt", label: tr("Campaign closes"), current: campaign ? formatZoned(campaign.graceEndsAt) : null, fromDefaults: formatZoned(schedule.graceEndsAt), matches: sameDay(campaign?.graceEndsAt, schedule.graceEndsAt) },
+    { key: "finalReviewAt", label: tr("Final review"), current: edition.finalReviewAt ? formatZoned(edition.finalReviewAt) : null, fromDefaults: formatZoned(schedule.finalReviewAt), matches: sameDay(edition.finalReviewAt, schedule.finalReviewAt) },
+    { key: "publicationTargetAt", label: tr("Publication"), current: edition.publicationTargetAt ? formatZoned(edition.publicationTargetAt) : null, fromDefaults: formatZoned(schedule.publicationTargetAt), matches: sameDay(edition.publicationTargetAt, schedule.publicationTargetAt) },
   ];
 
   const initial: EditionSettingsInitial = {
@@ -72,13 +74,13 @@ export default async function EditionSettingsPage({ params }: { params: Promise<
   return (
     <>
       <PageHeader
-        title="Edition settings"
+        title={tr("Edition settings")}
         description={`${edition.label} · ${sections.length} sections · ${edition.targetPageCount} target pages`}
         meta={<EditionStatusBadge status={edition.status} />}
         actions={
           <Button asChild size="sm" variant="ghost">
             <Link href={`/editions/${editionId}`}>
-              Control room <ArrowRight />
+              {tr("Control room")}{" "}<ArrowRight />
             </Link>
           </Button>
         }
@@ -106,8 +108,7 @@ export default async function EditionSettingsPage({ params }: { params: Promise<
               </span>
             }
           >
-            Sections of this edition
-          </SectionTitle>
+            {tr("Sections of this edition")}</SectionTitle>
           <EditionSettingsSections
             editionId={editionId}
             targetPageCount={edition.targetPageCount}

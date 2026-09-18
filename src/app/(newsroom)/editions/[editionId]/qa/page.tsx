@@ -14,10 +14,12 @@ import { Stat, StatGrid } from "@/components/newsroom/stat";
 import { SeverityBadge } from "@/components/newsroom/status-badge";
 import { Badge } from "@/components/ui/badge";
 import { nextStatuses, type EditionStatus } from "@/lib/editorial/edition-state";
+import { getUi } from "@/server/i18n/locale";
 
 export const dynamic = "force-dynamic";
 
 export default async function QaPage({ params }: { params: Promise<{ editionId: string }> }) {
+  const tr = await getUi();
   const { editionId } = await params;
   const user = await getCurrentUser();
   const edition = await getEdition(editionId).catch(() => null);
@@ -42,7 +44,7 @@ export default async function QaPage({ params }: { params: Promise<{ editionId: 
   return (
     <>
       <PageHeader
-        title="QA & publish"
+        title={tr("QA & publish")}
         description={`${passed} of ${gates.length} gates pass${overridden ? ` · ${overridden} overridden` : ""} · ${blocking.length} blocking`}
         actions={
           <PublishControls
@@ -59,40 +61,38 @@ export default async function QaPage({ params }: { params: Promise<{ editionId: 
 
       <PageBody className="space-y-5">
         <StatGrid columns={4}>
-          <Stat label="Gates passing" value={`${passed}/${gates.length}`} tone={blocking.length ? "warning" : "success"} hint={blocking.length ? `${blocking.length} still blocking` : "Ready to publish"} />
-          <Stat label="Errors" value={errors.length} tone={errors.length ? "destructive" : "success"} hint="Must be nil to publish" />
-          <Stat label="Warnings" value={warnings.length} tone={warnings.length ? "warning" : "muted"} hint="Worth a look" />
-          <Stat label="Pages planned" value={doc.pages.length} hint={`${doc.articles.length} articles`} tone="brand" />
+          <Stat label={tr("Gates passing")} value={`${passed}/${gates.length}`} tone={blocking.length ? "warning" : "success"} hint={blocking.length ? `${blocking.length} still blocking` : "Ready to publish"} />
+          <Stat label={tr("Errors")} value={errors.length} tone={errors.length ? "destructive" : "success"} hint={tr("Must be nil to publish")} />
+          <Stat label={tr("Warnings")} value={warnings.length} tone={warnings.length ? "warning" : "muted"} hint={tr("Worth a look")} />
+          <Stat label={tr("Pages planned")} value={doc.pages.length} hint={`${doc.articles.length} articles`} tone="brand" />
         </StatGrid>
 
         {blocking.length === 0 ? (
           <p className="flex items-center gap-2 rounded-lg border border-success/40 bg-success-soft/40 px-3.5 py-2.5 text-xs">
             <CheckCircle2 className="size-4 shrink-0 text-success" />
-            <span>Every blocking gate passes. The issue can go to press.</span>
+            <span>{tr("Every blocking gate passes. The issue can go to press.")}</span>
           </p>
         ) : (
           <p className="flex items-start gap-2 rounded-lg border border-warning/40 bg-warning-soft/40 px-3.5 py-2.5 text-xs">
             <AlertTriangle className="mt-px size-4 shrink-0 text-warning" />
             <span>
-              Publication is blocked by {blocking.length} gate{blocking.length === 1 ? "" : "s"}: {blocking.map((g) => g.label).join(", ")}.
+              {tr("Publication is blocked by")}{" "}{blocking.length} {" "}{tr("gate")}{blocking.length === 1 ? "" : "s"}: {blocking.map((g) => g.label).join(", ")}.
             </span>
           </p>
         )}
 
         <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
           <section>
-            <SectionTitle>Publication checklist</SectionTitle>
+            <SectionTitle>{tr("Publication checklist")}</SectionTitle>
             <QualityGates editionId={editionId} gates={gates} canOverride={hasPermission(user, "qa:override")} />
             <p className="mt-2 text-2xs text-muted-foreground">
-              Only the editor in chief can override a gate, and every override needs a written reason. Prohibited (RED) media, the contents list and page numbering can never be overridden.
-            </p>
+              {tr("Only the editor in chief can override a gate, and every override needs a written reason. Prohibited (RED) media, the contents list and page numbering can never be overridden.")}</p>
           </section>
 
           <aside className="space-y-5">
             <section>
               <SectionTitle>
-                Validation report
-                <span className="tabular ml-1.5 font-normal text-muted-foreground">{report.issues.length} items</span>
+                {tr("Validation report")}{" "}<span className="tabular ml-1.5 font-normal text-muted-foreground">{report.issues.length} {" "}{tr("items")}</span>
               </SectionTitle>
               {report.issues.length ? (
                 <ul className="max-h-[520px] space-y-1.5 overflow-y-auto rounded-lg border border-border bg-card p-2.5">
@@ -107,12 +107,12 @@ export default async function QaPage({ params }: { params: Promise<{ editionId: 
                   ))}
                 </ul>
               ) : (
-                <p className="rounded-lg border border-dashed border-border p-3 text-2xs text-muted-foreground">Nothing to report.</p>
+                <p className="rounded-lg border border-dashed border-border p-3 text-2xs text-muted-foreground">{tr("Nothing to report.")}</p>
               )}
             </section>
 
             <section>
-              <SectionTitle>Versions</SectionTitle>
+              <SectionTitle>{tr("Versions")}</SectionTitle>
               <ul className="space-y-1.5">
                 {versions.slice(0, 6).map((v) => (
                   <li key={v.id} className="flex items-center gap-2 rounded-md border border-border bg-card px-2.5 py-2 text-xs">
@@ -120,19 +120,19 @@ export default async function QaPage({ params }: { params: Promise<{ editionId: 
                     <Badge variant={v.status === "READY" ? "success" : v.status === "FAILED" ? "destructive" : "muted"} className="text-2xs">
                       {v.status.toLowerCase()}
                     </Badge>
-                    <span className="ml-auto text-2xs text-muted-foreground">{v.assets.length} file{v.assets.length === 1 ? "" : "s"}</span>
+                    <span className="ml-auto text-2xs text-muted-foreground">{v.assets.length} {" "}{tr("file")}{v.assets.length === 1 ? "" : "s"}</span>
                   </li>
                 ))}
-                {!versions.length ? <li className="rounded-md border border-dashed border-border p-3 text-2xs text-muted-foreground">No version has been generated yet.</li> : null}
+                {!versions.length ? <li className="rounded-md border border-dashed border-border p-3 text-2xs text-muted-foreground">{tr("No version has been generated yet.")}</li> : null}
               </ul>
               <Link href={`/editions/${editionId}/exports`} className="mt-2 inline-flex items-center gap-1 text-2xs text-brand hover:underline">
-                Go to exports <ExternalLink className="size-3" />
+                {tr("Go to exports")}{" "}<ExternalLink className="size-3" />
               </Link>
             </section>
 
             <p className="flex items-start gap-1.5 text-2xs text-muted-foreground">
               <Info className="mt-px size-3 shrink-0" />
-              <span>The checklist is recomputed from the database on every visit, so it always reflects the current state of the issue.</span>
+              <span>{tr("The checklist is recomputed from the database on every visit, so it always reflects the current state of the issue.")}</span>
             </p>
           </aside>
         </div>

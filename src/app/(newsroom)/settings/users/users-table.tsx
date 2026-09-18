@@ -21,6 +21,7 @@ import { FieldError } from "@/components/settings/key-value";
 import { ROLE_DESCRIPTIONS, ROLE_LABELS, ROLES, type Role } from "@/lib/auth/permissions";
 import { formatDateTime, relativeTime } from "@/lib/utils";
 import { createUserAction, resetPasswordAction, updateUserAction } from "./actions";
+import { useUi } from "@/components/i18n/provider";
 
 type Campus = { id: string; name: string };
 type Form = { name: string; email: string; role: Role; campusId: string | null; isActive: boolean };
@@ -28,6 +29,7 @@ type Form = { name: string; email: string; role: Role; campusId: string | null; 
 const EMPTY: Form = { name: "", email: "", role: "EDITOR", campusId: null, isActive: true };
 
 export function UsersTable({ users, campuses, currentUserId }: { users: UserListRow[]; campuses: Campus[]; currentUserId: string }) {
+  const tr = useUi();
   const router = useRouter();
   const [editing, setEditing] = useState<{ mode: "create" } | { mode: "edit"; user: UserListRow } | null>(null);
   const [secret, setSecret] = useState<{ title: string; email: string; password: string } | null>(null);
@@ -50,36 +52,34 @@ export function UsersTable({ users, campuses, currentUserId }: { users: UserList
     <>
       <div className="flex items-center justify-between gap-3">
         <p className="text-xs text-muted-foreground">
-          {users.filter((u) => u.isActive).length} active · {users.filter((u) => !u.isActive).length} deactivated
-        </p>
+          {users.filter((u) => u.isActive).length} {" "}{tr("active ·")}{" "}{users.filter((u) => !u.isActive).length} {" "}{tr("deactivated")}</p>
         <Button size="sm" onClick={() => setEditing({ mode: "create" })}>
-          <Plus /> Invite user
-        </Button>
+          <Plus /> {" "}{tr("Invite user")}</Button>
       </div>
       <DataTable
         rows={users}
         rowKey={(u) => u.id}
         dense
-        empty={{ title: "No users yet", description: "Invite the first editor." }}
+        empty={{ title: tr("No users yet"), description: tr("Invite the first editor.") }}
         columns={[
           {
             key: "name",
-            header: "User",
+            header: tr("User"),
             cell: (u) => (
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
                   <span className="font-medium">{u.name}</span>
-                  {u.id === currentUserId ? <Badge variant="brand">You</Badge> : null}
-                  {!u.isActive ? <Badge variant="muted">Deactivated</Badge> : null}
+                  {u.id === currentUserId ? <Badge variant="brand">{tr("You")}</Badge> : null}
+                  {!u.isActive ? <Badge variant="muted">{tr("Deactivated")}</Badge> : null}
                 </div>
                 <div className="truncate text-2xs text-muted-foreground">{u.email}</div>
               </div>
             ),
           },
-          { key: "role", header: "Role", cell: (u) => <Badge variant={u.role === "SUPER_ADMIN" ? "default" : u.role === "EDITOR_IN_CHIEF" ? "brand" : "outline"}>{ROLE_LABELS[u.role]}</Badge> },
-          { key: "campus", header: "Campus", cell: (u) => (u.role === "CAMPUS_EDITOR" ? u.campusName ? <CampusChip name={u.campusName} colour={u.campusColour} /> : <span className="text-2xs text-warning">No campus set</span> : <span className="text-2xs text-muted-foreground">—</span>) },
-          { key: "sessions", header: "Sessions", cell: (u) => <span className="tabular text-xs">{u.activeSessions}</span>, align: "right" },
-          { key: "login", header: "Last sign-in", cell: (u) => <span className="text-xs text-muted-foreground" title={u.lastLoginAt ? formatDateTime(u.lastLoginAt) : undefined}>{u.lastLoginAt ? relativeTime(u.lastLoginAt) : "Never"}</span> },
+          { key: "role", header: tr("Role"), cell: (u) => <Badge variant={u.role === "SUPER_ADMIN" ? "default" : u.role === "EDITOR_IN_CHIEF" ? "brand" : "outline"}>{ROLE_LABELS[u.role]}</Badge> },
+          { key: "campus", header: tr("Campus"), cell: (u) => (u.role === "CAMPUS_EDITOR" ? u.campusName ? <CampusChip name={u.campusName} colour={u.campusColour} /> : <span className="text-2xs text-warning">{tr("No campus set")}</span> : <span className="text-2xs text-muted-foreground">—</span>) },
+          { key: "sessions", header: tr("Sessions"), cell: (u) => <span className="tabular text-xs">{u.activeSessions}</span>, align: "right" },
+          { key: "login", header: tr("Last sign-in"), cell: (u) => <span className="text-xs text-muted-foreground" title={u.lastLoginAt ? formatDateTime(u.lastLoginAt) : undefined}>{u.lastLoginAt ? relativeTime(u.lastLoginAt) : "Never"}</span> },
           {
             key: "actions",
             header: "",
@@ -95,20 +95,16 @@ export function UsersTable({ users, campuses, currentUserId }: { users: UserList
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     <DropdownMenuItem onSelect={() => setEditing({ mode: "edit", user: u })}>
-                      <Pencil /> Edit role & campus
-                    </DropdownMenuItem>
+                      <Pencil /> {" "}{tr("Edit role & campus")}</DropdownMenuItem>
                     <DropdownMenuItem onSelect={() => setConfirm({ kind: "reset", user: u })}>
-                      <KeyRound /> Reset password
-                    </DropdownMenuItem>
+                      <KeyRound /> {" "}{tr("Reset password")}</DropdownMenuItem>
                     <DropdownMenuSeparator />
                     {u.isActive ? (
                       <DropdownMenuItem variant="destructive" disabled={u.id === currentUserId} onSelect={() => setConfirm({ kind: "deactivate", user: u })}>
-                        <UserRoundX /> Deactivate
-                      </DropdownMenuItem>
+                        <UserRoundX /> {" "}{tr("Deactivate")}</DropdownMenuItem>
                     ) : (
                       <DropdownMenuItem onSelect={() => run(() => updateUserAction(u.id, { isActive: true }))}>
-                        <UserRoundCheck /> Reactivate
-                      </DropdownMenuItem>
+                        <UserRoundCheck /> {" "}{tr("Reactivate")}</DropdownMenuItem>
                     )}
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -164,7 +160,7 @@ export function UsersTable({ users, campuses, currentUserId }: { users: UserList
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{tr("Cancel")}</AlertDialogCancel>
             <AlertDialogAction
               className={confirm?.kind === "deactivate" ? "bg-destructive text-destructive-foreground hover:bg-destructive/90" : undefined}
               onClick={() => {
@@ -195,17 +191,17 @@ export function UsersTable({ users, campuses, currentUserId }: { users: UserList
         <DialogContent size="sm">
           <DialogHeader>
             <DialogTitle>{secret?.title}</DialogTitle>
-            <DialogDescription>Share it over a safe channel. It is shown once and never stored in clear.</DialogDescription>
+            <DialogDescription>{tr("Share it over a safe channel. It is shown once and never stored in clear.")}</DialogDescription>
           </DialogHeader>
           {secret ? (
             <div className="space-y-2">
               <div className="rounded-md border border-border bg-muted/40 px-3 py-2">
-                <div className="label-caps">Email</div>
+                <div className="label-caps">{tr("Email")}</div>
                 <div className="font-mono text-xs">{secret.email}</div>
               </div>
               <div className="flex items-center gap-2 rounded-md border border-border bg-muted/40 px-3 py-2">
                 <div className="min-w-0 flex-1">
-                  <div className="label-caps">Temporary password</div>
+                  <div className="label-caps">{tr("Temporary password")}</div>
                   <div className="font-mono text-sm tracking-wide select-all">{secret.password}</div>
                 </div>
                 <CopyButton value={secret.password} size="sm" />
@@ -213,7 +209,7 @@ export function UsersTable({ users, campuses, currentUserId }: { users: UserList
             </div>
           ) : null}
           <DialogFooter>
-            <Button onClick={() => setSecret(null)}>Done</Button>
+            <Button onClick={() => setSecret(null)}>{tr("Done")}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -222,6 +218,7 @@ export function UsersTable({ users, campuses, currentUserId }: { users: UserList
 }
 
 function UserDialog({ mode, initial, campuses, isSelf, onClose, onSubmit, pending }: { mode: "create" | "edit"; initial: Form; campuses: Campus[]; isSelf: boolean; onClose: () => void; onSubmit: (form: Form) => void; pending: boolean }) {
+  const tr = useUi();
   const [form, setForm] = useState<Form>(initial);
   const [errors] = useState<Record<string, string[]> | null>(null);
   const set = <K extends keyof Form>(k: K, v: Form[K]) => setForm((f) => ({ ...f, [k]: v }));
@@ -242,19 +239,19 @@ function UserDialog({ mode, initial, campuses, isSelf, onClose, onSubmit, pendin
         >
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label htmlFor="user-name">Name</Label>
+              <Label htmlFor="user-name">{tr("Name")}</Label>
               <Input id="user-name" value={form.name} onChange={(e) => set("name", e.target.value)} autoFocus />
               <FieldError errors={errors} name="name" />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="user-email">Email</Label>
+              <Label htmlFor="user-email">{tr("Email")}</Label>
               <Input id="user-email" type="email" value={form.email} onChange={(e) => set("email", e.target.value)} disabled={mode === "edit"} />
               <FieldError errors={errors} name="email" />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label htmlFor="user-role">Role</Label>
+              <Label htmlFor="user-role">{tr("Role")}</Label>
               <NativeSelect id="user-role" value={form.role} onChange={(e) => set("role", e.target.value as Role)} disabled={isSelf}>
                 {ROLES.map((r) => (
                   <option key={r} value={r}>
@@ -265,7 +262,7 @@ function UserDialog({ mode, initial, campuses, isSelf, onClose, onSubmit, pendin
               <p className="text-2xs text-muted-foreground">{ROLE_DESCRIPTIONS[form.role]}</p>
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="user-campus">Campus</Label>
+              <Label htmlFor="user-campus">{tr("Campus")}</Label>
               <NativeSelect id="user-campus" value={form.campusId ?? ""} onChange={(e) => set("campusId", e.target.value || null)}>
                 <option value="">{form.role === "CAMPUS_EDITOR" ? "Choose a campus…" : "School-wide"}</option>
                 {campuses.map((c) => (
@@ -274,19 +271,18 @@ function UserDialog({ mode, initial, campuses, isSelf, onClose, onSubmit, pendin
                   </option>
                 ))}
               </NativeSelect>
-              {form.role === "CAMPUS_EDITOR" && !form.campusId ? <p className="text-2xs text-warning">Campus editors review submissions for one campus.</p> : null}
+              {form.role === "CAMPUS_EDITOR" && !form.campusId ? <p className="text-2xs text-warning">{tr("Campus editors review submissions for one campus.")}</p> : null}
             </div>
           </div>
           {mode === "edit" ? (
             <label className="flex items-center justify-between rounded-md border px-3 py-2 text-[13px]">
-              <span>Active account</span>
+              <span>{tr("Active account")}</span>
               <Switch checked={form.isActive} onCheckedChange={(v) => set("isActive", v)} disabled={isSelf} />
             </label>
           ) : null}
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onClose}>
-              Cancel
-            </Button>
+              {tr("Cancel")}</Button>
             <Button type="submit" loading={pending} disabled={!valid}>
               {mode === "create" ? "Invite & generate password" : "Save"}
             </Button>

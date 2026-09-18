@@ -4,6 +4,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTransition } from "react";
 import { Archive, Copy, Unlink } from "lucide-react";
 import { Toggle } from "@/components/ui/toggle";
+import { useUi } from "@/components/i18n/provider";
 
 const CHIPS = [
   {
@@ -31,6 +32,7 @@ const CHIPS = [
 
 /** URL-synced boolean filters rendered as toggles inside the FilterBar. */
 export function FilterChips() {
+  const tr = useUi();
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
@@ -45,7 +47,7 @@ export function FilterChips() {
     );
   }
   return (
-    <div className="flex items-center gap-1" role="group" aria-label="Quick filters">
+    <div className="flex items-center gap-1" role="group" aria-label={tr("Quick filters")}>
       {CHIPS.map((c) => {
         const on = params.get(c.key) === c.value;
         return (

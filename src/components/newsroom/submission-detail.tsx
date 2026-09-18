@@ -15,6 +15,7 @@ import { commentOnSubmissionAction, reprocessSubmissionAction, reviewSubmissionA
 import { formatDateTime, enumLabel, relativeTime } from "@/lib/utils";
 import { storyTypeLabel } from "@/lib/constants";
 import type { ReviewStatus } from "@/server/editorial/submissions";
+import { useUi } from "@/components/i18n/provider";
 
 export type SubmissionDetailData = {
   submission: {
@@ -74,6 +75,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 }
 
 export function SubmissionDetail({ editionId, data, canReview, onClose }: { editionId: string; data: SubmissionDetailData; canReview: boolean; onClose?: string }) {
+  const tr = useUi();
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [comment, setComment] = useState("");
@@ -97,15 +99,14 @@ export function SubmissionDetail({ editionId, data, canReview, onClose }: { edit
           <div className="flex flex-wrap items-center gap-1.5">
             <SubmissionStatusBadge status={sub.status} />
             <Badge variant="outline">{storyTypeLabel(sub.storyType)}</Badge>
-            {sub.aiImportance !== null ? <Badge variant="muted">importance {Math.round(sub.aiImportance * 100)}</Badge> : null}
+            {sub.aiImportance !== null ? <Badge variant="muted">{tr("importance")}{" "}{Math.round(sub.aiImportance * 100)}</Badge> : null}
           </div>
           <h2 className="mt-1 text-sm font-semibold">{sub.title}</h2>
           <p className="text-2xs text-muted-foreground">
-            {data.contributorName} · {formatDateTime(sub.submittedAt ?? sub.createdAt)} · {sub.wordCount} words
-          </p>
+            {data.contributorName} · {formatDateTime(sub.submittedAt ?? sub.createdAt)} · {sub.wordCount} {" "}{tr("words")}</p>
         </div>
         {onClose ? (
-          <Button size="icon-sm" variant="ghost" asChild aria-label="Close">
+          <Button size="icon-sm" variant="ghost" asChild aria-label={tr("Close")}>
             <Link href={onClose} scroll={false}>
               <X />
             </Link>
@@ -134,8 +135,7 @@ export function SubmissionDetail({ editionId, data, canReview, onClose }: { edit
               })
             }
           >
-            <RefreshCw /> Reprocess
-          </Button>
+            <RefreshCw /> {" "}{tr("Reprocess")}</Button>
         </div>
       ) : null}
 
@@ -154,7 +154,7 @@ export function SubmissionDetail({ editionId, data, canReview, onClose }: { edit
 
         {data.duplicateOf ? (
           <div className="rounded-md border border-warning/40 bg-warning-soft px-3 py-2 text-xs">
-            Marked as a duplicate of{" "}
+            {tr("Marked as a duplicate of")}{" "}
             <Link href={`/editions/${editionId}/inbox?submission=${data.duplicateOf.id}`} className="font-medium underline">
               {data.duplicateOf.title}
             </Link>
@@ -162,21 +162,21 @@ export function SubmissionDetail({ editionId, data, canReview, onClose }: { edit
         ) : null}
 
         <div className="grid gap-3 sm:grid-cols-2">
-          <Field label="Campuses">
+          <Field label={tr("Campuses")}>
             <CampusList campuses={data.campusList} max={6} />
           </Field>
-          <Field label="Date">{sub.eventDateText ?? "—"}</Field>
+          <Field label={tr("Date")}>{sub.eventDateText ?? "—"}</Field>
         </div>
 
-        <Field label="What happened">{sub.description}</Field>
-        <Field label="People involved">{sub.peopleInvolved}</Field>
-        <Field label="Organisations">{sub.organisationsInvolved}</Field>
-        <Field label="Why it matters">{sub.whyItMatters}</Field>
-        <Field label="Quotes">{sub.quotes}</Field>
+        <Field label={tr("What happened")}>{sub.description}</Field>
+        <Field label={tr("People involved")}>{sub.peopleInvolved}</Field>
+        <Field label={tr("Organisations")}>{sub.organisationsInvolved}</Field>
+        <Field label={tr("Why it matters")}>{sub.whyItMatters}</Field>
+        <Field label={tr("Quotes")}>{sub.quotes}</Field>
 
         {sub.urls.length ? (
           <div>
-            <div className="label-caps">Links</div>
+            <div className="label-caps">{tr("Links")}</div>
             <ul className="mt-0.5 space-y-0.5">
               {sub.urls.map((u) => (
                 <li key={u}>
@@ -191,11 +191,11 @@ export function SubmissionDetail({ editionId, data, canReview, onClose }: { edit
 
         {extraEntries.length ? (
           <div>
-            <div className="label-caps">Structured answers</div>
+            <div className="label-caps">{tr("Structured answers")}</div>
             <dl className="mt-1 grid gap-x-4 gap-y-1 text-xs sm:grid-cols-[minmax(0,140px)_minmax(0,1fr)]">
               {extraEntries.map(([k, v]) => (
                 <div key={k} className="contents">
-                  <dt className="text-muted-foreground">{enumLabel(k.replace(/([A-Z])/g, " $1"))}</dt>
+                  <dt className="text-muted-foreground">{tr(enumLabel(k.replace(/([A-Z])/g, " $1")))}</dt>
                   <dd className="whitespace-pre-wrap">{typeof v === "string" ? v : JSON.stringify(v)}</dd>
                 </div>
               ))}
@@ -205,7 +205,7 @@ export function SubmissionDetail({ editionId, data, canReview, onClose }: { edit
 
         {data.media.length ? (
           <div>
-            <div className="label-caps">Photos &amp; files ({data.media.length})</div>
+            <div className="label-caps">{tr("Photos & files (")}{data.media.length})</div>
             <div className="mt-1.5 grid grid-cols-2 gap-2 sm:grid-cols-3">
               {data.media.map((m) => (
                 <Link key={m.id} href={`/media/${m.id}`} className="group block overflow-hidden rounded-md border border-border">
@@ -213,7 +213,7 @@ export function SubmissionDetail({ editionId, data, canReview, onClose }: { edit
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={m.url} alt={m.caption ?? ""} className="aspect-[4/3] w-full object-cover transition-transform group-hover:scale-[1.02]" />
                   ) : (
-                    <div className="flex aspect-[4/3] items-center justify-center bg-muted text-2xs text-muted-foreground">No preview</div>
+                    <div className="flex aspect-[4/3] items-center justify-center bg-muted text-2xs text-muted-foreground">{tr("No preview")}</div>
                   )}
                   <div className="flex items-center justify-between gap-1 px-1.5 py-1">
                     <span className="truncate text-2xs">{m.caption || m.fileName}</span>
@@ -227,27 +227,27 @@ export function SubmissionDetail({ editionId, data, canReview, onClose }: { edit
 
         {sub.aiEntities ? (
           <div className="rounded-md border border-border bg-muted/30 p-3">
-            <div className="label-caps">Extracted by AI</div>
+            <div className="label-caps">{tr("Extracted by AI")}</div>
             <div className="mt-1.5 space-y-1 text-xs">
               {sub.aiEntities.people?.length ? (
                 <p>
-                  <span className="text-muted-foreground">People: </span>
+                  <span className="text-muted-foreground">{tr("People:")}</span>
                   {sub.aiEntities.people.map((p) => p.name).join(", ")}
                 </p>
               ) : null}
               {sub.aiEntities.organisations?.length ? (
                 <p>
-                  <span className="text-muted-foreground">Organisations: </span>
+                  <span className="text-muted-foreground">{tr("Organisations:")}</span>
                   {sub.aiEntities.organisations.map((o) => o.name).join(", ")}
                 </p>
               ) : null}
               {sub.aiEntities.metrics?.length ? (
                 <p>
-                  <span className="text-muted-foreground">Metrics: </span>
+                  <span className="text-muted-foreground">{tr("Metrics:")}</span>
                   {sub.aiEntities.metrics.map((m) => `${m.label}: ${m.value}`).join(" · ")}
                 </p>
               ) : null}
-              {!sub.processedAt ? <p className="text-muted-foreground">Not processed yet.</p> : null}
+              {!sub.processedAt ? <p className="text-muted-foreground">{tr("Not processed yet.")}</p> : null}
             </div>
           </div>
         ) : null}
@@ -255,18 +255,18 @@ export function SubmissionDetail({ editionId, data, canReview, onClose }: { edit
         <Separator />
 
         <div className="space-y-2">
-          <div className="label-caps">Where this goes</div>
+          <div className="label-caps">{tr("Where this goes")}</div>
           {data.cluster ? (
             <Link href={`/editions/${editionId}/stories?cluster=${data.cluster.id}`} className="flex items-center justify-between gap-2 rounded-md border border-border px-2.5 py-1.5 text-xs hover:border-brand/50">
-              <span className="truncate">Cluster: {data.cluster.title}</span>
+              <span className="truncate">{tr("Cluster:")}{" "}{data.cluster.title}</span>
               <ArrowUpRight className="size-3.5 shrink-0" />
             </Link>
           ) : (
-            <p className="text-xs text-muted-foreground">Not clustered yet.</p>
+            <p className="text-xs text-muted-foreground">{tr("Not clustered yet.")}</p>
           )}
           {data.stories.map((st) => (
             <Link key={st.id} href={`/stories/${st.id}`} className="flex items-center justify-between gap-2 rounded-md border border-border px-2.5 py-1.5 text-xs hover:border-brand/50">
-              <span className="truncate">Story: {st.title}</span>
+              <span className="truncate">{tr("Story:")}{" "}{st.title}</span>
               <ArrowUpRight className="size-3.5 shrink-0" />
             </Link>
           ))}
@@ -274,12 +274,12 @@ export function SubmissionDetail({ editionId, data, canReview, onClose }: { edit
 
         {data.infoRequests.length ? (
           <div>
-            <div className="label-caps">Information requests</div>
+            <div className="label-caps">{tr("Information requests")}</div>
             <ul className="mt-1 space-y-1">
               {data.infoRequests.map((r) => (
                 <li key={r.id} className="rounded-md border border-border px-2.5 py-1.5 text-xs">
                   <div className="flex items-center justify-between gap-2">
-                    <Badge variant={r.status === "ANSWERED" ? "success" : "info"}>{enumLabel(r.status)}</Badge>
+                    <Badge variant={r.status === "ANSWERED" ? "success" : "info"}>{tr(enumLabel(r.status))}</Badge>
                     <span className="text-2xs text-muted-foreground">{relativeTime(r.answeredAt ?? r.createdAt)}</span>
                   </div>
                   <p className="mt-1 line-clamp-2 text-muted-foreground">{r.message}</p>
@@ -290,7 +290,7 @@ export function SubmissionDetail({ editionId, data, canReview, onClose }: { edit
         ) : null}
 
         <div>
-          <div className="label-caps">Consent</div>
+          <div className="label-caps">{tr("Consent")}</div>
           <div className="mt-1 flex gap-1.5">
             <Badge variant={sub.publicationConsent ? "success" : "destructive"}>{sub.publicationConsent ? "Publication consent" : "No publication consent"}</Badge>
             <Badge variant={sub.imageRightsConfirmed ? "success" : "warning"}>{sub.imageRightsConfirmed ? "Image rights confirmed" : "Image rights unconfirmed"}</Badge>
@@ -298,7 +298,7 @@ export function SubmissionDetail({ editionId, data, canReview, onClose }: { edit
         </div>
 
         <div>
-          <div className="label-caps">Notes</div>
+          <div className="label-caps">{tr("Notes")}</div>
           {data.comments.map((c) => (
             <div key={c.id} className="mt-1 rounded-md border border-border px-2.5 py-1.5 text-xs">
               <div className="flex items-center justify-between gap-2">
@@ -324,10 +324,9 @@ export function SubmissionDetail({ editionId, data, canReview, onClose }: { edit
                 });
               }}
             >
-              <Textarea value={comment} onChange={(e) => setComment(e.target.value)} rows={2} placeholder="Add a note for the desk…" className="text-xs" />
+              <Textarea value={comment} onChange={(e) => setComment(e.target.value)} rows={2} placeholder={tr("Add a note for the desk…")} className="text-xs" />
               <Button size="xs" type="submit" variant="outline" loading={pending} disabled={!comment.trim()}>
-                Add note
-              </Button>
+                {tr("Add note")}</Button>
             </form>
           ) : null}
         </div>

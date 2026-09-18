@@ -22,6 +22,7 @@ import {
   qualityTone,
   type MediaKind,
 } from "@/server/media/constants";
+import { useUi } from "@/components/i18n/provider";
 
 const toneClass = {
   success: "text-success",
@@ -43,6 +44,7 @@ export function MediaListTable({
   onToggle: (id: string, shift: boolean) => void;
   onToggleAll: () => void;
 }) {
+  const tr = useUi();
   const allSelected = rows.length > 0 && rows.every((r) => selected.has(r.id));
   const someSelected = rows.some((r) => selected.has(r.id));
   return (
@@ -55,19 +57,19 @@ export function MediaListTable({
                 <Checkbox
                   checked={allSelected ? true : someSelected ? "indeterminate" : false}
                   onCheckedChange={onToggleAll}
-                  aria-label="Select all assets on this page"
+                  aria-label={tr("Select all assets on this page")}
                 />
               </TableHead>
             ) : null}
             <TableHead className="w-12" />
-            <TableHead>Asset</TableHead>
-            <TableHead>Rights</TableHead>
-            <TableHead>Kind</TableHead>
-            <TableHead className="text-right">Size</TableHead>
-            <TableHead className="text-right">Quality</TableHead>
-            <TableHead>Used in</TableHead>
-            <TableHead>Source</TableHead>
-            <TableHead>Added</TableHead>
+            <TableHead>{tr("Asset")}</TableHead>
+            <TableHead>{tr("Rights")}</TableHead>
+            <TableHead>{tr("Kind")}</TableHead>
+            <TableHead className="text-right">{tr("Size")}</TableHead>
+            <TableHead className="text-right">{tr("Quality")}</TableHead>
+            <TableHead>{tr("Used in")}</TableHead>
+            <TableHead>{tr("Source")}</TableHead>
+            <TableHead>{tr("Added")}</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>

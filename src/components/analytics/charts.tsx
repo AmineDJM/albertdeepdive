@@ -5,6 +5,7 @@ import { Area, AreaChart, Bar, BarChart, CartesianGrid, LabelList, ResponsiveCon
 import { BarChart3, Table2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { useUi } from "@/components/i18n/provider";
 
 export type ChartDatum = { label: string; value: number; [key: string]: string | number | null };
 export type SeriesDef = { key: string; label: string; role?: 1 | 2 | 3 };
@@ -24,6 +25,7 @@ function Swatch({ role, shape = "rect" }: { role: 1 | 2 | 3; shape?: "rect" | "l
 
 /** Card shell: title, optional legend, chart/table toggle (the table is the accessible twin of every chart). */
 export function ChartCard({ title, description, series, shape = "rect", empty, emptyText = "Nothing to chart yet.", chart, table, className }: { title: string; description?: string; series?: SeriesDef[]; shape?: "rect" | "line"; empty: boolean; emptyText?: string; chart: React.ReactNode; table: React.ReactNode; className?: string }) {
+  const tr = useUi();
   const [view, setView] = useState<"chart" | "table">("chart");
   const id = useId();
   return (
@@ -37,7 +39,7 @@ export function ChartCard({ title, description, series, shape = "rect", empty, e
         </div>
         <div className="flex shrink-0 items-center gap-3">
           {series && series.length > 1 ? (
-            <ul className="flex items-center gap-3 text-2xs text-muted-foreground" aria-label="Legend">
+            <ul className="flex items-center gap-3 text-2xs text-muted-foreground" aria-label={tr("Legend")}>
               {series.map((s, i) => (
                 <li key={s.key} className="flex items-center gap-1.5">
                   <Swatch role={s.role ?? ((i + 1) as 1 | 2 | 3)} shape={shape} />
@@ -47,11 +49,11 @@ export function ChartCard({ title, description, series, shape = "rect", empty, e
             </ul>
           ) : null}
           {!empty ? (
-            <div className="inline-flex h-6 items-center rounded-md bg-muted p-0.5" role="tablist" aria-label="View">
-              <button type="button" role="tab" aria-selected={view === "chart"} onClick={() => setView("chart")} className={cn("inline-flex size-5 items-center justify-center rounded-sm text-muted-foreground", view === "chart" && "bg-card text-foreground shadow-xs")} aria-label="Chart view">
+            <div className="inline-flex h-6 items-center rounded-md bg-muted p-0.5" role="tablist" aria-label={tr("View")}>
+              <button type="button" role="tab" aria-selected={view === "chart"} onClick={() => setView("chart")} className={cn("inline-flex size-5 items-center justify-center rounded-sm text-muted-foreground", view === "chart" && "bg-card text-foreground shadow-xs")} aria-label={tr("Chart view")}>
                 <BarChart3 className="size-3.5" />
               </button>
-              <button type="button" role="tab" aria-selected={view === "table"} onClick={() => setView("table")} className={cn("inline-flex size-5 items-center justify-center rounded-sm text-muted-foreground", view === "table" && "bg-card text-foreground shadow-xs")} aria-label="Table view">
+              <button type="button" role="tab" aria-selected={view === "table"} onClick={() => setView("table")} className={cn("inline-flex size-5 items-center justify-center rounded-sm text-muted-foreground", view === "table" && "bg-card text-foreground shadow-xs")} aria-label={tr("Table view")}>
                 <Table2 className="size-3.5" />
               </button>
             </div>
@@ -88,12 +90,13 @@ function ValueTooltip({ active, payload, label, series, format }: { active?: boo
 }
 
 function DataTableView({ data, series, format }: { data: ChartDatum[]; series: SeriesDef[]; format?: (n: number) => string }) {
+  const tr = useUi();
   return (
     <div className="overflow-hidden rounded-md border border-border">
       <Table>
         <TableHeader>
           <TableRow className="hover:bg-transparent">
-            <TableHead>Label</TableHead>
+            <TableHead>{tr("Label")}</TableHead>
             {series.map((s) => (
               <TableHead key={s.key} className="text-right">
                 {s.label}

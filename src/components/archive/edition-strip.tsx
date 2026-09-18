@@ -6,6 +6,7 @@ import { EditionStatusBadge } from "@/components/newsroom/status-badge";
 import { Button } from "@/components/ui/button";
 import type { EditionStatus } from "@/lib/editorial/edition-state";
 import { formatDate } from "@/lib/utils";
+import { getUi } from "@/server/i18n/locale";
 
 function sizeLabel(bytes: number) {
   if (bytes >= 1_048_576) return `${(bytes / 1_048_576).toFixed(1)} MB`;
@@ -14,7 +15,8 @@ function sizeLabel(bytes: number) {
 }
 
 /** Every edition as a cover card; published ones carry their PDF/DOCX downloads. */
-export function EditionStrip({ editions, activeEditionId }: { editions: ArchiveEdition[]; activeEditionId?: string }) {
+export async function EditionStrip({ editions, activeEditionId }: { editions: ArchiveEdition[]; activeEditionId?: string }) {
+  const tr = await getUi();
   if (!editions.length) return null;
   return (
     <div className="-mx-5 overflow-x-auto px-5 pb-1 scrollbar-thin">
@@ -51,13 +53,11 @@ export function EditionStrip({ editions, activeEditionId }: { editions: ArchiveE
                     ))
                   ) : published ? (
                     <span className="inline-flex items-center gap-1 text-2xs text-muted-foreground">
-                      <FileText className="size-3" /> No export yet
-                    </span>
+                      <FileText className="size-3" /> {" "}{tr("No export yet")}</span>
                   ) : (
                     <Button asChild size="xs" variant="ghost" className="-ml-1.5 text-muted-foreground">
                       <Link href={`/editions/${e.id}`}>
-                        <Hammer /> In production
-                      </Link>
+                        <Hammer /> {" "}{tr("In production")}</Link>
                     </Button>
                   )}
                   {e.version ? <span className="ml-auto font-mono text-2xs text-muted-foreground">{e.version.label}</span> : null}

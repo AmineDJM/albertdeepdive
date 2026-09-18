@@ -419,7 +419,7 @@ export async function renderDocx(doc: EditionDocument, options: RenderDocxOption
 
   const document = new Document({
     creator: doc.meta.masthead.title,
-    lastModifiedBy: "Albert Deep Dive",
+    lastModifiedBy: "Briefly",
     title: `${doc.meta.masthead.title} — ${doc.meta.issueLabel}, ${doc.meta.label}`,
     subject: doc.meta.issueLabel,
     description: `${doc.meta.title} · version ${doc.meta.versionLabel}`,

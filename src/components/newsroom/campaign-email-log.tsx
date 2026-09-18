@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { EmptyState } from "@/components/ui/empty-state";
 import { enumLabel, formatDateTime } from "@/lib/utils";
+import { getUi } from "@/server/i18n/locale";
 
 export type EmailLogItem = {
   id: string;
@@ -38,13 +39,14 @@ function statusVariant(status: string): React.ComponentProps<typeof Badge>["vari
 }
 
 /** Every email this edition's campaign produced — in development the provider only logs them. */
-export function CampaignEmailLog({ rows, provider }: { rows: EmailLogItem[]; provider: string }) {
+export async function CampaignEmailLog({ rows, provider }: { rows: EmailLogItem[]; provider: string }) {
+  const tr = await getUi();
   if (!rows.length) {
     return (
       <EmptyState
         icon={Mails}
-        title="No email has been sent for this edition"
-        description="Invitations, reminders and thank-you notes all appear here once the campaign runs."
+        title={tr("No email has been sent for this edition")}
+        description={tr("Invitations, reminders and thank-you notes all appear here once the campaign runs.")}
         compact
       />
     );
@@ -54,11 +56,11 @@ export function CampaignEmailLog({ rows, provider }: { rows: EmailLogItem[]; pro
       <Table>
         <TableHeader>
           <TableRow className="hover:bg-transparent">
-            <TableHead className="w-[132px]">When</TableHead>
-            <TableHead>Recipient</TableHead>
-            <TableHead>Subject</TableHead>
-            <TableHead className="w-[120px]">Type</TableHead>
-            <TableHead className="w-[120px]">Status</TableHead>
+            <TableHead className="w-[132px]">{tr("When")}</TableHead>
+            <TableHead>{tr("Recipient")}</TableHead>
+            <TableHead>{tr("Subject")}</TableHead>
+            <TableHead className="w-[120px]">{tr("Type")}</TableHead>
+            <TableHead className="w-[120px]">{tr("Status")}</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>

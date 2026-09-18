@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect } from "react";
 import { AlertCircle, Check } from "lucide-react";
 import { subscribeAction, type SubscribeState } from "./actions";
 import { Button } from "@/components/ui/button";
@@ -10,9 +10,20 @@ import type { ActionResult } from "@/lib/action-result";
 import { translator, type Locale } from "@/lib/i18n";
 
 /** The reader's language is the publication's, so it is passed in rather than read from context. */
-export function SubscribeForm({ slug, accent, locale }: { slug: string; accent: string; locale: Locale }) {
+export function SubscribeForm({ slug, accent, locale, price }: { slug: string; accent: string; locale: Locale; price?: string | null }) {
   const [state, action, pending] = useActionState<ActionResult<SubscribeState> | null, FormData>(subscribeAction, null);
   const t = translator(locale);
+  const redirect = state?.ok ? state.data.redirect : undefined;
+
+  // Stripe's checkout is Stripe's page. A full navigation, not a fetch: the reader's session with
+  // Stripe starts there, and they come back through the welcome page when the payment is done.
+  useEffect(() => {
+    if (redirect) window.location.assign(redirect);
+  }, [redirect]);
+
+  if (redirect) {
+    return <p className="rounded-lg border border-border bg-muted/40 px-4 py-3 text-center text-[14px] text-muted-foreground">{t("subscribe.toCheckout")}</p>;
+  }
 
   if (state?.ok) {
     return (
@@ -41,9 +52,9 @@ export function SubscribeForm({ slug, accent, locale }: { slug: string; accent: 
         </p>
       ) : null}
       <Button type="submit" size="lg" className="w-full" loading={pending} style={accent ? { backgroundColor: accent } : undefined}>
-        {t("subscribe.subscribe")}
+        {price ? t("subscribe.subscribeFor", { price }) : t("subscribe.subscribe")}
       </Button>
-      <p className="text-center text-xs text-muted-foreground">{t("subscribe.reassurance")}</p>
+      <p className="text-center text-xs text-muted-foreground">{price ? t("subscribe.paidReassurance") : t("subscribe.reassurance")}</p>
     </form>
   );
 }

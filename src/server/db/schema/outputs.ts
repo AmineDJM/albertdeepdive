@@ -116,6 +116,15 @@ export const publicationSubscriptions = pgTable(
     subscribedAt: timestamp("subscribed_at", { withTimezone: true }).notNull().defaultNow(),
     unsubscribedAt: timestamp("unsubscribed_at", { withTimezone: true }),
     isActive: boolean("is_active").notNull().default(true),
+    /**
+     * For a paid title: where the money is. Null on a free one. The subscription id is the handle
+     * for cancelling, and for the daily check that a card which stopped working stops the mail.
+     */
+    paymentStatus: text("payment_status"), // active | past_due | canceled
+    paymentCustomerId: text("payment_customer_id"),
+    paymentSubscriptionId: text("payment_subscription_id"),
+    checkoutSessionId: text("checkout_session_id"),
+    paidThrough: timestamp("paid_through", { withTimezone: true }),
   },
   (t) => [primaryKey({ columns: [t.publicationId, t.subscriberId] }), index("publication_subscriptions_subscriber_idx").on(t.subscriberId)],
 );

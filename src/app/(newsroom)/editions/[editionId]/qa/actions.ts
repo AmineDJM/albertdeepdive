@@ -7,6 +7,7 @@ import { approveAllArticles, autoPickCover, generateExports, validateImageRights
 import { transitionEdition } from "@/server/editions/service";
 import { AppError, ok, toActionFailure, type ActionResult } from "@/lib/action-result";
 import type { EditionStatus } from "@/lib/editorial/edition-state";
+import { getUi } from "@/server/i18n/locale";
 
 function revalidateEdition(editionId: string) {
   revalidatePath(`/editions/${editionId}/qa`);
@@ -22,22 +23,24 @@ function revalidateEdition(editionId: string) {
  * is what appears on the gate afterwards, and in the audit trail.
  */
 export async function overrideGateAction(editionId: string, gateKey: string, reason: string): Promise<ActionResult> {
+  const tr = await getUi();
   try {
     const user = await requirePermission("qa:override");
     await overrideQualityGate(editionId, gateKey, reason, { id: user.id, role: user.role });
     revalidateEdition(editionId);
-    return ok(null, "Gate overridden");
+    return ok(null, tr("Gate overridden"));
   } catch (err) {
     return toActionFailure(err);
   }
 }
 
 export async function clearOverrideAction(editionId: string, gateKey: string): Promise<ActionResult> {
+  const tr = await getUi();
   try {
     const user = await requirePermission("qa:override");
     await clearQualityGateOverride(editionId, gateKey, { id: user.id, role: user.role });
     revalidateEdition(editionId);
-    return ok(null, "Override removed");
+    return ok(null, tr("Override removed"));
   } catch (err) {
     return toActionFailure(err);
   }
@@ -98,11 +101,12 @@ export async function fixGateAction(editionId: string, gateKey: string): Promise
 }
 
 export async function moveEditionStatusAction(editionId: string, status: EditionStatus, reason?: string): Promise<ActionResult> {
+  const tr = await getUi();
   try {
     const user = await requirePermission("edition:edit");
     await transitionEdition(editionId, status, user.id, reason);
     revalidateEdition(editionId);
-    return ok(null, "Edition moved on");
+    return ok(null, tr("Edition moved on"));
   } catch (err) {
     return toActionFailure(err);
   }
@@ -121,12 +125,13 @@ export async function publishEditionAction(editionId: string, versionId: string)
 }
 
 export async function archiveEditionAction(editionId: string): Promise<ActionResult> {
+  const tr = await getUi();
   try {
     const user = await requirePermission("edition:publish");
     await archiveEdition(editionId, user.id);
     revalidateEdition(editionId);
     revalidatePath("/archive");
-    return ok(null, "Edition archived");
+    return ok(null, tr("Edition archived"));
   } catch (err) {
     return toActionFailure(err);
   }

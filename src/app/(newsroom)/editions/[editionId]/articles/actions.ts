@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { requirePermission } from "@/server/auth/session";
 import { createBlankStory } from "@/server/editorial/stories";
 import { ok, toActionFailure, type ActionResult } from "@/lib/action-result";
+import { getUi } from "@/server/i18n/locale";
 
 /**
  * Creates a hand-authored article from scratch (a new story + an empty article shell) so an editor
@@ -11,13 +12,14 @@ import { ok, toActionFailure, type ActionResult } from "@/lib/action-result";
  * to open in the workbench.
  */
 export async function createArticleAction(editionId: string, input: { title: string; sectionId?: string | null; storyType?: string }): Promise<ActionResult<{ articleId: string }>> {
+  const tr = await getUi();
   try {
     const user = await requirePermission("article:edit");
     const { articleId } = await createBlankStory(editionId, { title: input.title, sectionId: input.sectionId ?? null, storyType: input.storyType }, user.id);
     revalidatePath(`/editions/${editionId}/articles`);
     revalidatePath(`/editions/${editionId}/stories`);
     revalidatePath(`/editions/${editionId}`);
-    return ok({ articleId }, "Article created — opening the editor");
+    return ok({ articleId }, tr("Article created — opening the editor"));
   } catch (err) {
     return toActionFailure(err);
   }

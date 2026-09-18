@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/table";
 import type { MediaVariantView } from "@/server/media/library";
 import { formatBytes } from "@/server/media/constants";
+import { getUi } from "@/server/i18n/locale";
 
 const KIND_LABEL: Record<MediaVariantView["kind"], string> = {
   THUMBNAIL: "Thumbnail",
@@ -36,7 +37,7 @@ type Row = {
   downloadUrl: string;
 };
 
-export function VariantsList({
+export async function VariantsList({
   original,
   variants,
 }: {
@@ -50,11 +51,12 @@ export function VariantsList({
   };
   variants: MediaVariantView[];
 }) {
+  const tr = await getUi();
   const rows: Row[] = [
     {
       key: "original",
-      label: "Original",
-      hint: "untouched upload · never altered",
+      label: tr("Original"),
+      hint: tr("untouched upload · never altered"),
       width: original.width,
       height: original.height,
       format: original.format ?? "",
@@ -79,10 +81,10 @@ export function VariantsList({
       <Table>
         <TableHeader>
           <TableRow className="hover:bg-transparent">
-            <TableHead>Variant</TableHead>
-            <TableHead className="text-right">Dimensions</TableHead>
-            <TableHead>Format</TableHead>
-            <TableHead className="text-right">Size</TableHead>
+            <TableHead>{tr("Variant")}</TableHead>
+            <TableHead className="text-right">{tr("Dimensions")}</TableHead>
+            <TableHead>{tr("Format")}</TableHead>
+            <TableHead className="text-right">{tr("Size")}</TableHead>
             <TableHead className="w-24" />
           </TableRow>
         </TableHeader>

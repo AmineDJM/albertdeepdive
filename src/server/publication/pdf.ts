@@ -205,8 +205,8 @@ export async function renderPdf(doc: EditionDocument, options: RenderPdfOptions 
       pdf.setAuthor(finalDocument.meta.masthead.title);
       pdf.setSubject(finalDocument.meta.issueLabel);
       pdf.setKeywords([finalDocument.meta.versionLabel, finalDocument.meta.generatedAt, finalDocument.meta.label, "Albert School"]);
-      pdf.setProducer("Albert Deep Dive publication pipeline");
-      pdf.setCreator(`Albert Deep Dive print renderer (Chromium ${browser.version()})`);
+      pdf.setProducer("Briefly publication pipeline");
+      pdf.setCreator(`Briefly print renderer (Chromium ${browser.version()})`);
       pdf.setLanguage("en-GB");
       if (!Number.isNaN(generatedAt.getTime())) {
         pdf.setCreationDate(generatedAt);

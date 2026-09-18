@@ -10,6 +10,7 @@ import { NativeSelect } from "@/components/ui/native-select";
 import { archiveEditionAction, moveEditionStatusAction, publishEditionAction } from "@/app/(newsroom)/editions/[editionId]/qa/actions";
 import type { EditionStatus } from "@/lib/editorial/edition-state";
 import { enumLabel } from "@/lib/utils";
+import { useUi } from "@/components/i18n/provider";
 
 export function PublishControls({
   editionId,
@@ -28,6 +29,7 @@ export function PublishControls({
   canPublish: boolean;
   canEdit: boolean;
 }) {
+  const tr = useUi();
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [versionId, setVersionId] = useState(publishableVersions[0]?.id ?? "");
@@ -49,15 +51,15 @@ export function PublishControls({
     <div className="flex flex-wrap items-center gap-2">
       {canEdit && nextStatuses.length ? (
         <>
-          <NativeSelect aria-label="Move the edition to" className="h-8 w-44 text-xs" value={nextStatus} onChange={(e) => setNextStatus(e.target.value as EditionStatus)}>
+          <NativeSelect aria-label={tr("Move the edition to")} className="h-8 w-44 text-xs" value={nextStatus} onChange={(e) => setNextStatus(e.target.value as EditionStatus)}>
             {nextStatuses.map((s) => (
               <option key={s} value={s}>
-                {enumLabel(s)}
+                {tr(enumLabel(s))}
               </option>
             ))}
           </NativeSelect>
           <Button size="sm" variant="outline" disabled={pending || !nextStatus} onClick={() => nextStatus && run(() => moveEditionStatusAction(editionId, nextStatus))}>
-            Move on <ArrowRight />
+            {tr("Move on")}{" "}<ArrowRight />
           </Button>
         </>
       ) : null}
@@ -65,7 +67,7 @@ export function PublishControls({
       {canPublish && status === "FINAL_REVIEW" ? (
         publishableVersions.length ? (
           <>
-            <NativeSelect aria-label="Version to publish" className="h-8 w-32 text-xs" value={versionId} onChange={(e) => setVersionId(e.target.value)}>
+            <NativeSelect aria-label={tr("Version to publish")} className="h-8 w-32 text-xs" value={versionId} onChange={(e) => setVersionId(e.target.value)}>
               {publishableVersions.map((v) => (
                 <option key={v.id} value={v.id}>
                   {v.label}
@@ -75,27 +77,24 @@ export function PublishControls({
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button size="sm" variant="brand" disabled={pending || !versionId || !ready}>
-                  <BookCheck /> Publish the issue
-                </Button>
+                  <BookCheck /> {" "}{tr("Publish the issue")}</Button>
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
-                  <AlertDialogTitle>Publish this issue?</AlertDialogTitle>
+                  <AlertDialogTitle>{tr("Publish this issue?")}</AlertDialogTitle>
                   <AlertDialogDescription>
-                    The version becomes immutable and the edition moves to published. Later corrections need a new edition or a new version, so check the PDF one last time first.
-                  </AlertDialogDescription>
+                    {tr("The version becomes immutable and the edition moves to published. Later corrections need a new edition or a new version, so check the PDF one last time first.")}</AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                  <AlertDialogCancel>Not yet</AlertDialogCancel>
-                  <AlertDialogAction onClick={() => run(() => publishEditionAction(editionId, versionId))}>Publish</AlertDialogAction>
+                  <AlertDialogCancel>{tr("Not yet")}</AlertDialogCancel>
+                  <AlertDialogAction onClick={() => run(() => publishEditionAction(editionId, versionId))}>{tr("Publish")}</AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
           </>
         ) : (
           <span className="flex items-center gap-1.5 text-2xs text-muted-foreground">
-            <ShieldAlert className="size-3.5" /> Generate a v1.0 published version on the exports tab first.
-          </span>
+            <ShieldAlert className="size-3.5" /> {" "}{tr("Generate a v1.0 published version on the exports tab first.")}</span>
         )
       ) : null}
 
@@ -103,17 +102,16 @@ export function PublishControls({
         <AlertDialog>
           <AlertDialogTrigger asChild>
             <Button size="sm" variant="outline" disabled={pending}>
-              <Archive /> Move to the archive
-            </Button>
+              <Archive /> {" "}{tr("Move to the archive")}</Button>
           </AlertDialogTrigger>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Archive this issue?</AlertDialogTitle>
-              <AlertDialogDescription>It stays readable and downloadable in the archive, but it is closed to further editing.</AlertDialogDescription>
+              <AlertDialogTitle>{tr("Archive this issue?")}</AlertDialogTitle>
+              <AlertDialogDescription>{tr("It stays readable and downloadable in the archive, but it is closed to further editing.")}</AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={() => run(() => archiveEditionAction(editionId))}>Archive</AlertDialogAction>
+              <AlertDialogCancel>{tr("Cancel")}</AlertDialogCancel>
+              <AlertDialogAction onClick={() => run(() => archiveEditionAction(editionId))}>{tr("Archive")}</AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>

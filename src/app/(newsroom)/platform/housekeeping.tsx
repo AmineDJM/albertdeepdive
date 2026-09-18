@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { Eraser, Search } from "lucide-react";
 import { pruneGroundsAction } from "./actions";
 import { Button } from "@/components/ui/button";
+import { useUi } from "@/components/i18n/provider";
 
 /**
  * The one kind of file nothing else cleans up.
@@ -14,6 +15,7 @@ import { Button } from "@/components/ui/button";
  * no estimate, no "about". Nothing is listed and nothing is deleted by a page load.
  */
 export function Housekeeping() {
+  const tr = useUi();
   const [pending, startTransition] = useTransition();
   const [checked, setChecked] = useState<{ kept: number; removed: number; referenced: number } | null>(null);
 
@@ -35,11 +37,9 @@ export function Housekeeping() {
   return (
     <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-card px-3.5 py-3">
       <p className="min-w-0 flex-1 text-xs text-muted-foreground">
-        Generated grounds are shared between packs and belong to nobody, so deleting a pack never removes one. Check what is left, then remove what no pack names.
-        {checked ? (
+        {tr("Generated grounds are shared between packs and belong to nobody, so deleting a pack never removes one. Check what is left, then remove what no pack names.")}{" "}{checked ? (
           <span className="mt-1 block text-foreground">
-            {checked.kept + checked.removed} stored · {checked.referenced} named by a pack · {checked.removed} unreferenced and older than a day
-          </span>
+            {checked.kept + checked.removed} {" "}{tr("stored ·")}{" "}{checked.referenced} {" "}{tr("named by a pack ·")}{" "}{checked.removed} {" "}{tr("unreferenced and older than a day")}</span>
         ) : null}
       </p>
       <Button variant="outline" size="sm" disabled={pending} onClick={() => run(true)}>
@@ -47,7 +47,7 @@ export function Housekeeping() {
       </Button>
       {checked?.removed ? (
         <Button size="sm" disabled={pending} onClick={() => run(false)}>
-          <Eraser /> Remove {checked.removed}
+          <Eraser /> {" "}{tr("Remove")}{" "}{checked.removed}
         </Button>
       ) : null}
     </div>

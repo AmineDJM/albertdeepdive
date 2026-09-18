@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatNumber, relativeTime } from "@/lib/utils";
 import { Housekeeping } from "./housekeeping";
+import { getUi } from "@/server/i18n/locale";
 
 export const dynamic = "force-dynamic";
 
@@ -27,13 +28,14 @@ const money = (cents: number, currency = "EUR") => new Intl.NumberFormat("en-GB"
  * this page.
  */
 export default async function PlatformHealthPage() {
+  const tr = await getUi();
   const user = await getCurrentUser();
   if (!hasPermission(user, "settings:manage")) {
     return (
       <>
-        <PageHeader title="Platform" />
+        <PageHeader title={tr("Platform")} />
         <PageBody>
-          <p className="text-[14px] text-muted-foreground">This is the platform console. You need to be a Briefly super admin to see it.</p>
+          <p className="text-[14px] text-muted-foreground">{tr("This is the platform console. You need to be a Briefly super admin to see it.")}</p>
         </PageBody>
       </>
     );
@@ -45,16 +47,16 @@ export default async function PlatformHealthPage() {
 
   return (
     <>
-      <PageHeader title="Platform" description="Every customer on this Briefly, and how it is holding up.">
+      <PageHeader title={tr("Platform")} description={tr("Every customer on this Briefly, and how it is holding up.")}>
         <HubTabs tabs={PLATFORM_TABS} />
       </PageHeader>
       <PageBody className="space-y-6">
         <StatGrid columns={4}>
-          <Stat label="Monthly recurring" value={money(health.revenue.mrrCents)} hint={`${health.revenue.payingWorkspaces} paying · ${health.revenue.freeWorkspaces} free`} icon={CircleDollarSign} hue="amber" href="/platform/workspaces" />
-          <Stat label="Workspaces" value={formatNumber(health.growth.workspacesTotal)} hint={`${health.growth.workspacesNew30} in the last 30 days`} icon={Users} hue="teal" href="/platform/workspaces" />
-          <Stat label="Published, 30 days" value={formatNumber(health.activity.publishedEditions30)} hint={`${formatNumber(health.activity.emailsSent30)} emails sent`} icon={Sparkles} hue="violet" />
+          <Stat label={tr("Monthly recurring")} value={money(health.revenue.mrrCents)} hint={`${health.revenue.payingWorkspaces} paying · ${health.revenue.freeWorkspaces} free`} icon={CircleDollarSign} hue="amber" href="/platform/workspaces" />
+          <Stat label={tr("Workspaces")} value={formatNumber(health.growth.workspacesTotal)} hint={`${health.growth.workspacesNew30} in the last 30 days`} icon={Users} hue="teal" href="/platform/workspaces" />
+          <Stat label={tr("Published, 30 days")} value={formatNumber(health.activity.publishedEditions30)} hint={`${formatNumber(health.activity.emailsSent30)} emails sent`} icon={Sparkles} hue="violet" />
           <Stat
-            label="AI spend, 30 days"
+            label={tr("AI spend, 30 days")}
             value={money(health.spend.aiCostCents30)}
             hint={`${money(health.spend.costPerWorkspaceCents)} per workspace · ${formatNumber(health.spend.aiCalls30)} calls`}
             icon={Cpu}
@@ -70,8 +72,7 @@ export default async function PlatformHealthPage() {
               </span>
               <div className="min-w-0 flex-1">
                 <h2 className="text-[14px] font-semibold">
-                  {missing.length} service{missing.length === 1 ? "" : "s"} not connected
-                </h2>
+                  {missing.length} {" "}{tr("service")}{missing.length === 1 ? "" : "s"} {" "}{tr("not connected")}</h2>
                 <ul className="mt-2 space-y-1">
                   {missing.map((integration) => (
                     <li key={integration.key} className="text-xs text-muted-foreground">
@@ -81,7 +82,7 @@ export default async function PlatformHealthPage() {
                 </ul>
                 <Button asChild size="sm" className="mt-3">
                   <Link href="/platform/integrations">
-                    Connect them <ArrowRight />
+                    {tr("Connect them")}{" "}<ArrowRight />
                   </Link>
                 </Button>
               </div>
@@ -92,13 +93,12 @@ export default async function PlatformHealthPage() {
             <span className="flex size-5 items-center justify-center rounded-full bg-green text-white">
               <Check className="size-3" />
             </span>
-            Every service is connected. Payments, sending, models and storage are all live.
-          </section>
+            {tr("Every service is connected. Payments, sending, models and storage are all live.")}</section>
         )}
 
         <div className="grid gap-4 xl:grid-cols-2">
           <section>
-            <SectionTitle action={problems ? <Badge variant="muted">{problems} in 24h</Badge> : null}>What is failing</SectionTitle>
+            <SectionTitle action={problems ? <Badge variant="muted">{problems} {" "}{tr("in 24h")}</Badge> : null}>{tr("What is failing")}</SectionTitle>
             <div className="rounded-lg border border-border bg-card">
               {failures.length ? (
                 <ul className="divide-y divide-border">
@@ -120,15 +120,14 @@ export default async function PlatformHealthPage() {
                 </ul>
               ) : (
                 <p className="px-3.5 py-8 text-center text-xs text-muted-foreground">
-                  Nothing has failed in the last two days. {health.reliability.jobsQueued} job{health.reliability.jobsQueued === 1 ? "" : "s"} queued,{" "}
-                  {health.reliability.jobsRunning} running.
-                </p>
+                  {tr("Nothing has failed in the last two days.")}{" "}{health.reliability.jobsQueued} {" "}{tr("job")}{health.reliability.jobsQueued === 1 ? "" : "s"} {" "}{tr("queued,")}{" "}
+                  {health.reliability.jobsRunning} {" "}{tr("running.")}</p>
               )}
             </div>
           </section>
 
           <section>
-            <SectionTitle action={dormant.length ? <Badge variant="muted">{dormant.length}</Badge> : null}>Gone quiet</SectionTitle>
+            <SectionTitle action={dormant.length ? <Badge variant="muted">{dormant.length}</Badge> : null}>{tr("Gone quiet")}</SectionTitle>
             <div className="rounded-lg border border-border bg-card">
               {dormant.length ? (
                 <ul className="divide-y divide-border">
@@ -137,39 +136,38 @@ export default async function PlatformHealthPage() {
                       <span className="min-w-0">
                         <span className="block truncate text-[13px] font-medium">{workspace.name}</span>
                         <span className="block truncate text-2xs text-muted-foreground">
-                          {workspace.planName ?? "Free"} · {workspace.editions} edition{workspace.editions === 1 ? "" : "s"} · last seen{" "}
+                          {workspace.planName ?? "Free"} · {workspace.editions} {" "}{tr("edition")}{workspace.editions === 1 ? "" : "s"} {" "}{tr("· last seen")}{" "}
                           {workspace.lastActivity ? relativeTime(workspace.lastActivity) : "never"}
                         </span>
                       </span>
                       <Button asChild variant="ghost" size="xs">
-                        <Link href={`/platform/workspaces?open=${workspace.id}`}>Open</Link>
+                        <Link href={`/platform/workspaces?open=${workspace.id}`}>{tr("Open")}</Link>
                       </Button>
                     </li>
                   ))}
                 </ul>
               ) : (
                 <p className="px-3.5 py-8 text-center text-xs text-muted-foreground">
-                  Every workspace that has published has been active in the last three weeks.
-                </p>
+                  {tr("Every workspace that has published has been active in the last three weeks.")}</p>
               )}
             </div>
           </section>
         </div>
 
         <section>
-          <SectionTitle action={<Button asChild variant="ghost" size="xs"><Link href="/platform/workspaces">All customers <ArrowRight /></Link></Button>}>Plans</SectionTitle>
+          <SectionTitle action={<Button asChild variant="ghost" size="xs"><Link href="/platform/workspaces">{tr("All customers")}{" "}<ArrowRight /></Link></Button>}>{tr("Plans")}</SectionTitle>
           <DataTable
             rows={health.plans}
             rowKey={(row) => row.planKey}
-            empty={{ title: "No plans", description: "Plans are seeded on migration.", icon: CircleDollarSign }}
+            empty={{ title: tr("No plans"), description: tr("Plans are seeded on migration."), icon: CircleDollarSign }}
             columns={[
-              { key: "plan", header: "Plan", cell: (row) => <span className="font-medium">{row.planName}</span> },
-              { key: "price", header: "Monthly", cell: (row) => <span className="tabular">{row.isCustomPriced ? "Custom" : row.priceMonthlyCents ? money(row.priceMonthlyCents) : "Free"}</span>, align: "right" },
-              { key: "workspaces", header: "Workspaces", cell: (row) => <span className="tabular">{row.workspaces}</span>, align: "right" },
-              { key: "paying", header: "Paying", cell: (row) => <span className="tabular">{row.paying}</span>, align: "right" },
+              { key: "plan", header: tr("Plan"), cell: (row) => <span className="font-medium">{row.planName}</span> },
+              { key: "price", header: tr("Monthly"), cell: (row) => <span className="tabular">{row.isCustomPriced ? "Custom" : row.priceMonthlyCents ? money(row.priceMonthlyCents) : "Free"}</span>, align: "right" },
+              { key: "workspaces", header: tr("Workspaces"), cell: (row) => <span className="tabular">{row.workspaces}</span>, align: "right" },
+              { key: "paying", header: tr("Paying"), cell: (row) => <span className="tabular">{row.paying}</span>, align: "right" },
               {
                 key: "mrr",
-                header: "Contributes",
+                header: tr("Contributes"),
                 cell: (row) => <span className="tabular font-medium">{money(row.paying * row.priceMonthlyCents)}</span>,
                 align: "right",
               },
@@ -182,20 +180,18 @@ export default async function PlatformHealthPage() {
             {health.revenue.pastDue ? (
               <span className="flex items-center gap-2">
                 <AlertTriangle className="size-3.5 text-coral" />
-                {health.revenue.pastDue} workspace{health.revenue.pastDue === 1 ? "" : "s"} past due — still working while Stripe retries.
-              </span>
+                {health.revenue.pastDue} {" "}{tr("workspace")}{health.revenue.pastDue === 1 ? "" : "s"} {" "}{tr("past due — still working while Stripe retries.")}</span>
             ) : null}
             {health.revenue.trialing ? (
               <span className="flex items-center gap-2">
                 <Sparkles className="size-3.5 text-violet" />
-                {health.revenue.trialing} on trial.
-              </span>
+                {health.revenue.trialing} {" "}{tr("on trial.")}</span>
             ) : null}
           </section>
         ) : null}
 
         <section>
-          <SectionTitle>Housekeeping</SectionTitle>
+          <SectionTitle>{tr("Housekeeping")}</SectionTitle>
           <Housekeeping />
         </section>
       </PageBody>

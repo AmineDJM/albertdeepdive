@@ -15,10 +15,12 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { initials, relativeTime, cn } from "@/lib/utils";
 import { ROLE_LABELS, type Role } from "@/lib/auth/permissions";
 import { markAllNotificationsReadAction, markNotificationReadAction, signOutAction } from "@/app/(newsroom)/actions";
+import { useUi } from "@/components/i18n/provider";
 
 export type TopbarNotification = { id: string; title: string; body: string | null; href: string | null; readAt: Date | null; createdAt: Date; type: string };
 
 export function Topbar({ user, notifications, unread, onOpenSearch }: { user: { name: string; email: string; role: Role }; notifications: TopbarNotification[]; unread: number; onOpenSearch: () => void }) {
+  const tr = useUi();
   const router = useRouter();
   const t = useTranslations();
   const { theme, setTheme } = useTheme();
@@ -27,11 +29,11 @@ export function Topbar({ user, notifications, unread, onOpenSearch }: { user: { 
     <header className="flex h-12 shrink-0 items-center justify-end gap-1 border-b border-border bg-background px-3">
       <Tooltip>
         <TooltipTrigger asChild>
-          <Button variant="ghost" size="icon" onClick={onOpenSearch} aria-label="Search">
+          <Button variant="ghost" size="icon" onClick={onOpenSearch} aria-label={tr("Search")}>
             <Search />
           </Button>
         </TooltipTrigger>
-        <TooltipContent>Search (⌘K)</TooltipContent>
+        <TooltipContent>{tr("Search (⌘K)")}</TooltipContent>
       </Tooltip>
       <Popover>
         <PopoverTrigger asChild>
@@ -42,15 +44,14 @@ export function Topbar({ user, notifications, unread, onOpenSearch }: { user: { 
         </PopoverTrigger>
         <PopoverContent align="end" className="w-[360px] p-0">
           <div className="flex items-center justify-between border-b px-3 py-2">
-            <span className="text-[13px] font-semibold">Notifications</span>
+            <span className="text-[13px] font-semibold">{tr("Notifications")}</span>
             {unread ? (
               <Button variant="ghost" size="xs" disabled={pending} onClick={() => startTransition(async () => { await markAllNotificationsReadAction(); router.refresh(); })}>
-                Mark all read
-              </Button>
+                {tr("Mark all read")}</Button>
             ) : null}
           </div>
           <ul className="max-h-[380px] overflow-y-auto scrollbar-thin">
-            {notifications.length === 0 ? <li className="px-3 py-8 text-center text-xs text-muted-foreground">You&rsquo;re all caught up.</li> : null}
+            {notifications.length === 0 ? <li className="px-3 py-8 text-center text-xs text-muted-foreground">{tr("You’re all caught up.")}</li> : null}
             {notifications.map((n) => (
               <li key={n.id} className={cn("border-b last:border-0", !n.readAt && "bg-brand-soft/30")}>
                 <button
@@ -77,22 +78,22 @@ export function Topbar({ user, notifications, unread, onOpenSearch }: { user: { 
       </Popover>
       <Tooltip>
         <TooltipTrigger asChild>
-          <Button variant="ghost" size="icon" aria-label="Toggle theme" onClick={() => setTheme(theme === "dark" ? "light" : "dark")}>
+          <Button variant="ghost" size="icon" aria-label={tr("Toggle theme")} onClick={() => setTheme(theme === "dark" ? "light" : "dark")}>
             <Sun className="dark:hidden" />
             <Moon className="hidden dark:block" />
           </Button>
         </TooltipTrigger>
-        <TooltipContent>Toggle theme</TooltipContent>
+        <TooltipContent>{tr("Toggle theme")}</TooltipContent>
       </Tooltip>
       <Tooltip>
         <TooltipTrigger asChild>
-          <Button variant="ghost" size="icon" asChild aria-label="Help">
+          <Button variant="ghost" size="icon" asChild aria-label={tr("Help")}>
             <Link href="/settings/help">
               <HelpCircle />
             </Link>
           </Button>
         </TooltipTrigger>
-        <TooltipContent>How the newsroom works</TooltipContent>
+        <TooltipContent>{tr("How the newsroom works")}</TooltipContent>
       </Tooltip>
       <DropdownMenu>
         <DropdownMenuTrigger className="ml-1 flex items-center gap-2 rounded-md py-1 pr-1 pl-1 hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none">
@@ -108,14 +109,13 @@ export function Topbar({ user, notifications, unread, onOpenSearch }: { user: { 
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
           <div className="flex items-center justify-between gap-2 px-2 py-1.5">
-            <span className="text-2xs text-muted-foreground">Language</span>
+            <span className="text-2xs text-muted-foreground">{tr("Language")}</span>
             <LanguagePicker />
           </div>
           <DropdownMenuSeparator />
           <DropdownMenuItem asChild>
             <Link href="/settings/profile">
-              <UserRound /> Profile
-            </Link>
+              <UserRound /> {" "}{tr("Profile")}</Link>
           </DropdownMenuItem>
           <DropdownMenuItem variant="destructive" onSelect={() => startTransition(async () => { await signOutAction(); })}>
             <LogOut /> {t("auth.signOut")}

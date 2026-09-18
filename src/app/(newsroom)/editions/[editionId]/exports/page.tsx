@@ -9,6 +9,7 @@ import { Stat, StatGrid } from "@/components/newsroom/stat";
 import { EmptyState } from "@/components/ui/empty-state";
 import { formatBytes } from "@/server/media/constants";
 import { creatorNames } from "@/server/publication/creators";
+import { getUi } from "@/server/i18n/locale";
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +22,7 @@ function allowedKinds(status: string): PublicationKind[] {
 }
 
 export default async function ExportsPage({ params }: { params: Promise<{ editionId: string }> }) {
+  const tr = await getUi();
   const { editionId } = await params;
   const user = await getCurrentUser();
   const edition = await getEdition(editionId).catch(() => null);
@@ -56,29 +58,29 @@ export default async function ExportsPage({ params }: { params: Promise<{ editio
   return (
     <>
       <PageHeader
-        title="Exports"
+        title={tr("Exports")}
         description={`${versions.length} version${versions.length === 1 ? "" : "s"} · ${ready.length} rendered · the PDF and the Word document are always built from the same snapshot`}
       />
       <PageBody className="space-y-5">
         <StatGrid columns={4}>
-          <Stat label="Latest rendered" value={latestReady?.label ?? "—"} hint={latestReady ? latestReady.kind.replace(/_/g, " ").toLowerCase() : "Nothing rendered yet"} />
-          <Stat label="Pages" value={latestReadyPages ?? "—"} hint="A4 portrait" tone="brand" />
-          <Stat label="PDF" value={pdf ? formatBytes(pdf.sizeBytes) : "—"} hint={pdf?.fileName ?? "Not generated"} />
-          <Stat label="Word" value={docx ? formatBytes(docx.sizeBytes) : "—"} hint={docx?.fileName ?? "Not generated"} />
+          <Stat label={tr("Latest rendered")} value={latestReady?.label ?? "—"} hint={latestReady ? latestReady.kind.replace(/_/g, " ").toLowerCase() : "Nothing rendered yet"} />
+          <Stat label={tr("Pages")} value={latestReadyPages ?? "—"} hint={tr("A4 portrait")} tone="brand" />
+          <Stat label={tr("PDF")} value={pdf ? formatBytes(pdf.sizeBytes) : "—"} hint={pdf?.fileName ?? "Not generated"} />
+          <Stat label={tr("Word")} value={docx ? formatBytes(docx.sizeBytes) : "—"} hint={docx?.fileName ?? "Not generated"} />
         </StatGrid>
 
         {versions.length ? (
           <section>
-            <SectionTitle>Versions</SectionTitle>
+            <SectionTitle>{tr("Versions")}</SectionTitle>
             <ExportPanel editionId={editionId} versions={views} allowedKinds={kinds} canRun={canRun} />
           </section>
         ) : canRun ? (
           <section>
-            <SectionTitle>Generate the issue</SectionTitle>
+            <SectionTitle>{tr("Generate the issue")}</SectionTitle>
             <ExportPanel editionId={editionId} versions={[]} allowedKinds={kinds} canRun={canRun} />
           </section>
         ) : (
-          <EmptyState icon={FileDown} title="No export yet" description="Once the flatplan is validated, generate a version here to produce the PDF and the Word document together." />
+          <EmptyState icon={FileDown} title={tr("No export yet")} description={tr("Once the flatplan is validated, generate a version here to produce the PDF and the Word document together.")} />
         )}
       </PageBody>
     </>

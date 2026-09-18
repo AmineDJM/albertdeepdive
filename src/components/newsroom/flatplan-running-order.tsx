@@ -12,6 +12,7 @@ import { moveSectionAction } from "@/app/(newsroom)/editions/[editionId]/layout/
 import type { Flatplan } from "@/server/publication/flatplan";
 import { storyTypeShort } from "@/lib/constants";
 import { cn } from "@/lib/utils";
+import { useUi } from "@/components/i18n/provider";
 
 /**
  * Sections in the order they appear in the issue, with the pages they occupy. Moving a section moves
@@ -28,6 +29,7 @@ export function FlatplanRunningOrder({
   stories: Flatplan["stories"];
   canEdit: boolean;
 }) {
+  const tr = useUi();
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const unplaced = stories.filter((s) => s.page === null);
@@ -48,7 +50,7 @@ export function FlatplanRunningOrder({
     <div className="space-y-4">
       <div className="rounded-lg border border-border bg-card">
         <div className="px-3 pt-3">
-          <SectionTitle>Running order</SectionTitle>
+          <SectionTitle>{tr("Running order")}</SectionTitle>
         </div>
         <ul className="divide-y divide-border border-t border-border">
           {sectionRuns.map((run, index) => (
@@ -57,8 +59,7 @@ export function FlatplanRunningOrder({
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-xs font-medium">{run.name}</span>
                 <span className="tabular block text-2xs text-muted-foreground">
-                  {run.firstPage === run.lastPage ? `p. ${run.firstPage}` : `pp. ${run.firstPage}–${run.lastPage}`} · {run.pages} page{run.pages === 1 ? "" : "s"} · {run.stories} stor
-                  {run.stories === 1 ? "y" : "ies"}
+                  {run.firstPage === run.lastPage ? `p. ${run.firstPage}` : `pp. ${run.firstPage}–${run.lastPage}`} · {run.pages} {" "}{tr("page")}{run.pages === 1 ? "" : "s"} · {run.stories} {" "}{tr("stor")}{" "}{run.stories === 1 ? "y" : "ies"}
                 </span>
               </span>
               {!run.contiguous ? (
@@ -68,7 +69,7 @@ export function FlatplanRunningOrder({
                       <FileWarning className="size-3.5" />
                     </span>
                   </TooltipTrigger>
-                  <TooltipContent>This section&rsquo;s pages are split across the issue, so it cannot be moved as a block.</TooltipContent>
+                  <TooltipContent>{tr("This section’s pages are split across the issue, so it cannot be moved as a block.")}</TooltipContent>
                 </Tooltip>
               ) : null}
               {canEdit ? (
@@ -95,7 +96,7 @@ export function FlatplanRunningOrder({
               ) : null}
             </li>
           ))}
-          {!sectionRuns.length ? <li className="px-3 py-3 text-xs text-muted-foreground">No page in the plan yet.</li> : null}
+          {!sectionRuns.length ? <li className="px-3 py-3 text-xs text-muted-foreground">{tr("No page in the plan yet.")}</li> : null}
         </ul>
       </div>
 
@@ -108,8 +109,7 @@ export function FlatplanRunningOrder({
               </span>
             }
           >
-            Not on the plan
-          </SectionTitle>
+            {tr("Not on the plan")}</SectionTitle>
         </div>
         {unplaced.length ? (
           <ul className="divide-y divide-border border-t border-border">
@@ -119,18 +119,17 @@ export function FlatplanRunningOrder({
                   {story.title}
                 </Link>
                 <span className="tabular text-2xs text-muted-foreground">
-                  {storyTypeShort(story.storyType)} · {story.wordCount} words · {story.sectionName ?? "no section"}
+                  {storyTypeShort(story.storyType)} · {story.wordCount} {" "}{tr("words ·")}{" "}{story.sectionName ?? "no section"}
                 </span>
               </li>
             ))}
           </ul>
         ) : (
-          <p className="border-t border-border px-3 py-3 text-xs text-muted-foreground">Every selected story has a page.</p>
+          <p className="border-t border-border px-3 py-3 text-xs text-muted-foreground">{tr("Every selected story has a page.")}</p>
         )}
         {unplaced.length ? (
           <p className="border-t border-border px-3 py-2 text-2xs text-muted-foreground">
-            Re-plan the pages to place them automatically, or pin one to a page from the page inspector.
-          </p>
+            {tr("Re-plan the pages to place them automatically, or pin one to a page from the page inspector.")}</p>
         ) : null}
       </div>
     </div>

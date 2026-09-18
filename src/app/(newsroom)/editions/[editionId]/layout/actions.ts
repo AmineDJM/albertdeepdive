@@ -19,6 +19,7 @@ import {
 } from "@/server/publication/flatplan";
 import { ok, toActionFailure, type ActionResult } from "@/lib/action-result";
 import { templateByCode } from "@/lib/constants";
+import { getUi } from "@/server/i18n/locale";
 
 function revalidateFlatplan(editionId: string) {
   revalidatePath(`/editions/${editionId}/layout`);
@@ -63,11 +64,12 @@ export async function setPageTemplateAction(editionId: string, pageId: string, t
 
 /** Persists a new running order; `orderedAnchorIds` are the pages the editor can move. */
 export async function reorderPagesAction(editionId: string, orderedAnchorIds: string[]): Promise<ActionResult<{ pages: number }>> {
+  const tr = await getUi();
   try {
     const user = await requirePermission("layout:edit");
     const result = await reorderPlanPages(editionId, orderedAnchorIds, user.id);
     revalidateFlatplan(editionId);
-    return ok(result, "Running order saved");
+    return ok(result, tr("Running order saved"));
   } catch (err) {
     return toActionFailure(err);
   }
@@ -153,11 +155,12 @@ export async function setPageStoryAction(editionId: string, pageId: string, stor
 }
 
 export async function setPageNotesAction(editionId: string, pageId: string, notes: string): Promise<ActionResult<{ pageNumber: number }>> {
+  const tr = await getUi();
   try {
     const user = await requirePermission("layout:edit");
     const result = await setPageNotes(editionId, pageId, notes, user.id);
     revalidateFlatplan(editionId);
-    return ok(result, "Note saved");
+    return ok(result, tr("Note saved"));
   } catch (err) {
     return toActionFailure(err);
   }

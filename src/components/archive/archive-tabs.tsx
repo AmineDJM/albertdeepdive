@@ -3,15 +3,17 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { useUi } from "@/components/i18n/provider";
 
 export type ArchiveTab = { key: string; label: string; count?: number };
 
 /** Link-based tabs that keep the search query while switching views. */
 export function ArchiveTabs({ tabs, active }: { tabs: ArchiveTab[]; active: string }) {
+  const tr = useUi();
   const params = useSearchParams();
   const q = params.get("q");
   return (
-    <nav className="flex h-9 items-center gap-4 border-b border-border" aria-label="Archive views">
+    <nav className="flex h-9 items-center gap-4 border-b border-border" aria-label={tr("Archive views")}>
       {tabs.map((t) => {
         const href = `/archive?tab=${t.key}${q ? `&q=${encodeURIComponent(q)}` : ""}`;
         const isActive = t.key === active;

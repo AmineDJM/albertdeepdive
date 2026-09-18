@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 import { getCurrentUser } from "@/server/auth/session";
 import { getTenant } from "@/server/tenancy/context";
 import { isLocale, localeFromHeader, translator, type Locale, type Translate } from "@/lib/i18n";
+import { uiTranslator, type UiTranslate } from "@/lib/i18n/ui";
 
 /**
  * Which language a screen is in.
@@ -30,4 +31,25 @@ export const currentLocale = cache(async (): Promise<Locale> => {
 /** A translator for the current screen. */
 export async function getTranslations(): Promise<Translate> {
   return translator(await currentLocale());
+}
+
+/**
+ * The interface translator for the current request.
+ *
+ * Async, because the first thing it needs — who is signed in and what they chose — is. The locale
+ * it resolves is kept for the request in a React cache box, which is what lets the sync `ui()`
+ * below serve everything rendered afterwards: a page awaits `getUi()` once, and the components
+ * beneath it read the answer without asking again.
+ */
+const requestLocale = cache(() => ({ value: null as Locale | null }));
+
+export async function getUi(): Promise<UiTranslate> {
+  const locale = await currentLocale();
+  requestLocale().value = locale;
+  return uiTranslator(locale);
+}
+
+/** The sync form, for components rendered after a page has awaited `getUi()`. English until then. */
+export function ui(): UiTranslate {
+  return uiTranslator(requestLocale().value ?? "en");
 }

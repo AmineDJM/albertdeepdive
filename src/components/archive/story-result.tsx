@@ -5,10 +5,12 @@ import { CampusList } from "@/components/newsroom/campus-chip";
 import { StoryStatusBadge } from "@/components/newsroom/status-badge";
 import { storyTypeShort } from "@/lib/constants";
 import { enumLabel } from "@/lib/utils";
+import { getUi } from "@/server/i18n/locale";
 
 const ROLE_ORDER = ["WINNER", "INTERVIEWEE", "FOUNDER", "AUTHOR", "ORGANISER", "FINALIST", "JURY", "MENTIONED"];
 
-export function StoryResult({ story }: { story: ArchiveStory }) {
+export async function StoryResult({ story }: { story: ArchiveStory }) {
+  const tr = await getUi();
   const people = [...story.people].sort((a, b) => ROLE_ORDER.indexOf(a.role) - ROLE_ORDER.indexOf(b.role)).slice(0, 6);
   const orgs = story.organisations.slice(0, 4);
   const published = story.status === "PUBLISHED" || story.editionStatus === "PUBLISHED" || story.editionStatus === "ARCHIVED";
@@ -21,7 +23,7 @@ export function StoryResult({ story }: { story: ArchiveStory }) {
           <span>{storyTypeShort(story.storyType)}</span>
           {story.bdd?.cohortLabel ? <span>· {story.bdd.cohortLabel}</span> : null}
           <CampusList campuses={story.campuses} max={3} />
-          {story.isCover ? <span className="rounded-sm bg-brand-soft px-1 text-brand-foreground">Cover</span> : null}
+          {story.isCover ? <span className="rounded-sm bg-brand-soft px-1 text-brand-foreground">{tr("Cover")}</span> : null}
           {!published ? <StoryStatusBadge status={story.status} /> : null}
         </div>
         <h3 className="mt-0.5 font-display text-[15px] leading-snug font-semibold tracking-tight">
@@ -33,23 +35,23 @@ export function StoryResult({ story }: { story: ArchiveStory }) {
         {people.length || orgs.length ? (
           <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
             {people.map((p) => (
-              <Link key={`${p.id}-${p.role}`} href={`/archive?person=${encodeURIComponent(p.name)}`} className="inline-flex items-center gap-1 rounded-sm border border-border bg-card px-1.5 py-0.5 text-2xs hover:border-brand/50" title={enumLabel(p.role)}>
+              <Link key={`${p.id}-${p.role}`} href={`/archive?person=${encodeURIComponent(p.name)}`} className="inline-flex items-center gap-1 rounded-sm border border-border bg-card px-1.5 py-0.5 text-2xs hover:border-brand/50" title={tr(enumLabel(p.role))}>
                 <UserRound className="size-3 text-muted-foreground" />
                 {p.name}
-                {p.role !== "MENTIONED" ? <span className="text-muted-foreground">· {enumLabel(p.role).toLowerCase()}</span> : null}
+                {p.role !== "MENTIONED" ? <span className="text-muted-foreground">· {tr(enumLabel(p.role).toLowerCase())}</span> : null}
               </Link>
             ))}
             {orgs.map((o) => (
-              <Link key={`${o.id}-${o.role}`} href={`/archive?organisation=${encodeURIComponent(o.name)}`} className="inline-flex items-center gap-1 rounded-sm border border-border bg-card px-1.5 py-0.5 text-2xs hover:border-brand/50" title={`${enumLabel(o.type)} · ${enumLabel(o.role)}`}>
+              <Link key={`${o.id}-${o.role}`} href={`/archive?organisation=${encodeURIComponent(o.name)}`} className="inline-flex items-center gap-1 rounded-sm border border-border bg-card px-1.5 py-0.5 text-2xs hover:border-brand/50" title={`${tr(enumLabel(o.type))} · ${tr(enumLabel(o.role))}`}>
                 <Building2 className="size-3 text-muted-foreground" />
                 {o.name}
               </Link>
             ))}
-            {story.people.length > people.length ? <span className="text-2xs text-muted-foreground">+{story.people.length - people.length} more</span> : null}
+            {story.people.length > people.length ? <span className="text-2xs text-muted-foreground">+{story.people.length - people.length} {" "}{tr("more")}</span> : null}
           </div>
         ) : null}
       </div>
-      {story.wordCount ? <span className="tabular hidden shrink-0 self-start pt-1 text-2xs text-muted-foreground sm:block">{story.wordCount} words</span> : null}
+      {story.wordCount ? <span className="tabular hidden shrink-0 self-start pt-1 text-2xs text-muted-foreground sm:block">{story.wordCount} {" "}{tr("words")}</span> : null}
     </article>
   );
 }

@@ -2,6 +2,7 @@
 
 import { ChartCard } from "@/components/analytics/charts";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { useUi } from "@/components/i18n/provider";
 
 export type HeatmapRow = { key: string; label: string; values: Record<string, number>; total: number };
 export type HeatmapColumn = { key: string; label: string };
@@ -29,6 +30,7 @@ function fill(step: number) {
  * and a table twin complete it.
  */
 export function HeatmapCard({ title, description, rows, columns, max, unit = "stories", className, emptyText = "Nothing planned yet." }: { title: string; description?: string; rows: HeatmapRow[]; columns: HeatmapColumn[]; max: number; unit?: string; className?: string; emptyText?: string }) {
+  const tx = useUi();
   const empty = !rows.length || !columns.length || max <= 0;
   return (
     <ChartCard
@@ -42,13 +44,13 @@ export function HeatmapCard({ title, description, rows, columns, max, unit = "st
           <Table>
             <TableHeader>
               <TableRow className="hover:bg-transparent">
-                <TableHead>Section</TableHead>
+                <TableHead>{tx("Section")}</TableHead>
                 {columns.map((c) => (
                   <TableHead key={c.key} className="text-right">
                     {c.label}
                   </TableHead>
                 ))}
-                <TableHead className="text-right">Total</TableHead>
+                <TableHead className="text-right">{tx("Total")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -75,8 +77,7 @@ export function HeatmapCard({ title, description, rows, columns, max, unit = "st
               <thead>
                 <tr>
                   <th scope="col" className="w-[38%] px-1 pb-1 text-left text-2xs font-medium text-muted-foreground">
-                    Section
-                  </th>
+                    {tx("Section")}</th>
                   {columns.map((c) => (
                     <th key={c.key} scope="col" className="px-1 pb-1 text-center text-2xs font-medium text-muted-foreground">
                       {c.label}
@@ -107,7 +108,7 @@ export function HeatmapCard({ title, description, rows, columns, max, unit = "st
             </table>
           </div>
           <div className="mt-2.5 flex items-center gap-2 px-1 text-2xs text-muted-foreground">
-            <span>None</span>
+            <span>{tx("None")}</span>
             <span className="flex gap-[2px]" aria-hidden>
               {STEPS.map((_, i) => (
                 <span key={i} className="size-3 rounded-[3px] border border-border/60" style={{ background: fill(i) }} />

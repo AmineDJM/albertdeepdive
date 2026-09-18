@@ -18,10 +18,12 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency, formatDate, formatDateTime, relativeTime, enumLabel } from "@/lib/utils";
 import { PHASES, STATUS_LABELS, nextStatuses, phaseForStatus } from "@/lib/editorial/edition-state";
+import { getUi } from "@/server/i18n/locale";
 
 export const dynamic = "force-dynamic";
 
 export default async function ControlRoomPage({ params }: { params: Promise<{ editionId: string }> }) {
+  const tr = await getUi();
   const { editionId } = await params;
   const user = await getCurrentUser();
   const [d, activity, outputs, translate] = await Promise.all([editionDashboard(editionId), recentActivity(editionId, 8), outputMatrix(editionId), getTranslations()]);
@@ -30,13 +32,13 @@ export default async function ControlRoomPage({ params }: { params: Promise<{ ed
   const phase = phaseForStatus(d.edition.status);
   const phaseIndex = PHASES.findIndex((p) => p.key === phase);
   const phases: PhaseItem[] = [
-    { key: "COLLECT", label: "Collect", detail: `${d.submissions.total} submissions · ${d.requests.submitted}/${d.requests.invited} contributors`, href: `${ed}/campaign`, progress: { value: d.requests.submitted, max: d.requests.invited } },
-    { key: "ORGANISE", label: "Organise", detail: `${d.clusters.total} clusters · ${d.stories.selected} stories selected`, href: `${ed}/stories`, progress: { value: d.stories.selected, max: Math.max(d.stories.total, 1) } },
-    { key: "WRITE", label: "Write", detail: `${d.articles.drafted} / ${d.stories.selected} articles drafted`, href: `${ed}/articles`, progress: { value: d.articles.drafted, max: d.stories.selected } },
-    { key: "EDIT", label: "Edit", detail: `${d.articles.approved} / ${d.stories.selected} approved`, href: `${ed}/articles`, progress: { value: d.articles.approved, max: d.stories.selected } },
-    { key: "LAYOUT", label: "Layout", detail: `${d.layout.ready} / ${d.layout.pages || d.layout.target} pages ready`, href: `${ed}/layout`, progress: { value: d.layout.ready, max: d.layout.pages || d.layout.target } },
-    { key: "QA", label: "QA", detail: d.latestVersion ? `${d.latestVersion.label} · ${enumLabel(d.latestVersion.status)}` : "Not started", href: `${ed}/qa` },
-    { key: "PUBLISH", label: "Publish", detail: d.edition.publishedAt ? `Published ${formatDate(d.edition.publishedAt)}` : `Target ${formatDate(d.edition.publicationTargetAt)}`, href: `${ed}/qa` },
+    { key: "COLLECT", label: tr("Collect"), detail: `${d.submissions.total} submissions · ${d.requests.submitted}/${d.requests.invited} contributors`, href: `${ed}/campaign`, progress: { value: d.requests.submitted, max: d.requests.invited } },
+    { key: "ORGANISE", label: tr("Organise"), detail: `${d.clusters.total} clusters · ${d.stories.selected} stories selected`, href: `${ed}/stories`, progress: { value: d.stories.selected, max: Math.max(d.stories.total, 1) } },
+    { key: "WRITE", label: tr("Write"), detail: `${d.articles.drafted} / ${d.stories.selected} articles drafted`, href: `${ed}/articles`, progress: { value: d.articles.drafted, max: d.stories.selected } },
+    { key: "EDIT", label: tr("Edit"), detail: `${d.articles.approved} / ${d.stories.selected} approved`, href: `${ed}/articles`, progress: { value: d.articles.approved, max: d.stories.selected } },
+    { key: "LAYOUT", label: tr("Layout"), detail: `${d.layout.ready} / ${d.layout.pages || d.layout.target} pages ready`, href: `${ed}/layout`, progress: { value: d.layout.ready, max: d.layout.pages || d.layout.target } },
+    { key: "QA", label: tr("QA"), detail: d.latestVersion ? `${d.latestVersion.label} · ${tr(enumLabel(d.latestVersion.status))}` : "Not started", href: `${ed}/qa` },
+    { key: "PUBLISH", label: tr("Publish"), detail: d.edition.publishedAt ? `Published ${formatDate(d.edition.publishedAt)}` : `Target ${formatDate(d.edition.publicationTargetAt)}`, href: `${ed}/qa` },
   ].map((p, i) => ({ ...p, state: (i < phaseIndex ? "done" : i === phaseIndex ? "active" : "todo") as PhaseItem["state"] }));
 
   const canTransition = hasPermission(user, "edition:edit");
@@ -53,7 +55,7 @@ export default async function ControlRoomPage({ params }: { params: Promise<{ ed
         : output.status === "FAILED"
           ? (output.lastError ?? "Failed")
           : format === "EMAIL"
-            ? `${output.recipientCount} recipient${output.recipientCount === 1 ? "" : "s"} · ${enumLabel(output.status)}`
+            ? `${output.recipientCount} recipient${output.recipientCount === 1 ? "" : "s"} · ${tr(enumLabel(output.status))}`
             : enumLabel(output.status),
     locked: output?.status === "PUBLISHED",
     publicUrl: format === "WEB" && output?.publicSlug ? `/r/${output.publicSlug}` : null,
@@ -71,7 +73,7 @@ export default async function ControlRoomPage({ params }: { params: Promise<{ ed
             <div className="flex flex-col gap-4 p-4">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                  <div className="label-caps">Control room</div>
+                  <div className="label-caps">{tr("Control room")}</div>
                   {/*
                     * The edition's title is this page's title, so it is the h1.
                     *
@@ -81,25 +83,25 @@ export default async function ControlRoomPage({ params }: { params: Promise<{ ed
                     * of a page that is not there.
                     */}
                   <h1 className="masthead text-[24px] leading-tight font-semibold tracking-tight">{d.edition.title}</h1>
-                  <p className="mt-1 text-xs text-muted-foreground">{STATUS_LABELS[d.edition.status]} · publication target {formatDate(d.edition.publicationTargetAt)} · final review {formatDateTime(d.edition.finalReviewAt)}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">{STATUS_LABELS[d.edition.status]} {" "}{tr("· publication target")}{" "}{formatDate(d.edition.publicationTargetAt)} {" "}{tr("· final review")}{" "}{formatDateTime(d.edition.finalReviewAt)}</p>
                 </div>
                 {canTransition ? <EditionStatusControls editionId={editionId} current={d.edition.status} options={options} /> : null}
               </div>
               <dl className="grid grid-cols-2 gap-x-6 gap-y-2 text-xs sm:grid-cols-4">
                 <div>
-                  <dt className="label-caps">Campaign</dt>
+                  <dt className="label-caps">{tr("Campaign")}</dt>
                   <dd className="mt-0.5 font-medium">{d.campaign ? `${formatDate(d.campaign.opensAt)} → ${formatDate(d.campaign.graceEndsAt)}` : "Not scheduled"}</dd>
                 </div>
                 <div>
-                  <dt className="label-caps">Response rate</dt>
+                  <dt className="label-caps">{tr("Response rate")}</dt>
                   <dd className="mt-0.5 font-medium">{d.requests.invited ? `${Math.round(d.requests.responseRate * 100)}% (${d.requests.submitted}/${d.requests.invited})` : "—"}</dd>
                 </div>
                 <div>
-                  <dt className="label-caps">Pages</dt>
-                  <dd className="mt-0.5 font-medium">{d.layout.pages || 0} planned / {d.edition.targetPageCount} target</dd>
+                  <dt className="label-caps">{tr("Pages")}</dt>
+                  <dd className="mt-0.5 font-medium">{d.layout.pages || 0} {" "}{tr("planned /")}{" "}{d.edition.targetPageCount} {" "}{tr("target")}</dd>
                 </div>
                 <div>
-                  <dt className="label-caps">Editor in chief</dt>
+                  <dt className="label-caps">{tr("Editor in chief")}</dt>
                   <dd className="mt-0.5 font-medium">{d.edition.editorInChief?.name ?? "—"}</dd>
                 </div>
               </dl>
@@ -110,11 +112,11 @@ export default async function ControlRoomPage({ params }: { params: Promise<{ ed
                 </div>
               </div>
               <div className="flex flex-wrap gap-2">
-                <Button asChild size="sm"><Link href={`${ed}/inbox`}>Inbox <ArrowRight /></Link></Button>
-                <Button asChild size="sm" variant="outline"><Link href={`${ed}/stories`}>Stories</Link></Button>
-                <Button asChild size="sm" variant="outline"><Link href={`${ed}/layout`}>Flatplan</Link></Button>
-                <Button asChild size="sm" variant="outline"><Link href={`${ed}/qa`}>Quality gates</Link></Button>
-                <Button asChild size="sm" variant="ghost"><a href={`/print/edition/${editionId}`} target="_blank" rel="noreferrer">Live preview <ExternalLink /></a></Button>
+                <Button asChild size="sm"><Link href={`${ed}/inbox`}>{tr("Inbox")}{" "}<ArrowRight /></Link></Button>
+                <Button asChild size="sm" variant="outline"><Link href={`${ed}/stories`}>{tr("Stories")}</Link></Button>
+                <Button asChild size="sm" variant="outline"><Link href={`${ed}/layout`}>{tr("Flatplan")}</Link></Button>
+                <Button asChild size="sm" variant="outline"><Link href={`${ed}/qa`}>{tr("Quality gates")}</Link></Button>
+                <Button asChild size="sm" variant="ghost"><a href={`/print/edition/${editionId}`} target="_blank" rel="noreferrer">{tr("Live preview")}{" "}<ExternalLink /></a></Button>
                 {hasPermission(user, "settings:manage") ? <SimulateReturnsButton editionId={editionId} /> : null}
                 {hasPermission(user, "edition:publish") && d.edition.status !== "PUBLISHED" && d.edition.status !== "ARCHIVED" ? <AutopilotButton editionId={editionId} /> : null}
               </div>
@@ -122,51 +124,51 @@ export default async function ControlRoomPage({ params }: { params: Promise<{ ed
           </div>
         </div>
         <div className="rounded-lg border border-border bg-card p-4 shadow-xs">
-          <SectionTitle>Coverage by campus</SectionTitle>
+          <SectionTitle>{tr("Coverage by campus")}</SectionTitle>
           <ul className="space-y-2.5">
             {d.campuses.map((c) => (
               <li key={c.campusId}>
                 <div className="flex items-center justify-between text-xs">
                   <span className="flex items-center gap-1.5 font-medium"><span className="size-2 rounded-full" style={{ backgroundColor: c.colour ?? "#2BAFE0" }} />{c.name}</span>
-                  <span className="tabular text-muted-foreground">{c.submissions} subs · {c.stories} stories</span>
+                  <span className="tabular text-muted-foreground">{c.submissions} {" "}{tr("subs ·")}{" "}{c.stories} {" "}{tr("stories")}</span>
                 </div>
                 <ProgressBar value={c.submissions} max={Math.max(1, ...d.campuses.map((x) => x.submissions))} className="mt-1" tone={c.submissions === 0 ? "warning" : "brand"} />
               </li>
             ))}
           </ul>
           <div className="mt-3 flex items-center justify-between border-t pt-3 text-xs">
-            <span className="text-muted-foreground">{d.coverage.represented} / {d.coverage.total} represented</span>
+            <span className="text-muted-foreground">{d.coverage.represented} / {d.coverage.total} {" "}{tr("represented")}</span>
             <Badge variant={d.coverage.label === "Balanced" ? "success" : d.coverage.label === "Uneven" ? "warning" : "destructive"}>{d.coverage.label}</Badge>
           </div>
         </div>
       </section>
 
       <section>
-        <SectionTitle>Workflow</SectionTitle>
+        <SectionTitle>{tr("Workflow")}</SectionTitle>
         <PhaseTimeline phases={phases} />
       </section>
 
       <StatGrid columns={6}>
-        <Stat label="Submissions" value={d.submissions.total} hint={`${d.submissions.needsReview} to review · ${d.submissions.duplicates} duplicates`} href={`${ed}/inbox`} />
-        <Stat label="Clusters" value={d.clusters.total} hint={`${d.clusters.confirmed} confirmed`} href={`${ed}/stories`} />
-        <Stat label="Stories" value={`${d.stories.selected}`} hint={`${d.stories.candidates} candidates · ${d.stories.rejected} rejected`} href={`${ed}/stories`} />
-        <Stat label="Articles" value={`${d.articles.approved}/${d.stories.selected}`} hint={`${d.articles.ready} ready for review`} href={`${ed}/articles`} />
-        <Stat label="Flags" value={d.flags.total} hint={`${d.flags.disputedFacts} disputed facts · ${d.media.red} blocked media`} tone={d.flags.total ? "warning" : "success"} icon={Flag} href={`${ed}/stories?flag=needs_attention`} />
-        <Stat label="AI cost" value={formatCurrency(d.ai.costCents / 100)} hint={`${d.ai.calls} calls${d.ai.failed ? ` · ${d.ai.failed} failed` : ""}`} icon={Coins} href="/analytics" />
+        <Stat label={tr("Submissions")} value={d.submissions.total} hint={`${d.submissions.needsReview} to review · ${d.submissions.duplicates} duplicates`} href={`${ed}/inbox`} />
+        <Stat label={tr("Clusters")} value={d.clusters.total} hint={`${d.clusters.confirmed} confirmed`} href={`${ed}/stories`} />
+        <Stat label={tr("Stories")} value={`${d.stories.selected}`} hint={`${d.stories.candidates} candidates · ${d.stories.rejected} rejected`} href={`${ed}/stories`} />
+        <Stat label={tr("Articles")} value={`${d.articles.approved}/${d.stories.selected}`} hint={`${d.articles.ready} ready for review`} href={`${ed}/articles`} />
+        <Stat label={tr("Flags")} value={d.flags.total} hint={`${d.flags.disputedFacts} disputed facts · ${d.media.red} blocked media`} tone={d.flags.total ? "warning" : "success"} icon={Flag} href={`${ed}/stories?flag=needs_attention`} />
+        <Stat label={tr("AI cost")} value={formatCurrency(d.ai.costCents / 100)} hint={`${d.ai.calls} calls${d.ai.failed ? ` · ${d.ai.failed} failed` : ""}`} icon={Coins} href="/analytics" />
       </StatGrid>
 
       <section className="grid gap-4 lg:grid-cols-2">
         <div className="rounded-lg border border-border bg-card shadow-xs">
           <div className="flex items-center justify-between border-b px-4 py-2.5">
-            <span className="label-caps">Automation timeline</span>
-            <Link href="/automations" className="text-2xs text-brand hover:underline">Automations</Link>
+            <span className="label-caps">{tr("Automation timeline")}</span>
+            <Link href="/automations" className="text-2xs text-brand hover:underline">{tr("Automations")}</Link>
           </div>
           <ul className="divide-y">
-            {d.runs.length === 0 ? <li className="px-4 py-6 text-center text-xs text-muted-foreground">No automation has run for this edition yet.</li> : null}
+            {d.runs.length === 0 ? <li className="px-4 py-6 text-center text-xs text-muted-foreground">{tr("No automation has run for this edition yet.")}</li> : null}
             {d.runs.map((r) => (
               <li key={r.id} className="flex items-center gap-3 px-4 py-2 text-[13px]">
                 <GenericStatusBadge status={r.status} />
-                <span className="flex-1">{enumLabel(r.step)}</span>
+                <span className="flex-1">{tr(enumLabel(r.step))}</span>
                 <span className="text-2xs text-muted-foreground">{r.finishedAt ? formatDateTime(r.finishedAt) : r.scheduledFor ? `scheduled ${formatDateTime(r.scheduledFor)}` : "—"}</span>
               </li>
             ))}
@@ -174,14 +176,14 @@ export default async function ControlRoomPage({ params }: { params: Promise<{ ed
         </div>
         <div className="rounded-lg border border-border bg-card shadow-xs">
           <div className="flex items-center justify-between border-b px-4 py-2.5">
-            <span className="label-caps">Recent activity</span>
+            <span className="label-caps">{tr("Recent activity")}</span>
           </div>
           <ul className="divide-y">
-            {activity.length === 0 ? <li className="px-4 py-6 text-center text-xs text-muted-foreground">No activity yet.</li> : null}
+            {activity.length === 0 ? <li className="px-4 py-6 text-center text-xs text-muted-foreground">{tr("No activity yet.")}</li> : null}
             {activity.map((a) => (
               <li key={a.id} className="flex items-start justify-between gap-3 px-4 py-2">
                 <div className="min-w-0">
-                  <p className="truncate text-[13px]">{enumLabel(a.action.replace(/\./g, " "))}</p>
+                  <p className="truncate text-[13px]">{tr(enumLabel(a.action.replace(/\./g, " ")))}</p>
                   <p className="text-2xs text-muted-foreground">{a.userName ?? (a.actorType === "AI" ? "AI pipeline" : a.actorType === "SYSTEM" ? "Automation" : "Contributor")}</p>
                 </div>
                 <span className="shrink-0 text-2xs text-muted-foreground">{relativeTime(a.createdAt)}</span>

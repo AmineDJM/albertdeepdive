@@ -1,6 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ProgressBar } from "./stat";
+import { getUi } from "@/server/i18n/locale";
 
 export type CoverageRow = {
   key: string;
@@ -24,7 +25,8 @@ function rateTone(rate: number, invited: number) {
 }
 
 /** Per-campus coverage of the campaign: who was invited, who answered, who is still silent. */
-export function CampaignCoverage({ rows, balanceLabel }: { rows: CoverageRow[]; balanceLabel?: "Balanced" | "Uneven" | "Critical" }) {
+export async function CampaignCoverage({ rows, balanceLabel }: { rows: CoverageRow[]; balanceLabel?: "Balanced" | "Uneven" | "Critical" }) {
+  const tr = await getUi();
   const totals = rows.reduce(
     (acc, r) => ({
       target: acc.target + r.target,
@@ -41,14 +43,14 @@ export function CampaignCoverage({ rows, balanceLabel }: { rows: CoverageRow[]; 
       <Table>
         <TableHeader>
           <TableRow className="hover:bg-transparent">
-            <TableHead>Campus</TableHead>
-            <TableHead className="text-right">Target</TableHead>
-            <TableHead className="text-right">Pool</TableHead>
-            <TableHead className="text-right">Invited</TableHead>
-            <TableHead className="text-right">Submitted</TableHead>
-            <TableHead className="text-right">Silent</TableHead>
-            <TableHead className="w-[180px]">Response rate</TableHead>
-            <TableHead className="text-right">Submissions</TableHead>
+            <TableHead>{tr("Campus")}</TableHead>
+            <TableHead className="text-right">{tr("Target")}</TableHead>
+            <TableHead className="text-right">{tr("Pool")}</TableHead>
+            <TableHead className="text-right">{tr("Invited")}</TableHead>
+            <TableHead className="text-right">{tr("Submitted")}</TableHead>
+            <TableHead className="text-right">{tr("Silent")}</TableHead>
+            <TableHead className="w-[180px]">{tr("Response rate")}</TableHead>
+            <TableHead className="text-right">{tr("Submissions")}</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -69,7 +71,7 @@ export function CampaignCoverage({ rows, balanceLabel }: { rows: CoverageRow[]; 
               <TableCell className="tabular py-1.5 text-right font-medium">{r.submitted}</TableCell>
               <TableCell className="tabular py-1.5 text-right">
                 {r.silent ? <span className={r.invited && r.silent === r.invited ? "text-warning" : undefined}>{r.silent}</span> : "—"}
-                {r.declined ? <span className="ml-1 text-2xs text-muted-foreground">{r.declined} declined</span> : null}
+                {r.declined ? <span className="ml-1 text-2xs text-muted-foreground">{r.declined} {" "}{tr("declined")}</span> : null}
               </TableCell>
               <TableCell className="py-1.5">
                 <div className="flex items-center gap-2">
@@ -82,14 +84,13 @@ export function CampaignCoverage({ rows, balanceLabel }: { rows: CoverageRow[]; 
           ))}
           <TableRow className="border-t-2 border-border bg-muted/30 hover:bg-muted/30">
             <TableCell className="py-1.5 font-medium">
-              All campuses
-              {balanceLabel ? (
+              {tr("All campuses")}{" "}{balanceLabel ? (
                 <Badge
                   variant={balanceLabel === "Balanced" ? "success" : balanceLabel === "Uneven" ? "warning" : "destructive"}
                   className="ml-2"
-                  title="How evenly the submissions of this edition are spread across campuses"
+                  title={tr("How evenly the submissions of this edition are spread across campuses")}
                 >
-                  Balance: {balanceLabel}
+                  {tr("Balance:")}{" "}{balanceLabel}
                 </Badge>
               ) : null}
             </TableCell>

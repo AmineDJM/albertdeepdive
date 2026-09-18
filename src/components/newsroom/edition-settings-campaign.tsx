@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { SettingsCard } from "@/components/settings/key-value";
 import { applyMonthlyDefaultsAction } from "@/app/(newsroom)/editions/[editionId]/settings/actions";
+import { useUi } from "@/components/i18n/provider";
 
 export type ScheduleComparison = {
   key: string;
@@ -32,6 +33,7 @@ export function EditionSettingsCampaign({
   canManage: boolean;
   defaultsSummary: string;
 }) {
+  const tr = useUi();
   const router = useRouter();
   const [pending, start] = useTransition();
   const drifted = rows.filter((r) => !r.matches).length;
@@ -40,13 +42,13 @@ export function EditionSettingsCampaign({
 
   return (
     <SettingsCard
-      title="Campaign defaults"
+      title={tr("Campaign defaults")}
       description={`System defaults: ${defaultsSummary}`}
       action={
         <div className="flex items-center gap-2">
           <Button asChild size="sm" variant="ghost">
             <Link href={`/editions/${editionId}/campaign`}>
-              Campaign <ArrowRight />
+              {tr("Campaign")}{" "}<ArrowRight />
             </Link>
           </Button>
           {canManage ? (
@@ -68,8 +70,7 @@ export function EditionSettingsCampaign({
                 })
               }
             >
-              <RotateCcw /> Apply to this edition
-            </Button>
+              <RotateCcw /> {" "}{tr("Apply to this edition")}</Button>
           ) : null}
         </div>
       }
@@ -82,14 +83,14 @@ export function EditionSettingsCampaign({
               <span className="tabular text-2xs text-muted-foreground">{r.fromDefaults}</span>
               {r.current ? (
                 r.matches ? (
-                  <Badge variant="muted">Follows the default</Badge>
+                  <Badge variant="muted">{tr("Follows the default")}</Badge>
                 ) : (
                   <Badge variant="warning" className="tabular">
-                    now {r.current}
+                    {tr("now")}{" "}{r.current}
                   </Badge>
                 )
               ) : (
-                <Badge variant="secondary">Not scheduled</Badge>
+                <Badge variant="secondary">{tr("Not scheduled")}</Badge>
               )}
             </span>
           </li>
@@ -101,10 +102,9 @@ export function EditionSettingsCampaign({
           : drifted === 0
             ? "This edition follows the monthly schedule."
             : `${drifted} date${drifted === 1 ? " differs" : "s differ"} from the monthly defaults. Applying them overwrites the campaign dates; the pools and targets are kept.`}{" "}
-        Change the defaults for every edition in{" "}
+        {tr("Change the defaults for every edition in")}{" "}
         <Link href="/settings/system" className="text-brand hover:underline">
-          Settings → System
-        </Link>
+          {tr("Settings → System")}</Link>
         .
       </p>
     </SettingsCard>

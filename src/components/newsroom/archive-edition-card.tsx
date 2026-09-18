@@ -8,13 +8,15 @@ import { EditionStatusBadge } from "@/components/newsroom/status-badge";
 import { Button } from "@/components/ui/button";
 import type { EditionStatus } from "@/lib/editorial/edition-state";
 import { formatDate, formatNumber } from "@/lib/utils";
+import { getUi } from "@/server/i18n/locale";
 
 /**
  * One issue of the back catalogue: cover, month, theme, extent, the people credited in it and the
  * files it produced. Published issues carry their PDF and Word downloads; issues still in
  * production say so rather than pretending to a file that does not exist.
  */
-export function ArchiveEditionCard({ edition }: { edition: ShelfEdition }) {
+export async function ArchiveEditionCard({ edition }: { edition: ShelfEdition }) {
+  const tr = await getUi();
   const published = edition.status === "PUBLISHED" || edition.status === "ARCHIVED";
   const theme = edition.tagline ?? edition.coverHeadline;
   return (
@@ -34,19 +36,19 @@ export function ArchiveEditionCard({ edition }: { edition: ShelfEdition }) {
           </div>
           <EditionStatusBadge status={edition.status as EditionStatus} />
         </div>
-        {theme ? <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{theme}</p> : <p className="mt-1 text-xs text-muted-foreground italic">No cover theme set yet.</p>}
+        {theme ? <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{theme}</p> : <p className="mt-1 text-xs text-muted-foreground italic">{tr("No cover theme set yet.")}</p>}
 
         <dl className="tabular mt-2.5 grid grid-cols-2 gap-x-4 gap-y-1 text-2xs sm:grid-cols-4">
           <div>
-            <dt className="text-muted-foreground">Pages</dt>
+            <dt className="text-muted-foreground">{tr("Pages")}</dt>
             <dd className="font-medium">{edition.pageCount ?? "—"}</dd>
           </div>
           <div>
-            <dt className="text-muted-foreground">Articles</dt>
+            <dt className="text-muted-foreground">{tr("Articles")}</dt>
             <dd className="font-medium">{edition.articles}</dd>
           </div>
           <div>
-            <dt className="text-muted-foreground">Words</dt>
+            <dt className="text-muted-foreground">{tr("Words")}</dt>
             <dd className="font-medium">{formatNumber(edition.words)}</dd>
           </div>
           <div>
@@ -57,14 +59,14 @@ export function ArchiveEditionCard({ edition }: { edition: ShelfEdition }) {
 
         {edition.credited.length ? (
           <div className="mt-2.5">
-            <div className="label-caps mb-1">{edition.creditedCount} contributor{edition.creditedCount === 1 ? "" : "s"} credited</div>
+            <div className="label-caps mb-1">{edition.creditedCount} {" "}{tr("contributor")}{edition.creditedCount === 1 ? "" : "s"} {" "}{tr("credited")}</div>
             <div className="flex flex-wrap items-center gap-1">
               {edition.credited.slice(0, 5).map((c) => (
                 <Link key={c.id} href={`/contributors/${c.id}`} className="hover:opacity-80" title={`${c.name} — ${c.articles} article${c.articles === 1 ? "" : "s"}`}>
                   <CampusChip name={c.name} colour={c.campusColour} size="xs" />
                 </Link>
               ))}
-              {edition.creditedCount > 5 ? <span className="text-2xs text-muted-foreground">+{edition.creditedCount - 5} more</span> : null}
+              {edition.creditedCount > 5 ? <span className="text-2xs text-muted-foreground">+{edition.creditedCount - 5} {" "}{tr("more")}</span> : null}
             </div>
           </div>
         ) : null}
@@ -80,18 +82,16 @@ export function ArchiveEditionCard({ edition }: { edition: ShelfEdition }) {
           {!edition.downloads.length ? (
             published ? (
               <span className="inline-flex items-center gap-1 text-2xs text-muted-foreground">
-                <FileText className="size-3" /> No export rendered
-              </span>
+                <FileText className="size-3" /> {" "}{tr("No export rendered")}</span>
             ) : (
               <span className="inline-flex items-center gap-1 text-2xs text-muted-foreground">
-                <Hammer className="size-3" /> In production
-              </span>
+                <Hammer className="size-3" /> {" "}{tr("In production")}</span>
             )
           ) : null}
           {edition.version ? <span className="ml-1 font-mono text-2xs text-muted-foreground">{edition.version.label}</span> : null}
           <Button asChild size="xs" variant="ghost" className="ml-auto">
             <Link href={`/archive/${edition.id}`}>
-              Open issue <ArrowRight />
+              {tr("Open issue")}{" "}<ArrowRight />
             </Link>
           </Button>
         </div>

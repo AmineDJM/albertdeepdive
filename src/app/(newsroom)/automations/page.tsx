@@ -20,6 +20,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { enumLabel, formatCurrency, formatDateTime, formatNumber, relativeTime } from "@/lib/utils";
+import { getUi } from "@/server/i18n/locale";
 
 export const dynamic = "force-dynamic";
 
@@ -46,9 +47,10 @@ function summaryLine(summary: Record<string, unknown>, max = 4) {
 }
 
 export default async function AutomationsPage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
+  const tr = await getUi();
   const sp = await searchParams;
   const user = await getCurrentUser();
-  if (!hasPermission(user, "edition:view")) return <NoAccess title="Automations" permission="edition:view" />;
+  if (!hasPermission(user, "edition:view")) return <NoAccess title={tr("Automations")} permission="edition:view" />;
   const canManage = hasPermission(user, "automation:manage");
   const environment = describeEnvironment();
 
@@ -98,14 +100,13 @@ export default async function AutomationsPage({ searchParams }: { searchParams: 
   return (
     <>
       <PageHeader
-        title="Automations"
+        title={tr("Automations")}
         description={`${enabled} of ${overview.cards.length} automations active · ${environment.jobs.runner === "inprocess" ? "in-process worker" : environment.jobs.runner === "cli" ? "dedicated worker process" : "no worker running"} · ${stats.total} jobs recorded`}
         actions={
           <>
             <Button asChild size="sm" variant="ghost">
               <Link href="/settings/system">
-                <Settings2 /> Toggles &amp; schedule
-              </Link>
+                <Settings2 /> {" "}{tr("Toggles & schedule")}</Link>
             </Button>
             {canManage ? <RunSchedulerButton /> : null}
           </>
@@ -115,33 +116,33 @@ export default async function AutomationsPage({ searchParams }: { searchParams: 
       </PageHeader>
       <PageBody className="space-y-6">
         <StatGrid columns={5}>
-          <Stat label="Active automations" value={`${enabled}/${overview.cards.length}`} hint={overview.cards.length - enabled ? `${overview.cards.length - enabled} paused in settings` : "all switched on"} tone={enabled === overview.cards.length ? "success" : "warning"} />
-          <Stat label="Next run" value={next?.nextLabel ?? "—"} hint={next ? `${next.label}${next.editionLabel ? ` · ${next.editionLabel}` : ""}` : "Nothing scheduled"} />
-          <Stat label="Queue" value={stats.running + stats.queued} hint={`${stats.running} running · ${stats.queued} queued · ${stats.dueNow} due now`} tone={stats.running ? "brand" : "default"} />
-          <Stat label="Failed & dead-lettered" value={retryable} hint={retryable ? "retry them from the queue below" : "nothing to recover"} tone={retryable ? "destructive" : "success"} />
-          <Stat label="AI calls" value={ai.totals.calls} hint={`${formatCurrency(centsToEur(ai.totals.costCents))} · ${formatNumber(ai.totals.tokens)} tokens`} icon={Bot} href="/analytics" />
+          <Stat label={tr("Active automations")} value={`${enabled}/${overview.cards.length}`} hint={overview.cards.length - enabled ? `${overview.cards.length - enabled} paused in settings` : "all switched on"} tone={enabled === overview.cards.length ? "success" : "warning"} />
+          <Stat label={tr("Next run")} value={next?.nextLabel ?? "—"} hint={next ? `${next.label}${next.editionLabel ? ` · ${next.editionLabel}` : ""}` : "Nothing scheduled"} />
+          <Stat label={tr("Queue")} value={stats.running + stats.queued} hint={`${stats.running} running · ${stats.queued} queued · ${stats.dueNow} due now`} tone={stats.running ? "brand" : "default"} />
+          <Stat label={tr("Failed & dead-lettered")} value={retryable} hint={retryable ? "retry them from the queue below" : "nothing to recover"} tone={retryable ? "destructive" : "success"} />
+          <Stat label={tr("AI calls")} value={ai.totals.calls} hint={`${formatCurrency(centsToEur(ai.totals.costCents))} · ${formatNumber(ai.totals.tokens)} tokens`} icon={Bot} href="/analytics" />
         </StatGrid>
 
         <section>
-          <SectionTitle action={<span className="text-2xs text-muted-foreground">Switches and the monthly rhythm live in <Link href="/settings/system" className="text-brand hover:underline">Settings → System</Link></span>}>Scheduled automations</SectionTitle>
+          <SectionTitle action={<span className="text-2xs text-muted-foreground">{tr("Switches and the monthly rhythm live in")}{" "}<Link href="/settings/system" className="text-brand hover:underline">{tr("Settings → System")}</Link></span>}>{tr("Scheduled automations")}</SectionTitle>
           <AutomationGrid items={tiles} canManage={canManage} />
         </section>
 
         <section>
-          <SectionTitle action={<QueueControls canManage={canManage} retryable={retryable} />}>Job queue</SectionTitle>
+          <SectionTitle action={<QueueControls canManage={canManage} retryable={retryable} />}>{tr("Job queue")}</SectionTitle>
           <div className="space-y-3">
             <Suspense>
               <FilterBar
                 searchKey={null}
                 filters={[
-                  { key: "jobStatus", label: "Status", options: [
+                  { key: "jobStatus", label: tr("Status"), options: [
                       { value: "active", label: `Running & queued (${stats.running + stats.queued})` },
                       { value: "problem", label: `Failed & dead (${retryable})` },
                       { value: "SUCCEEDED", label: `Succeeded (${stats.succeeded})` },
                       { value: "CANCELLED", label: `Cancelled (${stats.cancelled})` },
                     ], allLabel: `All statuses (${stats.total})` },
-                  { key: "jobType", label: "Type", options: types.map((t) => ({ value: t, label: t })), allLabel: "All job types" },
-                  { key: "jobEdition", label: "Edition", options: options.editions.map((e) => ({ value: e.id, label: e.label })), allLabel: "All editions" },
+                  { key: "jobType", label: tr("Type"), options: types.map((t) => ({ value: t, label: t })), allLabel: tr("All job types") },
+                  { key: "jobEdition", label: tr("Edition"), options: options.editions.map((e) => ({ value: e.id, label: e.label })), allLabel: tr("All editions") },
                 ]}
               />
             </Suspense>
@@ -149,28 +150,27 @@ export default async function AutomationsPage({ searchParams }: { searchParams: 
             <p className="text-2xs text-muted-foreground">
               {stats.nextRunAt ? `Next queued job runs ${relativeTime(stats.nextRunAt)}. ` : ""}
               {stats.lastFinishedAt ? `Last job finished ${relativeTime(stats.lastFinishedAt)}. ` : ""}
-              The table is server-rendered — use Refresh for the current state.
-            </p>
+              {tr("The table is server-rendered — use Refresh for the current state.")}</p>
           </div>
         </section>
 
         <section>
-          <SectionTitle>AI job log</SectionTitle>
+          <SectionTitle>{tr("AI job log")}</SectionTitle>
           <div className="space-y-3">
             <Suspense>
               <FilterBar
                 searchKey={null}
                 filters={[
-                  { key: "aiService", label: "Service", options: ai.services.map((s) => ({ value: s, label: enumLabel(s) })), allLabel: "All services" },
-                  { key: "aiModel", label: "Model", options: ai.models.map((m) => ({ value: m, label: m })), allLabel: "All models" },
-                  { key: "aiStatus", label: "Status", options: [
-                      { value: "SUCCEEDED", label: "Succeeded" },
-                      { value: "FAILED", label: "Failed" },
-                      { value: "SKIPPED", label: "Skipped" },
-                      { value: "RUNNING", label: "Running" },
-                      { value: "QUEUED", label: "Queued" },
+                  { key: "aiService", label: tr("Service"), options: ai.services.map((s) => ({ value: s, label: enumLabel(s) })), allLabel: tr("All services") },
+                  { key: "aiModel", label: tr("Model"), options: ai.models.map((m) => ({ value: m, label: m })), allLabel: tr("All models") },
+                  { key: "aiStatus", label: tr("Status"), options: [
+                      { value: "SUCCEEDED", label: tr("Succeeded") },
+                      { value: "FAILED", label: tr("Failed") },
+                      { value: "SKIPPED", label: tr("Skipped") },
+                      { value: "RUNNING", label: tr("Running") },
+                      { value: "QUEUED", label: tr("Queued") },
                     ] },
-                  { key: "aiEdition", label: "Edition", options: options.editions.map((e) => ({ value: e.id, label: e.label })), allLabel: "All editions" },
+                  { key: "aiEdition", label: tr("Edition"), options: options.editions.map((e) => ({ value: e.id, label: e.label })), allLabel: tr("All editions") },
                 ]}
               />
             </Suspense>
@@ -178,59 +178,59 @@ export default async function AutomationsPage({ searchParams }: { searchParams: 
               rows={ai.rows}
               rowKey={(r) => r.id}
               dense
-              empty={{ title: "No AI call recorded", description: "Every call the pipeline makes is logged here with its model, tokens, cost and latency.", icon: Bot }}
+              empty={{ title: tr("No AI call recorded"), description: tr("Every call the pipeline makes is logged here with its model, tokens, cost and latency."), icon: Bot }}
               columns={[
-                { key: "service", header: "Service", cell: (r) => (
+                { key: "service", header: tr("Service"), cell: (r) => (
                     <div className="min-w-0">
-                      <span className="text-xs font-medium">{enumLabel(r.service)}</span>
+                      <span className="text-xs font-medium">{tr(enumLabel(r.service))}</span>
                       <div className="truncate text-2xs text-muted-foreground">
                         {r.promptKey ? `${r.promptKey} v${r.promptVersion ?? 1}` : "no prompt template"}
-                        {r.entityType ? ` · ${enumLabel(r.entityType)}` : ""}
+                        {r.entityType ? ` · ${tr(enumLabel(r.entityType))}` : ""}
                       </div>
                     </div>
                   ) },
-                { key: "model", header: "Model", cell: (r) => (
+                { key: "model", header: tr("Model"), cell: (r) => (
                     <span className="flex items-center gap-1.5">
                       <span className="font-mono text-xs">{r.model}</span>
                       <Badge variant="outline">{r.provider}</Badge>
-                      {r.cached ? <Badge variant="muted">cached</Badge> : null}
+                      {r.cached ? <Badge variant="muted">{tr("cached")}</Badge> : null}
                     </span>
                   ) },
-                { key: "status", header: "Status", cell: (r) => <GenericStatusBadge status={r.status} /> },
-                { key: "tokens", header: "Tokens", cell: (r) => (
+                { key: "status", header: tr("Status"), cell: (r) => <GenericStatusBadge status={r.status} /> },
+                { key: "tokens", header: tr("Tokens"), cell: (r) => (
                     <span className="tabular text-xs">
                       {formatNumber((r.inputTokens ?? 0) + (r.outputTokens ?? 0))}
                       <span className="ml-1 text-2xs text-muted-foreground">{r.inputTokens ?? 0}↑ {r.outputTokens ?? 0}↓</span>
                     </span>
                   ), align: "right" },
-                { key: "cost", header: "Cost", cell: (r) => <span className="tabular text-xs">{formatCurrency(centsToEur(r.costCents))}</span>, align: "right" },
-                { key: "latency", header: "Latency", cell: (r) => <span className="tabular text-xs text-muted-foreground">{latency(r.latencyMs)}</span>, align: "right" },
-                { key: "edition", header: "Edition", cell: (r) => (r.editionId ? <Link href={`/editions/${r.editionId}`} className="text-xs hover:underline">{r.editionLabel}</Link> : <span className="text-2xs text-muted-foreground">—</span>) },
-                { key: "when", header: "When", cell: (r) => <span className="text-xs text-muted-foreground" title={formatDateTime(r.createdAt)}>{relativeTime(r.createdAt)}</span> },
-                { key: "error", header: "Error", cell: (r) => (r.error ? <span className="line-clamp-1 max-w-[16rem] text-2xs text-destructive" title={r.error}>{r.error}</span> : <span className="text-2xs text-muted-foreground">—</span>) },
+                { key: "cost", header: tr("Cost"), cell: (r) => <span className="tabular text-xs">{formatCurrency(centsToEur(r.costCents))}</span>, align: "right" },
+                { key: "latency", header: tr("Latency"), cell: (r) => <span className="tabular text-xs text-muted-foreground">{latency(r.latencyMs)}</span>, align: "right" },
+                { key: "edition", header: tr("Edition"), cell: (r) => (r.editionId ? <Link href={`/editions/${r.editionId}`} className="text-xs hover:underline">{r.editionLabel}</Link> : <span className="text-2xs text-muted-foreground">—</span>) },
+                { key: "when", header: tr("When"), cell: (r) => <span className="text-xs text-muted-foreground" title={formatDateTime(r.createdAt)}>{relativeTime(r.createdAt)}</span> },
+                { key: "error", header: tr("Error"), cell: (r) => (r.error ? <span className="line-clamp-1 max-w-[16rem] text-2xs text-destructive" title={r.error}>{r.error}</span> : <span className="text-2xs text-muted-foreground">—</span>) },
               ]}
             />
             <p className="text-2xs text-muted-foreground">
-              Showing the {ai.rows.length} most recent calls of {ai.totals.calls} in scope · {ai.totals.cached} served from cache · {ai.totals.failed} failed · average latency {latency(ai.totals.avgLatencyMs)}.
+              {tr("Showing the")}{" "}{ai.rows.length} {" "}{tr("most recent calls of")}{" "}{ai.totals.calls} {" "}{tr("in scope ·")}{" "}{ai.totals.cached} {" "}{tr("served from cache ·")}{" "}{ai.totals.failed} {" "}{tr("failed · average latency")}{" "}{latency(ai.totals.avgLatencyMs)}.
             </p>
           </div>
         </section>
 
         <section>
-          <SectionTitle>Automation run history</SectionTitle>
+          <SectionTitle>{tr("Automation run history")}</SectionTitle>
           {runs.length ? (
             <DataTable
               rows={runs}
               rowKey={(r) => r.id}
               dense
               columns={[
-                { key: "step", header: "Step", cell: (r) => <span className="text-xs font-medium">{STEP_LABELS[r.step] ?? enumLabel(r.step)}</span> },
-                { key: "status", header: "Status", cell: (r) => <GenericStatusBadge status={r.status} /> },
-                { key: "edition", header: "Edition", cell: (r) => (r.editionId ? <Link href={`/editions/${r.editionId}`} className="text-xs hover:underline">{r.editionLabel}</Link> : <span className="text-2xs text-muted-foreground">—</span>) },
-                { key: "trigger", header: "Triggered by", cell: (r) => <Badge variant={r.triggeredBy === "MANUAL" ? "brand" : "muted"}>{enumLabel(r.triggeredBy)}</Badge> },
-                { key: "scheduled", header: "Scheduled for", cell: (r) => <span className="text-xs text-muted-foreground">{formatDateTime(r.scheduledFor)}</span> },
-                { key: "finished", header: "Finished", cell: (r) => <span className="text-xs text-muted-foreground" title={r.finishedAt ? formatDateTime(r.finishedAt) : undefined}>{r.finishedAt ? relativeTime(r.finishedAt) : "—"}</span> },
-                { key: "outcome", header: "Outcome", cell: (r) =>
+                { key: "step", header: tr("Step"), cell: (r) => <span className="text-xs font-medium">{STEP_LABELS[r.step] ?? enumLabel(r.step)}</span> },
+                { key: "status", header: tr("Status"), cell: (r) => <GenericStatusBadge status={r.status} /> },
+                { key: "edition", header: tr("Edition"), cell: (r) => (r.editionId ? <Link href={`/editions/${r.editionId}`} className="text-xs hover:underline">{r.editionLabel}</Link> : <span className="text-2xs text-muted-foreground">—</span>) },
+                { key: "trigger", header: tr("Triggered by"), cell: (r) => <Badge variant={r.triggeredBy === "MANUAL" ? "brand" : "muted"}>{tr(enumLabel(r.triggeredBy))}</Badge> },
+                { key: "scheduled", header: tr("Scheduled for"), cell: (r) => <span className="text-xs text-muted-foreground">{formatDateTime(r.scheduledFor)}</span> },
+                { key: "finished", header: tr("Finished"), cell: (r) => <span className="text-xs text-muted-foreground" title={r.finishedAt ? formatDateTime(r.finishedAt) : undefined}>{r.finishedAt ? relativeTime(r.finishedAt) : "—"}</span> },
+                { key: "outcome", header: tr("Outcome"), cell: (r) =>
                     r.status === "FAILED" && r.error ? (
                       <span className="line-clamp-1 max-w-[20rem] text-2xs text-destructive" title={r.error}>{r.error}</span>
                     ) : (
@@ -239,7 +239,7 @@ export default async function AutomationsPage({ searchParams }: { searchParams: 
               ]}
             />
           ) : (
-            <EmptyState icon={Workflow} title="No automation has run yet" description="Each scheduler step records an idempotent run here, so it is never executed twice for the same edition." compact />
+            <EmptyState icon={Workflow} title={tr("No automation has run yet")} description={tr("Each scheduler step records an idempotent run here, so it is never executed twice for the same edition.")} compact />
           )}
         </section>
       </PageBody>

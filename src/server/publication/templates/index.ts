@@ -64,7 +64,7 @@ export function renderDocumentHtml(doc: EditionDocument, options: DocumentHtmlOp
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>${title}</title>
-<meta name="generator" content="Albert Deep Dive publication renderer" />
+<meta name="generator" content="Briefly publication renderer" />
 <style>${raw(options.fontCss)}</style>
 <style>${raw(css)}</style>
 ${options.preview ? html`<style>${raw(PREVIEW_CSS)}</style>` : ""}

@@ -26,6 +26,7 @@ import {
   detachFromStoryAction,
   setStoryRoleAction,
 } from "@/app/(newsroom)/media/[mediaId]/actions";
+import { useUi } from "@/components/i18n/provider";
 
 const BDD_FIELD_LABELS = {
   logo: "Company logo",
@@ -51,6 +52,7 @@ export function UsagePanel({
   canManage: boolean;
   blocked: boolean;
 }) {
+  const tr = useUi();
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [role, setRole] = useState<StoryMediaRole>("gallery");
@@ -111,7 +113,7 @@ export function UsagePanel({
                     </option>
                   ))}
                   {!(STORY_MEDIA_ROLES as readonly string[]).includes(l.role) ? (
-                    <option value={l.role}>{enumLabel(l.role)}</option>
+                    <option value={l.role}>{tr(enumLabel(l.role))}</option>
                   ) : null}
                 </NativeSelect>
               ) : (
@@ -135,8 +137,7 @@ export function UsagePanel({
         </ul>
       ) : (
         <p className="border-border text-muted-foreground rounded-lg border border-dashed px-3 py-3 text-center text-xs">
-          Not used in any story yet.
-        </p>
+          {tr("Not used in any story yet.")}</p>
       )}
       {bddReferences.length ? (
         <ul className="space-y-1">
@@ -161,14 +162,13 @@ export function UsagePanel({
               disabled={blocked || !available.length}
               title={blocked ? "Blocked assets (rights RED) cannot be attached" : undefined}
             >
-              <Plus /> Attach to a story
-            </Button>
+              <Plus /> {" "}{tr("Attach to a story")}</Button>
           </PopoverTrigger>
           <PopoverContent align="start" className="w-96 p-0">
             <div className="flex items-center gap-2 border-b px-3 py-2">
-              <span className="label-caps">Role</span>
+              <span className="label-caps">{tr("Role")}</span>
               <NativeSelect
-                aria-label="Role"
+                aria-label={tr("Role")}
                 value={role}
                 onChange={(e) => setRole(e.target.value as StoryMediaRole)}
                 className="h-7 w-auto min-w-28 text-xs"
@@ -181,9 +181,9 @@ export function UsagePanel({
               </NativeSelect>
             </div>
             <Command>
-              <CommandInput placeholder="Search the edition's stories…" />
+              <CommandInput placeholder={tr("Search the edition's stories…")} />
               <CommandList>
-                <CommandEmpty>No story matches.</CommandEmpty>
+                <CommandEmpty>{tr("No story matches.")}</CommandEmpty>
                 <CommandGroup heading="Stories">
                   {available.map((st) => (
                     <CommandItem
@@ -197,9 +197,8 @@ export function UsagePanel({
                       <div className="min-w-0 flex-1">
                         <div className="truncate">{st.title}</div>
                         <div className="text-2xs text-muted-foreground">
-                          {st.sectionName ?? "No section"} · {enumLabel(st.status)} ·{" "}
-                          {st.mediaCount} media
-                        </div>
+                          {st.sectionName ?? "No section"} · {tr(enumLabel(st.status))} ·{" "}
+                          {st.mediaCount} {" "}{tr("media")}</div>
                       </div>
                     </CommandItem>
                   ))}

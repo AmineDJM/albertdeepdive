@@ -89,7 +89,7 @@ export async function getEmail(id: string) {
 export async function sendTestEmail(user: { id: string; email: string; name: string }) {
   const result = await sendEmail({
     to: user.email,
-    subject: "Test email — Albert Deep Dive mailbox",
+    subject: "Test email — Briefly mailbox",
     template: "mailbox_test",
     entityType: "USER",
     entityId: user.id,

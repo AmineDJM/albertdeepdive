@@ -4,6 +4,7 @@ import * as React from "react";
 import { Dialog as SheetPrimitive } from "radix-ui";
 import { XIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useUi } from "@/components/i18n/provider";
 
 const Sheet = SheetPrimitive.Root;
 const SheetTrigger = SheetPrimitive.Trigger;
@@ -15,6 +16,7 @@ function SheetOverlay({ className, ...props }: React.ComponentProps<typeof Sheet
 }
 
 function SheetContent({ className, children, side = "right", ...props }: React.ComponentProps<typeof SheetPrimitive.Content> & { side?: "top" | "right" | "bottom" | "left" }) {
+  const tr = useUi();
   return (
     <SheetPortal>
       <SheetOverlay />
@@ -32,7 +34,7 @@ function SheetContent({ className, children, side = "right", ...props }: React.C
         {children}
         <SheetPrimitive.Close className="absolute top-3.5 right-3.5 rounded-sm opacity-60 transition-opacity hover:opacity-100 focus:ring-2 focus:ring-ring/50 focus:outline-none [&_svg]:size-4">
           <XIcon />
-          <span className="sr-only">Close</span>
+          <span className="sr-only">{tr("Close")}</span>
         </SheetPrimitive.Close>
       </SheetPrimitive.Content>
     </SheetPortal>

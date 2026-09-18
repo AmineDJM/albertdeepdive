@@ -16,6 +16,7 @@ import { SectionTitle } from "@/components/newsroom/page-header";
 import { commitImportAction, parseImportFileAction, validateImportAction, type ParsedUpload } from "@/app/(newsroom)/contributors/import/actions";
 import { ImportPreviewTable } from "./import-preview-table";
 import type { ColumnMapping, CommitReport, ImportOptions, MappableField, MappingMode, ValidationResult } from "@/server/contributors/import";
+import { useUi } from "@/components/i18n/provider";
 
 type Step = "upload" | "map" | "review" | "done";
 type FieldSpec = { field: MappableField; label: string; required: boolean; hint: string };
@@ -44,6 +45,7 @@ const STEPS: { key: Step; label: string }[] = [
 const PREVIEW_LIMIT = 50;
 
 export function ImportWizard({ campusNames }: { campusNames: string[] }) {
+  const tr = useUi();
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [pending, startTransition] = useTransition();
@@ -152,7 +154,7 @@ export function ImportWizard({ campusNames }: { campusNames: string[] }) {
             <span className={`flex size-5 items-center justify-center rounded-full text-2xs font-semibold ${i < activeIndex ? "bg-success text-white" : i === activeIndex ? "bg-brand text-brand-foreground" : "bg-muted text-muted-foreground"}`}>
               {i < activeIndex ? <CheckCircle2 className="size-3.5" /> : i + 1}
             </span>
-            <span className={i === activeIndex ? "font-medium text-foreground" : "text-muted-foreground"}>{sstep.label}</span>
+            <span className={i === activeIndex ? "font-medium text-foreground" : "text-muted-foreground"}>{tr(sstep.label)}</span>
             {i < STEPS.length - 1 ? <span className="mx-1 h-px w-6 bg-border" /> : null}
           </li>
         ))}
@@ -169,33 +171,32 @@ export function ImportWizard({ campusNames }: { campusNames: string[] }) {
               <UploadCloud className="size-5" />
             </div>
             <div>
-              <p className="text-[13px] font-medium">Drop an .xlsx or .csv file here</p>
-              <p className="text-xs text-muted-foreground">The first row must be your column headers.</p>
+              <p className="text-[13px] font-medium">{tr("Drop an .xlsx or .csv file here")}</p>
+              <p className="text-xs text-muted-foreground">{tr("The first row must be your column headers.")}</p>
             </div>
             <input ref={fileInputRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={onFileChosen} />
             <Button onClick={() => fileInputRef.current?.click()} loading={pending}>
-              <Upload /> Choose a file
-            </Button>
-            {fileName ? <p className="text-2xs text-muted-foreground">Selected: {fileName}</p> : null}
+              <Upload /> {" "}{tr("Choose a file")}</Button>
+            {fileName ? <p className="text-2xs text-muted-foreground">{tr("Selected:")}{" "}{fileName}</p> : null}
           </div>
           <div className="space-y-3">
             <div className="rounded-lg border border-border bg-card p-3.5">
-              <SectionTitle>Expected columns</SectionTitle>
+              <SectionTitle>{tr("Expected columns")}</SectionTitle>
               <ul className="space-y-1 text-xs text-muted-foreground">
-                <li><span className="font-medium text-foreground">First name</span> and <span className="font-medium text-foreground">Last name</span> (or a single full-name column)</li>
-                <li><span className="font-medium text-foreground">Email</span> — required, one per contributor</li>
-                <li><span className="font-medium text-foreground">Campus</span> — optional; matched by name or slug</li>
-                <li><span className="font-medium text-foreground">Type</span> — optional; defaults to Student</li>
+                <li><span className="font-medium text-foreground">{tr("First name")}</span> {" "}{tr("and")}{" "}<span className="font-medium text-foreground">{tr("Last name")}</span> {" "}{tr("(or a single full-name column)")}</li>
+                <li><span className="font-medium text-foreground">{tr("Email")}</span> {" "}{tr("— required, one per contributor")}</li>
+                <li><span className="font-medium text-foreground">{tr("Campus")}</span> {" "}{tr("— optional; matched by name or slug")}</li>
+                <li><span className="font-medium text-foreground">{tr("Type")}</span> {" "}{tr("— optional; defaults to Student")}</li>
               </ul>
               <Button asChild variant="outline" size="sm" className="mt-3">
-                <a href={TEMPLATE_HREF} download="contributors-template.csv"><Download /> Download CSV template</a>
+                <a href={TEMPLATE_HREF} download="contributors-template.csv"><Download /> {" "}{tr("Download CSV template")}</a>
               </Button>
             </div>
             {campusNames.length ? (
               <div className="rounded-lg border border-border bg-card p-3.5">
-                <SectionTitle>Known campuses</SectionTitle>
+                <SectionTitle>{tr("Known campuses")}</SectionTitle>
                 <p className="text-xs text-muted-foreground">{campusNames.join(" · ")}</p>
-                <p className="mt-1.5 text-2xs text-muted-foreground">Anything else (or a blank cell) imports school-wide.</p>
+                <p className="mt-1.5 text-2xs text-muted-foreground">{tr("Anything else (or a blank cell) imports school-wide.")}</p>
               </div>
             ) : null}
           </div>
@@ -206,37 +207,37 @@ export function ImportWizard({ campusNames }: { campusNames: string[] }) {
         <div className="space-y-4">
           <Alert>
             <FileSpreadsheet />
-            <AlertTitle>Map your columns</AlertTitle>
+            <AlertTitle>{tr("Map your columns")}</AlertTitle>
             <AlertDescription>
-              We guessed the mapping from “{parsed.sheetName}”. Check each field below.{parsed.truncated ? " Only the first rows were read." : ""}
+              {tr("We guessed the mapping from “")}{parsed.sheetName}{tr("”. Check each field below.")}{parsed.truncated ? " Only the first rows were read." : ""}
             </AlertDescription>
           </Alert>
 
           <div className="inline-flex rounded-md border border-border p-0.5 text-xs">
-            <button type="button" onClick={() => setMode("separate")} className={`rounded px-2.5 py-1 font-medium ${mapping.mode === "separate" ? "bg-brand text-brand-foreground" : "text-muted-foreground hover:text-foreground"}`}>Separate first / last</button>
-            <button type="button" onClick={() => setMode("fullName")} className={`rounded px-2.5 py-1 font-medium ${mapping.mode === "fullName" ? "bg-brand text-brand-foreground" : "text-muted-foreground hover:text-foreground"}`}>Full name (one column)</button>
+            <button type="button" onClick={() => setMode("separate")} className={`rounded px-2.5 py-1 font-medium ${mapping.mode === "separate" ? "bg-brand text-brand-foreground" : "text-muted-foreground hover:text-foreground"}`}>{tr("Separate first / last")}</button>
+            <button type="button" onClick={() => setMode("fullName")} className={`rounded px-2.5 py-1 font-medium ${mapping.mode === "fullName" ? "bg-brand text-brand-foreground" : "text-muted-foreground hover:text-foreground"}`}>{tr("Full name (one column)")}</button>
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2">
             {fields.map((f) => (
               <div key={f.field} className="space-y-1.5">
                 <Label>
-                  {f.label}
-                  {f.required ? <span className="text-destructive">*</span> : <span className="text-2xs font-normal text-muted-foreground">optional</span>}
+                  {tr(f.label)}
+                  {f.required ? <span className="text-destructive">*</span> : <span className="text-2xs font-normal text-muted-foreground">{tr("optional")}</span>}
                 </Label>
                 <NativeSelect value={mapping[f.field] === null ? "" : String(mapping[f.field])} onChange={(e) => setField(f.field, e.target.value)} aria-invalid={f.required && mapping[f.field] === null}>
-                  <option value="">— not mapped —</option>
+                  <option value="">{tr("— not mapped —")}</option>
                   {parsed.header.map((h, i) => (
                     <option key={i} value={i}>{h || `Column ${i + 1}`}</option>
                   ))}
                 </NativeSelect>
-                <p className="text-2xs text-muted-foreground">{f.hint}</p>
+                <p className="text-2xs text-muted-foreground">{tr(f.hint)}</p>
               </div>
             ))}
           </div>
 
           <div>
-            <SectionTitle>File preview</SectionTitle>
+            <SectionTitle>{tr("File preview")}</SectionTitle>
             <div className="overflow-hidden rounded-md border border-border">
               <Table>
                 <TableHeader>
@@ -257,12 +258,12 @@ export function ImportWizard({ campusNames }: { campusNames: string[] }) {
                 </TableBody>
               </Table>
             </div>
-            <p className="mt-1.5 text-2xs text-muted-foreground">{parsed.rows.length} data row{parsed.rows.length === 1 ? "" : "s"} in total.</p>
+            <p className="mt-1.5 text-2xs text-muted-foreground">{parsed.rows.length} {" "}{tr("data row")}{parsed.rows.length === 1 ? "" : "s"} {" "}{tr("in total.")}</p>
           </div>
 
           <div className="flex items-center justify-between">
-            <Button variant="outline" onClick={() => setStep("upload")}><ArrowLeft /> Back</Button>
-            <Button onClick={() => runValidate(options)} loading={pending} disabled={!mapReady}>Preview import <ArrowRight /></Button>
+            <Button variant="outline" onClick={() => setStep("upload")}><ArrowLeft /> {" "}{tr("Back")}</Button>
+            <Button onClick={() => runValidate(options)} loading={pending} disabled={!mapReady}>{tr("Preview import")}{" "}<ArrowRight /></Button>
           </div>
         </div>
       ) : null}
@@ -270,19 +271,19 @@ export function ImportWizard({ campusNames }: { campusNames: string[] }) {
       {step === "review" && preview ? (
         <div className="space-y-4">
           <StatGrid columns={4}>
-            <Stat label="New" value={preview.summary.toCreate} tone="success" hint="will be created" />
-            <Stat label="To update" value={preview.summary.toUpdate} tone="brand" hint="already in the pool" />
-            <Stat label="Skipped" value={preview.summary.toSkip} tone="muted" hint={`${preview.summary.invalid} invalid · ${preview.summary.duplicatesInFile} duplicate`} />
-            <Stat label="Rows read" value={preview.summary.total} hint={preview.summary.campusUnresolved ? `${preview.summary.campusUnresolved} unknown campus` : "all campuses resolved"} />
+            <Stat label={tr("New")} value={preview.summary.toCreate} tone="success" hint={tr("will be created")} />
+            <Stat label={tr("To update")} value={preview.summary.toUpdate} tone="brand" hint={tr("already in the pool")} />
+            <Stat label={tr("Skipped")} value={preview.summary.toSkip} tone="muted" hint={`${preview.summary.invalid} invalid · ${preview.summary.duplicatesInFile} duplicate`} />
+            <Stat label={tr("Rows read")} value={preview.summary.total} hint={preview.summary.campusUnresolved ? `${preview.summary.campusUnresolved} unknown campus` : "all campuses resolved"} />
           </StatGrid>
 
           <div className="grid gap-2 sm:grid-cols-2">
             <label className="flex items-center justify-between gap-3 rounded-md border border-border bg-card px-3 py-2 text-[13px]">
-              <span>Update contributors that already exist</span>
+              <span>{tr("Update contributors that already exist")}</span>
               <Switch checked={options.updateExisting} onCheckedChange={toggleUpdateExisting} disabled={pending} />
             </label>
             <label className="flex items-center justify-between gap-3 rounded-md border border-border bg-card px-3 py-2 text-[13px]">
-              <span>Set imported contributors active</span>
+              <span>{tr("Set imported contributors active")}</span>
               <Switch checked={options.setActive} onCheckedChange={(v) => setOptions((o) => ({ ...o, setActive: v }))} disabled={pending} />
             </label>
           </div>
@@ -290,8 +291,8 @@ export function ImportWizard({ campusNames }: { campusNames: string[] }) {
           {preview.summary.toCreate + preview.summary.toUpdate === 0 ? (
             <Alert variant="warning">
               <TriangleAlert />
-              <AlertTitle>Nothing to import</AlertTitle>
-              <AlertDescription>Every row is skipped. Adjust the mapping or the switches above.</AlertDescription>
+              <AlertTitle>{tr("Nothing to import")}</AlertTitle>
+              <AlertDescription>{tr("Every row is skipped. Adjust the mapping or the switches above.")}</AlertDescription>
             </Alert>
           ) : null}
 
@@ -301,9 +302,9 @@ export function ImportWizard({ campusNames }: { campusNames: string[] }) {
           </div>
 
           <div className="flex items-center justify-between">
-            <Button variant="outline" onClick={() => setStep("map")}><ArrowLeft /> Back to mapping</Button>
+            <Button variant="outline" onClick={() => setStep("map")}><ArrowLeft /> {" "}{tr("Back to mapping")}</Button>
             <Button onClick={handleCommit} loading={pending} disabled={preview.summary.toCreate + preview.summary.toUpdate === 0}>
-              Import {preview.summary.toCreate + preview.summary.toUpdate} contributor{preview.summary.toCreate + preview.summary.toUpdate === 1 ? "" : "s"}
+              {tr("Import")}{" "}{preview.summary.toCreate + preview.summary.toUpdate} {" "}{tr("contributor")}{preview.summary.toCreate + preview.summary.toUpdate === 1 ? "" : "s"}
             </Button>
           </div>
         </div>
@@ -313,19 +314,19 @@ export function ImportWizard({ campusNames }: { campusNames: string[] }) {
         <div className="space-y-4">
           <Alert variant={report.failed ? "warning" : "success"}>
             <CheckCircle2 />
-            <AlertTitle>Import complete</AlertTitle>
+            <AlertTitle>{tr("Import complete")}</AlertTitle>
             <AlertDescription>
-              {report.created} created, {report.updated} updated, {report.skipped} skipped{report.failed ? `, ${report.failed} failed` : ""}.
+              {report.created} {" "}{tr("created,")}{" "}{report.updated} {" "}{tr("updated,")}{" "}{report.skipped} {" "}{tr("skipped")}{report.failed ? `, ${report.failed} failed` : ""}.
             </AlertDescription>
           </Alert>
 
           {report.failures.length ? (
             <div className="rounded-md border border-border">
-              <div className="border-b border-border px-3 py-2 text-xs font-medium">Failures</div>
+              <div className="border-b border-border px-3 py-2 text-xs font-medium">{tr("Failures")}</div>
               <ul className="divide-y divide-border">
                 {report.failures.map((f) => (
                   <li key={f.line} className="flex items-center justify-between gap-3 px-3 py-1.5 text-xs">
-                    <span className="text-muted-foreground">Line {f.line} · {f.email || "—"}</span>
+                    <span className="text-muted-foreground">{tr("Line")}{" "}{f.line} · {f.email || "—"}</span>
                     <span className="text-destructive">{f.error}</span>
                   </li>
                 ))}
@@ -334,8 +335,8 @@ export function ImportWizard({ campusNames }: { campusNames: string[] }) {
           ) : null}
 
           <div className="flex items-center gap-2">
-            <Button asChild><Link href="/contributors"><Users /> Back to contributors</Link></Button>
-            <Button variant="outline" onClick={reset}><Upload /> Import another file</Button>
+            <Button asChild><Link href="/contributors"><Users /> {" "}{tr("Back to contributors")}</Link></Button>
+            <Button variant="outline" onClick={reset}><Upload /> {" "}{tr("Import another file")}</Button>
           </div>
         </div>
       ) : null}

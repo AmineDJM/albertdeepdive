@@ -5,6 +5,7 @@ import { requirePermission } from "@/server/auth/session";
 import { audienceInputSchema, createRecipient, deleteRecipient, setRecipientActive, updateRecipient } from "@/server/audience/service";
 import { ok, toActionFailure, type ActionResult } from "@/lib/action-result";
 import type { z } from "zod";
+import { getUi } from "@/server/i18n/locale";
 
 export async function createRecipientAction(input: z.input<typeof audienceInputSchema>): Promise<ActionResult<{ id: string }>> {
   try {
@@ -18,11 +19,12 @@ export async function createRecipientAction(input: z.input<typeof audienceInputS
 }
 
 export async function updateRecipientAction(id: string, patch: Partial<z.input<typeof audienceInputSchema>>): Promise<ActionResult> {
+  const tr = await getUi();
   try {
     const user = await requirePermission("contributor:manage");
     await updateRecipient(id, patch, user.id);
     revalidatePath("/directory");
-    return ok(null, "Recipient updated");
+    return ok(null, tr("Recipient updated"));
   } catch (err) {
     return toActionFailure(err);
   }
@@ -40,11 +42,12 @@ export async function setRecipientActiveAction(id: string, isActive: boolean): P
 }
 
 export async function deleteRecipientAction(id: string): Promise<ActionResult> {
+  const tr = await getUi();
   try {
     const user = await requirePermission("contributor:manage");
     await deleteRecipient(id, user.id);
     revalidatePath("/directory");
-    return ok(null, "Recipient removed");
+    return ok(null, tr("Recipient removed"));
   } catch (err) {
     return toActionFailure(err);
   }

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { useUi } from "@/components/i18n/provider";
 
 /**
  * The one tab bar.
@@ -12,9 +13,10 @@ import { cn } from "@/lib/utils";
  * an edition's control room lives at the parent path of all its siblings.
  */
 export function TabBar({ tabs, className, align = "start" }: { tabs: { href: string; label: string; exact?: boolean }[]; className?: string; align?: "start" | "end" }) {
+  const tr = useUi();
   const pathname = usePathname();
   return (
-    <nav className={cn("flex h-full items-center gap-0.5 overflow-x-auto scrollbar-thin", align === "end" && "ml-auto", className)} aria-label="Sections">
+    <nav className={cn("flex h-full items-center gap-0.5 overflow-x-auto scrollbar-thin", align === "end" && "ml-auto", className)} aria-label={tr("Sections")}>
       {tabs.map((t) => {
         const active = t.exact ? pathname === t.href : pathname === t.href || pathname.startsWith(`${t.href}/`);
         return (

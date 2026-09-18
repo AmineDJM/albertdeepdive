@@ -12,6 +12,7 @@ import { ClusterPanel } from "@/components/newsroom/cluster-panel";
 import { EmptyState } from "@/components/ui/empty-state";
 import { STORY_TYPES } from "@/lib/constants";
 import { cn } from "@/lib/utils";
+import { getUi } from "@/server/i18n/locale";
 
 export const dynamic = "force-dynamic";
 
@@ -24,6 +25,7 @@ const VIEWS = [
 ];
 
 export default async function StoriesPage({ params, searchParams }: { params: Promise<{ editionId: string }>; searchParams: Promise<Record<string, string | undefined>> }) {
+  const tr = await getUi();
   const { editionId } = await params;
   const sp = await searchParams;
   const status = sp.status ?? "all";
@@ -52,24 +54,24 @@ export default async function StoriesPage({ params, searchParams }: { params: Pr
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-5 py-2">
-        <h1 className="sr-only">Stories</h1>
-        <nav className="flex flex-wrap items-center gap-1" aria-label="Story views">
+        <h1 className="sr-only">{tr("Stories")}</h1>
+        <nav className="flex flex-wrap items-center gap-1" aria-label={tr("Story views")}>
           {VIEWS.map((v) => (
             <Link
               key={v.key}
               href={qs({ status: v.key === "all" ? undefined : v.key })}
               className={cn("inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium transition-colors", status === v.key || (v.key === "all" && status === "all") ? "bg-brand-soft text-brand-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground")}
             >
-              {v.label}
+              {tr(v.label)}
               <span className="tabular text-2xs opacity-70">{facets[v.facet]}</span>
             </Link>
           ))}
           <span className="mx-1 h-4 w-px bg-border" />
           <Link href={qs({ flag: sp.flag === "needs_attention" ? undefined : "needs_attention" })} className={cn("rounded-md px-2 py-1 text-xs font-medium", sp.flag === "needs_attention" ? "bg-warning-soft text-warning" : "text-muted-foreground hover:bg-muted")}>
-            Needs attention <span className="tabular text-2xs opacity-70">{facets.flagged}</span>
+            {tr("Needs attention")}{" "}<span className="tabular text-2xs opacity-70">{facets.flagged}</span>
           </Link>
           <Link href={qs({ flag: sp.flag === "conflicts" ? undefined : "conflicts" })} className={cn("rounded-md px-2 py-1 text-xs font-medium", sp.flag === "conflicts" ? "bg-destructive/10 text-destructive" : "text-muted-foreground hover:bg-muted")}>
-            Conflicts <span className="tabular text-2xs opacity-70">{facets.conflicts}</span>
+            {tr("Conflicts")}{" "}<span className="tabular text-2xs opacity-70">{facets.conflicts}</span>
           </Link>
         </nav>
       </div>
@@ -77,12 +79,12 @@ export default async function StoriesPage({ params, searchParams }: { params: Pr
       <div className="border-b border-border px-5 py-2">
         <Suspense>
           <FilterBar
-            searchPlaceholder="Search stories…"
+            searchPlaceholder={tr("Search stories…")}
             filters={[
-              { key: "sectionId", label: "Section", options: [...sections.map((s) => ({ value: s.id, label: s.name })), { value: "none", label: "Unassigned" }] },
-              { key: "campusId", label: "Campus", options: [...campuses.map((c) => ({ value: c.id, label: c.name })), { value: "school", label: "School-wide" }] },
-              { key: "storyType", label: "Type", options: STORY_TYPES.map((t) => ({ value: t.value, label: t.label })) },
-              { key: "sort", label: "Sort", options: [{ value: "score", label: "Score" }, { value: "priority", label: "Priority" }, { value: "recent", label: "Recently updated" }, { value: "title", label: "Title" }], allLabel: "By score" },
+              { key: "sectionId", label: tr("Section"), options: [...sections.map((s) => ({ value: s.id, label: s.name })), { value: "none", label: tr("Unassigned") }] },
+              { key: "campusId", label: tr("Campus"), options: [...campuses.map((c) => ({ value: c.id, label: c.name })), { value: "school", label: tr("School-wide") }] },
+              { key: "storyType", label: tr("Type"), options: STORY_TYPES.map((t) => ({ value: t.value, label: tr(t.label) })) },
+              { key: "sort", label: tr("Sort"), options: [{ value: "score", label: tr("Score") }, { value: "priority", label: tr("Priority") }, { value: "recent", label: tr("Recently updated") }, { value: "title", label: tr("Title") }], allLabel: tr("By score") },
             ]}
           />
         </Suspense>
@@ -98,8 +100,7 @@ export default async function StoriesPage({ params, searchParams }: { params: Pr
               action={
                 facets.total === 0 ? (
                   <Link href={`/editions/${editionId}/inbox`} className="text-xs text-brand hover:underline">
-                    Go to the inbox
-                  </Link>
+                    {tr("Go to the inbox")}</Link>
                 ) : null
               }
             />

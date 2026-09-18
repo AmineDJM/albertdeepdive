@@ -5,6 +5,7 @@ import * as s from "@/server/db/schema";
 import { audit } from "@/server/audit";
 import { NotFoundError, ValidationError } from "@/lib/action-result";
 import { guardTenant, scoped, stampTenant } from "@/server/tenancy/scope";
+import { onlySent } from "@/lib/zod-patch";
 
 export const audienceInputSchema = z.object({
   email: z.string().trim().toLowerCase().email(),
@@ -49,7 +50,7 @@ export async function createRecipient(raw: z.input<typeof audienceInputSchema>, 
 }
 
 export async function updateRecipient(id: string, raw: Partial<z.input<typeof audienceInputSchema>>, userId?: string | null) {
-  const input = audienceInputSchema.partial().parse(raw);
+  const input = onlySent(audienceInputSchema.partial().parse(raw), raw);
   const [row] = await db.update(s.audienceRecipients).set(input).where(await scoped(s.audienceRecipients.organizationId, eq(s.audienceRecipients.id, id))).returning();
   if (!row) throw new NotFoundError("Recipient");
   await audit({ action: "audience.update", userId, entityId: id, metadata: { fields: Object.keys(input) } });

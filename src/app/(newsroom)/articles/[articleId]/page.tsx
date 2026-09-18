@@ -10,12 +10,14 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { relativeTime, truncate } from "@/lib/utils";
 import { storyTypeLabel } from "@/lib/constants";
+import { getUi } from "@/server/i18n/locale";
 
 export const dynamic = "force-dynamic";
 
 const ROLE_LABELS: Record<string, string> = { PRIMARY: "Lead source", SUPPORTING: "Supporting", PHOTO: "Photo", EXTERNAL: "External" };
 
 export default async function ArticlePage({ params }: { params: Promise<{ articleId: string }> }) {
+  const tr = await getUi();
   const { articleId } = await params;
   const user = await getCurrentUser();
   const data = await articleWorkbench(articleId).catch(() => null);
@@ -29,16 +31,16 @@ export default async function ArticlePage({ params }: { params: Promise<{ articl
       <PageHeader
         breadcrumbs={[
           { label: edition.label, href: `/editions/${edition.id}` },
-          { label: "Stories", href: `/editions/${edition.id}/stories` },
+          { label: tr("Stories"), href: `/editions/${edition.id}/stories` },
           { label: truncate(story.title, 34), href: `/stories/${story.id}` },
-          { label: "Editor" },
+          { label: tr("Editor") },
         ]}
         title={article.headline || story.title}
         meta={
           <>
             <ArticleStatusBadge status={article.status} />
             <Badge variant="outline">{storyTypeLabel(story.storyType)}</Badge>
-            {story.isCover ? <Badge variant="brand">Cover</Badge> : null}
+            {story.isCover ? <Badge variant="brand">{tr("Cover")}</Badge> : null}
             {article.language !== "en" ? <Badge variant="outline">{article.language.toUpperCase()}</Badge> : null}
           </>
         }
@@ -46,7 +48,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ articl
         actions={
           <Button size="sm" variant="outline" asChild>
             <Link href={`/stories/${story.id}`}>
-              Story file <ArrowUpRight />
+              {tr("Story file")}{" "}<ArrowUpRight />
             </Link>
           </Button>
         }
@@ -81,7 +83,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ articl
 
         <aside className="space-y-5">
           <section>
-            <SectionTitle>Sources behind this article</SectionTitle>
+            <SectionTitle>{tr("Sources behind this article")}</SectionTitle>
             <ul className="space-y-2">
               {sources.map((s) => (
                 <li key={s.id} className="rounded-md border border-border p-2.5">
@@ -99,23 +101,21 @@ export default async function ArticlePage({ params }: { params: Promise<{ articl
                   {s.excerpt ? <p className="mt-1.5 text-2xs leading-relaxed text-muted-foreground">{s.excerpt}</p> : null}
                 </li>
               ))}
-              {!sources.length ? <li className="rounded-md border border-dashed border-border p-3 text-2xs text-muted-foreground">No submission is linked to this draft yet.</li> : null}
+              {!sources.length ? <li className="rounded-md border border-dashed border-border p-3 text-2xs text-muted-foreground">{tr("No submission is linked to this draft yet.")}</li> : null}
             </ul>
           </section>
 
           <section>
             <SectionTitle>
-              Fact sheet
-              {disputedFacts ? <span className="ml-1.5 text-warning">{disputedFacts} disputed</span> : null}
+              {tr("Fact sheet")}{" "}{disputedFacts ? <span className="ml-1.5 text-warning">{disputedFacts} {" "}{tr("disputed")}</span> : null}
             </SectionTitle>
             {disputedFacts ? (
               <p className="mb-2 flex items-start gap-1.5 rounded-md border border-warning/40 bg-warning-soft/50 p-2 text-2xs">
                 <AlertTriangle className="mt-px size-3 shrink-0 text-warning" />
                 <span>
-                  Unresolved conflicts block export.{" "}
+                  {tr("Unresolved conflicts block export.")}{" "}
                   <Link href={`/stories/${story.id}`} className="underline">
-                    Resolve them on the story file
-                  </Link>
+                    {tr("Resolve them on the story file")}</Link>
                   .
                 </span>
               </p>
@@ -127,17 +127,16 @@ export default async function ArticlePage({ params }: { params: Promise<{ articl
                   <span className={f.status === "DISPUTED" ? "text-warning" : f.status === "REJECTED" ? "text-muted-foreground line-through" : undefined}>{f.statement}</span>
                 </li>
               ))}
-              {!facts.length ? <li className="text-2xs text-muted-foreground">No facts extracted yet.</li> : null}
+              {!facts.length ? <li className="text-2xs text-muted-foreground">{tr("No facts extracted yet.")}</li> : null}
             </ul>
             {facts.length > 14 ? (
               <Link href={`/stories/${story.id}`} className="mt-1.5 inline-block text-2xs text-muted-foreground underline">
-                {facts.length - 14} more on the story file
-              </Link>
+                {facts.length - 14} {" "}{tr("more on the story file")}</Link>
             ) : null}
           </section>
 
           <section>
-            <SectionTitle>Verbatim quotes</SectionTitle>
+            <SectionTitle>{tr("Verbatim quotes")}</SectionTitle>
             <ul className="space-y-2">
               {quotes.slice(0, 6).map((q) => (
                 <li key={q.id} className="rounded-md border border-border p-2.5">
@@ -148,7 +147,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ articl
                   {q.speakerName ? <p className="mt-1 text-2xs text-muted-foreground">— {q.speakerName}{q.speakerRole ? `, ${q.speakerRole}` : ""}</p> : null}
                 </li>
               ))}
-              {!quotes.length ? <li className="text-2xs text-muted-foreground">No quotes captured for this story.</li> : null}
+              {!quotes.length ? <li className="text-2xs text-muted-foreground">{tr("No quotes captured for this story.")}</li> : null}
             </ul>
           </section>
         </aside>

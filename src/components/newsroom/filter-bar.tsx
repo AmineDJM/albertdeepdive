@@ -7,12 +7,14 @@ import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useUi } from "@/components/i18n/provider";
 
 export type FilterOption = { value: string; label: string };
 export type FilterDef = { key: string; label: string; options: FilterOption[]; allLabel?: string };
 
 /** URL-synced filter bar: selects + search. Server components read the params. */
 export function FilterBar({ filters, searchKey = "q", searchPlaceholder = "Search…", className, children }: { filters?: FilterDef[]; searchKey?: string | null; searchPlaceholder?: string; className?: string; children?: React.ReactNode }) {
+  const tr = useUi();
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
@@ -45,7 +47,7 @@ export function FilterBar({ filters, searchKey = "q", searchPlaceholder = "Searc
       {searchKey ? (
         <div className="relative">
           <Search className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground" />
-          <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder={searchPlaceholder} className="h-8 w-56 pl-8" aria-label="Search" />
+          <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder={searchPlaceholder} className="h-8 w-56 pl-8" aria-label={tr("Search")} />
         </div>
       ) : null}
       {filters?.map((f) => (
@@ -61,10 +63,9 @@ export function FilterBar({ filters, searchKey = "q", searchPlaceholder = "Searc
       {children}
       {active.length ? (
         <Button variant="ghost" size="sm" onClick={() => startTransition(() => router.replace(pathname, { scroll: false }))}>
-          <X /> Clear
-        </Button>
+          <X /> {" "}{tr("Clear")}</Button>
       ) : null}
-      {pending ? <span className="text-2xs text-muted-foreground">Updating…</span> : null}
+      {pending ? <span className="text-2xs text-muted-foreground">{tr("Updating…")}</span> : null}
     </div>
   );
 }

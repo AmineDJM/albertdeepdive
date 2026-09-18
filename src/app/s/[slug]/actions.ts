@@ -7,7 +7,7 @@ import { publicationBySubscribeSlug, subscribe } from "@/server/subscribers/serv
 import { ok, toActionFailure, type ActionResult } from "@/lib/action-result";
 import { translator } from "@/lib/i18n";
 
-export type SubscribeState = { message: string };
+export type SubscribeState = { message: string; redirect?: string };
 
 /**
  * Public, unauthenticated. The reply is the same whether the address was new, already pending or
@@ -23,14 +23,23 @@ export async function subscribeAction(_prev: ActionResult<SubscribeState> | null
     const t = translator(publication.language);
 
     const h = await headers();
+    const ip = h.get("x-forwarded-for")?.split(",")[0]?.trim() ?? h.get("x-real-ip");
+    const email = String(formData.get("email") ?? "");
+    const firstName = String(formData.get("firstName") ?? "") || undefined;
+    const locale = publication.language === "fr" ? ("fr" as const) : ("en" as const);
+
+    // A paid title: the reader is recorded and sent to Stripe; the payment is the confirmation.
+    // No URL means the address already pays, and the reply is the same as for everyone else.
+    if (publication.access === "paid") {
+      const { startPaidCheckout } = await import("@/server/payments/readers");
+      const { url } = await startPaidCheckout(publication.id, { email, firstName, locale }, { ip });
+      return ok({ message: t("subscribe.checkInbox"), redirect: url ?? undefined });
+    }
+
     const result = await subscribe(
       publication.id,
-      {
-        email: String(formData.get("email") ?? ""),
-        firstName: String(formData.get("firstName") ?? "") || undefined,
-        locale: publication.language === "fr" ? "fr" : "en",
-      },
-      { ip: h.get("x-forwarded-for")?.split(",")[0]?.trim() ?? h.get("x-real-ip"), source: "subscribe_page" },
+      { email, firstName, locale },
+      { ip, source: "subscribe_page" },
     );
 
     if (result.status === "confirmation_sent" && result.confirmToken) {

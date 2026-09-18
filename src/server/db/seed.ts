@@ -77,10 +77,25 @@ export async function runSeed(options: { quiet?: boolean } = {}): Promise<SeedRe
 
   // ── Users ──────────────────────────────────────────────────────────────────
   const passwordHash = await hashPassword(env.SEED_ADMIN_PASSWORD);
+
+  /*
+   * Two administrators, because running Briefly and running a newsroom are different jobs.
+   *
+   * The platform admin is Briefly's own: the console that reads across every customer — workspaces,
+   * people, payments, integrations — and the right to open any workspace as support. It belongs to
+   * no workspace. The workspace admin is the customer's: the owner of this newsroom, with everything
+   * a customer can do and nothing a customer cannot. They were one account until now, which is why
+   * "which one is the super admin" had no good answer. Point SEED_ADMIN_EMAIL at the workspace
+   * address and they collapse back into one, for an installation that wants it that way.
+   */
+  const WORKSPACE_ADMIN_EMAIL = "admin@albertschool.com";
+  const separatePlatformAdmin = env.SEED_ADMIN_EMAIL.toLowerCase() !== WORKSPACE_ADMIN_EMAIL;
   const userRows = await db
     .insert(s.users)
     .values([
-      { email: env.SEED_ADMIN_EMAIL, name: "Newsroom Admin", role: "SUPER_ADMIN", passwordHash },
+      separatePlatformAdmin
+        ? { email: WORKSPACE_ADMIN_EMAIL, name: "Albert School Admin", role: "EDITOR_IN_CHIEF" as const, passwordHash }
+        : { email: env.SEED_ADMIN_EMAIL, name: "Newsroom Admin", role: "SUPER_ADMIN" as const, passwordHash },
       { email: "eic@albertschool.com", name: "Editor in Chief", role: "EDITOR_IN_CHIEF", passwordHash },
       { email: "editor@albertschool.com", name: "Desk Editor", role: "EDITOR", passwordHash },
       { email: "lyon@albertschool.com", name: "Campus Editor Lyon", role: "CAMPUS_EDITOR", passwordHash, campusId: campusBySlug.get("lyon")!.id },
@@ -91,11 +106,14 @@ export async function runSeed(options: { quiet?: boolean } = {}): Promise<SeedRe
   const eic = userRows[1];
   const editor = userRows[2];
   // Platform role and workspace role are different things: the first says what someone may do in
-  // Briefly, the second what they may do inside this customer's newsroom.
+  // Briefly, the second what they may do inside this customer's newsroom. The first row owns it.
   const workspaceRole = { SUPER_ADMIN: "OWNER", EDITOR_IN_CHIEF: "ADMIN", EDITOR: "EDITOR", CAMPUS_EDITOR: "EDITOR", CONTRIBUTOR: "CONTRIBUTOR", VIEWER: "VIEWER" } as const;
   await db.insert(s.organizationMembers).values(
-    userRows.map((u) => ({ organizationId, userId: u.id, role: workspaceRole[u.role], isDefault: true, acceptedAt: new Date() })),
+    userRows.map((u, index) => ({ organizationId, userId: u.id, role: index === 0 ? ("OWNER" as const) : workspaceRole[u.role], isDefault: true, acceptedAt: new Date() })),
   );
+  if (separatePlatformAdmin) {
+    await db.insert(s.users).values({ email: env.SEED_ADMIN_EMAIL, name: "Briefly Platform Admin", role: "SUPER_ADMIN", passwordHash });
+  }
   await db.update(s.organizations).set({ createdById: admin.id }).where(sql`${s.organizations.id} = ${organizationId}`);
 
   // ── Brand ──────────────────────────────────────────────────────────────────

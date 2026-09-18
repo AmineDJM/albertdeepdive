@@ -19,6 +19,7 @@ import { FORMATS, MODES } from "@/lib/creative/formats";
 import { SYSTEMS } from "@/lib/creative/design-systems";
 import { relativeTime } from "@/lib/utils";
 import { NewPackDialog } from "./new-pack-dialog";
+import { getUi } from "@/server/i18n/locale";
 
 export const dynamic = "force-dynamic";
 
@@ -30,8 +31,9 @@ export const dynamic = "force-dynamic";
  * shows the actual work rather than an icon standing in for it.
  */
 export default async function StudioPage() {
+  const tr = await getUi();
   const user = await getCurrentUser();
-  if (!hasPermission(user, "edition:view")) return <NoAccess title="Studio" permission="edition:view" />;
+  if (!hasPermission(user, "edition:view")) return <NoAccess title={tr("Studio")} permission="edition:view" />;
 
   const tenant = await requireTenant();
   const [packs, editions, plan, creditsUsed] = await Promise.all([
@@ -76,15 +78,15 @@ export default async function StudioPage() {
   return (
     <>
       <PageHeader
-        title="Studio"
-        description="Carousels, Stories and posts, set in your own brand. Briefly writes the words and draws every pixel — nothing is a picture of text."
+        title={tr("Studio")}
+        description={tr("Carousels, Stories and posts, set in your own brand. Briefly writes the words and draws every pixel — nothing is a picture of text.")}
         actions={allowed ? <NewPackDialog editions={editions.map((edition) => ({ id: edition.id, label: `${edition.label} · N°${edition.issueNumber}` }))} /> : null}
       >
         <HubTabs tabs={WORKBENCH_TABS} />
       </PageHeader>
       <PageBody className="space-y-4">
         {!allowed ? (
-          <p className="rounded-lg border border-amber-soft bg-amber-soft/40 px-4 py-3 text-[13px]">Creative Studio is not included in this plan.</p>
+          <p className="rounded-lg border border-amber-soft bg-amber-soft/40 px-4 py-3 text-[13px]">{tr("Creative Studio is not included in this plan.")}</p>
         ) : creditLine ? (
           <p className="text-xs text-muted-foreground">{creditLine}</p>
         ) : null}
@@ -128,8 +130,8 @@ export default async function StudioPage() {
           </ul>
         ) : (
           <EmptyState
-            title="Nothing made yet"
-            description="Pick an edition and a format. Briefly reads what you published, writes the frames and renders them in your colours and your type."
+            title={tr("Nothing made yet")}
+            description={tr("Pick an edition and a format. Briefly reads what you published, writes the frames and renders them in your colours and your type.")}
             icon={Sparkles}
           />
         )}
@@ -138,9 +140,10 @@ export default async function StudioPage() {
   );
 }
 
-function StatusBadge({ status, ok }: { status: string; ok: boolean }) {
-  if (status === "FAILED") return <Badge variant="destructive">needs a fix</Badge>;
-  if (status === "READY") return ok ? <Badge variant="success">ready</Badge> : <Badge variant="warning">check it</Badge>;
-  if (status === "DRAFT") return <Badge variant="muted">draft</Badge>;
+async function StatusBadge({ status, ok }: { status: string; ok: boolean }) {
+  const tr = await getUi();
+  if (status === "FAILED") return <Badge variant="destructive">{tr("needs a fix")}</Badge>;
+  if (status === "READY") return ok ? <Badge variant="success">{tr("ready")}</Badge> : <Badge variant="warning">{tr("check it")}</Badge>;
+  if (status === "DRAFT") return <Badge variant="muted">{tr("draft")}</Badge>;
   return <Badge variant="muted">{status.toLowerCase()}</Badge>;
 }

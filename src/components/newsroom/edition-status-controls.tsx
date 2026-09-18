@@ -9,8 +9,10 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { transitionEditionAction } from "@/app/(newsroom)/editions/actions";
 import { STATUS_LABELS, type EditionStatus } from "@/lib/editorial/edition-state";
+import { useUi } from "@/components/i18n/provider";
 
 export function EditionStatusControls({ editionId, current, options }: { editionId: string; current: EditionStatus; options: readonly EditionStatus[] }) {
+  const tr = useUi();
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [confirm, setConfirm] = useState<EditionStatus | null>(null);
@@ -30,11 +32,11 @@ export function EditionStatusControls({ editionId, current, options }: { edition
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="outline" size="sm" loading={pending}>
-            Move edition <ChevronDown />
+            {tr("Move edition")}{" "}<ChevronDown />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          <DropdownMenuLabel>From {STATUS_LABELS[current]}</DropdownMenuLabel>
+          <DropdownMenuLabel>{tr("From")}{" "}{STATUS_LABELS[current]}</DropdownMenuLabel>
           {options.map((o) => (
             <DropdownMenuItem key={o} onSelect={() => setConfirm(o)}>
               → {STATUS_LABELS[o]}
@@ -45,12 +47,12 @@ export function EditionStatusControls({ editionId, current, options }: { edition
       <AlertDialog open={!!confirm} onOpenChange={(o) => !o && setConfirm(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Move edition to “{confirm ? STATUS_LABELS[confirm] : ""}”?</AlertDialogTitle>
-            <AlertDialogDescription>This changes the phase for everyone in the newsroom. Automations and quality gates follow the edition status.</AlertDialogDescription>
+            <AlertDialogTitle>{tr("Move edition to “")}{confirm ? STATUS_LABELS[confirm] : ""}”?</AlertDialogTitle>
+            <AlertDialogDescription>{tr("This changes the phase for everyone in the newsroom. Automations and quality gates follow the edition status.")}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={() => confirm && run(confirm)}>Confirm</AlertDialogAction>
+            <AlertDialogCancel>{tr("Cancel")}</AlertDialogCancel>
+            <AlertDialogAction onClick={() => confirm && run(confirm)}>{tr("Confirm")}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

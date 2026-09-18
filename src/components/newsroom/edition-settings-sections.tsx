@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { SortableSections, type SectionCounts, type SectionItem } from "@/components/settings/sortable-sections";
 import { saveEditionSectionsAction, type EditionSectionPatch } from "@/app/(newsroom)/editions/[editionId]/settings/actions";
+import { useUi } from "@/components/i18n/provider";
 
 export type EditionSectionInput = {
   id: string;
@@ -46,6 +47,7 @@ export function EditionSettingsSections({
   targetPageCount: number;
   canManage: boolean;
 }) {
+  const tr = useUi();
   const router = useRouter();
   const [items, setItems] = useState<SectionItem[]>(() => toItems(sections));
   const [pending, start] = useTransition();
@@ -98,19 +100,16 @@ export function EditionSettingsSections({
       <SortableSections items={items} onChange={setItems} counts={counts} dndId={`edition-sections-${editionId}`} readOnly={!canManage} />
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-card px-3 py-2">
         <div className="text-xs text-muted-foreground">
-          {items.filter((i) => !i.isHidden).length} visible of {items.length} sections · {plannedPages} of {targetPageCount} target pages allocated
-          {plannedPages > targetPageCount ? <span className="ml-2 text-warning">{plannedPages - targetPageCount} pages over the target</span> : null}
+          {items.filter((i) => !i.isHidden).length} {" "}{tr("visible of")}{" "}{items.length} {" "}{tr("sections ·")}{" "}{plannedPages} {" "}{tr("of")}{" "}{targetPageCount} {" "}{tr("target pages allocated")}{" "}{plannedPages > targetPageCount ? <span className="ml-2 text-warning">{plannedPages - targetPageCount} {" "}{tr("pages over the target")}</span> : null}
           {problems.length ? <span className="ml-2 text-destructive">{problems[0]}</span> : null}
         </div>
         <div className="flex items-center gap-2">
           {dirty && canManage ? (
             <Button variant="ghost" size="sm" onClick={() => setItems(toItems(sections))} disabled={pending}>
-              Discard
-            </Button>
+              {tr("Discard")}</Button>
           ) : null}
           <Button size="sm" onClick={save} loading={pending} disabled={!canManage || !dirty || problems.length > 0}>
-            <Save /> Save sections
-          </Button>
+            <Save /> {" "}{tr("Save sections")}</Button>
         </div>
       </div>
     </div>

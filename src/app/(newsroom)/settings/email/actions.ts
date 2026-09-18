@@ -6,6 +6,7 @@ import { connectGmail, disconnectGmail, verifyGmail, type GmailStatus } from "@/
 import { pollInbox, type InboundRunResult } from "@/server/email/inbound";
 import { sendEmail } from "@/server/email";
 import { ok, toActionFailure, type ActionResult } from "@/lib/action-result";
+import { getUi } from "@/server/i18n/locale";
 
 function revalidateEmail() {
   revalidatePath("/settings/email");
@@ -24,11 +25,12 @@ export async function connectGmailAction(input: { address: string; displayName: 
 }
 
 export async function disconnectGmailAction(): Promise<ActionResult<GmailStatus>> {
+  const tr = await getUi();
   try {
     const user = await requirePermission("settings:manage");
     const status = await disconnectGmail(user.id);
     revalidateEmail();
-    return ok(status, "Mailbox disconnected");
+    return ok(status, tr("Mailbox disconnected"));
   } catch (err) {
     return toActionFailure(err);
   }
@@ -36,11 +38,12 @@ export async function disconnectGmailAction(): Promise<ActionResult<GmailStatus>
 
 /** Checks the credentials without saving anything, so a typo is caught before it is stored. */
 export async function testGmailAction(input: { address: string; password: string }): Promise<ActionResult<{ ok: boolean }>> {
+  const tr = await getUi();
   try {
     await requirePermission("settings:manage");
     const result = await verifyGmail(input);
     if (!result.ok) return { ok: false, error: result.error };
-    return ok({ ok: true }, "Google accepted the sign-in");
+    return ok({ ok: true }, tr("Google accepted the sign-in"));
   } catch (err) {
     return toActionFailure(err);
   }
@@ -48,6 +51,7 @@ export async function testGmailAction(input: { address: string; password: string
 
 /** Sends a real message to the connected mailbox, so the operator sees it arrive. */
 export async function sendTestEmailAction(to: string): Promise<ActionResult> {
+  const tr = await getUi();
   try {
     const user = await requirePermission("settings:manage");
     const result = await sendEmail({
@@ -57,7 +61,7 @@ export async function sendTestEmailAction(to: string): Promise<ActionResult> {
       layout: {
         preheader: "A test message from the newsroom.",
         kicker: "Mailbox check",
-        title: "The newsroom mailbox is connected",
+        title: tr("The newsroom mailbox is connected"),
         blocks: [
           { type: "paragraph", text: `${user.name} sent this from Albert's Deep Dive to check that invitations and reminders will reach contributors.` },
           { type: "paragraph", text: "Reply to this message and your reply appears in the newsroom inbox, ready for triage." },

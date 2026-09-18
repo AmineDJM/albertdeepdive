@@ -14,6 +14,7 @@ import { FieldError, SettingsCard } from "@/components/settings/key-value";
 import { saveEditionSettingsAction, type EditionSettingsPatch } from "@/app/(newsroom)/editions/[editionId]/settings/actions";
 import { CAMPAIGN_TIMEZONE, zonedParts, zonedTimeToUtc } from "@/lib/campaigns/schedule";
 import { PAGE_TEMPLATES } from "@/lib/constants";
+import { useUi } from "@/components/i18n/provider";
 
 /** The edition as the server holds it: instants as ISO strings (or null when unset). */
 export type EditionSettingsInitial = Omit<EditionSettingsValues, "publicationTargetAt" | "finalReviewAt"> & {
@@ -80,6 +81,7 @@ export function EditionSettingsForm({
   /** Facts about the edition that the backend keeps immutable, shown for context. */
   meta: { issueNumber: number; month: string; slug: string; language: string; sections: number };
 }) {
+  const tr = useUi();
   const router = useRouter();
   const [values, setValues] = useState<EditionSettingsValues>(() => toValues(initial));
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]> | null>(null);
@@ -126,78 +128,71 @@ export function EditionSettingsForm({
 
   return (
     <div className="space-y-4">
-      <SettingsCard title="Identity" description="How this issue is named across the newsroom, the exports and the archive.">
+      <SettingsCard title={tr("Identity")} description={tr("How this issue is named across the newsroom, the exports and the archive.")}>
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="space-y-1">
             <Label htmlFor="edition-label" className="text-xs">
-              Label
-            </Label>
+              {tr("Label")}</Label>
             <Input id="edition-label" value={values.label} onChange={(e) => set("label", e.target.value)} disabled={readOnly} maxLength={60} aria-invalid={Boolean(fieldErrors?.label)} />
-            <p className="text-2xs text-muted-foreground">Short name, e.g. “October 2026”</p>
+            <p className="text-2xs text-muted-foreground">{tr("Short name, e.g. “October 2026”")}</p>
             <FieldError errors={fieldErrors} name="label" />
           </div>
           <div className="space-y-1">
             <Label htmlFor="edition-title" className="text-xs">
-              Title
-            </Label>
+              {tr("Title")}</Label>
             <Input id="edition-title" value={values.title} onChange={(e) => set("title", e.target.value)} disabled={readOnly} maxLength={160} aria-invalid={Boolean(fieldErrors?.title)} />
-            <p className="text-2xs text-muted-foreground">Printed on the cover and in the exports</p>
+            <p className="text-2xs text-muted-foreground">{tr("Printed on the cover and in the exports")}</p>
             <FieldError errors={fieldErrors} name="title" />
           </div>
         </div>
 
         <dl className="mt-3 grid gap-x-6 gap-y-2 border-t border-border pt-3 text-xs sm:grid-cols-4">
           <div>
-            <dt className="label-caps">Issue</dt>
+            <dt className="label-caps">{tr("Issue")}</dt>
             <dd className="tabular mt-0.5 font-medium">N°{meta.issueNumber}</dd>
           </div>
           <div>
-            <dt className="label-caps">Month</dt>
+            <dt className="label-caps">{tr("Month")}</dt>
             <dd className="mt-0.5 font-medium">{meta.month}</dd>
           </div>
           <div>
-            <dt className="label-caps">Language</dt>
+            <dt className="label-caps">{tr("Language")}</dt>
             <dd className="mt-0.5 font-medium">{meta.language}</dd>
           </div>
           <div>
-            <dt className="label-caps">Slug</dt>
+            <dt className="label-caps">{tr("Slug")}</dt>
             <dd className="mt-0.5 truncate font-mono text-[11px]">{meta.slug}</dd>
           </div>
         </dl>
         <p className="mt-2 text-2xs text-muted-foreground">
-          The issue number, the month and the slug are fixed when the edition is created — they identify it in the archive and in every export. The language is the one its articles are
-          written in and is set per article.
-        </p>
+          {tr("The issue number, the month and the slug are fixed when the edition is created — they identify it in the archive and in every export. The language is the one its articles are written in and is set per article.")}</p>
 
         <label className="mt-3 flex items-center justify-between gap-3 rounded-md border border-border bg-card px-3 py-2">
           <span className="min-w-0">
-            <span className="block text-[13px] font-medium">Special issue</span>
-            <span className="block text-2xs text-muted-foreground">Labelled “Special issue N°{meta.issueNumber}” instead of “Issue N°{meta.issueNumber}”.</span>
+            <span className="block text-[13px] font-medium">{tr("Special issue")}</span>
+            <span className="block text-2xs text-muted-foreground">{tr("Labelled “Special issue N°")}{meta.issueNumber}{tr("” instead of “Issue N°")}{meta.issueNumber}”.</span>
           </span>
-          <Switch checked={values.isSpecialIssue} onCheckedChange={(v) => set("isSpecialIssue", v)} disabled={readOnly} aria-label="Special issue" />
+          <Switch checked={values.isSpecialIssue} onCheckedChange={(v) => set("isSpecialIssue", v)} disabled={readOnly} aria-label={tr("Special issue")} />
         </label>
       </SettingsCard>
 
-      <SettingsCard title="Production" description={`Deadlines are ${CAMPAIGN_TIMEZONE.replace("_", " ")}. The flatplan and the quality gates follow the page target.`}>
+      <SettingsCard title={tr("Production")} description={`Deadlines are ${CAMPAIGN_TIMEZONE.replace("_", " ")}. The flatplan and the quality gates follow the page target.`}>
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <div className="space-y-1">
             <Label htmlFor="edition-final-review" className="text-xs">
-              Final review
-            </Label>
+              {tr("Final review")}</Label>
             <Input id="edition-final-review" type="datetime-local" value={values.finalReviewAt} onChange={(e) => set("finalReviewAt", e.target.value)} disabled={readOnly} className="tabular" />
             <FieldError errors={fieldErrors} name="finalReviewAt" />
           </div>
           <div className="space-y-1">
             <Label htmlFor="edition-publication" className="text-xs">
-              Publication target
-            </Label>
+              {tr("Publication target")}</Label>
             <Input id="edition-publication" type="datetime-local" value={values.publicationTargetAt} onChange={(e) => set("publicationTargetAt", e.target.value)} disabled={readOnly} className="tabular" />
             <FieldError errors={fieldErrors} name="publicationTargetAt" />
           </div>
           <div className="space-y-1">
             <Label htmlFor="edition-pages" className="text-xs">
-              Target page count
-            </Label>
+              {tr("Target page count")}</Label>
             <Input
               id="edition-pages"
               type="number"
@@ -210,13 +205,12 @@ export function EditionSettingsForm({
               className="tabular"
               aria-invalid={Boolean(fieldErrors?.targetPageCount)}
             />
-            <p className="text-2xs text-muted-foreground">{meta.sections} sections planned</p>
+            <p className="text-2xs text-muted-foreground">{meta.sections} {" "}{tr("sections planned")}</p>
             <FieldError errors={fieldErrors} name="targetPageCount" />
           </div>
           <div className="space-y-1">
             <Label htmlFor="edition-page-size" className="text-xs">
-              Page size
-            </Label>
+              {tr("Page size")}</Label>
             <NativeSelect id="edition-page-size" value={values.pageSize} onChange={(e) => set("pageSize", e.target.value as EditionSettingsValues["pageSize"])} disabled={readOnly}>
               {PAGE_SIZES.map((p) => (
                 <option key={p.value} value={p.value}>
@@ -228,37 +222,34 @@ export function EditionSettingsForm({
           </div>
           <div className="space-y-1 sm:col-span-2">
             <Label htmlFor="edition-eic" className="text-xs">
-              Editor in chief
-            </Label>
+              {tr("Editor in chief")}</Label>
             <NativeSelect id="edition-eic" value={values.editorInChiefId} onChange={(e) => set("editorInChiefId", e.target.value)} disabled={readOnly}>
-              <option value="">Not assigned</option>
+              <option value="">{tr("Not assigned")}</option>
               {editors.map((u) => (
                 <option key={u.id} value={u.id}>
                   {u.name}
                 </option>
               ))}
             </NativeSelect>
-            <p className="text-2xs text-muted-foreground">Signs the editorial and approves the issue</p>
+            <p className="text-2xs text-muted-foreground">{tr("Signs the editorial and approves the issue")}</p>
             <FieldError errors={fieldErrors} name="editorInChiefId" />
           </div>
         </div>
       </SettingsCard>
 
-      <SettingsCard title="Theme and editorial angle" description="The angle of this issue: what the cover promises and what the editorial says.">
+      <SettingsCard title={tr("Theme and editorial angle")} description={tr("The angle of this issue: what the cover promises and what the editorial says.")}>
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <div className="space-y-1 xl:col-span-2">
             <Label htmlFor="edition-tagline" className="text-xs">
-              Issue theme
-            </Label>
-            <Input id="edition-tagline" value={values.tagline} onChange={(e) => set("tagline", e.target.value)} disabled={readOnly} placeholder="e.g. Data, careers and the campuses that build them" />
-            <p className="text-2xs text-muted-foreground">One line that sets the angle for the whole issue</p>
+              {tr("Issue theme")}</Label>
+            <Input id="edition-tagline" value={values.tagline} onChange={(e) => set("tagline", e.target.value)} disabled={readOnly} placeholder={tr("e.g. Data, careers and the campuses that build them")} />
+            <p className="text-2xs text-muted-foreground">{tr("One line that sets the angle for the whole issue")}</p>
           </div>
           <div className="space-y-1">
             <Label htmlFor="edition-cover-template" className="text-xs">
-              Cover template
-            </Label>
+              {tr("Cover template")}</Label>
             <NativeSelect id="edition-cover-template" value={values.coverTemplate} onChange={(e) => set("coverTemplate", e.target.value)} disabled={readOnly}>
-              <option value="">Chosen at layout time</option>
+              <option value="">{tr("Chosen at layout time")}</option>
               {COVER_TEMPLATES.map((t) => (
                 <option key={t.code} value={t.code}>
                   {t.name}
@@ -268,8 +259,7 @@ export function EditionSettingsForm({
           </div>
           <div className="space-y-1">
             <Label htmlFor="edition-accent" className="text-xs">
-              Accent colour
-            </Label>
+              {tr("Accent colour")}</Label>
             <div className="flex items-center gap-2">
               <input
                 id="edition-accent"
@@ -278,22 +268,20 @@ export function EditionSettingsForm({
                 onChange={(e) => set("accentColour", e.target.value)}
                 disabled={readOnly}
                 className="size-8 shrink-0 cursor-pointer rounded border border-input bg-card p-0.5"
-                aria-label="Accent colour"
+                aria-label={tr("Accent colour")}
               />
               <Input value={values.accentColour} onChange={(e) => set("accentColour", e.target.value)} disabled={readOnly} className="font-mono text-xs" placeholder="#10203A" />
             </div>
           </div>
           <div className="space-y-1 sm:col-span-2">
             <Label htmlFor="edition-cover-headline" className="text-xs">
-              Cover headline
-            </Label>
+              {tr("Cover headline")}</Label>
             <Input id="edition-cover-headline" value={values.coverHeadline} onChange={(e) => set("coverHeadline", e.target.value)} disabled={readOnly} maxLength={200} />
             <FieldError errors={fieldErrors} name="coverHeadline" />
           </div>
           <div className="space-y-1 sm:col-span-2">
             <Label htmlFor="edition-cover-standfirst" className="text-xs">
-              Cover standfirst
-            </Label>
+              {tr("Cover standfirst")}</Label>
             <Input id="edition-cover-standfirst" value={values.coverStandfirst} onChange={(e) => set("coverStandfirst", e.target.value)} disabled={readOnly} maxLength={400} />
             <FieldError errors={fieldErrors} name="coverStandfirst" />
           </div>
@@ -301,18 +289,16 @@ export function EditionSettingsForm({
         <div className="mt-3 grid gap-3 lg:grid-cols-2">
           <div className="space-y-1">
             <Label htmlFor="edition-editorial" className="text-xs">
-              Editorial
-            </Label>
-            <Textarea id="edition-editorial" value={values.editorial} onChange={(e) => set("editorial", e.target.value)} disabled={readOnly} rows={6} maxLength={4000} placeholder="The editor's letter, printed on the contents page." />
-            <p className="text-2xs text-muted-foreground">Printed on the contents page, signed by the editor in chief</p>
+              {tr("Editorial")}</Label>
+            <Textarea id="edition-editorial" value={values.editorial} onChange={(e) => set("editorial", e.target.value)} disabled={readOnly} rows={6} maxLength={4000} placeholder={tr("The editor's letter, printed on the contents page.")} />
+            <p className="text-2xs text-muted-foreground">{tr("Printed on the contents page, signed by the editor in chief")}</p>
             <FieldError errors={fieldErrors} name="editorial" />
           </div>
           <div className="space-y-1">
             <Label htmlFor="edition-notes" className="text-xs">
-              Desk notes
-            </Label>
-            <Textarea id="edition-notes" value={values.notes} onChange={(e) => set("notes", e.target.value)} disabled={readOnly} rows={6} maxLength={2000} placeholder="Internal notes about this issue — never printed." />
-            <p className="text-2xs text-muted-foreground">Internal only</p>
+              {tr("Desk notes")}</Label>
+            <Textarea id="edition-notes" value={values.notes} onChange={(e) => set("notes", e.target.value)} disabled={readOnly} rows={6} maxLength={2000} placeholder={tr("Internal notes about this issue — never printed.")} />
+            <p className="text-2xs text-muted-foreground">{tr("Internal only")}</p>
             <FieldError errors={fieldErrors} name="notes" />
           </div>
         </div>
@@ -323,12 +309,10 @@ export function EditionSettingsForm({
         <div className="flex items-center gap-2">
           {dirty && !readOnly ? (
             <Button variant="ghost" size="sm" onClick={() => setValues(pristine)} disabled={pending}>
-              Discard
-            </Button>
+              {tr("Discard")}</Button>
           ) : null}
           <Button size="sm" onClick={save} loading={pending} disabled={readOnly || !dirty}>
-            <Save /> Save settings
-          </Button>
+            <Save /> {" "}{tr("Save settings")}</Button>
         </div>
       </div>
     </div>

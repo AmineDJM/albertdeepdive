@@ -12,6 +12,7 @@ import { ensureNextEdition, runAutomationTick } from "@/server/campaigns/schedul
 import { closeCampaign, openCampaign, sendReminders, type Campaign } from "@/server/campaigns/service";
 import { AUTOMATION_KEYS, getCampaignDefaults, type AutomationKey } from "@/server/campaigns/settings";
 import { fail, ok, toActionFailure, type ActionResult } from "@/lib/action-result";
+import { getUi } from "@/server/i18n/locale";
 
 function revalidate() {
   revalidatePath("/automations");
@@ -38,9 +39,10 @@ export type RunOutcome = { ran: boolean; detail: string };
  * run through one scheduler pass.
  */
 export async function runAutomationAction(key: AutomationKey, editionId: string | null): Promise<ActionResult<RunOutcome>> {
+  const tr = await getUi();
   try {
     const user = await requirePermission("automation:manage");
-    if (!AUTOMATION_KEYS.includes(key)) return fail("Unknown automation");
+    if (!AUTOMATION_KEYS.includes(key)) return fail(tr("Unknown automation"));
     const opts = { triggeredBy: "MANUAL" as const, userId: user.id };
     let outcome: RunOutcome;
 
@@ -50,7 +52,7 @@ export async function runAutomationAction(key: AutomationKey, editionId: string 
       outcome = { ran: result.created, detail: result.created ? `${result.label} created with its sections and a scheduled campaign` : `Nothing to create — ${result.reason}` };
     } else if (key === "contributionRequest" || key === "reminder1" || key === "reminder2" || key === "gracePeriod" || key === "aiProcessing") {
       const campaign = await targetCampaign(editionId);
-      if (!campaign) return fail("No campaign is scheduled or open, so this automation has nothing to run on");
+      if (!campaign) return fail(tr("No campaign is scheduled or open, so this automation has nothing to run on"));
       if (key === "contributionRequest") {
         const result = await openCampaign(campaign.id, opts);
         outcome = { ran: !result.skipped, detail: result.skipped ? (result.reason ?? "Already done") : `${result.invited} contributors invited · ${result.emailsSent} emails sent${result.emailsFailed ? ` · ${result.emailsFailed} failed` : ""}` };
@@ -101,10 +103,11 @@ export async function runSchedulerTickAction(): Promise<ActionResult<{ ran: numb
 
 /** Puts a failed or dead-lettered job back in the queue with a clean attempt counter. */
 export async function retryJobAction(jobId: string): Promise<ActionResult<{ id: string; type: string }>> {
+  const tr = await getUi();
   try {
     const user = await requirePermission("automation:manage");
     const row = await retryJob(jobId);
-    if (!row) return fail("Only a failed, dead-lettered or cancelled job can be retried");
+    if (!row) return fail(tr("Only a failed, dead-lettered or cancelled job can be retried"));
     kickJobRunner();
     await audit({ action: "job.retry", userId: user.id, editionId: row.editionId, metadata: { jobId: row.id, type: row.type } });
     revalidate();
@@ -116,10 +119,11 @@ export async function retryJobAction(jobId: string): Promise<ActionResult<{ id: 
 
 /** Cancels a job that has not started yet. */
 export async function cancelJobAction(jobId: string): Promise<ActionResult<{ id: string; type: string }>> {
+  const tr = await getUi();
   try {
     const user = await requirePermission("automation:manage");
     const row = await cancelJob(jobId);
-    if (!row) return fail("Only a queued job can be cancelled");
+    if (!row) return fail(tr("Only a queued job can be cancelled"));
     await audit({ action: "job.cancel", userId: user.id, editionId: row.editionId, metadata: { jobId: row.id, type: row.type } });
     revalidate();
     return ok({ id: row.id, type: row.type }, `${row.type} cancelled`);

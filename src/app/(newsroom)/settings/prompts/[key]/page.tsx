@@ -6,32 +6,34 @@ import { Badge } from "@/components/ui/badge";
 import { NoAccess } from "@/components/settings/no-access";
 import { formatCurrency, formatDateTime, formatNumber } from "@/lib/utils";
 import { PromptEditor } from "./prompt-editor";
+import { getUi } from "@/server/i18n/locale";
 
 export const dynamic = "force-dynamic";
 
 export default async function PromptDetailPage({ params }: { params: Promise<{ key: string }> }) {
+  const tr = await getUi();
   const { key } = await params;
   const user = await getCurrentUser();
-  if (!hasPermission(user, "prompt:manage")) return <NoAccess title="Prompts" permission="prompt:manage" />;
+  if (!hasPermission(user, "prompt:manage")) return <NoAccess title={tr("Prompts")} permission="prompt:manage" />;
   const detail = await getPromptDetail(key).catch(() => null);
   if (!detail) notFound();
   const usage = detail.usage;
   return (
     <>
       <PageHeader
-        breadcrumbs={[{ label: "Prompts", href: "/settings/prompts" }, { label: detail.name }]}
+        breadcrumbs={[{ label: tr("Prompts"), href: "/settings/prompts" }, { label: detail.name }]}
         title={detail.name}
         description={detail.description ?? undefined}
         meta={
           <>
             <Badge variant="outline">{CATEGORY_LABELS[detail.category] ?? detail.category}</Badge>
             <span className="font-mono text-2xs text-muted-foreground">{detail.key}</span>
-            {detail.active ? <Badge variant="success">v{detail.active.version} active</Badge> : <Badge variant="muted">code default</Badge>}
+            {detail.active ? <Badge variant="success">v{detail.active.version} {" "}{tr("active")}</Badge> : <Badge variant="muted">{tr("code default")}</Badge>}
           </>
         }
         actions={
           <span className="text-2xs text-muted-foreground">
-            {formatNumber(usage.calls)} calls · {usage.failed} failed · {usage.avgLatencyMs ? `${formatNumber(usage.avgLatencyMs)} ms avg` : "no latency data"} · {formatCurrency(usage.costCents / 100)}
+            {formatNumber(usage.calls)} {" "}{tr("calls ·")}{" "}{usage.failed} {" "}{tr("failed ·")}{" "}{usage.avgLatencyMs ? `${formatNumber(usage.avgLatencyMs)} ms avg` : "no latency data"} · {formatCurrency(usage.costCents / 100)}
             {usage.lastUsedAt ? ` · last ${formatDateTime(usage.lastUsedAt)}` : ""}
           </span>
         }

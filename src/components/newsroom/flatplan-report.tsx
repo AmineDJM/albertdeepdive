@@ -5,9 +5,11 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { SectionTitle } from "@/components/newsroom/page-header";
 import type { Flatplan } from "@/server/publication/flatplan";
 import { cn, relativeTime } from "@/lib/utils";
+import { getUi } from "@/server/i18n/locale";
 
 /** The layout report of the last copyfit pass, and every layout warning of the issue. */
-export function FlatplanReport({ flatplan }: { flatplan: Flatplan }) {
+export async function FlatplanReport({ flatplan }: { flatplan: Flatplan }) {
+  const tr = await getUi();
   const { report, warnings, stats, measurementError } = flatplan;
   const errors = warnings.filter((w) => w.severity === "error");
   const alerts = warnings.filter((w) => w.severity === "warning");
@@ -18,20 +20,18 @@ export function FlatplanReport({ flatplan }: { flatplan: Flatplan }) {
       {measurementError ? (
         <Alert variant="destructive">
           <TriangleAlert />
-          <AlertTitle>The copyfit pass could not run</AlertTitle>
+          <AlertTitle>{tr("The copyfit pass could not run")}</AlertTitle>
           <AlertDescription>
-            {measurementError} The flatplan below shows the planned pages and the estimated fill; continuation pages appear once the pass succeeds.
-          </AlertDescription>
+            {measurementError} {" "}{tr("The flatplan below shows the planned pages and the estimated fill; continuation pages appear once the pass succeeds.")}</AlertDescription>
         </Alert>
       ) : null}
 
       {report?.stale ? (
         <Alert variant="warning">
           <TriangleAlert />
-          <AlertTitle>The plan changed after the last copyfit pass</AlertTitle>
+          <AlertTitle>{tr("The plan changed after the last copyfit pass")}</AlertTitle>
           <AlertDescription>
-            The measurements below were taken {relativeTime(report.measuredAt)}. Run the copyfit pass again to refresh the continuation pages and the fill of every page.
-          </AlertDescription>
+            {tr("The measurements below were taken")}{" "}{relativeTime(report.measuredAt)}{tr(". Run the copyfit pass again to refresh the continuation pages and the fill of every page.")}</AlertDescription>
         </Alert>
       ) : null}
 
@@ -40,24 +40,23 @@ export function FlatplanReport({ flatplan }: { flatplan: Flatplan }) {
           action={
             report ? (
               <span className="text-2xs text-muted-foreground">
-                {report.engine} · measured {relativeTime(report.measuredAt)}
+                {report.engine} {" "}{tr("· measured")}{" "}{relativeTime(report.measuredAt)}
               </span>
             ) : null
           }
         >
-          Layout report
-        </SectionTitle>
+          {tr("Layout report")}</SectionTitle>
         {report ? (
           <>
             <dl className="grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-4 xl:grid-cols-7">
-              <Metric label="Pages" value={report.pages} hint={`${report.plannedPages} planned`} />
-              <Metric label="Continuation" value={report.continuationPagesAdded} hint="added by the engine" tone={report.continuationPagesAdded ? "brand" : "muted"} />
-              <Metric label="Rounds" value={report.rounds} hint="measure → flow" />
-              <Metric label="Blocks moved" value={report.blocksMoved} hint="onto later pages" />
-              <Metric label="Paragraphs split" value={report.paragraphsSplit} hint="at a sentence" />
-              <Metric label="Copyfit flows" value={report.copyfitFlows} hint="type shrunk to fit" tone={report.copyfitFlows ? "warning" : "muted"} />
+              <Metric label={tr("Pages")} value={report.pages} hint={`${report.plannedPages} planned`} />
+              <Metric label={tr("Continuation")} value={report.continuationPagesAdded} hint={tr("added by the engine")} tone={report.continuationPagesAdded ? "brand" : "muted"} />
+              <Metric label={tr("Rounds")} value={report.rounds} hint={tr("measure → flow")} />
+              <Metric label={tr("Blocks moved")} value={report.blocksMoved} hint={tr("onto later pages")} />
+              <Metric label={tr("Paragraphs split")} value={report.paragraphsSplit} hint={tr("at a sentence")} />
+              <Metric label={tr("Copyfit flows")} value={report.copyfitFlows} hint={tr("type shrunk to fit")} tone={report.copyfitFlows ? "warning" : "muted"} />
               <Metric
-                label="Average fill"
+                label={tr("Average fill")}
                 value={`${Math.round(stats.fill * 100)} %`}
                 hint={`${stats.words.toLocaleString("en-GB")} words placed`}
                 tone={stats.fill >= 0.8 ? "success" : stats.fill >= 0.5 ? "default" : "warning"}
@@ -74,8 +73,7 @@ export function FlatplanReport({ flatplan }: { flatplan: Flatplan }) {
           </>
         ) : (
           <p className="text-xs text-muted-foreground">
-            The copyfit pass has not run for this plan yet. Use <b>Run copyfit</b> to flow the text through the real print templates and see the continuation pages.
-          </p>
+            {tr("The copyfit pass has not run for this plan yet. Use")}{" "}<b>{tr("Run copyfit")}</b> {" "}{tr("to flow the text through the real print templates and see the continuation pages.")}</p>
         )}
       </div>
 
@@ -83,15 +81,15 @@ export function FlatplanReport({ flatplan }: { flatplan: Flatplan }) {
         <CollapsibleTrigger className="flex w-full items-center justify-between gap-3 px-3.5 py-2.5 text-left hover:bg-muted/40">
           <span className="flex items-center gap-2">
             <Layers className="size-3.5 text-muted-foreground" />
-            <span className="text-[13px] font-semibold">Warnings</span>
+            <span className="text-[13px] font-semibold">{tr("Warnings")}</span>
             <span className="flex items-center gap-1">
-              {errors.length ? <Badge variant="destructive">{errors.length} blocking</Badge> : null}
-              {alerts.length ? <Badge variant="warning">{alerts.length} to check</Badge> : null}
-              {infos.length ? <Badge variant="muted">{infos.length} notes</Badge> : null}
-              {!warnings.length ? <Badge variant="success">Nothing to report</Badge> : null}
+              {errors.length ? <Badge variant="destructive">{errors.length} {" "}{tr("blocking")}</Badge> : null}
+              {alerts.length ? <Badge variant="warning">{alerts.length} {" "}{tr("to check")}</Badge> : null}
+              {infos.length ? <Badge variant="muted">{infos.length} {" "}{tr("notes")}</Badge> : null}
+              {!warnings.length ? <Badge variant="success">{tr("Nothing to report")}</Badge> : null}
             </span>
           </span>
-          <span className="text-2xs text-muted-foreground">Show / hide</span>
+          <span className="text-2xs text-muted-foreground">{tr("Show / hide")}</span>
         </CollapsibleTrigger>
         <CollapsibleContent>
           {warnings.length ? (
@@ -115,8 +113,7 @@ export function FlatplanReport({ flatplan }: { flatplan: Flatplan }) {
             </ul>
           ) : (
             <p className="border-t border-border px-3.5 py-3 text-xs text-muted-foreground">
-              No overset text, no under-filled page, no article without space and no blocked image on a planned page.
-            </p>
+              {tr("No overset text, no under-filled page, no article without space and no blocked image on a planned page.")}</p>
           )}
         </CollapsibleContent>
       </Collapsible>

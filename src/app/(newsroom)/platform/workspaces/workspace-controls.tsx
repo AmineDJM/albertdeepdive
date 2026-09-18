@@ -15,6 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import type { OverrideRow } from "@/server/platform/overrides";
 import { ROLE_LABELS, type Role } from "@/lib/auth/permissions";
 import { cn } from "@/lib/utils";
+import { useUi } from "@/components/i18n/provider";
 
 const SIMULATE: Role[] = ["EDITOR_IN_CHIEF", "EDITOR", "CAMPUS_EDITOR", "VIEWER"];
 
@@ -32,6 +33,7 @@ export function WorkspaceControls({
   workspace: { id: string; name: string; planName: string | null };
   overrides: { planName: string; rows: OverrideRow[] };
 }) {
+  const tr = useUi();
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
@@ -78,9 +80,8 @@ export function WorkspaceControls({
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-60">
           <DropdownMenuItem onSelect={() => startTransition(async () => void (await enterWorkspaceAction(workspace.id)))}>
-            <LogIn /> Open with full rights
-          </DropdownMenuItem>
-          <DropdownMenuLabel>Open as…</DropdownMenuLabel>
+            <LogIn /> {" "}{tr("Open with full rights")}</DropdownMenuItem>
+          <DropdownMenuLabel>{tr("Open as…")}</DropdownMenuLabel>
           {SIMULATE.map((role) => (
             <DropdownMenuItem key={role} onSelect={() => startTransition(async () => void (await enterWorkspaceAction(workspace.id, { role })))}>
               <Eye /> {ROLE_LABELS[role]}
@@ -88,7 +89,7 @@ export function WorkspaceControls({
           ))}
           <DropdownMenuSeparator />
           <DropdownMenuItem onSelect={() => setOpen(true)}>
-            <SlidersHorizontal /> Rights and limits{active ? ` (${active})` : ""}
+            <SlidersHorizontal /> {" "}{tr("Rights and limits")}{active ? ` (${active})` : ""}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -98,13 +99,12 @@ export function WorkspaceControls({
           <DialogHeader>
             <DialogTitle>{workspace.name}</DialogTitle>
             <DialogDescription>
-              On {overrides.planName}. Anything you change here applies to this workspace only and survives a change of plan — so it is shown next to what the plan itself gives.
-            </DialogDescription>
+              {tr("On")}{" "}{overrides.planName}{tr(". Anything you change here applies to this workspace only and survives a change of plan — so it is shown next to what the plan itself gives.")}</DialogDescription>
           </DialogHeader>
 
           <div className="max-h-[52vh] space-y-4 overflow-y-auto pr-1 scrollbar-thin">
             <section className="space-y-3">
-              <h3 className="label-caps">Limits</h3>
+              <h3 className="label-caps">{tr("Limits")}</h3>
               {overrides.rows
                 .filter((row) => row.kind === "limit")
                 .map((row) => (
@@ -112,16 +112,16 @@ export function WorkspaceControls({
                     <Label htmlFor={`ov-${row.key}`} className="flex flex-col items-start gap-0.5">
                       <span className="flex items-center gap-1.5">
                         {row.label}
-                        {row.overridden || row.key in draft ? <Badge variant="muted">custom</Badge> : null}
+                        {row.overridden || row.key in draft ? <Badge variant="muted">{tr("custom")}</Badge> : null}
                       </span>
                       <span className="text-2xs font-normal text-muted-foreground">
-                        {overrides.planName} gives {row.planValue === null ? "unlimited" : String(row.planValue)}
+                        {overrides.planName} {" "}{tr("gives")}{" "}{row.planValue === null ? "unlimited" : String(row.planValue)}
                       </span>
                     </Label>
                     <Input
                       id={`ov-${row.key}`}
                       inputMode="numeric"
-                      placeholder="unlimited"
+                      placeholder={tr("unlimited")}
                       value={value(row) === null ? "" : String(value(row) ?? "")}
                       disabled={pending}
                       onChange={(e) => {
@@ -132,11 +132,11 @@ export function WorkspaceControls({
                     />
                   </div>
                 ))}
-              <p className="text-2xs text-muted-foreground">Blank means unlimited. Zero means none — they are not the same thing.</p>
+              <p className="text-2xs text-muted-foreground">{tr("Blank means unlimited. Zero means none — they are not the same thing.")}</p>
             </section>
 
             <section className="space-y-2">
-              <h3 className="label-caps">Features</h3>
+              <h3 className="label-caps">{tr("Features")}</h3>
               {overrides.rows
                 .filter((row) => row.kind === "flag")
                 .map((row) => (
@@ -144,7 +144,7 @@ export function WorkspaceControls({
                     <Label htmlFor={`ov-${row.key}`} className="flex flex-col items-start gap-0.5">
                       <span className="flex items-center gap-1.5">
                         {row.label}
-                        {row.overridden || row.key in draft ? <Badge variant="muted">custom</Badge> : null}
+                        {row.overridden || row.key in draft ? <Badge variant="muted">{tr("custom")}</Badge> : null}
                       </span>
                       <span className={cn("text-2xs font-normal text-muted-foreground")}>{row.planValue ? "included in the plan" : "not in the plan"}</span>
                     </Label>
@@ -156,15 +156,12 @@ export function WorkspaceControls({
 
           <DialogFooter className="sm:justify-between">
             <Button variant="ghost" size="sm" onClick={reset} disabled={pending || !active}>
-              <RotateCcw /> Back to the plan
-            </Button>
+              <RotateCcw /> {" "}{tr("Back to the plan")}</Button>
             <span className="flex gap-2">
               <Button variant="outline" size="sm" onClick={() => setOpen(false)} disabled={pending}>
-                Cancel
-              </Button>
+                {tr("Cancel")}</Button>
               <Button size="sm" onClick={save} loading={pending} disabled={!Object.keys(draft).length}>
-                Save
-              </Button>
+                {tr("Save")}</Button>
             </span>
           </DialogFooter>
         </DialogContent>

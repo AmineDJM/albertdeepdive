@@ -4,6 +4,7 @@ import type { ArticleDeskRow } from "@/server/editorial/article-list";
 import { CampusList } from "./campus-chip";
 import { ManualEditMeter, WarningCell } from "./article-desk-table";
 import { relativeTime } from "@/lib/utils";
+import { getUi } from "@/server/i18n/locale";
 
 const COLUMNS = [
   { key: "drafting", label: "Drafting", statuses: ["EMPTY", "AI_DRAFT", "IN_EDITING"] },
@@ -13,7 +14,8 @@ const COLUMNS = [
 ] as const;
 
 /** Kanban-style view of the desk, one column per stage of the article workflow. */
-export function ArticleDeskBoard({ rows }: { rows: ArticleDeskRow[] }) {
+export async function ArticleDeskBoard({ rows }: { rows: ArticleDeskRow[] }) {
+  const tr = await getUi();
   return (
     <div className="grid gap-3 lg:grid-cols-2 xl:grid-cols-4">
       {COLUMNS.map((col) => {
@@ -25,7 +27,7 @@ export function ArticleDeskBoard({ rows }: { rows: ArticleDeskRow[] }) {
               <span className="tabular text-2xs text-muted-foreground">{list.length}</span>
             </header>
             <ul className="flex flex-col gap-2 p-2">
-              {list.length === 0 ? <li className="px-1 py-6 text-center text-2xs text-muted-foreground">Nothing here</li> : null}
+              {list.length === 0 ? <li className="px-1 py-6 text-center text-2xs text-muted-foreground">{tr("Nothing here")}</li> : null}
               {list.map((r) => (
                 <li key={r.id}>
                   <Link
@@ -34,7 +36,7 @@ export function ArticleDeskBoard({ rows }: { rows: ArticleDeskRow[] }) {
                   >
                     <div className="flex items-start justify-between gap-2">
                       <span className="flex min-w-0 items-center gap-1.5">
-                        {r.story.isCover ? <Star className="size-3 shrink-0 text-warning" aria-label="Cover story" /> : null}
+                        {r.story.isCover ? <Star className="size-3 shrink-0 text-warning" aria-label={tr("Cover story")} /> : null}
                         <span className="line-clamp-2 text-[13px] leading-4 font-medium">{r.headline}</span>
                       </span>
                       <WarningCell row={r} />
@@ -47,7 +49,7 @@ export function ArticleDeskBoard({ rows }: { rows: ArticleDeskRow[] }) {
                             <span className="truncate text-2xs text-muted-foreground">{r.section.name}</span>
                           </>
                         ) : (
-                          <span className="text-2xs text-muted-foreground">No section</span>
+                          <span className="text-2xs text-muted-foreground">{tr("No section")}</span>
                         )}
                       </span>
                       <span className="tabular shrink-0 text-2xs text-muted-foreground">{r.wordCount} w</span>

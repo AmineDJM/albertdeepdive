@@ -5,6 +5,7 @@ import { requirePermission } from "@/server/auth/session";
 import { resetDefaultSections, saveSetting } from "@/server/settings/service";
 import type { DefaultSectionInput } from "@/server/settings/schemas";
 import { ok, toActionFailure, type ActionResult } from "@/lib/action-result";
+import { getUi } from "@/server/i18n/locale";
 
 export async function saveDefaultSectionsAction(sections: DefaultSectionInput[]): Promise<ActionResult> {
   try {
@@ -18,11 +19,12 @@ export async function saveDefaultSectionsAction(sections: DefaultSectionInput[])
 }
 
 export async function resetDefaultSectionsAction(): Promise<ActionResult> {
+  const tr = await getUi();
   try {
     const user = await requirePermission("section:manage");
     await resetDefaultSections(user.id);
     revalidatePath("/settings/sections");
-    return ok(null, "Section template reset to the shipped defaults");
+    return ok(null, tr("Section template reset to the shipped defaults"));
   } catch (err) {
     return toActionFailure(err);
   }

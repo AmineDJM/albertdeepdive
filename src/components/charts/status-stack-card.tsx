@@ -3,6 +3,7 @@
 import { CircleCheck, CircleSlash, TriangleAlert } from "lucide-react";
 import { ChartCard } from "@/components/analytics/charts";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { useUi } from "@/components/i18n/provider";
 
 export type StatusSeries = { key: string; label: string; tone: "success" | "warning" | "destructive" };
 export type StatusStackRow = { key: string; label: string; values: Record<string, number>; total: number };
@@ -20,6 +21,7 @@ const nf = new Intl.NumberFormat("en-GB");
  * labelled in the row summary, and the table twin holds the exact counts.
  */
 export function StatusStackCard({ title, description, rows, series, unit = "assets", className, emptyText = "Nothing to show yet." }: { title: string; description?: string; rows: StatusStackRow[]; series: StatusSeries[]; unit?: string; className?: string; emptyText?: string }) {
+  const tr = useUi();
   const empty = !rows.length || rows.every((r) => r.total === 0);
   return (
     <ChartCard
@@ -33,13 +35,13 @@ export function StatusStackCard({ title, description, rows, series, unit = "asse
           <Table>
             <TableHeader>
               <TableRow className="hover:bg-transparent">
-                <TableHead>Edition</TableHead>
+                <TableHead>{tr("Edition")}</TableHead>
                 {series.map((s) => (
                   <TableHead key={s.key} className="text-right">
                     {s.label}
                   </TableHead>
                 ))}
-                <TableHead className="text-right">Total</TableHead>
+                <TableHead className="text-right">{tr("Total")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -60,7 +62,7 @@ export function StatusStackCard({ title, description, rows, series, unit = "asse
       }
       chart={
         <div className="space-y-3 px-2 py-1">
-          <ul className="flex flex-wrap items-center gap-x-4 gap-y-1" aria-label="Legend">
+          <ul className="flex flex-wrap items-center gap-x-4 gap-y-1" aria-label={tr("Legend")}>
             {series.map((s) => {
               const Icon = ICON[s.tone];
               return (
