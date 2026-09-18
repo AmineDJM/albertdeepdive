@@ -141,7 +141,11 @@ export function localBrief(input: DirectInput): CreativeBrief {
 
   const quote = lead.quotes?.[0];
   if (quote) {
-    frames.push({ layout: "quote", headline: quote.text.slice(0, 180), attribution: quote.attribution, surface: "muted", emphasis: "normal" });
+    // On paper rather than on a fifth ground. 60/30/10: one surface has to hold the set, and a
+    // carousel that changes colour on every slide has no dominant, no structure and nothing that
+    // points — the eye cannot tell what it is being shown. Paper is the workhorse here, ink is the
+    // one structural contrast (the figure), accent is the single moment that points (the close).
+    frames.push({ layout: "quote", headline: quote.text.slice(0, 180), attribution: quote.attribution, surface: "paper", emphasis: "normal" });
   }
 
   // Everything else in the edition becomes one list frame rather than a slide each: a carousel that
@@ -159,7 +163,11 @@ export function localBrief(input: DirectInput): CreativeBrief {
     emphasis: "normal",
   });
 
-  const trimmed = frames.slice(0, format.maxFrames);
+  // Trim from the middle, never from the end. A Story holds five frames and this pattern builds six,
+  // so slicing the tail drops the close — the one frame that tells a reader what to do next, and the
+  // only one besides the opener that has a job nothing else can do. The evidence in the middle is
+  // what a set can afford to lose.
+  const trimmed = frames.length > format.maxFrames ? [...frames.slice(0, format.maxFrames - 1), frames[frames.length - 1]] : [...frames];
   while (trimmed.length < format.minFrames) {
     trimmed.push({ layout: "statement", headline: input.organizationName, surface: "ink", emphasis: "normal" });
   }

@@ -32,6 +32,7 @@ export type NavItem = { href: string; label: TranslationKey; icon: LucideIcon; h
 /** Editions in flight, and everything that has already been published. */
 export const WORKBENCH_TABS: readonly SubTab[] = [
   { href: "/editions", label: "nav.editions", permission: "edition:view" },
+  { href: "/studio", label: "nav.studio", permission: "edition:view" },
   { href: "/archive", label: "nav.archive", permission: "archive:view" },
 ];
 

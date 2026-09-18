@@ -2,7 +2,13 @@
  * Default prompt templates. They are copied into the `prompt_templates` table by the seed and can
  * then be edited/versioned in Settings → Prompts. The code falls back to these defaults when the
  * table has no active version for a key (e.g. in tests).
+ *
+ * Where a prompt states a rule the QA pass also checks, it takes the number from `creative/laws` and
+ * never restates it. A model told "five hashtags" while the checker enforces four is a model that
+ * gets corrected for following its instructions.
  */
+import { CAPTION_VISIBLE_CHARS, CAROUSEL_SWEET_SPOT, MAX_HASHTAGS, SURFACE_PROPORTION, WEAK_OPENERS } from "@/lib/creative/laws";
+
 export type PromptDefault = {
   key: string;
   name: string;
@@ -292,7 +298,16 @@ Angle the editor asked for: {{angle}}
 Material:
 {{stories}}
 
-Return a brief: an intent (one sentence saying what this post must land), the frames in order, a caption for the post itself, and up to five hashtags. Vary the surface between frames — a set that never changes ground reads as one long slide. Open with the claim; close with where to read more.`,
+Return a brief: an intent (one sentence saying what this post must land), the frames in order, a caption for the post itself, and up to ${MAX_HASHTAGS} hashtags.
+
+The rules the design system will check your brief against, so you may as well follow them:
+
+- Open with a claim, not a label. "${WEAK_OPENERS[4]}" or "${WEAK_OPENERS[1]}" gives nobody a reason to swipe; the first frame is the only one guaranteed to be seen.
+- One closing frame. A reader offered two next steps takes neither.
+- One surface holds the set, a second gives it structure, a third points — roughly ${Math.round(SURFACE_PROPORTION.dominant * 100)}/${Math.round(SURFACE_PROPORTION.secondary * 100)}/${Math.round(SURFACE_PROPORTION.accent * 100)}. Change ground where it means something. A set that changes ground on every frame has no hierarchy; a set that never changes ground reads as one long slide.
+- The caption's point goes in the first ${CAPTION_VISIBLE_CHARS} characters. Everything after that sits behind a "more" most readers never press.
+- Between ${CAROUSEL_SWEET_SPOT.min} and ${CAROUSEL_SWEET_SPOT.max} frames is where a carousel holds attention, within whatever the format allows.
+- Anything in quotation marks carries the name of whoever said it.`,
   },
 ];
 

@@ -39,6 +39,7 @@ export const JOB_TYPES = {
   AUTOMATION_TICK: "automation.tick",
   EMAIL_SEND: "email.send",
   INFO_REQUEST_SEND: "info_request.send",
+  CREATIVE_RENDER: "creative.render",
 } as const;
 
 export type JobType = (typeof JOB_TYPES)[keyof typeof JOB_TYPES];

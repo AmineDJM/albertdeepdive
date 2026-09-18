@@ -7,3 +7,4 @@ import "@/server/editorial/jobs";
 import "@/server/media/jobs";
 import "@/server/publication/jobs";
 import "@/server/email/jobs";
+import "@/server/creative/jobs";

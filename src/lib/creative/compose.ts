@@ -1,6 +1,8 @@
 import { createHash } from "node:crypto";
 import { FORMATS, MODES, typeBox, type CreativeFormat, type CreativeMode } from "./formats";
 import { designSystem, type DesignSystem } from "./design-systems";
+import { debalance, isWidow, leadingFor, maxMeasureWidth, MEASURE, minFontSize, opticalInset } from "./laws";
+import { inspect } from "./qa";
 import type { CreativeBrief, Emphasis, FrameBrief, FrameLayout, FrameSpec, ImageBlock, RenderSpec, ShapeBlock, TextBlock } from "./brief";
 import { ensureContrast } from "@/lib/brand/colour";
 import { FAMILIES } from "@/lib/brand/typography";
@@ -63,7 +65,7 @@ const ADVANCE: Record<string, { regular: number; bold: number }> = {
 };
 
 /** Weight changes width; interpolating between the two measured points is close enough. */
-function advanceFor(family: string, weight: number): number {
+export function advanceFor(family: string, weight: number): number {
   const entry = ADVANCE[family] ?? ADVANCE.inter;
   const t = Math.max(0, Math.min(1, (weight - 400) / 300));
   return entry.regular + (entry.bold - entry.regular) * t;
@@ -115,16 +117,45 @@ function fitToBox(
   scale: number[],
   role: { family: string; tracking: number; leading: number; uppercase: boolean; weight: number },
   maxSteps: { from: number; to: number },
-): { fontSize: number; lines: string[] } {
+  options: { display?: boolean; canvasWidth?: number } = {},
+): { fontSize: number; lines: string[]; leading: number } {
+  const maxChars = options.display ? MEASURE.displayMax : MEASURE.max;
+  const floor = options.canvasWidth ? minFontSize(options.canvasWidth) : 0;
+
   for (let index = maxSteps.from; index >= maxSteps.to; index -= 1) {
     const fontSize = scale[Math.max(0, Math.min(scale.length - 1, index))];
-    const lines = wrapLines(text, box.width, role.family, fontSize, role.tracking, role.uppercase, role.weight);
-    if (lines.length * fontSize * role.leading <= box.height) return { fontSize, lines };
+    if (fontSize < floor && index > maxSteps.to) continue;
+
+    // The measure rule, applied as a width cap rather than as a check afterwards. A 1032px box at
+    // 41px body would run 90 characters, well past the point where the return sweep stops finding
+    // the next line; the text is wrapped to the narrower of the box and the measure.
+    const measureWidth = maxMeasureWidth(fontSize, advanceFor(role.family, role.weight), maxChars);
+    const width = Math.min(box.width, measureWidth);
+    const lines = wrapLines(text, width, role.family, fontSize, role.tracking, role.uppercase, role.weight);
+    const chars = Math.round(width / (fontSize * advanceFor(role.family, role.weight)));
+    const leading = leadingFor(role.leading, chars);
+
+    if (lines.length * fontSize * leading <= box.height) {
+      // A last line carrying one word reads as an accident. Re-breaking narrows the measure a little,
+      // which pulls a word down rather than pushing one up; if nothing helps, the text is left alone,
+      // because a mangled fix is worse than a widow.
+      const fixed = isWidow(lines, chars)
+        ? debalance((w) => wrapLines(text, w, role.family, fontSize, role.tracking, role.uppercase, role.weight), width, chars)
+        : null;
+      const finalLines = fixed && fixed.length * fontSize * leading <= box.height ? fixed : lines;
+      return { fontSize, lines: finalLines, leading };
+    }
   }
+
   // Nothing fits: take the smallest step and let the caller's box clip. Reached only by text far
   // longer than the schema allows, and better than an invisible zero.
-  const fontSize = scale[Math.max(0, maxSteps.to)];
-  return { fontSize, lines: wrapLines(text, box.width, role.family, fontSize, role.tracking, role.uppercase, role.weight) };
+  const fontSize = Math.max(floor, scale[Math.max(0, maxSteps.to)]);
+  const width = Math.min(box.width, maxMeasureWidth(fontSize, advanceFor(role.family, role.weight), maxChars));
+  return {
+    fontSize,
+    lines: wrapLines(text, width, role.family, fontSize, role.tracking, role.uppercase, role.weight),
+    leading: role.leading,
+  };
 }
 
 /* ── Emphasis ─────────────────────────────────────────────────────────────────────────────── */
@@ -306,8 +337,11 @@ function composeFrame(frame: FrameBrief, index: number, ctx: Ctx): FrameSpec {
     const gap = tokens.shape.space[3];
 
     if (frame.layout === "figure" && frame.figure) {
-      const fit = fitToBox(frame.figure, { width: inner.width, height: inner.height * 0.5 }, scale, { family: tokens.type.figure.family, tracking: tokens.type.figure.tracking, leading: tokens.type.figure.leading, uppercase: false, weight: tokens.type.figure.weight }, { from: 6, to: 4 });
-      push((y) => [block("figure", frame.figure!, inner.x, y, inner.width, fit.fontSize, fit.lines.length, tokens.type.figure, surface.highlight)], fit.lines.length * fit.fontSize * tokens.type.figure.leading);
+      const fit = fitToBox(frame.figure, { width: inner.width, height: inner.height * 0.5 }, scale, { family: tokens.type.figure.family, tracking: tokens.type.figure.tracking, leading: tokens.type.figure.leading, uppercase: false, weight: tokens.type.figure.weight }, { from: 6, to: 4 }, { canvasWidth: canvas.width });
+      push(
+        (y) => [block("figure", frame.figure!, inner.x - opticalInset(fit.fontSize, frame.figure![0]), y, inner.width, fit.fontSize, fit.lines.length, { ...tokens.type.figure, leading: fit.leading }, surface.highlight)],
+        fit.lines.length * fit.fontSize * fit.leading,
+      );
     }
 
     const bias = (steps: { from: number; to: number }) => ({ from: clampStep(steps.from + ctx.system.stepBias), to: clampStep(steps.to + ctx.system.stepBias) });
@@ -319,28 +353,45 @@ function composeFrame(frame: FrameBrief, index: number, ctx: Ctx): FrameSpec {
       scale,
       { family: headlineStyle.family, tracking: headlineStyle.tracking, leading: headlineStyle.leading, uppercase: headlineStyle.case === "upper", weight: headlineStyle.weight },
       headlineSteps,
+      { display: frame.layout !== "figure", canvasWidth: canvas.width },
     );
     push(
-      (y) => headlineFit.lines.map((line, lineIndex) => block(frame.layout === "figure" ? "text" : "display", line, inner.x, y + lineIndex * headlineFit.fontSize * headlineStyle.leading, inner.width, headlineFit.fontSize, 1, headlineStyle, foreground)),
-      headlineFit.lines.length * headlineFit.fontSize * headlineStyle.leading + gap,
+      (y) =>
+        headlineFit.lines.map((line, lineIndex) =>
+          // Optical alignment: a round letter or a quotation mark set flush left looks indented, so
+          // display type is pulled back by a hair. Below 48px the correction is smaller than a pixel
+          // and applying it would create a misalignment rather than fix one.
+          block(
+            frame.layout === "figure" ? "text" : "display",
+            line,
+            inner.x - opticalInset(headlineFit.fontSize, line[0] ?? ""),
+            y + lineIndex * headlineFit.fontSize * headlineFit.leading,
+            inner.width,
+            headlineFit.fontSize,
+            1,
+            { ...headlineStyle, leading: headlineFit.leading },
+            foreground,
+          ),
+        ),
+      headlineFit.lines.length * headlineFit.fontSize * headlineFit.leading + gap,
     );
 
     if (frame.body) {
-      const fit = fitToBox(frame.body, { width: inner.width, height: inner.height * 0.45 }, scale, { family: bodyStyle.family, tracking: bodyStyle.tracking, leading: bodyStyle.leading, uppercase: false, weight: bodyStyle.weight }, bias(BODY_STEPS[frame.emphasis]));
+      const fit = fitToBox(frame.body, { width: inner.width, height: inner.height * 0.45 }, scale, { family: bodyStyle.family, tracking: bodyStyle.tracking, leading: bodyStyle.leading, uppercase: false, weight: bodyStyle.weight }, bias(BODY_STEPS[frame.emphasis]), { canvasWidth: canvas.width });
       push(
-        (y) => fit.lines.map((line, lineIndex) => block("text", line, inner.x, y + lineIndex * fit.fontSize * bodyStyle.leading, inner.width, fit.fontSize, 1, bodyStyle, subdued)),
-        fit.lines.length * fit.fontSize * bodyStyle.leading + gap,
+        (y) => fit.lines.map((line, lineIndex) => block("text", line, inner.x, y + lineIndex * fit.fontSize * fit.leading, inner.width, fit.fontSize, 1, { ...bodyStyle, leading: fit.leading }, subdued)),
+        fit.lines.length * fit.fontSize * fit.leading + gap,
       );
     }
 
     if (frame.items?.length) {
-      const fit = fitToBox(frame.items.reduce((longest, item) => (item.length > longest.length ? item : longest)), { width: inner.width - tokens.shape.space[4], height: inner.height / frame.items.length }, scale, { family: bodyStyle.family, tracking: bodyStyle.tracking, leading: bodyStyle.leading, uppercase: false, weight: bodyStyle.weight }, bias(BODY_STEPS[frame.emphasis]));
+      const fit = fitToBox(frame.items.reduce((longest, item) => (item.length > longest.length ? item : longest)), { width: inner.width - tokens.shape.space[4], height: inner.height / frame.items.length }, scale, { family: bodyStyle.family, tracking: bodyStyle.tracking, leading: bodyStyle.leading, uppercase: false, weight: bodyStyle.weight }, bias(BODY_STEPS[frame.emphasis]), { canvasWidth: canvas.width });
       // Each item is wrapped in its own right. Emitting the whole string as one block looks fine
       // until an item is a word too long, at which point `white-space: pre` runs it off the frame —
       // which is exactly what the poster system, with its wider measure, found.
       const itemWidth = inner.width - tokens.shape.space[4];
       const wrapped = frame.items.map((item) => wrapLines(item, itemWidth, bodyStyle.family, fit.fontSize, bodyStyle.tracking, false, bodyStyle.weight));
-      const lineHeight = fit.fontSize * bodyStyle.leading;
+      const lineHeight = fit.fontSize * fit.leading;
       const totalHeight = wrapped.reduce((sum, lines) => sum + lines.length * lineHeight + tokens.shape.space[2], 0);
 
       push((y) => {
@@ -349,7 +400,7 @@ function composeFrame(frame: FrameBrief, index: number, ctx: Ctx): FrameSpec {
         wrapped.forEach((lines) => {
           shapes.push({ kind: "dot", x: inner.x, y: Math.round(cursor + fit.fontSize * 0.35), width: Math.round(fit.fontSize * 0.28), height: Math.round(fit.fontSize * 0.28), radius: 999, colour: surface.highlight });
           lines.forEach((line, lineIndex) => {
-            out.push(block("text", line, inner.x + tokens.shape.space[4], cursor + lineIndex * lineHeight, itemWidth, fit.fontSize, 1, bodyStyle, foreground));
+            out.push(block("text", line, inner.x + tokens.shape.space[4], cursor + lineIndex * lineHeight, itemWidth, fit.fontSize, 1, { ...bodyStyle, leading: fit.leading }, foreground));
           });
           cursor += lines.length * lineHeight + tokens.shape.space[2];
         });
@@ -363,11 +414,13 @@ function composeFrame(frame: FrameBrief, index: number, ctx: Ctx): FrameSpec {
 
     const total = blocks.reduce((sum, entry) => sum + entry.height, 0);
     const slack = Math.max(0, inner.height - total);
-    let cursor = inner.y + (options.anchor === "top" ? 0 : options.anchor === "center" ? Math.round(slack / 2) : slack);
+    const top = inner.y + (options.anchor === "top" ? 0 : options.anchor === "center" ? Math.round(slack / 2) : slack);
+    let cursor = top;
     for (const entry of blocks) {
       text.push(...entry.fn(cursor));
       cursor += entry.height;
     }
+    return top;
   };
 
   /**
@@ -379,12 +432,17 @@ function composeFrame(frame: FrameBrief, index: number, ctx: Ctx): FrameSpec {
    * as one that chose to be quiet. Only `image_top` starts at the top, and only because its type has
    * a photograph directly above it.
    */
-  place({ anchor: ANCHOR[frame.layout] });
+  const contentTop = place({ anchor: ANCHOR[frame.layout] });
 
   // A quote gets a rule above it rather than quotation marks, which are a different size in every
   // face and a different problem in every language.
+  //
+  // Placed against where the quote actually landed, not against the top of the box. A quote anchors
+  // to the baseline, so a rule pinned to `inner.y` is stranded several hundred pixels above its own
+  // quotation — which on an editorial frame put it alongside the index chip, reading as a stray mark
+  // rather than as the mark that opens the quote.
   if (frame.layout === "quote") {
-    shapes.unshift({ kind: "rule", x: inner.x, y: inner.y - tokens.shape.space[2], width: Math.round(inner.width * 0.22), height: Math.max(2, tokens.shape.borderWidth * 2), radius: 0, colour: surface.highlight });
+    shapes.unshift({ kind: "rule", x: inner.x, y: contentTop - tokens.shape.space[2], width: Math.round(inner.width * 0.22), height: Math.max(2, tokens.shape.borderWidth * 2), radius: 0, colour: surface.highlight });
   }
 
   return {
@@ -481,20 +539,12 @@ export function fingerprintOf(spec: Omit<RenderSpec, "fingerprint">): string {
 /**
  * Everything wrong with a composed spec, before a single pixel is drawn.
  *
- * Cheap to run and worth running on every compose: a frame whose text overflows its canvas, or whose
- * colour cannot be read on its own background, is a defect the renderer would faithfully reproduce.
- * Catching it here means the repair pass has something specific to fix.
+ * Delegates to the quality pass rather than implementing its own checks. It used to have its own,
+ * and the two drifted: a design system produced an index chip below the legible minimum and the
+ * audit said "clean" because only the other checker knew about that rule. One checker, two callers.
  */
 export function auditSpec(spec: RenderSpec): { frame: number; problem: string }[] {
-  const problems: { frame: number; problem: string }[] = [];
-  for (const frame of spec.frames) {
-    for (const text of frame.text) {
-      const bottom = text.y + text.lines * text.fontSize * text.lineHeight;
-      if (bottom > frame.height) problems.push({ frame: frame.index, problem: `text "${text.content.slice(0, 32)}…" runs ${Math.round(bottom - frame.height)}px past the bottom` });
-      if (text.x < 0 || text.x + text.width > frame.width) problems.push({ frame: frame.index, problem: `text "${text.content.slice(0, 32)}…" is outside the canvas horizontally` });
-      if (text.fontSize <= 0) problems.push({ frame: frame.index, problem: "a text block has no size" });
-    }
-    if (!frame.text.length) problems.push({ frame: frame.index, problem: "the frame has no text at all" });
-  }
-  return problems;
+  return inspect(spec, null)
+    .filter((finding) => finding.severity === "defect")
+    .map((finding) => ({ frame: finding.frame ?? 0, problem: finding.message }));
 }

@@ -1,3 +1,4 @@
+import { ensureContrast } from "@/lib/brand/colour";
 import type { BrandTokens, SurfaceTokens } from "@/lib/brand/system";
 import type { CreativeFormat } from "./formats";
 import type { ShapeBlock, TextBlock } from "./brief";
@@ -83,9 +84,13 @@ const editorial: DesignSystem = {
   description: "A story with a shape. Restrained, plenty of air, type that sits on its baseline like a page.",
   gutter: 0,
   stepBias: 0,
-  chrome: ({ box, tokens, surface, index, format }) => {
+  chrome: ({ box, canvas, tokens, surface, index, format }) => {
     if (format === "SQUARE_POST") return empty();
-    const height = Math.round(tokens.shape.space[2] * 2.4);
+    // Sized from the canvas rather than from the spacing unit: a chip whose numeral lands below the
+    // legible minimum is a chip nobody reads, and the spacing unit knows nothing about how large the
+    // canvas is.
+    const labelSize = Math.max(minLegible(canvas.width), Math.round(canvas.width * 0.026));
+    const height = Math.round(labelSize * 2.1);
     return {
       shapes: [{ kind: "rect", x: box.x, y: box.y, width: height * 2, height, radius: tokens.shape.radiusSm, colour: surface.highlight }],
       text: [
@@ -93,13 +98,16 @@ const editorial: DesignSystem = {
           role: "label",
           content: String(index + 1),
           x: box.x,
-          y: box.y + Math.round(height * 0.26),
+          y: box.y + Math.round((height - labelSize * 1.2) / 2),
           width: height * 2,
-          fontSize: Math.round(height * 0.5),
+          fontSize: labelSize,
           fontWeight: tokens.type.label.weight,
           letterSpacing: 0,
           lineHeight: 1.2,
-          colour: surface.background,
+          // Checked against the chip it sits on, not assumed from the surface. The brand guarantees
+          // its highlight is readable at large-text contrast; a numeral at label size is not large
+          // text, and white-on-highlight came out at 3:1 until this was measured rather than assumed.
+          colour: ensureContrast(surface.background, surface.highlight, 4.5),
           transform: "none",
           align: "center",
           lines: 1,
@@ -173,9 +181,14 @@ const report: DesignSystem = {
   gutter: 1,
   stepBias: -1,
   chrome: ({ box, canvas, tokens, surface, index, total, organizationName }) => {
-    const labelSize = Math.max(18, Math.round(canvas.width * 0.019));
+    const labelSize = Math.max(minLegible(canvas.width), Math.round(canvas.width * 0.021));
+    // Anchored to the content box, not mirrored from its top inset. A Story's safe area is 250px at
+    // the top and 320px at the bottom, so a footer placed at `canvas.height - box.y` lands 70px
+    // inside Instagram's own caption block — legible in the file, sat on by somebody else's UI in
+    // the feed. The box already knows where the safe area ends; ask it rather than assume symmetry.
+    const boxBottom = box.y + box.height;
     const bandTop = box.y + labelSize * 2;
-    const bandBottom = canvas.height - box.y - labelSize * 2;
+    const bandBottom = boxBottom - labelSize * 2;
     const rule = Math.max(1, tokens.shape.borderWidth);
 
     return {
@@ -203,7 +216,7 @@ const report: DesignSystem = {
           role: "label",
           content: `${index + 1} / ${total}`,
           x: box.x,
-          y: canvas.height - box.y - labelSize * 1.4,
+          y: boxBottom - labelSize * 1.2,
           width: box.width,
           fontSize: labelSize,
           fontWeight: tokens.type.label.weight,
@@ -216,7 +229,7 @@ const report: DesignSystem = {
         },
       ],
       insetTop: bandTop - box.y + tokens.shape.space[5],
-      insetBottom: canvas.height - bandBottom - box.y + tokens.shape.space[4],
+      insetBottom: boxBottom - bandBottom + tokens.shape.space[4],
     };
   },
 };
@@ -227,7 +240,12 @@ export function designSystem(key: string | null | undefined): DesignSystem {
   return SYSTEMS[(key ?? "") as DesignSystemKey] ?? editorial;
 }
 
-/** Local copy of the brand's mix, so this module has no reason to import the colour engine. */
+/** The smallest type that is read rather than seen, on this canvas. Kept in step with the laws. */
+function minLegible(canvasWidth: number): number {
+  return Math.ceil((11 * canvasWidth) / 390);
+}
+
+/** Mixing toward a background, for the ghosted numeral. Contrast checks use the brand's own engine. */
 function mix(a: string, b: string, amount: number): string {
   const parse = (hex: string) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
   if (!/^#[0-9a-f]{6}$/i.test(a) || !/^#[0-9a-f]{6}$/i.test(b)) return a;

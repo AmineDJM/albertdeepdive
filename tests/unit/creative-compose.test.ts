@@ -200,6 +200,29 @@ describe("composing", () => {
     expect(spec.frames[1].image!.dim).toBe(0);
   });
 
+  it("puts the quote's rule above the quote, wherever the quote landed", () => {
+    // A quote anchors to the baseline. The rule used to be pinned to the top of the content box, so
+    // on an editorial frame it sat several hundred pixels above its own quotation, beside the index
+    // chip, reading as a stray mark. Nothing in the audit objected: it overflowed nothing.
+    const brief: CreativeBrief = {
+      ...briefFor(),
+      frames: [
+        { layout: "statement", headline: "Opening", surface: "brand", emphasis: "loud" },
+        { layout: "quote", headline: "It was not noisy, it was unlabelled.", attribution: "Nadia Chevalier", surface: "paper", emphasis: "normal" },
+        { layout: "cta", headline: "Read on", surface: "accent", emphasis: "normal" },
+      ],
+    };
+    for (const key of DESIGN_SYSTEMS) {
+      const spec = composeSpec(brief, tokens, { brandVersion: "v", system: key, organizationName: "Albert School" });
+      const frame = spec.frames.find((candidate) => candidate.layout === "quote")!;
+      const rule = frame.shapes.find((shape) => shape.kind === "rule" && shape.width < frame.width * 0.5)!;
+      const words = frame.text.filter((text) => text.role === "display").sort((a, b) => a.y - b.y)[0];
+      expect(rule, key).toBeTruthy();
+      expect(rule.y, `${key}: rule at ${rule.y}, quote at ${words.y}`).toBeLessThan(words.y);
+      expect(words.y - rule.y, `${key}: rule is ${Math.round(words.y - rule.y)}px above its own quote`).toBeLessThan(words.fontSize * 2);
+    }
+  });
+
   it("hashes the spec, not the object identity", () => {
     const spec = composeSpec(briefFor(), tokens, { brandVersion: "v" });
     const { fingerprint, ...rest } = spec;

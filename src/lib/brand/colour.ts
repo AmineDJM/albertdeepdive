@@ -132,6 +132,25 @@ export function distance(a: string, b: string): number {
   return Math.min(1, Math.sqrt(weighted) / 764.83);
 }
 
+/**
+ * Hue in degrees, 0–360. Red is 0, green 120, blue 240.
+ *
+ * HSL rather than OKLCH: the question asked of it is "how far apart on the wheel", and for that the
+ * cheap answer and the expensive one agree to within a few degrees. Grey has no hue and returns 0,
+ * which callers must not read as red — every one of them checks saturation first.
+ */
+export function hue(colour: string): number {
+  const rgb = parseHex(colour);
+  if (!rgb) return 0;
+  const [r, g, b] = [rgb.r / 255, rgb.g / 255, rgb.b / 255];
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  if (max === min) return 0;
+  const chroma = max - min;
+  const raw = max === r ? ((g - b) / chroma) % 6 : max === g ? (b - r) / chroma + 2 : (r - g) / chroma + 4;
+  return ((raw * 60) % 360 + 360) % 360;
+}
+
 /** Saturation in HSL terms, 0 (grey) to 1. Used to prefer a brand colour over a background wash. */
 export function saturation(colour: string): number {
   const rgb = parseHex(colour);

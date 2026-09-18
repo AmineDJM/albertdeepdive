@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { CREATIVE_FORMATS, CREATIVE_MODES } from "./formats";
+import { MAX_HASHTAGS } from "./laws";
 import { IMAGERY_TREATMENTS, SURFACE_KEYS } from "@/lib/brand/system";
 
 /**
@@ -84,8 +85,8 @@ export const creativeBriefSchema = z.object({
   frames: z.array(frameBriefSchema).min(1).max(10),
   /** The post's own text, which goes in the caption box rather than on the image. */
   caption: z.string().trim().min(1).max(2200),
-  /** Five at most: more is a tell, and platforms weight them less every year. */
-  hashtags: z.array(z.string().trim().regex(/^[\p{L}\p{N}_]{2,40}$/u)).max(5),
+  /** More is a tell, and platforms weight them less every year. The cap is the law's, not a second copy of it. */
+  hashtags: z.array(z.string().trim().regex(/^[\p{L}\p{N}_]{2,40}$/u)).max(MAX_HASHTAGS),
   /** How the imagery is treated, from the brand's own menu. */
   treatment: z.enum(IMAGERY_TREATMENTS).optional(),
 });
@@ -200,7 +201,7 @@ export type RenderSpec = {
 export function parseBrief(raw: unknown): { ok: true; brief: CreativeBrief } | { ok: false; problems: string[] } {
   const parsed = creativeBriefSchema.safeParse(raw);
   if (parsed.success) {
-    const problems = structuralProblems(parsed.data);
+    const problems = [...structuralProblems(parsed.data), ...unattributedQuotations(parsed.data)];
     return problems.length ? { ok: false, problems } : { ok: true, brief: parsed.data };
   }
   return {
@@ -232,4 +233,28 @@ function structuralProblems(brief: CreativeBrief): string[] {
     problems.push("Every frame is on the same surface. Vary it: a set that never changes ground reads as one long slide.");
   }
   return problems;
+}
+
+/**
+ * A quoted passage set anywhere but a quote frame, with nobody's name against it.
+ *
+ * The `quote` layout already requires an attribution. This catches the other way a quotation reaches
+ * a slide: a model that puts somebody's words in quotation marks inside a `statement` headline,
+ * where the schema is satisfied and the reader is shown a claim in costume. Journalistic practice,
+ * enforced rather than reported, because the fix — name the speaker, or stop quoting — is not a
+ * design decision Briefly may take on somebody's behalf.
+ *
+ * Deliberately narrow: a matched pair of double quotes around a real sentence. Apostrophes, single
+ * quotes and two-word scare quotes are left alone, because flagging those would teach people to
+ * ignore the check.
+ */
+const QUOTED_PASSAGE = /["“]([^"”]{25,})["”]/;
+
+export function unattributedQuotations(brief: CreativeBrief): string[] {
+  return brief.frames.flatMap((frame, index) => {
+    if (frame.layout === "quote" || frame.attribution) return [];
+    const found = [frame.headline, frame.body].filter(Boolean).find((text) => QUOTED_PASSAGE.test(text!));
+    if (!found) return [];
+    return [`frames[${index}]: "${QUOTED_PASSAGE.exec(found)![1].slice(0, 40)}…" is quoted with nobody's name against it. Use a quote frame with an attribution, or say it in your own words.`];
+  });
 }

@@ -1172,6 +1172,8 @@ function localArtDirector(input: Input): unknown {
   const lead = headlines[0] ?? organizationName;
   const frames: Record<string, unknown>[] = [{ layout: "statement", headline: lead.slice(0, 180), surface: "brand", emphasis: "loud" }];
   if (standfirst) frames.push({ layout: "heading_body", headline: "What happened", body: standfirst.slice(0, 420), surface: "paper", emphasis: "normal" });
+  const figure = lines.find((line) => line.startsWith("Figures worth showing: "))?.slice(23).split(",")[0]?.trim();
+  if (figure) frames.push({ layout: "figure", headline: lead.slice(0, 90), figure: figure.slice(0, 24), surface: "ink", emphasis: "loud" });
   if (quoteLine) {
     const match = /^Quote: "(.+)" — (.+)$/.exec(quoteLine);
     if (match) frames.push({ layout: "quote", headline: match[1].slice(0, 180), attribution: match[2].slice(0, 180), surface: "muted", emphasis: "normal" });
