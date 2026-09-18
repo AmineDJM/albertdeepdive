@@ -155,7 +155,7 @@ export function PlanEditor({ plan }: { plan: EditablePlan }) {
             <Label htmlFor="pl-entitlements">{tr("Entitlements")}</Label>
             <Textarea id="pl-entitlements" rows={12} value={entitlements} onChange={(e) => setEntitlements(e.target.value)} className="font-mono text-xs" />
             <p className="text-xs text-muted-foreground">
-              <span className="font-mono">{tr("null")}</span> {" "}{tr("means unlimited;")}{" "}<span className="font-mono">0</span> {" "}{tr("means none.")}</p>
+              <span className="font-mono">{tr("null")}</span>{" "}{tr("means unlimited;")}{" "}<span className="font-mono">0</span>{" "}{tr("means none.")}</p>
             {jsonError ? <p className="text-xs text-destructive">{jsonError}</p> : null}
           </div>
           <div className="space-y-2">

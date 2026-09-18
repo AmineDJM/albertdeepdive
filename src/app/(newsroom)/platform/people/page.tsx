@@ -116,7 +116,7 @@ export default async function PlatformPeoplePage() {
         />
 
         <p className="max-w-prose text-xs leading-5 text-muted-foreground">
-          {tr("A platform role of")}{" "}<span className="font-medium text-foreground">{tr("Super admin")}</span> {" "}{tr("means Briefly staff: it can read and change every customer’s data. Everything else is scoped to the workspaces that person belongs to. Suspending an account ends its sessions immediately and leaves everything it wrote in place.")}</p>
+          {tr("A platform role of")}{" "}<span className="font-medium text-foreground">{tr("Super admin")}</span>{" "}{tr("means Briefly staff: it can read and change every customer’s data. Everything else is scoped to the workspaces that person belongs to. Suspending an account ends its sessions immediately and leaves everything it wrote in place.")}</p>
       </PageBody>
     </>
   );

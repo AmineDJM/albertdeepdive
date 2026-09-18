@@ -58,13 +58,13 @@ export function InformationRequestDialog({
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button size="xs" variant="outline">
-          <Send /> {" "}{tr("Request information")}</Button>
+          <Send />{" "}{tr("Request information")}</Button>
       </DialogTrigger>
       <DialogContent size="lg">
         <DialogHeader>
           <DialogTitle>{tr("Request more information")}</DialogTitle>
           <DialogDescription>
-            {contributor.name} {" "}{tr("will receive an email with a secure link. Their answers come back attached to this story, ready for review.")}</DialogDescription>
+            {contributor.name}{" "}{tr("will receive an email with a secure link. Their answers come back attached to this story, ready for review.")}</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-3">
@@ -105,14 +105,14 @@ export function InformationRequestDialog({
             <Textarea id="extra-questions" value={extra} onChange={(e) => setExtra(e.target.value)} rows={2} placeholder={tr("Who took the photograph?&#10;What was the final score?")} />
           </div>
 
-          <p className="text-2xs text-muted-foreground">{all.length} {" "}{tr("question")}{all.length === 1 ? "" : "s"} {" "}{tr("will be sent.")}</p>
+          <p className="text-2xs text-muted-foreground">{all.length}{" "}{tr("question")}{all.length === 1 ? "" : "s"}{" "}{tr("will be sent.")}</p>
         </div>
 
         <DialogFooter>
           <Button variant="outline" onClick={() => setOpen(false)}>
             {tr("Cancel")}</Button>
           <Button onClick={submit} loading={pending} disabled={!all.length || !message.trim()}>
-            <Send /> {" "}{tr("Send request")}</Button>
+            <Send />{" "}{tr("Send request")}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

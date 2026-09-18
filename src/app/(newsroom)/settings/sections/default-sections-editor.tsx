@@ -56,13 +56,13 @@ export function DefaultSectionsEditor({ sections }: { sections: DefaultSectionIn
       <SortableSections items={items} onChange={setItems} dndId="default-sections" />
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-card px-3 py-2">
         <div className="text-xs text-muted-foreground">
-          {items.length} {" "}{tr("sections ·")}{" "}{totalPages} {" "}{tr("target pages")}{" "}{problems.length ? <span className="ml-2 text-destructive">{problems[0]}</span> : null}
+          {items.length}{" "}{tr("sections ·")}{" "}{totalPages}{" "}{tr("target pages")}{" "}{problems.length ? <span className="ml-2 text-destructive">{problems[0]}</span> : null}
         </div>
         <div className="flex items-center gap-2">
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button variant="outline" size="sm" disabled={pending}>
-                <RotateCcw /> {" "}{tr("Reset to defaults")}</Button>
+                <RotateCcw />{" "}{tr("Reset to defaults")}</Button>
             </AlertDialogTrigger>
             <AlertDialogContent>
               <AlertDialogHeader>
@@ -89,7 +89,7 @@ export function DefaultSectionsEditor({ sections }: { sections: DefaultSectionIn
             </AlertDialogContent>
           </AlertDialog>
           <Button size="sm" onClick={save} loading={pending} disabled={!dirty || problems.length > 0}>
-            <Save /> {" "}{tr("Save template")}</Button>
+            <Save />{" "}{tr("Save template")}</Button>
         </div>
       </div>
     </div>

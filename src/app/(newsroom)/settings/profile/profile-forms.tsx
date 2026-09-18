@@ -161,7 +161,7 @@ export function ThemeForm({ saved }: { saved: "light" | "dark" }) {
           </button>
         ))}
         <span className="inline-flex items-center gap-1.5 self-center text-2xs text-muted-foreground">
-          <Laptop className="size-3.5" /> {" "}{tr("Saved preference:")}{" "}{saved}
+          <Laptop className="size-3.5" />{" "}{tr("Saved preference:")}{" "}{saved}
         </span>
       </div>
     </SettingsCard>
@@ -195,7 +195,7 @@ export function SessionsCard({ sessions }: { sessions: SessionRow[] }) {
             })
           }
         >
-          <LogOut /> {" "}{tr("Sign out other sessions")}</Button>
+          <LogOut />{" "}{tr("Sign out other sessions")}</Button>
       }
     >
       <ul className="divide-y divide-border">
@@ -207,7 +207,7 @@ export function SessionsCard({ sessions }: { sessions: SessionRow[] }) {
                 {s.current ? <Badge variant="brand">{tr("This device")}</Badge> : null}
               </div>
               <div className="text-2xs text-muted-foreground">
-                {tr("Signed in")}{" "}{formatDateTime(s.createdAt)} {" "}{tr("· last seen")}{" "}{relativeTime(s.lastSeenAt)} {" "}{tr("· expires")}{" "}{formatDateTime(s.expiresAt)}
+                {tr("Signed in")}{" "}{formatDateTime(s.createdAt)}{" "}{tr("· last seen")}{" "}{relativeTime(s.lastSeenAt)}{" "}{tr("· expires")}{" "}{formatDateTime(s.expiresAt)}
               </div>
             </div>
           </li>

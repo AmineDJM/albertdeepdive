@@ -83,7 +83,7 @@ export default async function ControlRoomPage({ params }: { params: Promise<{ ed
                     * of a page that is not there.
                     */}
                   <h1 className="masthead text-[24px] leading-tight font-semibold tracking-tight">{d.edition.title}</h1>
-                  <p className="mt-1 text-xs text-muted-foreground">{STATUS_LABELS[d.edition.status]} {" "}{tr("· publication target")}{" "}{formatDate(d.edition.publicationTargetAt)} {" "}{tr("· final review")}{" "}{formatDateTime(d.edition.finalReviewAt)}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">{STATUS_LABELS[d.edition.status]}{" "}{tr("· publication target")}{" "}{formatDate(d.edition.publicationTargetAt)}{" "}{tr("· final review")}{" "}{formatDateTime(d.edition.finalReviewAt)}</p>
                 </div>
                 {canTransition ? <EditionStatusControls editionId={editionId} current={d.edition.status} options={options} /> : null}
               </div>
@@ -98,7 +98,7 @@ export default async function ControlRoomPage({ params }: { params: Promise<{ ed
                 </div>
                 <div>
                   <dt className="label-caps">{tr("Pages")}</dt>
-                  <dd className="mt-0.5 font-medium">{d.layout.pages || 0} {" "}{tr("planned /")}{" "}{d.edition.targetPageCount} {" "}{tr("target")}</dd>
+                  <dd className="mt-0.5 font-medium">{d.layout.pages || 0}{" "}{tr("planned /")}{" "}{d.edition.targetPageCount}{" "}{tr("target")}</dd>
                 </div>
                 <div>
                   <dt className="label-caps">{tr("Editor in chief")}</dt>
@@ -130,14 +130,14 @@ export default async function ControlRoomPage({ params }: { params: Promise<{ ed
               <li key={c.campusId}>
                 <div className="flex items-center justify-between text-xs">
                   <span className="flex items-center gap-1.5 font-medium"><span className="size-2 rounded-full" style={{ backgroundColor: c.colour ?? "#2BAFE0" }} />{c.name}</span>
-                  <span className="tabular text-muted-foreground">{c.submissions} {" "}{tr("subs ·")}{" "}{c.stories} {" "}{tr("stories")}</span>
+                  <span className="tabular text-muted-foreground">{c.submissions}{" "}{tr("subs ·")}{" "}{c.stories}{" "}{tr("stories")}</span>
                 </div>
                 <ProgressBar value={c.submissions} max={Math.max(1, ...d.campuses.map((x) => x.submissions))} className="mt-1" tone={c.submissions === 0 ? "warning" : "brand"} />
               </li>
             ))}
           </ul>
           <div className="mt-3 flex items-center justify-between border-t pt-3 text-xs">
-            <span className="text-muted-foreground">{d.coverage.represented} / {d.coverage.total} {" "}{tr("represented")}</span>
+            <span className="text-muted-foreground">{d.coverage.represented} / {d.coverage.total}{" "}{tr("represented")}</span>
             <Badge variant={d.coverage.label === "Balanced" ? "success" : d.coverage.label === "Uneven" ? "warning" : "destructive"}>{d.coverage.label}</Badge>
           </div>
         </div>

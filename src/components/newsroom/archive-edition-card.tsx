@@ -59,14 +59,14 @@ export async function ArchiveEditionCard({ edition }: { edition: ShelfEdition })
 
         {edition.credited.length ? (
           <div className="mt-2.5">
-            <div className="label-caps mb-1">{edition.creditedCount} {" "}{tr("contributor")}{edition.creditedCount === 1 ? "" : "s"} {" "}{tr("credited")}</div>
+            <div className="label-caps mb-1">{edition.creditedCount}{" "}{tr("contributor")}{edition.creditedCount === 1 ? "" : "s"}{" "}{tr("credited")}</div>
             <div className="flex flex-wrap items-center gap-1">
               {edition.credited.slice(0, 5).map((c) => (
                 <Link key={c.id} href={`/contributors/${c.id}`} className="hover:opacity-80" title={`${c.name} — ${c.articles} article${c.articles === 1 ? "" : "s"}`}>
                   <CampusChip name={c.name} colour={c.campusColour} size="xs" />
                 </Link>
               ))}
-              {edition.creditedCount > 5 ? <span className="text-2xs text-muted-foreground">+{edition.creditedCount - 5} {" "}{tr("more")}</span> : null}
+              {edition.creditedCount > 5 ? <span className="text-2xs text-muted-foreground">+{edition.creditedCount - 5}{" "}{tr("more")}</span> : null}
             </div>
           </div>
         ) : null}
@@ -82,10 +82,10 @@ export async function ArchiveEditionCard({ edition }: { edition: ShelfEdition })
           {!edition.downloads.length ? (
             published ? (
               <span className="inline-flex items-center gap-1 text-2xs text-muted-foreground">
-                <FileText className="size-3" /> {" "}{tr("No export rendered")}</span>
+                <FileText className="size-3" />{" "}{tr("No export rendered")}</span>
             ) : (
               <span className="inline-flex items-center gap-1 text-2xs text-muted-foreground">
-                <Hammer className="size-3" /> {" "}{tr("In production")}</span>
+                <Hammer className="size-3" />{" "}{tr("In production")}</span>
             )
           ) : null}
           {edition.version ? <span className="ml-1 font-mono text-2xs text-muted-foreground">{edition.version.label}</span> : null}

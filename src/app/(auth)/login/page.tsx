@@ -64,7 +64,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
             <div className="mt-6 rounded-md border border-border bg-muted/40 p-3 text-xs text-muted-foreground">
               <p className="font-medium text-foreground">{tr("Development sign-in")}</p>
               <p className="mt-1">
-                {tr("Platform admin")}{" "}<span className="font-mono">{demo.email}</span> {" "}{tr("— password")}{" "}<span className="font-mono">{demo.password}</span>
+                {tr("Platform admin")}{" "}<span className="font-mono">{demo.email}</span>{" "}{tr("— password")}{" "}<span className="font-mono">{demo.password}</span>
               </p>
             </div>
           ) : null}

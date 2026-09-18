@@ -114,7 +114,7 @@ export function BriefEditor({ packId, brief, busy }: { packId: string; brief: Cr
           <Save /> {pending ? "Saving…" : "Save and render"}
         </Button>
         <Button variant="ghost" size="sm" disabled={!dirty || pending} onClick={() => { setDraft(draftFrom(brief)); setProblems([]); }}>
-          <Undo2 /> {" "}{tr("Undo changes")}</Button>
+          <Undo2 />{" "}{tr("Undo changes")}</Button>
         <span className="text-2xs text-muted-foreground">{busy ? "Wait for the current render to finish." : "The look stays the brand's. Only the words change."}</span>
       </div>
     </div>

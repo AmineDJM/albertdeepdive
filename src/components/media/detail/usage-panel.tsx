@@ -162,7 +162,7 @@ export function UsagePanel({
               disabled={blocked || !available.length}
               title={blocked ? "Blocked assets (rights RED) cannot be attached" : undefined}
             >
-              <Plus /> {" "}{tr("Attach to a story")}</Button>
+              <Plus />{" "}{tr("Attach to a story")}</Button>
           </PopoverTrigger>
           <PopoverContent align="start" className="w-96 p-0">
             <div className="flex items-center gap-2 border-b px-3 py-2">
@@ -198,7 +198,7 @@ export function UsagePanel({
                         <div className="truncate">{st.title}</div>
                         <div className="text-2xs text-muted-foreground">
                           {st.sectionName ?? "No section"} · {tr(enumLabel(st.status))} ·{" "}
-                          {st.mediaCount} {" "}{tr("media")}</div>
+                          {st.mediaCount}{" "}{tr("media")}</div>
                       </div>
                     </CommandItem>
                   ))}

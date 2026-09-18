@@ -106,7 +106,7 @@ export default async function StoryPage({ params }: { params: Promise<{ storyId:
                 <div className="flex flex-wrap items-center gap-2">
                   <ArticleStatusBadge status={article.status} />
                   <span className="text-2xs text-muted-foreground">
-                    {article.wordCount} {" "}{tr("words · revision")}{" "}{article.currentRevision}
+                    {article.wordCount}{" "}{tr("words · revision")}{" "}{article.currentRevision}
                     {article.byline ? ` · Article : ${article.byline}` : ""}
                   </span>
                 </div>
@@ -249,7 +249,7 @@ export default async function StoryPage({ params }: { params: Promise<{ storyId:
                       {sub.contributor ? `${sub.contributor.firstName} ${sub.contributor.lastName}` : "Unknown"} · {formatDateTime(sub.submittedAt ?? sub.createdAt)}
                     </p>
                     <p className="mt-0.5 text-2xs text-muted-foreground">
-                      {sub.campuses.map((c) => c.campus.name).join(", ") || "School-wide"} · {sub.mediaAssets.length} {" "}{tr("photo")}{sub.mediaAssets.length === 1 ? "" : "s"}
+                      {sub.campuses.map((c) => c.campus.name).join(", ") || "School-wide"} · {sub.mediaAssets.length}{" "}{tr("photo")}{sub.mediaAssets.length === 1 ? "" : "s"}
                     </p>
                   </Link>
                 </li>
@@ -315,7 +315,7 @@ export default async function StoryPage({ params }: { params: Promise<{ storyId:
               {story.people.length ? (
                 <div className="mb-2">
                   <div className="label-caps mb-1 flex items-center gap-1">
-                    <Users className="size-3" /> {" "}{tr("People")}</div>
+                    <Users className="size-3" />{" "}{tr("People")}</div>
                   <ul className="space-y-0.5">
                     {story.people.map((p) => (
                       <li key={`${p.personId}-${p.role}`} className="flex items-center justify-between gap-2 text-xs">

@@ -114,7 +114,7 @@ export default async function ArchivePage({ searchParams }: { searchParams: Prom
                       </Link>
                       <span className="text-2xs text-muted-foreground">{group.issueLabel}</span>
                     </div>
-                    <span className="tabular text-2xs text-muted-foreground">{group.stories.length} {" "}{tr("article")}{group.stories.length === 1 ? "" : "s"}</span>
+                    <span className="tabular text-2xs text-muted-foreground">{group.stories.length}{" "}{tr("article")}{group.stories.length === 1 ? "" : "s"}</span>
                   </div>
                   {group.stories.map((story) => (
                     <StoryResult key={story.id} story={story} />

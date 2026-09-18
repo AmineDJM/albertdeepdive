@@ -59,9 +59,9 @@ export function RecipientEditor({ value, campuses, openOnParam = false }: { valu
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         {value ? (
-          <Button size="sm" variant="outline"><Pencil /> {" "}{tr("Edit")}</Button>
+          <Button size="sm" variant="outline"><Pencil />{" "}{tr("Edit")}</Button>
         ) : (
-          <Button><Plus /> {" "}{tr("Add recipient")}</Button>
+          <Button><Plus />{" "}{tr("Add recipient")}</Button>
         )}
       </DialogTrigger>
       <DialogContent size="lg">

@@ -96,7 +96,7 @@ export function Topbar({ user, notifications, unread, onOpenSearch }: { user: { 
         <TooltipContent>{tr("How the newsroom works")}</TooltipContent>
       </Tooltip>
       <DropdownMenu>
-        <DropdownMenuTrigger className="ml-1 flex items-center gap-2 rounded-md py-1 pr-1 pl-1 hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none">
+        <DropdownMenuTrigger aria-label={tr("Account menu")} className="ml-1 flex items-center gap-2 rounded-md py-1 pr-1 pl-1 hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none">
           <Avatar>
             <AvatarFallback>{initials(user.name)}</AvatarFallback>
           </Avatar>
@@ -115,7 +115,7 @@ export function Topbar({ user, notifications, unread, onOpenSearch }: { user: { 
           <DropdownMenuSeparator />
           <DropdownMenuItem asChild>
             <Link href="/settings/profile">
-              <UserRound /> {" "}{tr("Profile")}</Link>
+              <UserRound />{" "}{tr("Profile")}</Link>
           </DropdownMenuItem>
           <DropdownMenuItem variant="destructive" onSelect={() => startTransition(async () => { await signOutAction(); })}>
             <LogOut /> {t("auth.signOut")}

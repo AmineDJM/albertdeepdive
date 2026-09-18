@@ -72,7 +72,7 @@ export function AddContributorsDialog({ editionId, campuses, campaignOpen }: { e
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogTrigger asChild>
         <Button size="xs" variant="outline">
-          <UserPlus /> {" "}{tr("Add contributors")}</Button>
+          <UserPlus />{" "}{tr("Add contributors")}</Button>
       </DialogTrigger>
       <DialogContent size="lg">
         <DialogHeader>
@@ -101,7 +101,7 @@ export function AddContributorsDialog({ editionId, campuses, campaignOpen }: { e
         <div className="max-h-[46vh] min-h-40 overflow-y-auto rounded-md border border-border">
           {loading ? (
             <div className="flex h-40 items-center justify-center text-xs text-muted-foreground">
-              <Loader2 className="mr-2 size-4 animate-spin" /> {" "}{tr("Searching…")}</div>
+              <Loader2 className="mr-2 size-4 animate-spin" />{" "}{tr("Searching…")}</div>
           ) : candidates.length ? (
             <ul className="divide-y divide-border">
               {candidates.map((c) => (
@@ -131,11 +131,11 @@ export function AddContributorsDialog({ editionId, campuses, campaignOpen }: { e
         </div>
 
         <DialogFooter className="items-center">
-          <span className="mr-auto text-2xs text-muted-foreground">{selected.size} {" "}{tr("selected")}</span>
+          <span className="mr-auto text-2xs text-muted-foreground">{selected.size}{" "}{tr("selected")}</span>
           <Button variant="outline" onClick={() => setOpen(false)}>
             {tr("Cancel")}</Button>
           <Button onClick={submit} loading={saving} disabled={!selected.size}>
-            <UserPlus /> {" "}{tr("Add")}{" "}{selected.size || ""} {selected.size === 1 ? "contributor" : "contributors"}
+            <UserPlus />{" "}{tr("Add")}{" "}{selected.size || ""} {selected.size === 1 ? "contributor" : "contributors"}
           </Button>
         </DialogFooter>
       </DialogContent>

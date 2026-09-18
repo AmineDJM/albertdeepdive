@@ -35,18 +35,18 @@ export async function MediaPagination({
       aria-label={tr("Pagination")}
     >
       <span className="tabular">
-        {total ? `${from}–${to} of ${total}` : "0"} {" "}{tr("asset")}{total === 1 ? "" : "s"}
+        {total ? `${from}–${to} of ${total}` : "0"}{" "}{tr("asset")}{total === 1 ? "" : "s"}
       </span>
       {pageCount > 1 ? (
         <div className="flex items-center gap-1.5">
           {page > 1 ? (
             <Button asChild variant="outline" size="sm">
               <Link href={href(page - 1)} rel="prev" aria-label={tr("Previous page")}>
-                <ChevronLeft /> {" "}{tr("Prev")}</Link>
+                <ChevronLeft />{" "}{tr("Prev")}</Link>
             </Button>
           ) : (
             <Button variant="outline" size="sm" disabled aria-label={tr("Previous page")}>
-              <ChevronLeft /> {" "}{tr("Prev")}</Button>
+              <ChevronLeft />{" "}{tr("Prev")}</Button>
           )}
           <span className="tabular px-1">
             {tr("Page")}{" "}{page} / {pageCount}

@@ -46,7 +46,7 @@ export function CampusEditor({ campus, trigger }: { campus?: Campus; trigger?: R
       <DialogTrigger asChild>
         {trigger ?? (
           <Button size={campus ? "icon-sm" : "default"} variant={campus ? "ghost" : "default"} aria-label={campus ? "Edit campus" : "Add campus"}>
-            {campus ? <Pencil /> : <><Plus /> {" "}{tr("Add campus")}</>}
+            {campus ? <Pencil /> : <><Plus />{" "}{tr("Add campus")}</>}
           </Button>
         )}
       </DialogTrigger>

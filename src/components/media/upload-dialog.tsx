@@ -213,14 +213,14 @@ export function UploadDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogTrigger asChild>
         <Button>
-          <Upload /> {" "}{tr("Upload")}</Button>
+          <Upload />{" "}{tr("Upload")}</Button>
       </DialogTrigger>
       <DialogContent size="xl" className="max-h-[92vh] overflow-hidden p-0">
         <div className="flex max-h-[92vh] flex-col">
           <DialogHeader className="px-5 pt-5">
             <DialogTitle>{tr("Upload media")}</DialogTitle>
             <DialogDescription>
-              {tr("JPEG, PNG, WebP, GIF, TIFF or AVIF, up to")}{" "}{maxFileMb} {" "}{tr("MB each. Rights default to “Unclear” until you confirm them.")}</DialogDescription>
+              {tr("JPEG, PNG, WebP, GIF, TIFF or AVIF, up to")}{" "}{maxFileMb}{" "}{tr("MB each. Rights default to “Unclear” until you confirm them.")}</DialogDescription>
           </DialogHeader>
           <div className="min-h-0 flex-1 scrollbar-thin space-y-4 overflow-y-auto px-5 py-4">
             <div
@@ -364,10 +364,10 @@ export function UploadDialog({
                               ) : null}
                               {it.result.duplicateOfId ? (
                                 <Badge variant="red">
-                                  <AlertTriangle /> {" "}{tr("duplicate")}</Badge>
+                                  <AlertTriangle />{" "}{tr("duplicate")}</Badge>
                               ) : null}
                               <Badge variant="success">
-                                <CheckCircle2 /> {" "}{tr("Uploaded")}</Badge>
+                                <CheckCircle2 />{" "}{tr("Uploaded")}</Badge>
                             </>
                           ) : it.status === "error" ? (
                             <Badge variant="destructive">{it.error ?? "Failed"}</Badge>
@@ -457,7 +457,7 @@ export function UploadDialog({
               </ul>
             ) : (
               <div className="text-muted-foreground flex items-center gap-2 text-xs">
-                <ImagePlus className="size-3.5" /> {" "}{tr("No files queued yet.")}</div>
+                <ImagePlus className="size-3.5" />{" "}{tr("No files queued yet.")}</div>
             )}
           </div>
           <DialogFooter className="border-t px-5 py-3">
@@ -469,7 +469,7 @@ export function UploadDialog({
               {done.length && !queued.length ? "Done" : "Cancel"}
             </Button>
             <Button onClick={start} disabled={!queued.length} loading={uploading}>
-              <Upload /> {" "}{tr("Upload")}{" "}
+              <Upload />{" "}{tr("Upload")}{" "}
               {queued.length ? `${queued.length} file${queued.length === 1 ? "" : "s"}` : ""}
             </Button>
           </DialogFooter>

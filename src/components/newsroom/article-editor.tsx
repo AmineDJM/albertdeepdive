@@ -237,7 +237,7 @@ export function ArticleEditor({
           <div className="flex items-center gap-2">
             <ArticleStatusBadge status={article.status} />
             <span className="text-2xs text-muted-foreground">
-              {words} {" "}{tr("words · revision")}{" "}{article.currentRevision}
+              {words}{" "}{tr("words · revision")}{" "}{article.currentRevision}
               {article.manualEditRatio !== null ? ` · ${Math.round(article.manualEditRatio * 100)}% edited by hand` : ""}
             </span>
             {dirty ? <Badge variant="warning">{tr("Unsaved changes")}</Badge> : null}
@@ -245,7 +245,7 @@ export function ArticleEditor({
           <div className="flex items-center gap-1.5">
             {canEdit ? (
               <Button size="sm" onClick={() => save()} loading={saving} disabled={!dirty}>
-                <Save /> {" "}{tr("Save")}</Button>
+                <Save />{" "}{tr("Save")}</Button>
             ) : null}
             {canEdit && article.status !== "READY_FOR_REVIEW" && article.status !== "APPROVED" ? (
               <Button size="sm" variant="outline" disabled={saving} onClick={() => startSave(async () => { const r = await submitForReviewAction(article.id, { editionId: article.editionId, storyId: article.storyId }); if (r.ok) { toast.success(r.message); router.refresh(); } else toast.error(r.error); })}>
@@ -253,7 +253,7 @@ export function ArticleEditor({
             ) : null}
             {canApprove && article.status !== "APPROVED" ? (
               <Button size="sm" variant="brand" disabled={saving} onClick={() => startSave(async () => { const r = await approveArticleAction(article.id, {}, { editionId: article.editionId, storyId: article.storyId }); if (r.ok) { toast.success(r.message); router.refresh(); } else toast.error(r.error, { description: tr("Resolve the disputed facts on the story first, or approve with a reason.") }); })}>
-                <Check /> {" "}{tr("Approve")}</Button>
+                <Check />{" "}{tr("Approve")}</Button>
             ) : null}
           </div>
         </div>
@@ -278,7 +278,7 @@ export function ArticleEditor({
           <div className="space-y-1.5">
             <Label htmlFor="headline">{tr("Headline")}</Label>
             <Textarea id="headline" value={headline} onChange={(e) => { setHeadline(e.target.value); setDirty(true); }} disabled={locked} rows={2} className="font-display text-2xl leading-tight font-semibold" />
-            <p className={cn("text-2xs", headline.length > 90 ? "text-destructive" : "text-muted-foreground")}>{headline.length} {" "}{tr("characters")}{" "}{headline.length > 90 ? "— too long for print (max 90)" : ""}</p>
+            <p className={cn("text-2xs", headline.length > 90 ? "text-destructive" : "text-muted-foreground")}>{headline.length}{" "}{tr("characters")}{" "}{headline.length > 90 ? "— too long for print (max 90)" : ""}</p>
             {article.headlineAlternatives.length ? (
               <div className="flex flex-wrap gap-1">
                 {article.headlineAlternatives.filter((h) => h !== headline).slice(0, 4).map((h) => (
@@ -344,7 +344,7 @@ export function ArticleEditor({
 
           {canEdit && !locked && blocks.length === 0 ? (
             <Button variant="outline" size="sm" onClick={() => addBlock("paragraph", -1)}>
-              <Plus /> {" "}{tr("Add the first paragraph")}</Button>
+              <Plus />{" "}{tr("Add the first paragraph")}</Button>
           ) : null}
         </div>
       </div>
@@ -356,7 +356,7 @@ export function ArticleEditor({
           <Link href={`/stories/${story.id}`} className="block rounded-md border border-border bg-card px-2.5 py-2 text-xs hover:border-brand/50">
             <p className="font-medium">{story.title}</p>
             <p className="text-2xs text-muted-foreground">
-              {story.editionLabel} · {story.sectionName ?? "Unassigned"} {" "}{tr("· sources and facts")}</p>
+              {story.editionLabel} · {story.sectionName ?? "Unassigned"}{" "}{tr("· sources and facts")}</p>
           </Link>
         </section>
 
@@ -524,7 +524,7 @@ function ProposalDialog({ proposal, onClose, onApply }: { proposal: ArticlePropo
                 <li key={h.text}>
                   <button type="button" onClick={() => onApply(proposal, h.text)} className="w-full rounded-md border border-border px-3 py-2 text-left hover:border-brand hover:bg-accent/40">
                     <span className="font-display block text-[15px] font-semibold">{h.text}</span>
-                    <span className="text-2xs text-muted-foreground">{h.angle} · {h.text.length} {" "}{tr("characters")}</span>
+                    <span className="text-2xs text-muted-foreground">{h.angle} · {h.text.length}{" "}{tr("characters")}</span>
                   </button>
                 </li>
               ))}
@@ -585,7 +585,7 @@ function ProposalDialog({ proposal, onClose, onApply }: { proposal: ArticlePropo
           </Button>
           {proposal.kind !== "issues" && proposal.kind !== "headlines" ? (
             <Button onClick={() => onApply(proposal)}>
-              <Check /> {" "}{tr("Apply to my draft")}</Button>
+              <Check />{" "}{tr("Apply to my draft")}</Button>
           ) : null}
         </DialogFooter>
       </DialogContent>
@@ -679,7 +679,7 @@ function RequestChangesForm({ articleId, editionId, storyId }: { articleId: stri
     >
       <Textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} placeholder={tr("What should change before approval?")} className="text-xs" />
       <Button size="xs" type="submit" variant="outline" loading={pending} disabled={!note.trim()}>
-        <X /> {" "}{tr("Request changes")}</Button>
+        <X />{" "}{tr("Request changes")}</Button>
     </form>
   );
 }

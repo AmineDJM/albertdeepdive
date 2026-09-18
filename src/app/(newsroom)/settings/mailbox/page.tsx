@@ -59,7 +59,7 @@ export default async function MailboxPage({ searchParams }: { searchParams: Prom
 
         <section>
           <SectionTitle>
-            {tr("Messages")}{" "}<span className="tabular ml-1.5 font-normal text-muted-foreground">{rows.length} {" "}{tr("most recent")}</span>
+            {tr("Messages")}{" "}<span className="tabular ml-1.5 font-normal text-muted-foreground">{rows.length}{" "}{tr("most recent")}</span>
           </SectionTitle>
           {rows.length ? (
             <MailboxList messages={rows.map((r) => ({ ...r, createdAt: r.createdAt.toISOString(), sentAt: r.sentAt?.toISOString() ?? null }))} />

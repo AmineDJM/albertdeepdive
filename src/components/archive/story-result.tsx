@@ -47,11 +47,11 @@ export async function StoryResult({ story }: { story: ArchiveStory }) {
                 {o.name}
               </Link>
             ))}
-            {story.people.length > people.length ? <span className="text-2xs text-muted-foreground">+{story.people.length - people.length} {" "}{tr("more")}</span> : null}
+            {story.people.length > people.length ? <span className="text-2xs text-muted-foreground">+{story.people.length - people.length}{" "}{tr("more")}</span> : null}
           </div>
         ) : null}
       </div>
-      {story.wordCount ? <span className="tabular hidden shrink-0 self-start pt-1 text-2xs text-muted-foreground sm:block">{story.wordCount} {" "}{tr("words")}</span> : null}
+      {story.wordCount ? <span className="tabular hidden shrink-0 self-start pt-1 text-2xs text-muted-foreground sm:block">{story.wordCount}{" "}{tr("words")}</span> : null}
     </article>
   );
 }

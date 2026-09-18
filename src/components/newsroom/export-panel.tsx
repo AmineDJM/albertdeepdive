@@ -125,7 +125,7 @@ export function ExportPanel({
                 })
               }
             >
-              <Play /> {" "}{tr("Generate PDF and DOCX")}</Button>
+              <Play />{" "}{tr("Generate PDF and DOCX")}</Button>
           </div>
           <p className="mt-2 text-2xs text-muted-foreground">
             {tr("Both files are rendered from one snapshot of the edition, so the PDF and the Word document always describe the same issue.")}</p>
@@ -144,7 +144,7 @@ export function ExportPanel({
                 <Badge variant="outline">{KIND_LABELS[v.kind as PublicationKind] ?? v.kind}</Badge>
                 {v.isImmutable ? (
                   <Badge variant="brand" className="gap-1">
-                    <Lock className="size-2.5" /> {" "}{tr("Immutable")}</Badge>
+                    <Lock className="size-2.5" />{" "}{tr("Immutable")}</Badge>
                 ) : null}
                 <span className="ml-auto text-2xs text-muted-foreground">
                   {v.createdByName ?? "System"} · {relativeTime(v.createdAt)}
@@ -154,35 +154,35 @@ export function ExportPanel({
               {v.notes ? <p className="mt-1.5 text-xs text-muted-foreground">{v.notes}</p> : null}
 
               <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-2xs text-muted-foreground">
-                {v.pageCount ? <span className="tabular">{v.pageCount} {" "}{tr("pages")}</span> : null}
+                {v.pageCount ? <span className="tabular">{v.pageCount}{" "}{tr("pages")}</span> : null}
                 {v.renderMs ? <span className="tabular">{tr("rendered in")}{" "}{(v.renderMs / 1000).toFixed(1)}s</span> : null}
-                {v.layoutStats?.continuationPagesAdded ? <span className="tabular">{v.layoutStats.continuationPagesAdded} {" "}{tr("continuation pages")}</span> : null}
-                {v.layoutStats?.paragraphsSplit ? <span className="tabular">{v.layoutStats.paragraphsSplit} {" "}{tr("paragraphs split")}</span> : null}
+                {v.layoutStats?.continuationPagesAdded ? <span className="tabular">{v.layoutStats.continuationPagesAdded}{" "}{tr("continuation pages")}</span> : null}
+                {v.layoutStats?.paragraphsSplit ? <span className="tabular">{v.layoutStats.paragraphsSplit}{" "}{tr("paragraphs split")}</span> : null}
                 <span>{formatDateTime(v.createdAt)}</span>
               </div>
 
               <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
                 {pdf ? (
                   <Button size="xs" variant="outline" disabled={pending} onClick={() => download(pdf.id)}>
-                    <Download /> {" "}{tr("PDF")}{" "}<span className="text-muted-foreground">{pdf.sizeBytes ? formatBytes(pdf.sizeBytes) : ""}</span>
+                    <Download />{" "}{tr("PDF")}{" "}<span className="text-muted-foreground">{pdf.sizeBytes ? formatBytes(pdf.sizeBytes) : ""}</span>
                   </Button>
                 ) : null}
                 {docx ? (
                   <Button size="xs" variant="outline" disabled={pending} onClick={() => download(docx.id)}>
-                    <FileText /> {" "}{tr("DOCX")}{" "}<span className="text-muted-foreground">{docx.sizeBytes ? formatBytes(docx.sizeBytes) : ""}</span>
+                    <FileText />{" "}{tr("DOCX")}{" "}<span className="text-muted-foreground">{docx.sizeBytes ? formatBytes(docx.sizeBytes) : ""}</span>
                   </Button>
                 ) : null}
                 {canRun && v.status === "FAILED" && !v.isImmutable ? (
                   <Button size="xs" variant="outline" loading={pending} onClick={() => run(() => retryRenderAction(editionId, v.id))}>
-                    <RefreshCw /> {" "}{tr("Render again")}</Button>
+                    <RefreshCw />{" "}{tr("Render again")}</Button>
                 ) : null}
                 {canRun && v.status === "PENDING" && !v.isImmutable ? (
                   <Button size="xs" variant="outline" loading={pending} onClick={() => run(() => retryRenderAction(editionId, v.id))}>
-                    <Play /> {" "}{tr("Render now")}</Button>
+                    <Play />{" "}{tr("Render now")}</Button>
                 ) : null}
                 {v.renderLog.length ? (
                   <Button size="xs" variant="ghost" onClick={() => setLogFor(v)}>
-                    <ScrollText /> {" "}{tr("Render log (")}{v.renderLog.length})
+                    <ScrollText />{" "}{tr("Render log (")}{v.renderLog.length})
                   </Button>
                 ) : null}
               </div>
@@ -223,7 +223,7 @@ export function ExportPanel({
                 runCompare();
               }}
             >
-              <GitCompare /> {" "}{tr("Compare")}</Button>
+              <GitCompare />{" "}{tr("Compare")}</Button>
           </div>
           {comparison?.ok ? (
             <dl className="mt-3 grid gap-2 text-xs sm:grid-cols-2">
@@ -233,7 +233,7 @@ export function ExportPanel({
               <div>
                 <dt className="label-caps">{tr("Size")}</dt>
                 <dd className="tabular mt-1 text-muted-foreground">
-                  {signed(comparison.data.pageCountChange)} {" "}{tr("pages,")}{" "}{signed(comparison.data.wordCountChange)} {" "}{tr("words")}</dd>
+                  {signed(comparison.data.pageCountChange)}{" "}{tr("pages,")}{" "}{signed(comparison.data.wordCountChange)}{" "}{tr("words")}</dd>
               </div>
             </dl>
           ) : null}

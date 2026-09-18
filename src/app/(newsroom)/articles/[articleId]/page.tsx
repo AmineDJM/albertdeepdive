@@ -107,7 +107,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ articl
 
           <section>
             <SectionTitle>
-              {tr("Fact sheet")}{" "}{disputedFacts ? <span className="ml-1.5 text-warning">{disputedFacts} {" "}{tr("disputed")}</span> : null}
+              {tr("Fact sheet")}{" "}{disputedFacts ? <span className="ml-1.5 text-warning">{disputedFacts}{" "}{tr("disputed")}</span> : null}
             </SectionTitle>
             {disputedFacts ? (
               <p className="mb-2 flex items-start gap-1.5 rounded-md border border-warning/40 bg-warning-soft/50 p-2 text-2xs">
@@ -131,7 +131,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ articl
             </ul>
             {facts.length > 14 ? (
               <Link href={`/stories/${story.id}`} className="mt-1.5 inline-block text-2xs text-muted-foreground underline">
-                {facts.length - 14} {" "}{tr("more on the story file")}</Link>
+                {facts.length - 14}{" "}{tr("more on the story file")}</Link>
             ) : null}
           </section>
 

@@ -132,7 +132,7 @@ export function FactList({ storyId, facts, submissions, canEdit }: { storyId: st
                   {disputed && !rivals.length && canEdit ? (
                     <div className="mt-1.5 flex items-center gap-2">
                       <Button size="xs" variant="outline" disabled={pending} onClick={() => { setSettling(fact); setStatement(fact.statement); setReason(""); }}>
-                        <ShieldCheck /> {" "}{tr("Keep this")}</Button>
+                        <ShieldCheck />{" "}{tr("Keep this")}</Button>
                       <span className="text-2xs text-muted-foreground">{tr("Say which reading is right, and why.")}</span>
                     </div>
                   ) : null}
@@ -212,7 +212,7 @@ export function FactList({ storyId, facts, submissions, canEdit }: { storyId: st
               disabled={!statement.trim() || !reason.trim()}
               onClick={() => settling && run(() => settleFactAction(storyId, settling.id, statement, reason), () => setSettling(null))}
             >
-              <ShieldCheck /> {" "}{tr("Keep this version")}</Button>
+              <ShieldCheck />{" "}{tr("Keep this version")}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -161,7 +161,7 @@ export function InboxList({ editionId, items, selectedId, canReview }: { edition
       {selection.size ? (
         <div className="sticky bottom-0 flex flex-wrap items-center gap-1.5 border-t border-border bg-card/95 px-3 py-2 backdrop-blur">
           <span className="text-xs font-medium">
-            {selection.size} {" "}{tr("selected")}{" "}{pending ? <Loader2 className="ml-1.5 inline size-3 animate-spin" /> : null}
+            {selection.size}{" "}{tr("selected")}{" "}{pending ? <Loader2 className="ml-1.5 inline size-3 animate-spin" /> : null}
           </span>
           {BULK.map((b) => (
             <Button key={b.status} size="xs" variant="outline" disabled={pending} onClick={() => runBulk(b.status)}>

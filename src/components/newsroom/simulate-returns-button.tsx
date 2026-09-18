@@ -41,7 +41,7 @@ export function SimulateReturnsButton({ editionId }: { editionId: string }) {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button size="sm" variant="outline" title={tr("Fill this edition with fake form submissions (super-admin demo tool)")}>
-          <FlaskConical /> {" "}{tr("Simulate returns")}</Button>
+          <FlaskConical />{" "}{tr("Simulate returns")}</Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
@@ -79,7 +79,7 @@ export function SimulateReturnsButton({ editionId }: { editionId: string }) {
           <Button variant="outline" onClick={() => setOpen(false)}>
             {tr("Cancel")}</Button>
           <Button onClick={submit} loading={saving}>
-            <FlaskConical /> {" "}{tr("Add")}{" "}{count} {" "}{tr("submission")}{count === 1 ? "" : "s"}
+            <FlaskConical />{" "}{tr("Add")}{" "}{count}{" "}{tr("submission")}{count === 1 ? "" : "s"}
           </Button>
         </DialogFooter>
       </DialogContent>

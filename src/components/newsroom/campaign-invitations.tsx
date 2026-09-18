@@ -127,7 +127,7 @@ export function CampaignInvitations({ editionId, rows, canResend }: { editionId:
           </NativeSelect>
         ) : null}
         <span className="tabular text-2xs text-muted-foreground">
-          {filtered.length} {" "}{tr("of")}{" "}{rows.length}
+          {filtered.length}{" "}{tr("of")}{" "}{rows.length}
         </span>
       </div>
 
@@ -157,7 +157,7 @@ export function CampaignInvitations({ editionId, rows, canResend }: { editionId:
                 </TableCell>
                 <TableCell className="py-1.5">
                   <Badge variant={STATUS_TONE[r.status] ?? "muted"}>{tr(enumLabel(r.status))}</Badge>
-                  {r.submissionsCount ? <span className="tabular ml-1.5 text-2xs text-muted-foreground">{r.submissionsCount} {" "}{tr("sent")}</span> : null}
+                  {r.submissionsCount ? <span className="tabular ml-1.5 text-2xs text-muted-foreground">{r.submissionsCount}{" "}{tr("sent")}</span> : null}
                 </TableCell>
                 <TableCell className="py-1.5 text-2xs text-muted-foreground">
                   {r.submittedAt ? (
@@ -171,7 +171,7 @@ export function CampaignInvitations({ editionId, rows, canResend }: { editionId:
                   )}
                   {r.remindedCount ? (
                     <div>
-                      {r.remindedCount} {" "}{tr("reminder")}{r.remindedCount === 1 ? "" : "s"}
+                      {r.remindedCount}{" "}{tr("reminder")}{r.remindedCount === 1 ? "" : "s"}
                       {r.lastRemindedAt ? ` · last ${formatZoned(r.lastRemindedAt)}` : ""}
                     </div>
                   ) : null}
@@ -195,7 +195,7 @@ export function CampaignInvitations({ editionId, rows, canResend }: { editionId:
                 <TableCell className="py-1.5 text-right" data-no-row-link>
                   {canResend ? (
                     <Button variant="outline" size="xs" onClick={() => resend(r.requestId)} loading={pending && busyId === r.requestId} disabled={pending && busyId !== r.requestId}>
-                      <Send /> {" "}{tr("Resend")}</Button>
+                      <Send />{" "}{tr("Resend")}</Button>
                   ) : null}
                 </TableCell>
               </TableRow>

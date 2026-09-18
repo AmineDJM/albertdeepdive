@@ -22,7 +22,7 @@ export async function FlatplanReport({ flatplan }: { flatplan: Flatplan }) {
           <TriangleAlert />
           <AlertTitle>{tr("The copyfit pass could not run")}</AlertTitle>
           <AlertDescription>
-            {measurementError} {" "}{tr("The flatplan below shows the planned pages and the estimated fill; continuation pages appear once the pass succeeds.")}</AlertDescription>
+            {measurementError}{" "}{tr("The flatplan below shows the planned pages and the estimated fill; continuation pages appear once the pass succeeds.")}</AlertDescription>
         </Alert>
       ) : null}
 
@@ -40,7 +40,7 @@ export async function FlatplanReport({ flatplan }: { flatplan: Flatplan }) {
           action={
             report ? (
               <span className="text-2xs text-muted-foreground">
-                {report.engine} {" "}{tr("· measured")}{" "}{relativeTime(report.measuredAt)}
+                {report.engine}{" "}{tr("· measured")}{" "}{relativeTime(report.measuredAt)}
               </span>
             ) : null
           }
@@ -73,7 +73,7 @@ export async function FlatplanReport({ flatplan }: { flatplan: Flatplan }) {
           </>
         ) : (
           <p className="text-xs text-muted-foreground">
-            {tr("The copyfit pass has not run for this plan yet. Use")}{" "}<b>{tr("Run copyfit")}</b> {" "}{tr("to flow the text through the real print templates and see the continuation pages.")}</p>
+            {tr("The copyfit pass has not run for this plan yet. Use")}{" "}<b>{tr("Run copyfit")}</b>{" "}{tr("to flow the text through the real print templates and see the continuation pages.")}</p>
         )}
       </div>
 
@@ -83,9 +83,9 @@ export async function FlatplanReport({ flatplan }: { flatplan: Flatplan }) {
             <Layers className="size-3.5 text-muted-foreground" />
             <span className="text-[13px] font-semibold">{tr("Warnings")}</span>
             <span className="flex items-center gap-1">
-              {errors.length ? <Badge variant="destructive">{errors.length} {" "}{tr("blocking")}</Badge> : null}
-              {alerts.length ? <Badge variant="warning">{alerts.length} {" "}{tr("to check")}</Badge> : null}
-              {infos.length ? <Badge variant="muted">{infos.length} {" "}{tr("notes")}</Badge> : null}
+              {errors.length ? <Badge variant="destructive">{errors.length}{" "}{tr("blocking")}</Badge> : null}
+              {alerts.length ? <Badge variant="warning">{alerts.length}{" "}{tr("to check")}</Badge> : null}
+              {infos.length ? <Badge variant="muted">{infos.length}{" "}{tr("notes")}</Badge> : null}
               {!warnings.length ? <Badge variant="success">{tr("Nothing to report")}</Badge> : null}
             </span>
           </span>

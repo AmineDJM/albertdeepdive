@@ -106,7 +106,7 @@ export default async function AutomationsPage({ searchParams }: { searchParams: 
           <>
             <Button asChild size="sm" variant="ghost">
               <Link href="/settings/system">
-                <Settings2 /> {" "}{tr("Toggles & schedule")}</Link>
+                <Settings2 />{" "}{tr("Toggles & schedule")}</Link>
             </Button>
             {canManage ? <RunSchedulerButton /> : null}
           </>
@@ -211,7 +211,7 @@ export default async function AutomationsPage({ searchParams }: { searchParams: 
               ]}
             />
             <p className="text-2xs text-muted-foreground">
-              {tr("Showing the")}{" "}{ai.rows.length} {" "}{tr("most recent calls of")}{" "}{ai.totals.calls} {" "}{tr("in scope ·")}{" "}{ai.totals.cached} {" "}{tr("served from cache ·")}{" "}{ai.totals.failed} {" "}{tr("failed · average latency")}{" "}{latency(ai.totals.avgLatencyMs)}.
+              {tr("Showing the")}{" "}{ai.rows.length}{" "}{tr("most recent calls of")}{" "}{ai.totals.calls}{" "}{tr("in scope ·")}{" "}{ai.totals.cached}{" "}{tr("served from cache ·")}{" "}{ai.totals.failed}{" "}{tr("failed · average latency")}{" "}{latency(ai.totals.avgLatencyMs)}.
             </p>
           </div>
         </section>

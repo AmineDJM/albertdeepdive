@@ -38,13 +38,13 @@ export function ContributorsBulkBar() {
   return (
     <SelectionBar noun={{ one: "contributor", other: "contributors" }}>
       <Button variant="outline" size="sm" disabled={pending} onClick={() => run(() => setContributorsActiveAction(ids, false))}>
-        <EyeOff /> {" "}{tr("Hide")}</Button>
+        <EyeOff />{" "}{tr("Hide")}</Button>
       <Button variant="outline" size="sm" disabled={pending} onClick={() => run(() => setContributorsActiveAction(ids, true))}>
-        <Eye /> {" "}{tr("Show")}</Button>
+        <Eye />{" "}{tr("Show")}</Button>
       <AlertDialog>
         <AlertDialogTrigger asChild>
           <Button variant="outline" size="sm" disabled={pending} className="text-destructive hover:text-destructive">
-            <Trash2 /> {" "}{tr("Delete")}</Button>
+            <Trash2 />{" "}{tr("Delete")}</Button>
         </AlertDialogTrigger>
         <AlertDialogContent>
           <AlertDialogHeader>

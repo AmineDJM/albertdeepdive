@@ -52,9 +52,9 @@ export function UsersTable({ users, campuses, currentUserId }: { users: UserList
     <>
       <div className="flex items-center justify-between gap-3">
         <p className="text-xs text-muted-foreground">
-          {users.filter((u) => u.isActive).length} {" "}{tr("active ·")}{" "}{users.filter((u) => !u.isActive).length} {" "}{tr("deactivated")}</p>
+          {users.filter((u) => u.isActive).length}{" "}{tr("active ·")}{" "}{users.filter((u) => !u.isActive).length}{" "}{tr("deactivated")}</p>
         <Button size="sm" onClick={() => setEditing({ mode: "create" })}>
-          <Plus /> {" "}{tr("Invite user")}</Button>
+          <Plus />{" "}{tr("Invite user")}</Button>
       </div>
       <DataTable
         rows={users}
@@ -95,16 +95,16 @@ export function UsersTable({ users, campuses, currentUserId }: { users: UserList
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     <DropdownMenuItem onSelect={() => setEditing({ mode: "edit", user: u })}>
-                      <Pencil /> {" "}{tr("Edit role & campus")}</DropdownMenuItem>
+                      <Pencil />{" "}{tr("Edit role & campus")}</DropdownMenuItem>
                     <DropdownMenuItem onSelect={() => setConfirm({ kind: "reset", user: u })}>
-                      <KeyRound /> {" "}{tr("Reset password")}</DropdownMenuItem>
+                      <KeyRound />{" "}{tr("Reset password")}</DropdownMenuItem>
                     <DropdownMenuSeparator />
                     {u.isActive ? (
                       <DropdownMenuItem variant="destructive" disabled={u.id === currentUserId} onSelect={() => setConfirm({ kind: "deactivate", user: u })}>
-                        <UserRoundX /> {" "}{tr("Deactivate")}</DropdownMenuItem>
+                        <UserRoundX />{" "}{tr("Deactivate")}</DropdownMenuItem>
                     ) : (
                       <DropdownMenuItem onSelect={() => run(() => updateUserAction(u.id, { isActive: true }))}>
-                        <UserRoundCheck /> {" "}{tr("Reactivate")}</DropdownMenuItem>
+                        <UserRoundCheck />{" "}{tr("Reactivate")}</DropdownMenuItem>
                     )}
                   </DropdownMenuContent>
                 </DropdownMenu>

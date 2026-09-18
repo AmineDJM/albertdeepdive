@@ -63,7 +63,7 @@ export function MastheadForm({ value }: { value: MastheadSettings }) {
         </div>
         <div className="sm:col-span-2">
           <Button type="submit" size="sm" loading={pending} disabled={!dirty}>
-            <Save /> {" "}{tr("Save masthead")}</Button>
+            <Save />{" "}{tr("Save masthead")}</Button>
         </div>
       </form>
     </SettingsCard>
@@ -102,7 +102,7 @@ export function ContactForm({ value }: { value: ContactSettings }) {
         </div>
         <div className="sm:col-span-3">
           <Button type="submit" size="sm" loading={pending} disabled={!dirty}>
-            <Save /> {" "}{tr("Save contact")}</Button>
+            <Save />{" "}{tr("Save contact")}</Button>
         </div>
       </form>
     </SettingsCard>
@@ -164,7 +164,7 @@ export function CampaignDefaultsForm({ value }: { value: CampaignDefaults }) {
           ))}
           <div className="sm:col-span-2">
             <Button type="submit" size="sm" loading={pending} disabled={!dirty || invalid}>
-              <Save /> {" "}{tr("Save schedule")}</Button>
+              <Save />{" "}{tr("Save schedule")}</Button>
           </div>
         </div>
         <div className="rounded-md border border-border bg-muted/30 p-3 text-xs">
@@ -224,7 +224,7 @@ export function PrintForm({ value }: { value: PrintSettings }) {
         </div>
         <div className="sm:col-span-3">
           <Button type="submit" size="sm" loading={pending} disabled={!dirty}>
-            <Save /> {" "}{tr("Save print defaults")}</Button>
+            <Save />{" "}{tr("Save print defaults")}</Button>
         </div>
       </form>
     </SettingsCard>
@@ -262,7 +262,7 @@ export function AiForm({ value, provider, modelFast, modelStrong }: { value: AiS
         </div>
         <div className="sm:col-span-3">
           <Button type="submit" size="sm" loading={pending} disabled={!dirty}>
-            <Save /> {" "}{tr("Save budget")}</Button>
+            <Save />{" "}{tr("Save budget")}</Button>
         </div>
       </form>
     </SettingsCard>
@@ -287,7 +287,7 @@ export function AutomationsForm({ value }: { value: AutomationToggles }) {
   const { pending, save } = useSave<AutomationToggles>("automations");
   const dirty = JSON.stringify(form) !== JSON.stringify(value);
   return (
-    <SettingsCard id="automations" title={tr("Automations")} description={tr("Disabled steps are recorded as skipped so nothing runs twice when re-enabled.")} action={<Button size="sm" onClick={() => save(form)} loading={pending} disabled={!dirty}><Save /> {" "}{tr("Save toggles")}</Button>}>
+    <SettingsCard id="automations" title={tr("Automations")} description={tr("Disabled steps are recorded as skipped so nothing runs twice when re-enabled.")} action={<Button size="sm" onClick={() => save(form)} loading={pending} disabled={!dirty}><Save />{" "}{tr("Save toggles")}</Button>}>
       <ul className="divide-y divide-border">
         {AUTOMATION_KEYS.map((key) => (
           <li key={key} className="flex items-center justify-between gap-3 py-2">

@@ -78,7 +78,7 @@ export function SelectionBar({ noun, children }: { noun: { one: string; other: s
   return (
     <div role="region" aria-label={tr("Selection")} className="sticky bottom-4 z-10 flex flex-wrap items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 shadow-md">
       <span className="text-xs font-medium">
-        {selected.size} {selected.size === 1 ? noun.one : noun.other} {" "}{tr("selected")}</span>
+        {selected.size} {selected.size === 1 ? noun.one : noun.other}{" "}{tr("selected")}</span>
       <span className="flex-1" />
       {children}
       <Button variant="ghost" size="icon-sm" aria-label={tr("Clear selection")} onClick={clear}>

@@ -61,7 +61,7 @@ export default async function InboxPage({ params, searchParams }: { params: Prom
           ))}
         </nav>
         <div className="flex items-center gap-2">
-          {facets.unprocessed > 0 ? <span className="text-2xs text-warning">{facets.unprocessed} {" "}{tr("not processed")}</span> : null}
+          {facets.unprocessed > 0 ? <span className="text-2xs text-warning">{facets.unprocessed}{" "}{tr("not processed")}</span> : null}
           {canRunAi ? <ProcessingButton editionId={editionId} unprocessed={facets.unprocessed} /> : null}
         </div>
       </div>
@@ -101,7 +101,7 @@ export default async function InboxPage({ params, searchParams }: { params: Prom
           {pages > 1 ? (
             <div className="flex items-center justify-between border-t border-border px-3 py-1.5 text-xs">
               <span className="text-muted-foreground">
-                {tr("Page")}{" "}{page} {" "}{tr("of")}{" "}{pages} · {total} {" "}{tr("submissions")}</span>
+                {tr("Page")}{" "}{page}{" "}{tr("of")}{" "}{pages} · {total}{" "}{tr("submissions")}</span>
               <span className="flex gap-1">
                 {page > 1 ? (
                   <Link href={qs({ page: String(page - 1) })} className="rounded px-2 py-0.5 hover:bg-muted">

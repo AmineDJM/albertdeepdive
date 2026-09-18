@@ -72,7 +72,7 @@ export default async function PlatformHealthPage() {
               </span>
               <div className="min-w-0 flex-1">
                 <h2 className="text-[14px] font-semibold">
-                  {missing.length} {" "}{tr("service")}{missing.length === 1 ? "" : "s"} {" "}{tr("not connected")}</h2>
+                  {missing.length}{" "}{tr("service")}{missing.length === 1 ? "" : "s"}{" "}{tr("not connected")}</h2>
                 <ul className="mt-2 space-y-1">
                   {missing.map((integration) => (
                     <li key={integration.key} className="text-xs text-muted-foreground">
@@ -98,7 +98,7 @@ export default async function PlatformHealthPage() {
 
         <div className="grid gap-4 xl:grid-cols-2">
           <section>
-            <SectionTitle action={problems ? <Badge variant="muted">{problems} {" "}{tr("in 24h")}</Badge> : null}>{tr("What is failing")}</SectionTitle>
+            <SectionTitle action={problems ? <Badge variant="muted">{problems}{" "}{tr("in 24h")}</Badge> : null}>{tr("What is failing")}</SectionTitle>
             <div className="rounded-lg border border-border bg-card">
               {failures.length ? (
                 <ul className="divide-y divide-border">
@@ -120,8 +120,8 @@ export default async function PlatformHealthPage() {
                 </ul>
               ) : (
                 <p className="px-3.5 py-8 text-center text-xs text-muted-foreground">
-                  {tr("Nothing has failed in the last two days.")}{" "}{health.reliability.jobsQueued} {" "}{tr("job")}{health.reliability.jobsQueued === 1 ? "" : "s"} {" "}{tr("queued,")}{" "}
-                  {health.reliability.jobsRunning} {" "}{tr("running.")}</p>
+                  {tr("Nothing has failed in the last two days.")}{" "}{health.reliability.jobsQueued}{" "}{tr("job")}{health.reliability.jobsQueued === 1 ? "" : "s"}{" "}{tr("queued,")}{" "}
+                  {health.reliability.jobsRunning}{" "}{tr("running.")}</p>
               )}
             </div>
           </section>
@@ -136,7 +136,7 @@ export default async function PlatformHealthPage() {
                       <span className="min-w-0">
                         <span className="block truncate text-[13px] font-medium">{workspace.name}</span>
                         <span className="block truncate text-2xs text-muted-foreground">
-                          {workspace.planName ?? "Free"} · {workspace.editions} {" "}{tr("edition")}{workspace.editions === 1 ? "" : "s"} {" "}{tr("· last seen")}{" "}
+                          {workspace.planName ?? "Free"} · {workspace.editions}{" "}{tr("edition")}{workspace.editions === 1 ? "" : "s"}{" "}{tr("· last seen")}{" "}
                           {workspace.lastActivity ? relativeTime(workspace.lastActivity) : "never"}
                         </span>
                       </span>
@@ -180,12 +180,12 @@ export default async function PlatformHealthPage() {
             {health.revenue.pastDue ? (
               <span className="flex items-center gap-2">
                 <AlertTriangle className="size-3.5 text-coral" />
-                {health.revenue.pastDue} {" "}{tr("workspace")}{health.revenue.pastDue === 1 ? "" : "s"} {" "}{tr("past due — still working while Stripe retries.")}</span>
+                {health.revenue.pastDue}{" "}{tr("workspace")}{health.revenue.pastDue === 1 ? "" : "s"}{" "}{tr("past due — still working while Stripe retries.")}</span>
             ) : null}
             {health.revenue.trialing ? (
               <span className="flex items-center gap-2">
                 <Sparkles className="size-3.5 text-violet" />
-                {health.revenue.trialing} {" "}{tr("on trial.")}</span>
+                {health.revenue.trialing}{" "}{tr("on trial.")}</span>
             ) : null}
           </section>
         ) : null}

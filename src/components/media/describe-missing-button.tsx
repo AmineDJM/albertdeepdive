@@ -41,6 +41,6 @@ export function DescribeMissingButton({
         })
       }
     >
-      <Sparkles /> {" "}{tr("Describe")}{" "}{missing ? `${missing} ` : ""}{tr("with AI")}</Button>
+      <Sparkles />{" "}{tr("Describe")}{" "}{missing ? `${missing} ` : ""}{tr("with AI")}</Button>
   );
 }

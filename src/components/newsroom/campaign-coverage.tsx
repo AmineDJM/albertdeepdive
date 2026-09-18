@@ -71,7 +71,7 @@ export async function CampaignCoverage({ rows, balanceLabel }: { rows: CoverageR
               <TableCell className="tabular py-1.5 text-right font-medium">{r.submitted}</TableCell>
               <TableCell className="tabular py-1.5 text-right">
                 {r.silent ? <span className={r.invited && r.silent === r.invited ? "text-warning" : undefined}>{r.silent}</span> : "—"}
-                {r.declined ? <span className="ml-1 text-2xs text-muted-foreground">{r.declined} {" "}{tr("declined")}</span> : null}
+                {r.declined ? <span className="ml-1 text-2xs text-muted-foreground">{r.declined}{" "}{tr("declined")}</span> : null}
               </TableCell>
               <TableCell className="py-1.5">
                 <div className="flex items-center gap-2">

@@ -175,7 +175,7 @@ export default async function PackPage({ params }: { params: Promise<{ packId: s
                 <SectionTitle>
                   <span className="flex items-center gap-1.5">
                     <ChevronRight className="size-3 transition-transform group-open:rotate-90" />
-                    {tr("What Briefly held to ·")}{" "}{LAWS.length} {" "}{tr("rules")}</span>
+                    {tr("What Briefly held to ·")}{" "}{LAWS.length}{" "}{tr("rules")}</span>
                 </SectionTitle>
               </summary>
               <ul className="space-y-2">

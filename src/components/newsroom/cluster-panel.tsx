@@ -38,7 +38,7 @@ export function ClusterPanel({ editionId, clusters, canEdit }: { editionId: stri
     <aside className="h-fit rounded-lg border border-border bg-card shadow-xs">
       <div className="flex items-center justify-between border-b px-3 py-2">
         <span className="label-caps flex items-center gap-1.5">
-          <Layers className="size-3.5" /> {" "}{tr("Clusters without a story")}</span>
+          <Layers className="size-3.5" />{" "}{tr("Clusters without a story")}</span>
         <span className="tabular text-2xs text-muted-foreground">{clusters.length}</span>
       </div>
 
@@ -68,7 +68,7 @@ export function ClusterPanel({ editionId, clusters, canEdit }: { editionId: stri
                   <div className="min-w-0 flex-1">
                     <p className="text-xs font-medium">{truncate(c.title, 60)}</p>
                     <p className="mt-0.5 text-2xs text-muted-foreground">
-                      {c.members.length} {" "}{tr("source")}{c.members.length === 1 ? "" : "s"}
+                      {c.members.length}{" "}{tr("source")}{c.members.length === 1 ? "" : "s"}
                       {c.score !== null ? ` · score ${c.score}` : ""}
                     </p>
                     <ul className="mt-1 space-y-0.5">
@@ -84,7 +84,7 @@ export function ClusterPanel({ editionId, clusters, canEdit }: { editionId: stri
                 {canEdit ? (
                   <div className="mt-1.5 flex gap-1">
                     <Button size="xs" variant="outline" disabled={pending} onClick={() => run(() => createStoryFromClusterAction(editionId, c.id))}>
-                      <Plus /> {" "}{tr("Make story")}</Button>
+                      <Plus />{" "}{tr("Make story")}</Button>
                     <Button size="xs" variant="ghost" disabled={pending} onClick={() => run(() => dismissClusterAction(editionId, c.id))} title={tr("Dismiss")}>
                       <X />
                     </Button>
@@ -102,7 +102,7 @@ export function ClusterPanel({ editionId, clusters, canEdit }: { editionId: stri
                 </Button>
               ) : null}
               <Button size="xs" variant="brand" loading={pending} onClick={() => run(() => createAllStoriesAction(editionId))}>
-                <Sparkles /> {" "}{tr("Create all stories")}</Button>
+                <Sparkles />{" "}{tr("Create all stories")}</Button>
             </div>
           ) : null}
         </>

@@ -56,7 +56,7 @@ export function NewArticleButton({ editionId, sections }: { editionId: string; s
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogTrigger asChild>
         <Button size="sm" variant="outline">
-          <Plus /> {" "}{tr("New article")}</Button>
+          <Plus />{" "}{tr("New article")}</Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
@@ -98,7 +98,7 @@ export function NewArticleButton({ editionId, sections }: { editionId: string; s
           <Button variant="outline" onClick={() => setOpen(false)}>
             {tr("Cancel")}</Button>
           <Button onClick={submit} loading={saving} disabled={!title.trim()}>
-            <Plus /> {" "}{tr("Create & write")}</Button>
+            <Plus />{" "}{tr("Create & write")}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

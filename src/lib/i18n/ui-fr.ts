@@ -53,6 +53,7 @@ export const UI_FR: Record<string, string> = {
   "Accept": "Accepter",
   "Accepted": "Acceptée",
   "Access": "Accès",
+  "Account menu": "Menu du compte",
   "Accounts": "Comptes",
   "Accounts that have acted": "Comptes ayant agi",
   "Acme Weekly": "Acme Hebdo",

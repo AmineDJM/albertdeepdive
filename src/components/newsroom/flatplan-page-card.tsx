@@ -97,7 +97,7 @@ export function FlatplanPageCard({
                 {page.fitLevel}
               </span>
             </TooltipTrigger>
-            <TooltipContent>{tr("Copyfit: the type was shrunk")}{" "}{page.fitLevel} {" "}{tr("step")}{page.fitLevel === 1 ? "" : "s"} ({(page.fitLevel * 2.5).toFixed(1)} {" "}{tr("%) so the text fits")}</TooltipContent>
+            <TooltipContent>{tr("Copyfit: the type was shrunk")}{" "}{page.fitLevel}{" "}{tr("step")}{page.fitLevel === 1 ? "" : "s"} ({(page.fitLevel * 2.5).toFixed(1)}{" "}{tr("%) so the text fits")}</TooltipContent>
           </Tooltip>
         ) : null}
         {page.isLocked ? (
@@ -128,7 +128,7 @@ export function FlatplanPageCard({
         </span>
         {engineMade ? (
           <span className="absolute top-1 left-1 inline-flex items-center gap-1 rounded-sm bg-foreground/80 px-1 py-0.5 text-2xs font-medium text-background">
-            <Scissors className="size-2.5" /> {" "}{tr("from p.")}{" "}{page.continuationOfNumber ?? "?"}
+            <Scissors className="size-2.5" />{" "}{tr("from p.")}{" "}{page.continuationOfNumber ?? "?"}
           </span>
         ) : null}
       </button>
@@ -152,7 +152,7 @@ export function FlatplanPageCard({
                           <span className="flex flex-col gap-0.5">
                             <span>{t.name}</span>
                             <span className="text-2xs text-muted-foreground">
-                              ≈ {t.capacityWords} {" "}{tr("words ·")}{" "}{t.imageSlots} {" "}{tr("image")}{t.imageSlots === 1 ? "" : "s"}
+                              ≈ {t.capacityWords}{" "}{tr("words ·")}{" "}{t.imageSlots}{" "}{tr("image")}{t.imageSlots === 1 ? "" : "s"}
                             </span>
                           </span>
                         </SelectItem>
@@ -302,7 +302,7 @@ function PageSheet({ page, editionLabel, issueLabel }: { page: FlatplanPage; edi
             </div>
           ))}
         </div>
-        {page.items.length > 1 ? <div className={cn("shrink-0 text-[6px] font-medium", INK_SOFT)}>+ {page.items.length - 1} {" "}{tr("more stor")}{page.items.length === 2 ? "y" : "ies"}</div> : null}
+        {page.items.length > 1 ? <div className={cn("shrink-0 text-[6px] font-medium", INK_SOFT)}>+ {page.items.length - 1}{" "}{tr("more stor")}{page.items.length === 2 ? "y" : "ies"}</div> : null}
       </div>
     </div>
   );

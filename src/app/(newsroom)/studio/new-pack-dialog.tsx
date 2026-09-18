@@ -74,7 +74,7 @@ export function NewPackDialog({ editions }: { editions: { id: string; label: str
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button size="sm">
-          <Plus /> {" "}{tr("Make something")}</Button>
+          <Plus />{" "}{tr("Make something")}</Button>
       </DialogTrigger>
       <DialogContent className="max-w-lg">
         <DialogHeader>

@@ -62,10 +62,10 @@ function AutomationTile({ item, canManage }: { item: AutomationTileView; canMana
         <h3 className="text-[13px] font-semibold">{item.label}</h3>
         {item.enabled ? (
           <Badge variant="success" className="gap-1">
-            <CircleCheck className="size-3" /> {" "}{tr("Active")}</Badge>
+            <CircleCheck className="size-3" />{" "}{tr("Active")}</Badge>
         ) : (
           <Badge variant="muted" className="gap-1">
-            <CirclePause className="size-3" /> {" "}{tr("Paused")}</Badge>
+            <CirclePause className="size-3" />{" "}{tr("Paused")}</Badge>
         )}
       </div>
       <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{item.description}</p>
@@ -116,7 +116,7 @@ function AutomationTile({ item, canManage }: { item: AutomationTileView; canMana
         ) : null}
         {canManage ? (
           <Button size="xs" variant="outline" className="ml-auto" loading={pending} onClick={() => setOpen(true)}>
-            <Play /> {" "}{tr("Run now")}</Button>
+            <Play />{" "}{tr("Run now")}</Button>
         ) : null}
       </div>
 
@@ -168,7 +168,7 @@ export function RunSchedulerButton() {
   return (
     <>
       <Button size="sm" variant="outline" loading={pending} onClick={() => setOpen(true)}>
-        <CalendarClock /> {" "}{tr("Run scheduler")}</Button>
+        <CalendarClock />{" "}{tr("Run scheduler")}</Button>
       <AlertDialog open={open} onOpenChange={(o) => !pending && setOpen(o)}>
         <AlertDialogContent>
           <AlertDialogHeader>

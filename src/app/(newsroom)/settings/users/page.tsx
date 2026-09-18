@@ -29,7 +29,7 @@ export default async function UsersPage() {
               <div key={r} className="rounded-lg border border-border bg-card px-3 py-2.5">
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-[13px] font-semibold">{ROLE_LABELS[r]}</span>
-                  <span className="tabular text-2xs text-muted-foreground">{users.filter((u) => u.role === r && u.isActive).length} {" "}{tr("active")}</span>
+                  <span className="tabular text-2xs text-muted-foreground">{users.filter((u) => u.role === r && u.isActive).length}{" "}{tr("active")}</span>
                 </div>
                 <p className="mt-0.5 text-xs text-muted-foreground">{ROLE_DESCRIPTIONS[r]}</p>
               </div>

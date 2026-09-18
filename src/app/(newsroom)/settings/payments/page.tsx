@@ -62,7 +62,7 @@ export default async function ReaderPaymentsPage() {
                   <Wallet className="size-3.5 text-muted-foreground" />
                   <span className="min-w-0 flex-1 font-medium">{publication.name}</span>
                   <span className="text-xs text-muted-foreground">{publication.priceCents ? describePrice(publication.priceCents, publication.priceCurrency, publication.priceInterval) : "—"}</span>
-                  <span className="tabular text-xs">{paying.get(publication.id) ?? 0} {" "}{tr("paying")}</span>
+                  <span className="tabular text-xs">{paying.get(publication.id) ?? 0}{" "}{tr("paying")}</span>
                 </li>
               ))}
             </ul>

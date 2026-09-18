@@ -178,20 +178,20 @@ export function ImportWizard({ campusNames }: { campusNames: string[] }) {
             </div>
             <input ref={fileInputRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={onFileChosen} />
             <Button onClick={() => fileInputRef.current?.click()} loading={pending}>
-              <Upload /> {" "}{tr("Choose a file")}</Button>
+              <Upload />{" "}{tr("Choose a file")}</Button>
             {fileName ? <p className="text-2xs text-muted-foreground">{tr("Selected:")}{" "}{fileName}</p> : null}
           </div>
           <div className="space-y-3">
             <div className="rounded-lg border border-border bg-card p-3.5">
               <SectionTitle>{tr("Expected columns")}</SectionTitle>
               <ul className="space-y-1 text-xs text-muted-foreground">
-                <li><span className="font-medium text-foreground">{tr("First name")}</span> {" "}{tr("(or a single full-name column)")}</li>
-                <li><span className="font-medium text-foreground">{tr("Email")}</span> {" "}{tr("— required, one per recipient")}</li>
-                <li><span className="font-medium text-foreground">{tr("Segment")}</span> {" "}{tr("— optional; defaults to Other")}</li>
-                <li><span className="font-medium text-foreground">{tr("Organisation")}</span> {" "}{tr("and")}{" "}<span className="font-medium text-foreground">{tr("Campus")}</span> {" "}{tr("— optional")}</li>
+                <li><span className="font-medium text-foreground">{tr("First name")}</span>{" "}{tr("(or a single full-name column)")}</li>
+                <li><span className="font-medium text-foreground">{tr("Email")}</span>{" "}{tr("— required, one per recipient")}</li>
+                <li><span className="font-medium text-foreground">{tr("Segment")}</span>{" "}{tr("— optional; defaults to Other")}</li>
+                <li><span className="font-medium text-foreground">{tr("Organisation")}</span>{" "}{tr("and")}{" "}<span className="font-medium text-foreground">{tr("Campus")}</span>{" "}{tr("— optional")}</li>
               </ul>
               <Button asChild variant="outline" size="sm" className="mt-3">
-                <a href={TEMPLATE_HREF} download="recipients-template.csv"><Download /> {" "}{tr("Download CSV template")}</a>
+                <a href={TEMPLATE_HREF} download="recipients-template.csv"><Download />{" "}{tr("Download CSV template")}</a>
               </Button>
             </div>
             {campusNames.length ? (
@@ -260,11 +260,11 @@ export function ImportWizard({ campusNames }: { campusNames: string[] }) {
                 </TableBody>
               </Table>
             </div>
-            <p className="mt-1.5 text-2xs text-muted-foreground">{parsed.rows.length} {" "}{tr("data row")}{parsed.rows.length === 1 ? "" : "s"} {" "}{tr("in total.")}</p>
+            <p className="mt-1.5 text-2xs text-muted-foreground">{parsed.rows.length}{" "}{tr("data row")}{parsed.rows.length === 1 ? "" : "s"}{" "}{tr("in total.")}</p>
           </div>
 
           <div className="flex items-center justify-between">
-            <Button variant="outline" onClick={() => setStep("upload")}><ArrowLeft /> {" "}{tr("Back")}</Button>
+            <Button variant="outline" onClick={() => setStep("upload")}><ArrowLeft />{" "}{tr("Back")}</Button>
             <Button onClick={() => runValidate(options)} loading={pending} disabled={!mapReady}>{tr("Preview import")}{" "}<ArrowRight /></Button>
           </div>
         </div>
@@ -304,9 +304,9 @@ export function ImportWizard({ campusNames }: { campusNames: string[] }) {
           </div>
 
           <div className="flex items-center justify-between">
-            <Button variant="outline" onClick={() => setStep("map")}><ArrowLeft /> {" "}{tr("Back to mapping")}</Button>
+            <Button variant="outline" onClick={() => setStep("map")}><ArrowLeft />{" "}{tr("Back to mapping")}</Button>
             <Button onClick={handleCommit} loading={pending} disabled={preview.summary.toCreate + preview.summary.toUpdate === 0}>
-              {tr("Import")}{" "}{preview.summary.toCreate + preview.summary.toUpdate} {" "}{tr("recipient")}{preview.summary.toCreate + preview.summary.toUpdate === 1 ? "" : "s"}
+              {tr("Import")}{" "}{preview.summary.toCreate + preview.summary.toUpdate}{" "}{tr("recipient")}{preview.summary.toCreate + preview.summary.toUpdate === 1 ? "" : "s"}
             </Button>
           </div>
         </div>
@@ -318,7 +318,7 @@ export function ImportWizard({ campusNames }: { campusNames: string[] }) {
             <CheckCircle2 />
             <AlertTitle>{tr("Import complete")}</AlertTitle>
             <AlertDescription>
-              {report.created} {" "}{tr("created,")}{" "}{report.updated} {" "}{tr("updated,")}{" "}{report.skipped} {" "}{tr("skipped")}{report.failed ? `, ${report.failed} failed` : ""}.
+              {report.created}{" "}{tr("created,")}{" "}{report.updated}{" "}{tr("updated,")}{" "}{report.skipped}{" "}{tr("skipped")}{report.failed ? `, ${report.failed} failed` : ""}.
             </AlertDescription>
           </Alert>
 
@@ -337,8 +337,8 @@ export function ImportWizard({ campusNames }: { campusNames: string[] }) {
           ) : null}
 
           <div className="flex items-center gap-2">
-            <Button asChild><Link href="/directory"><BookUser /> {" "}{tr("Back to the directory")}</Link></Button>
-            <Button variant="outline" onClick={reset}><Upload /> {" "}{tr("Import another file")}</Button>
+            <Button asChild><Link href="/directory"><BookUser />{" "}{tr("Back to the directory")}</Link></Button>
+            <Button variant="outline" onClick={reset}><Upload />{" "}{tr("Import another file")}</Button>
           </div>
         </div>
       ) : null}

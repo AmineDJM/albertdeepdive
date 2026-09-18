@@ -101,21 +101,21 @@ export function FlatplanToolbar({ editionId, lockedPages, planned, planStatus = 
     <>
       {onlyPlan ? null : (
         <Button size="sm" variant="outline" onClick={copyfit} loading={pending && busy === "copyfit"} disabled={pending}>
-          <RefreshCw /> {" "}{tr("Run copyfit")}</Button>
+          <RefreshCw />{" "}{tr("Run copyfit")}</Button>
       )}
       {onlyPlan ? null : signedOff ? (
         <Button size="sm" variant="outline" onClick={() => signOff("DRAFT")} loading={pending && busy === "signoff"} disabled={pending}>
-          <Undo2 /> {" "}{tr("Reopen the plan")}</Button>
+          <Undo2 />{" "}{tr("Reopen the plan")}</Button>
       ) : (
         <Button size="sm" variant="outline" onClick={() => signOff("VALIDATED")} loading={pending && busy === "signoff"} disabled={pending}>
-          <CheckCheck /> {" "}{tr("Validate the plan")}</Button>
+          <CheckCheck />{" "}{tr("Validate the plan")}</Button>
       )}
       {onlyPlan ? null : (
         <Button size="sm" variant="outline" onClick={addPage} loading={pending && busy === "addpage"} disabled={pending}>
-          <Plus /> {" "}{tr("Add page")}</Button>
+          <Plus />{" "}{tr("Add page")}</Button>
       )}
       <Button size="sm" variant="brand" onClick={() => setOpen(true)} disabled={pending} loading={pending && busy === "plan"}>
-        <Wand2 /> {" "}{tr("Re-plan pages")}</Button>
+        <Wand2 />{" "}{tr("Re-plan pages")}</Button>
       {onlyPlan ? null : (
         <Button asChild size="sm" variant="ghost">
           <a href={`/print/edition/${editionId}`} target="_blank" rel="noreferrer">

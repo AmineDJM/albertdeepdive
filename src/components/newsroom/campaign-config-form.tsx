@@ -169,7 +169,7 @@ export function CampaignConfigForm({
         action={
           canManage && !openingLocked ? (
             <Button variant="outline" size="sm" onClick={applyDefaults} loading={defaultsPending}>
-              <RotateCcw /> {" "}{tr("Monthly defaults")}</Button>
+              <RotateCcw />{" "}{tr("Monthly defaults")}</Button>
           ) : null
         }
       >
@@ -246,7 +246,7 @@ export function CampaignConfigForm({
                 <span className="flex min-w-0 items-center gap-2">
                   <span className="size-2 shrink-0 rounded-full" style={{ backgroundColor: row.colour ?? "#94a3b8" }} />
                   <span className="truncate text-[13px]">{row.name}</span>
-                  {row.pool !== null ? <span className="tabular shrink-0 text-2xs text-muted-foreground">{row.pool} {" "}{tr("active")}</span> : null}
+                  {row.pool !== null ? <span className="tabular shrink-0 text-2xs text-muted-foreground">{row.pool}{" "}{tr("active")}</span> : null}
                 </span>
                 <Input
                   type="number"
@@ -295,7 +295,7 @@ export function CampaignConfigForm({
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-card px-3 py-2">
         <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
           <span className="inline-flex items-center gap-1.5">
-            <Users className="size-3.5" /> {values.contributorGroupIds.length} {" "}{tr("pool")}{values.contributorGroupIds.length === 1 ? "" : "s"} {" "}{tr("· target")}{" "}{targetTotal}
+            <Users className="size-3.5" /> {values.contributorGroupIds.length}{" "}{tr("pool")}{values.contributorGroupIds.length === 1 ? "" : "s"}{" "}{tr("· target")}{" "}{targetTotal}
           </span>
           <span className="inline-flex items-center gap-1.5">
             <CalendarClock className="size-3.5" /> {closed ? "Closed — reopen it to change the dates" : dirty ? "Unsaved changes" : "Saved"}
@@ -307,7 +307,7 @@ export function CampaignConfigForm({
               {tr("Discard")}</Button>
           ) : null}
           <Button size="sm" onClick={save} loading={pending} disabled={readOnly || !dirty}>
-            <Save /> {" "}{tr("Save campaign")}</Button>
+            <Save />{" "}{tr("Save campaign")}</Button>
         </div>
       </div>
     </div>

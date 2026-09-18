@@ -80,7 +80,7 @@ export function WorkspaceControls({
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-60">
           <DropdownMenuItem onSelect={() => startTransition(async () => void (await enterWorkspaceAction(workspace.id)))}>
-            <LogIn /> {" "}{tr("Open with full rights")}</DropdownMenuItem>
+            <LogIn />{" "}{tr("Open with full rights")}</DropdownMenuItem>
           <DropdownMenuLabel>{tr("Open as…")}</DropdownMenuLabel>
           {SIMULATE.map((role) => (
             <DropdownMenuItem key={role} onSelect={() => startTransition(async () => void (await enterWorkspaceAction(workspace.id, { role })))}>
@@ -89,7 +89,7 @@ export function WorkspaceControls({
           ))}
           <DropdownMenuSeparator />
           <DropdownMenuItem onSelect={() => setOpen(true)}>
-            <SlidersHorizontal /> {" "}{tr("Rights and limits")}{active ? ` (${active})` : ""}
+            <SlidersHorizontal />{" "}{tr("Rights and limits")}{active ? ` (${active})` : ""}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -115,7 +115,7 @@ export function WorkspaceControls({
                         {row.overridden || row.key in draft ? <Badge variant="muted">{tr("custom")}</Badge> : null}
                       </span>
                       <span className="text-2xs font-normal text-muted-foreground">
-                        {overrides.planName} {" "}{tr("gives")}{" "}{row.planValue === null ? "unlimited" : String(row.planValue)}
+                        {overrides.planName}{" "}{tr("gives")}{" "}{row.planValue === null ? "unlimited" : String(row.planValue)}
                       </span>
                     </Label>
                     <Input
@@ -156,7 +156,7 @@ export function WorkspaceControls({
 
           <DialogFooter className="sm:justify-between">
             <Button variant="ghost" size="sm" onClick={reset} disabled={pending || !active}>
-              <RotateCcw /> {" "}{tr("Back to the plan")}</Button>
+              <RotateCcw />{" "}{tr("Back to the plan")}</Button>
             <span className="flex gap-2">
               <Button variant="outline" size="sm" onClick={() => setOpen(false)} disabled={pending}>
                 {tr("Cancel")}</Button>

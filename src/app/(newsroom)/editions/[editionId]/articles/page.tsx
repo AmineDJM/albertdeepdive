@@ -69,11 +69,11 @@ export default async function ArticleDeskPage({
             <div className="flex items-center gap-0.5 rounded-md bg-muted p-0.5">
               <Button asChild size="sm" variant={view === "table" ? "outline" : "ghost"} className={cn(view === "table" && "bg-card")}>
                 <Link href={qs({ view: undefined })} aria-current={view === "table" ? "true" : undefined}>
-                  <Rows3 /> {" "}{tr("Table")}</Link>
+                  <Rows3 />{" "}{tr("Table")}</Link>
               </Button>
               <Button asChild size="sm" variant={view === "board" ? "outline" : "ghost"} className={cn(view === "board" && "bg-card")}>
                 <Link href={qs({ view: "board" })} aria-current={view === "board" ? "true" : undefined}>
-                  <LayoutGrid /> {" "}{tr("Board")}</Link>
+                  <LayoutGrid />{" "}{tr("Board")}</Link>
               </Button>
             </div>
           </div>
@@ -99,13 +99,13 @@ export default async function ArticleDeskPage({
             <>
               <span className="mx-1 h-4 w-px bg-border" />
               <span className="rounded-md px-2 py-1 text-xs font-medium text-warning">
-                {facets.warnings} {" "}{tr("flagged")}{" "}<span className="tabular text-2xs opacity-70">{tr("article")}{facets.warnings === 1 ? "" : "s"}</span>
+                {facets.warnings}{" "}{tr("flagged")}{" "}<span className="tabular text-2xs opacity-70">{tr("article")}{facets.warnings === 1 ? "" : "s"}</span>
               </span>
             </>
           ) : null}
         </nav>
         <span className="text-2xs text-muted-foreground">
-          {rows.length} {" "}{tr("shown")}{facets.locked ? ` · ${facets.locked} locked for print` : ""}
+          {rows.length}{" "}{tr("shown")}{facets.locked ? ` · ${facets.locked} locked for print` : ""}
         </span>
       </div>
 
@@ -147,7 +147,7 @@ export default async function ArticleDeskPage({
             <span className="label-caps shrink-0">{tr("Progress")}</span>
             <ProgressBar value={done} max={Math.max(1, target)} tone={done === target ? "success" : "brand"} />
             <span className="tabular shrink-0 text-xs text-muted-foreground">
-              {done} / {target} {" "}{tr("approved")}</span>
+              {done} / {target}{" "}{tr("approved")}</span>
           </div>
         ) : null}
 
@@ -173,7 +173,7 @@ export default async function ArticleDeskPage({
 
         {canEdit && facets.missingDrafts > 0 && rows.length > 0 ? (
           <p className="text-2xs text-muted-foreground">
-            {facets.missingDrafts} {" "}{tr("selected")}{" "}{facets.missingDrafts === 1 ? "story has" : "stories have"} {" "}{tr("no draft yet —")}{" "}
+            {facets.missingDrafts}{" "}{tr("selected")}{" "}{facets.missingDrafts === 1 ? "story has" : "stories have"}{" "}{tr("no draft yet —")}{" "}
             <Link href={`/editions/${editionId}/stories?status=selected`} className="text-brand hover:underline">
               {tr("draft them from the stories board")}</Link>
             .

@@ -46,7 +46,7 @@ export function NewEditionDialog({ nextIssueNumber, defaultMonth, defaultYear }:
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button>
-          <Plus /> {" "}{tr("New edition")}</Button>
+          <Plus />{" "}{tr("New edition")}</Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
@@ -85,7 +85,7 @@ export function NewEditionDialog({ nextIssueNumber, defaultMonth, defaultYear }:
             <Input type="date" value={publication} onChange={(e) => setPublication(e.target.value)} />
           </div>
           <label className="col-span-2 flex items-center gap-2 text-[13px]">
-            <Checkbox checked={special} onCheckedChange={(v) => setSpecial(v === true)} /> {" "}{tr("Special issue (hors-série)")}</label>
+            <Checkbox checked={special} onCheckedChange={(v) => setSpecial(v === true)} />{" "}{tr("Special issue (hors-série)")}</label>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => setOpen(false)}>

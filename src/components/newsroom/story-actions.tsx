@@ -52,10 +52,10 @@ export function StoryActions({
       </NativeSelect>
       {!isSelected ? (
         <Button size="sm" disabled={pending} onClick={() => run(() => selectStoryAction(editionId, story.id))}>
-          <Check /> {" "}{tr("Select for the issue")}</Button>
+          <Check />{" "}{tr("Select for the issue")}</Button>
       ) : (
         <Button size="sm" variant="ghost" disabled={pending} onClick={() => run(() => dropStoryAction(editionId, story.id))}>
-          <X /> {" "}{tr("Drop")}</Button>
+          <X />{" "}{tr("Drop")}</Button>
       )}
       {hasArticle && articleId ? (
         <Button size="sm" variant="outline" asChild>
@@ -63,7 +63,7 @@ export function StoryActions({
         </Button>
       ) : isSelected ? (
         <Button size="sm" variant="brand" loading={pending} onClick={() => run(() => draftArticleAction(editionId, story.id))}>
-          <PenLine /> {" "}{tr("Write the draft")}</Button>
+          <PenLine />{" "}{tr("Write the draft")}</Button>
       ) : null}
       {!story.isCover && isSelected ? (
         <Button size="icon-sm" variant="ghost" title={tr("Make this the cover story")} aria-label={tr("Make this the cover story")} disabled={pending} onClick={() => run(() => setCoverStoryAction(editionId, story.id))}>

@@ -95,7 +95,7 @@ export function SortableSections({ items, onChange, counts, dndId = "sections", 
       </DndContext>
       {!readOnly ? (
         <Button type="button" variant="outline" size="sm" onClick={() => onChange([...items, newSectionItem()])}>
-          <Plus /> {" "}{tr("Add section")}</Button>
+          <Plus />{" "}{tr("Add section")}</Button>
       ) : null}
     </div>
   );
@@ -141,7 +141,7 @@ function SortableRow({ item, index, readOnly, duplicate, stories, onUpdate, onRe
             {stories} {stories === 1 ? "story" : "stories"}
             {item.isHidden ? (
               <span className="inline-flex items-center gap-0.5">
-                · <EyeOff className="size-3" /> {" "}{tr("hidden")}</span>
+                · <EyeOff className="size-3" />{" "}{tr("hidden")}</span>
             ) : null}
           </div>
         ) : null}
@@ -184,7 +184,7 @@ function SortableRow({ item, index, readOnly, duplicate, stories, onUpdate, onRe
               </Button>
             </span>
           </TooltipTrigger>
-          <TooltipContent>{tr("Move its")}{" "}{stories} {stories === 1 ? "story" : "stories"} {" "}{tr("to another section first")}</TooltipContent>
+          <TooltipContent>{tr("Move its")}{" "}{stories} {stories === 1 ? "story" : "stories"}{" "}{tr("to another section first")}</TooltipContent>
         </Tooltip>
       ) : (
         <Button type="button" variant="ghost" size="icon-sm" onClick={onRemove} aria-label={`Remove ${item.name || "section"}`}>

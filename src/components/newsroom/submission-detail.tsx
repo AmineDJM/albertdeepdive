@@ -103,7 +103,7 @@ export function SubmissionDetail({ editionId, data, canReview, onClose }: { edit
           </div>
           <h2 className="mt-1 text-sm font-semibold">{sub.title}</h2>
           <p className="text-2xs text-muted-foreground">
-            {data.contributorName} · {formatDateTime(sub.submittedAt ?? sub.createdAt)} · {sub.wordCount} {" "}{tr("words")}</p>
+            {data.contributorName} · {formatDateTime(sub.submittedAt ?? sub.createdAt)} · {sub.wordCount}{" "}{tr("words")}</p>
         </div>
         {onClose ? (
           <Button size="icon-sm" variant="ghost" asChild aria-label={tr("Close")}>
@@ -135,7 +135,7 @@ export function SubmissionDetail({ editionId, data, canReview, onClose }: { edit
               })
             }
           >
-            <RefreshCw /> {" "}{tr("Reprocess")}</Button>
+            <RefreshCw />{" "}{tr("Reprocess")}</Button>
         </div>
       ) : null}
 

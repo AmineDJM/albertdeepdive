@@ -77,7 +77,7 @@ export default async function AuditPage({ searchParams }: { searchParams: Promis
 
         <section>
           <SectionTitle>
-            {tx("Action log")}{" "}<span className="tabular ml-1.5 font-normal text-muted-foreground">{rows.length} {" "}{tx("most recent")}</span>
+            {tx("Action log")}{" "}<span className="tabular ml-1.5 font-normal text-muted-foreground">{rows.length}{" "}{tx("most recent")}</span>
           </SectionTitle>
           {rows.length ? (
             <div className="overflow-hidden rounded-lg border border-border">

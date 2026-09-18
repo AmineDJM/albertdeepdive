@@ -63,7 +63,7 @@ export function AutopilotButton({ editionId }: { editionId: string }) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogTrigger asChild>
         <Button size="sm" variant="brand" title={tr("Build the whole issue automatically and publish it")}>
-          <Rocket /> {" "}{tr("Auto-pilot")}</Button>
+          <Rocket />{" "}{tr("Auto-pilot")}</Button>
       </DialogTrigger>
       <DialogContent size="lg">
         <DialogHeader>
@@ -114,7 +114,7 @@ export function AutopilotButton({ editionId }: { editionId: string }) {
               <Button variant="outline" onClick={() => run("organise")} loading={running} disabled={running}>
                 {tr("Organise only")}</Button>
               <Button variant="brand" onClick={() => run("publish")} loading={running} disabled={running}>
-                <Rocket /> {" "}{tr("Build & publish")}{" "}<ChevronRight />
+                <Rocket />{" "}{tr("Build & publish")}{" "}<ChevronRight />
               </Button>
             </>
           )}

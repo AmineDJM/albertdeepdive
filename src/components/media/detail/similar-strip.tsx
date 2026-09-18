@@ -80,7 +80,7 @@ export function SimilarStrip({
               loading={pending}
               onClick={() => run(() => clearDuplicateAction(assetId, editionId))}
             >
-              <Undo2 /> {" "}{tr("Not a duplicate")}</Button>
+              <Undo2 />{" "}{tr("Not a duplicate")}</Button>
           ) : null}
         </div>
       ) : null}
@@ -130,7 +130,7 @@ export function SimilarStrip({
                     loading={pending}
                     onClick={() => run(() => markDuplicateAction(assetId, editionId, s.id))}
                   >
-                    <Copy /> {" "}{tr("Duplicate of this")}</Button>
+                    <Copy />{" "}{tr("Duplicate of this")}</Button>
                 ) : null}
               </div>
             </li>
@@ -146,7 +146,7 @@ export function SimilarStrip({
           loading={pending}
           onClick={() => run(() => recheckDuplicatesAction(assetId, editionId))}
         >
-          <RefreshCw /> {" "}{tr("Re-check duplicates")}</Button>
+          <RefreshCw />{" "}{tr("Re-check duplicates")}</Button>
       ) : null}
     </div>
   );

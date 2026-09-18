@@ -49,7 +49,7 @@ export default async function PrivacyPage() {
                 {summary.consentVersions.map((v) => (
                   <li key={v.version} className="flex justify-between gap-3">
                     <span className="font-mono">{v.version}</span>
-                    <span className="tabular text-muted-foreground">{v.count} {" "}{tr("records")}</span>
+                    <span className="tabular text-muted-foreground">{v.count}{" "}{tr("records")}</span>
                   </li>
                 ))}
                 {!summary.consentVersions.length ? <li className="text-muted-foreground">{tr("No consent records yet.")}</li> : null}
@@ -60,8 +60,8 @@ export default async function PrivacyPage() {
         </SettingsCard>
         <SettingsCard id="deletion" title={tr("Deletion requests")} description={tr("How a contributor's personal data is removed while the editorial record stays intact.")}>
           <ol className="list-decimal space-y-1.5 pl-5 text-[13px]">
-            <li>{tr("Find the contributor in")}{" "}<Link href="/contributors" className="text-brand hover:underline">{tr("Contributors")}</Link> {" "}{tr("and open their page.")}</li>
-            <li>{tr("Use")}{" "}<strong>{tr("Anonymise personal data")}</strong> {" "}{tr("in the privacy & account zone: name, email, notes and tags are replaced; submissions stay attributed to an anonymised contributor so provenance of published facts is preserved.")}</li>
+            <li>{tr("Find the contributor in")}{" "}<Link href="/contributors" className="text-brand hover:underline">{tr("Contributors")}</Link>{" "}{tr("and open their page.")}</li>
+            <li>{tr("Use")}{" "}<strong>{tr("Anonymise personal data")}</strong>{" "}{tr("in the privacy & account zone: name, email, notes and tags are replaced; submissions stay attributed to an anonymised contributor so provenance of published facts is preserved.")}</li>
             <li>{tr("Published issues are not altered — a printed newspaper is a historical record. If a person asks to be removed from a future reprint, edit the article and re-export the version.")}</li>
             <li>{tr("The action is written to the audit log with the requesting administrator.")}</li>
           </ol>

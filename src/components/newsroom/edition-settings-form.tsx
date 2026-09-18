@@ -205,7 +205,7 @@ export function EditionSettingsForm({
               className="tabular"
               aria-invalid={Boolean(fieldErrors?.targetPageCount)}
             />
-            <p className="text-2xs text-muted-foreground">{meta.sections} {" "}{tr("sections planned")}</p>
+            <p className="text-2xs text-muted-foreground">{meta.sections}{" "}{tr("sections planned")}</p>
             <FieldError errors={fieldErrors} name="targetPageCount" />
           </div>
           <div className="space-y-1">
@@ -312,7 +312,7 @@ export function EditionSettingsForm({
               {tr("Discard")}</Button>
           ) : null}
           <Button size="sm" onClick={save} loading={pending} disabled={readOnly || !dirty}>
-            <Save /> {" "}{tr("Save settings")}</Button>
+            <Save />{" "}{tr("Save settings")}</Button>
         </div>
       </div>
     </div>

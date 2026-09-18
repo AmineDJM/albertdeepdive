@@ -72,7 +72,7 @@ export function PersonControls({
 
         <DropdownMenuSub>
           <DropdownMenuSubTrigger>
-            <Shield /> {" "}{tr("Platform role")}</DropdownMenuSubTrigger>
+            <Shield />{" "}{tr("Platform role")}</DropdownMenuSubTrigger>
           <DropdownMenuSubContent>
             {ROLES.map((role) => (
               <DropdownMenuItem key={role} disabled={role === person.role} onSelect={() => run(() => setPlatformRoleAction(person.id, role))}>
@@ -86,10 +86,10 @@ export function PersonControls({
         <DropdownMenuSeparator />
         {person.isActive ? (
           <DropdownMenuItem variant="destructive" disabled={isSelf} onSelect={() => run(() => setUserActiveAction(person.id, false))}>
-            <UserMinus /> {" "}{tr("Suspend account")}</DropdownMenuItem>
+            <UserMinus />{" "}{tr("Suspend account")}</DropdownMenuItem>
         ) : (
           <DropdownMenuItem onSelect={() => run(() => setUserActiveAction(person.id, true))}>
-            <UserPlus /> {" "}{tr("Restore account")}</DropdownMenuItem>
+            <UserPlus />{" "}{tr("Restore account")}</DropdownMenuItem>
         )}
       </DropdownMenuContent>
     </DropdownMenu>

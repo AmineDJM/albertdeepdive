@@ -47,14 +47,14 @@ export function ArchiveButton({
   if (isArchived) {
     return (
       <Button variant="outline" size="sm" loading={pending} onClick={() => run(restoreAction)}>
-        <ArchiveRestore /> {" "}{tr("Restore")}</Button>
+        <ArchiveRestore />{" "}{tr("Restore")}</Button>
     );
   }
   return (
     <AlertDialog>
       <AlertDialogTrigger asChild>
         <Button variant="outline" size="sm" loading={pending}>
-          <Archive /> {" "}{tr("Archive")}</Button>
+          <Archive />{" "}{tr("Archive")}</Button>
       </AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>

@@ -81,7 +81,7 @@ export default async function JobsPage({ searchParams }: { searchParams: Promise
 
         <section>
           <SectionTitle action={<QueueControls canManage retryable={retryable} />}>
-            {tr("Queue")}{" "}<span className="tabular ml-1.5 font-normal text-muted-foreground">{rows.length} {" "}{tr("shown")}</span>
+            {tr("Queue")}{" "}<span className="tabular ml-1.5 font-normal text-muted-foreground">{rows.length}{" "}{tr("shown")}</span>
           </SectionTitle>
           {rows.length ? (
             <JobQueueTable rows={rows} canManage />

@@ -110,7 +110,7 @@ export default async function CampaignPage({ params }: { params: Promise<{ editi
           <>
             <Button asChild size="sm" variant="ghost">
               <Link href="/contributors">
-                <Users /> {" "}{tr("Contributors")}</Link>
+                <Users />{" "}{tr("Contributors")}</Link>
             </Button>
             {canManage ? (
               <CampaignControls
@@ -250,7 +250,7 @@ export default async function CampaignPage({ params }: { params: Promise<{ editi
         </section>
 
         <section>
-          <SectionTitle action={<span className="text-2xs text-muted-foreground">{screen.emails.length} {" "}{tr("message")}{screen.emails.length === 1 ? "" : "s"} {" "}{tr("· provider “")}{env.EMAIL_PROVIDER}”</span>}>
+          <SectionTitle action={<span className="text-2xs text-muted-foreground">{screen.emails.length}{" "}{tr("message")}{screen.emails.length === 1 ? "" : "s"}{" "}{tr("· provider “")}{env.EMAIL_PROVIDER}”</span>}>
             {tr("Email log")}</SectionTitle>
           <CampaignEmailLog
             provider={env.EMAIL_PROVIDER}

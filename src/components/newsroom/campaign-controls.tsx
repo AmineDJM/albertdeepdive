@@ -62,7 +62,7 @@ export function CreateCampaignButton({ editionId }: { editionId: string }) {
         })
       }
     >
-      <CalendarPlus /> {" "}{tr("Schedule the campaign")}</Button>
+      <CalendarPlus />{" "}{tr("Schedule the campaign")}</Button>
   );
 }
 
@@ -117,7 +117,7 @@ export function CampaignControls({
     <>
       {notStarted ? (
         <Button size="sm" loading={pending} onClick={() => setConfirm("launch")}>
-          <Send /> {" "}{tr("Launch campaign")}</Button>
+          <Send />{" "}{tr("Launch campaign")}</Button>
       ) : null}
 
       {!notStarted && !closed ? (
@@ -125,11 +125,11 @@ export function CampaignControls({
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button size="sm" variant="outline" loading={pending}>
-                <Bell /> {" "}{tr("Send a reminder")}{" "}<ChevronDown />
+                <Bell />{" "}{tr("Send a reminder")}{" "}<ChevronDown />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-64">
-              <DropdownMenuLabel>{silent} {" "}{tr("contributor")}{silent === 1 ? "" : "s"} {" "}{tr("still silent")}</DropdownMenuLabel>
+              <DropdownMenuLabel>{silent}{" "}{tr("contributor")}{silent === 1 ? "" : "s"}{" "}{tr("still silent")}</DropdownMenuLabel>
               {REMINDERS.map((r) => {
                 const done = sentSteps.includes(r.kind);
                 return (
@@ -147,15 +147,15 @@ export function CampaignControls({
             </DropdownMenuContent>
           </DropdownMenu>
           <Button size="sm" variant="outline" onClick={() => openDateDialog("extend")} disabled={pending}>
-            <CalendarPlus /> {" "}{tr("Extend")}</Button>
+            <CalendarPlus />{" "}{tr("Extend")}</Button>
           <Button size="sm" variant="outline" onClick={() => setConfirm("close")} loading={pending}>
-            <Lock /> {" "}{tr("Close")}</Button>
+            <Lock />{" "}{tr("Close")}</Button>
         </>
       ) : null}
 
       {closed ? (
         <Button size="sm" variant="outline" onClick={() => openDateDialog("reopen")} disabled={pending}>
-          <Undo2 /> {" "}{tr("Reopen")}</Button>
+          <Undo2 />{" "}{tr("Reopen")}</Button>
       ) : null}
 
       <AlertDialog open={confirm !== null} onOpenChange={(o) => !o && !pending && setConfirm(null)}>

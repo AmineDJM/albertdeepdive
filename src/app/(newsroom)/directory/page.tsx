@@ -37,7 +37,7 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
         description={tr("Who the finished magazine is sent to — the audience, kept separate from contributors.")}
         actions={
           <div className="flex items-center gap-2">
-            <Button asChild variant="outline" size="sm"><Link href="/directory/import"><Upload /> {" "}{tr("Import from a file")}</Link></Button>
+            <Button asChild variant="outline" size="sm"><Link href="/directory/import"><Upload />{" "}{tr("Import from a file")}</Link></Button>
             <Suspense><RecipientEditor campuses={campusOptions} openOnParam /></Suspense>
           </div>
         }

@@ -37,7 +37,7 @@ export function PackControls({ packId, status, hasBrief }: { packId: string; sta
     <div className="flex items-center gap-2">
       {hasBrief ? (
         <Button variant="outline" size="sm" disabled={pending} onClick={() => run(() => recomposeAction(packId))}>
-          <Palette /> {" "}{tr("Set in my current brand")}</Button>
+          <Palette />{" "}{tr("Set in my current brand")}</Button>
       ) : null}
       <Button variant="outline" size="sm" disabled={pending || status === "RENDERING"} onClick={() => run(() => renderPackAction(packId))}>
         <RefreshCw /> {status === "RENDERING" ? "Rendering…" : "Render again"}
@@ -47,7 +47,7 @@ export function PackControls({ packId, status, hasBrief }: { packId: string; sta
         // and the route does its own checking of whose pack this is.
         <Button asChild size="sm">
           <a href={`/api/creative/${packId}/download`}>
-            <Download /> {" "}{tr("Download")}</a>
+            <Download />{" "}{tr("Download")}</a>
         </Button>
       ) : null}
       <AlertDialog>

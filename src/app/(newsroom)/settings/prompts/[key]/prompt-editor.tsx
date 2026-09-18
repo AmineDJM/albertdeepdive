@@ -79,9 +79,9 @@ export function PromptEditor({ detail }: { detail: PromptDetail }) {
           action={
             <div className="flex items-center gap-2">
               <Button size="sm" variant="outline" onClick={() => runTest()} loading={pending}>
-                <FlaskConical /> {" "}{tr("Test prompt")}</Button>
+                <FlaskConical />{" "}{tr("Test prompt")}</Button>
               <Button size="sm" onClick={save} loading={pending} disabled={!dirty && loadedFrom === (detail.active?.version ?? null)}>
-                <Save /> {" "}{tr("Save as new version")}</Button>
+                <Save />{" "}{tr("Save as new version")}</Button>
             </div>
           }
         >
@@ -128,13 +128,13 @@ export function PromptEditor({ detail }: { detail: PromptDetail }) {
                         {v.createdBy ? ` · ${v.createdBy}` : " · system"}
                       </span>
                       <Badge variant="outline">{v.modelTier}</Badge>
-                      <span className="text-2xs text-muted-foreground">t={v.temperature} · {v.maxOutputTokens} {" "}{tr("tok")}</span>
+                      <span className="text-2xs text-muted-foreground">t={v.temperature} · {v.maxOutputTokens}{" "}{tr("tok")}</span>
                     </div>
                     <div className="mt-0.5 truncate text-2xs text-muted-foreground">{v.changeSummary}</div>
                   </div>
                   <div className="flex shrink-0 items-center gap-1">
                     <Button size="xs" variant="ghost" onClick={() => load(v)} aria-label={`Load version ${v.version} into the editor`}>
-                      <Upload /> {" "}{tr("Load")}</Button>
+                      <Upload />{" "}{tr("Load")}</Button>
                     {!v.isActive ? (
                       <Button
                         size="xs"
@@ -152,7 +152,7 @@ export function PromptEditor({ detail }: { detail: PromptDetail }) {
                           })
                         }
                       >
-                        <History /> {" "}{tr("Activate")}</Button>
+                        <History />{" "}{tr("Activate")}</Button>
                     ) : null}
                   </div>
                 </li>
@@ -185,7 +185,7 @@ export function PromptEditor({ detail }: { detail: PromptDetail }) {
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button size="sm" variant="outline" disabled={pending}>
-                  <RotateCcw /> {" "}{tr("Restore default")}</Button>
+                  <RotateCcw />{" "}{tr("Restore default")}</Button>
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
@@ -237,7 +237,7 @@ export function PromptEditor({ detail }: { detail: PromptDetail }) {
                     ))}
                   </div>
                   <Button size="xs" variant="outline" loading={pending} onClick={() => runTest(Object.fromEntries(test.variables.map((v) => [v.name, v.value])))}>
-                    <FlaskConical /> {" "}{tr("Re-render with these values")}</Button>
+                    <FlaskConical />{" "}{tr("Re-render with these values")}</Button>
                 </div>
               ) : null}
               <div>

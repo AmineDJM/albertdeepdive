@@ -32,7 +32,7 @@ export function WorkspaceSwitcher({ current, options, impersonated }: { current:
         <span className="block truncate text-[14px] font-semibold tracking-[-0.01em] text-foreground">{current?.name ?? "Briefly"}</span>
         {impersonated ? (
           <span className="flex items-center gap-1 text-2xs text-amber-600 dark:text-amber-500">
-            <ShieldAlert className="size-3" /> {" "}{tr("Platform access")}</span>
+            <ShieldAlert className="size-3" />{" "}{tr("Platform access")}</span>
         ) : null}
       </span>
     </span>
@@ -73,7 +73,7 @@ export function WorkspaceSwitcher({ current, options, impersonated }: { current:
           <DropdownMenuSeparator />
           <DropdownMenuItem asChild>
             <Link href="/onboarding" className="flex items-center gap-2">
-              <Plus className="size-3.5" /> {" "}{tr("New workspace")}</Link>
+              <Plus className="size-3.5" />{" "}{tr("New workspace")}</Link>
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

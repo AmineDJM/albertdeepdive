@@ -92,7 +92,7 @@ export function CommandMenu({ open, onOpenChange, currentEditionId, role }: { op
     <CommandDialog open={open} onOpenChange={onOpenChange} title={tr("Search")} description={tr("Search editions, submissions, stories, articles, people, organisations, media and events")}>
       <CommandInput placeholder={tr("Search everything or type a command…")} value={query} onValueChange={setQuery} />
       <CommandList>
-        <CommandEmpty>{pending ? <span className="inline-flex items-center gap-2"><Loader2 className="size-3.5 animate-spin" /> {" "}{tr("Searching…")}</span> : tooShort ? "Type at least two characters." : "No results."}</CommandEmpty>
+        <CommandEmpty>{pending ? <span className="inline-flex items-center gap-2"><Loader2 className="size-3.5 animate-spin" />{" "}{tr("Searching…")}</span> : tooShort ? "Type at least two characters." : "No results."}</CommandEmpty>
         {visibleGroups.map((g) => (
           <CommandGroup key={g.group} heading={g.group}>
             {g.hits.map((hit) => {
@@ -118,9 +118,9 @@ export function CommandMenu({ open, onOpenChange, currentEditionId, role }: { op
         </CommandGroup>
         <CommandGroup heading="Actions">
           <CommandItem value="new edition" onSelect={() => go("/editions?new=1")}>
-            <Plus /> {" "}{tr("New edition")}</CommandItem>
+            <Plus />{" "}{tr("New edition")}</CommandItem>
           <CommandItem value="new contributor" onSelect={() => go("/contributors?new=1")}>
-            <Plus /> {" "}{tr("New contributor")}</CommandItem>
+            <Plus />{" "}{tr("New contributor")}</CommandItem>
         </CommandGroup>
       </CommandList>
     </CommandDialog>

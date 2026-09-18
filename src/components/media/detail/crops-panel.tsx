@@ -163,7 +163,7 @@ export function CropsPanel({
           </div>
           <Button asChild size="xs" variant="outline">
             <a href={crop.downloadUrl}>
-              <Download /> {" "}{tr("Download")}</a>
+              <Download />{" "}{tr("Download")}</a>
           </Button>
           {canManage ? (
             <Button

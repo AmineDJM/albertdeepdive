@@ -110,7 +110,7 @@ export function PublicationEditor({ publication, trigger, paymentsConnected = fa
             </Button>
           ) : (
             <Button size="sm">
-              <Plus /> {" "}{tr("New title")}</Button>
+              <Plus />{" "}{tr("New title")}</Button>
           )
         )}
       </DialogTrigger>

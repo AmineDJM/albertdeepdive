@@ -96,7 +96,7 @@ export default async function MediaDetailPage({
           <>
             <Button asChild variant="outline" size="sm">
               <a href={detail.originalDownloadUrl}>
-                <Download /> {" "}{tr("Original")}</a>
+                <Download />{" "}{tr("Original")}</a>
             </Button>
             {canManage ? (
               <ArchiveButton

@@ -39,7 +39,7 @@ export function Housekeeping() {
       <p className="min-w-0 flex-1 text-xs text-muted-foreground">
         {tr("Generated grounds are shared between packs and belong to nobody, so deleting a pack never removes one. Check what is left, then remove what no pack names.")}{" "}{checked ? (
           <span className="mt-1 block text-foreground">
-            {checked.kept + checked.removed} {" "}{tr("stored ·")}{" "}{checked.referenced} {" "}{tr("named by a pack ·")}{" "}{checked.removed} {" "}{tr("unreferenced and older than a day")}</span>
+            {checked.kept + checked.removed}{" "}{tr("stored ·")}{" "}{checked.referenced}{" "}{tr("named by a pack ·")}{" "}{checked.removed}{" "}{tr("unreferenced and older than a day")}</span>
         ) : null}
       </p>
       <Button variant="outline" size="sm" disabled={pending} onClick={() => run(true)}>
@@ -47,7 +47,7 @@ export function Housekeeping() {
       </Button>
       {checked?.removed ? (
         <Button size="sm" disabled={pending} onClick={() => run(false)}>
-          <Eraser /> {" "}{tr("Remove")}{" "}{checked.removed}
+          <Eraser />{" "}{tr("Remove")}{" "}{checked.removed}
         </Button>
       ) : null}
     </div>

@@ -37,9 +37,9 @@ export function RetentionForm({ retentionDays, summary }: { retentionDays: numbe
         <div className="space-y-1.5">
           <Label htmlFor="retention-days">{tr("Retention (days)")}</Label>
           <Input id="retention-days" type="number" min={30} max={3650} step={30} value={days} onChange={(e) => setDays(Number(e.target.value))} className="tabular" />
-          <p className="text-2xs text-muted-foreground">≈ {years} {" "}{tr("years. Between 30 days and 10 years.")}</p>
+          <p className="text-2xs text-muted-foreground">≈ {years}{" "}{tr("years. Between 30 days and 10 years.")}</p>
           <Button type="submit" size="sm" loading={pending} disabled={days === retentionDays || days < 30 || days > 3650}>
-            <Save /> {" "}{tr("Save retention")}</Button>
+            <Save />{" "}{tr("Save retention")}</Button>
         </div>
         <div className="rounded-md border border-border bg-muted/30 p-3 text-xs">
           <div className="label-caps mb-2">{tr("Older than the current policy")}</div>
@@ -93,7 +93,7 @@ export function ExportTool() {
           <Input id="export-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder={tr("firstname.lastname@example.com")} />
         </div>
         <Button type="submit" size="default" loading={pending} disabled={!/\S+@\S+\.\S+/.test(email)}>
-          <Download /> {" "}{tr("Export JSON")}</Button>
+          <Download />{" "}{tr("Export JSON")}</Button>
       </form>
     </SettingsCard>
   );

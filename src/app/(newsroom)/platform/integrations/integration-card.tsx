@@ -95,7 +95,7 @@ export function IntegrationCard({ integration, setupLabel }: { integration: Inte
             {integration.name}
             {integration.configured ? (
               <span className="inline-flex items-center gap-1 rounded-sm bg-emerald-600/10 px-1.5 py-0.5 text-2xs font-medium text-emerald-700 dark:text-emerald-400">
-                <Check className="size-2.5" /> {" "}{tr("Connected")}</span>
+                <Check className="size-2.5" />{" "}{tr("Connected")}</span>
             ) : (
               <span className="rounded-sm bg-muted px-1.5 py-0.5 text-2xs font-medium text-muted-foreground">{tr("Not connected")}</span>
             )}
@@ -122,7 +122,7 @@ export function IntegrationCard({ integration, setupLabel }: { integration: Inte
                 {field.required ? <span className="text-destructive">*</span> : null}
                 {locked ? (
                   <span className="inline-flex items-center gap-1 text-2xs font-normal text-muted-foreground">
-                    <Lock className="size-2.5" /> {" "}{tr("set by")}{" "}{field.envVar}
+                    <Lock className="size-2.5" />{" "}{tr("set by")}{" "}{field.envVar}
                   </span>
                 ) : null}
               </Label>
@@ -179,7 +179,7 @@ export function IntegrationCard({ integration, setupLabel }: { integration: Inte
 
       <div className="mt-4 flex flex-wrap items-center gap-2">
         <Button size="sm" onClick={save} loading={pending && dirty} disabled={!dirty}>
-          <Plug /> {" "}{tr("Save")}</Button>
+          <Plug />{" "}{tr("Save")}</Button>
         {setupLabel ? (
           <Button size="sm" variant={integration.configured ? "outline" : "ghost"} onClick={runSetup} loading={pending && !dirty} disabled={pending || !integration.configured}>
             <Wand2 /> {setupLabel}
@@ -191,7 +191,7 @@ export function IntegrationCard({ integration, setupLabel }: { integration: Inte
         ) : null}
         {integration.configured && integration.fields.some((f) => f.source === "stored") ? (
           <Button size="sm" variant="ghost" onClick={disconnect} disabled={pending}>
-            <Unplug /> {" "}{tr("Disconnect")}</Button>
+            <Unplug />{" "}{tr("Disconnect")}</Button>
         ) : null}
       </div>
     </section>

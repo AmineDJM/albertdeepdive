@@ -100,7 +100,7 @@ export function EditionSettingsSections({
       <SortableSections items={items} onChange={setItems} counts={counts} dndId={`edition-sections-${editionId}`} readOnly={!canManage} />
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-card px-3 py-2">
         <div className="text-xs text-muted-foreground">
-          {items.filter((i) => !i.isHidden).length} {" "}{tr("visible of")}{" "}{items.length} {" "}{tr("sections ·")}{" "}{plannedPages} {" "}{tr("of")}{" "}{targetPageCount} {" "}{tr("target pages allocated")}{" "}{plannedPages > targetPageCount ? <span className="ml-2 text-warning">{plannedPages - targetPageCount} {" "}{tr("pages over the target")}</span> : null}
+          {items.filter((i) => !i.isHidden).length}{" "}{tr("visible of")}{" "}{items.length}{" "}{tr("sections ·")}{" "}{plannedPages}{" "}{tr("of")}{" "}{targetPageCount}{" "}{tr("target pages allocated")}{" "}{plannedPages > targetPageCount ? <span className="ml-2 text-warning">{plannedPages - targetPageCount}{" "}{tr("pages over the target")}</span> : null}
           {problems.length ? <span className="ml-2 text-destructive">{problems[0]}</span> : null}
         </div>
         <div className="flex items-center gap-2">
@@ -109,7 +109,7 @@ export function EditionSettingsSections({
               {tr("Discard")}</Button>
           ) : null}
           <Button size="sm" onClick={save} loading={pending} disabled={!canManage || !dirty || problems.length > 0}>
-            <Save /> {" "}{tr("Save sections")}</Button>
+            <Save />{" "}{tr("Save sections")}</Button>
         </div>
       </div>
     </div>

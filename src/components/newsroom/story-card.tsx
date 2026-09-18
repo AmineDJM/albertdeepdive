@@ -71,7 +71,7 @@ export function StoryCard({ editionId, story, sections, canEdit }: { editionId: 
           <Badge variant="outline">{storyTypeShort(story.storyType)}</Badge>
           {story.isCover ? (
             <Badge variant="brand">
-              <Star className="size-3" /> {" "}{tr("Cover")}</Badge>
+              <Star className="size-3" />{" "}{tr("Cover")}</Badge>
           ) : null}
           {story.isSpotlight ? <Badge variant="info">{tr("Spotlight")}</Badge> : null}
           {story.editorialScore !== null ? (
@@ -91,7 +91,7 @@ export function StoryCard({ editionId, story, sections, canEdit }: { editionId: 
 
         <div className="mt-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-2xs text-muted-foreground">
           <CampusList campuses={story.campusList} max={3} />
-          {story.cluster ? <span>{story.cluster.submissionCount} {" "}{tr("source")}{story.cluster.submissionCount === 1 ? "" : "s"}</span> : null}
+          {story.cluster ? <span>{story.cluster.submissionCount}{" "}{tr("source")}{story.cluster.submissionCount === 1 ? "" : "s"}</span> : null}
           <span className="inline-flex items-center gap-0.5">
             <ImageIcon className="size-3" /> {story.mediaCount}
           </span>
@@ -112,7 +112,7 @@ export function StoryCard({ editionId, story, sections, canEdit }: { editionId: 
               </TooltipTrigger>
               <TooltipContent>
                 <ul className="space-y-0.5">
-                  {story.disputedFacts ? <li>{story.disputedFacts} {" "}{tr("disputed fact")}{story.disputedFacts === 1 ? "" : "s"}</li> : null}
+                  {story.disputedFacts ? <li>{story.disputedFacts}{" "}{tr("disputed fact")}{story.disputedFacts === 1 ? "" : "s"}</li> : null}
                   {story.warnings.map((w, i) => (
                     <li key={i}>{w.message}</li>
                   ))}
@@ -145,14 +145,14 @@ export function StoryCard({ editionId, story, sections, canEdit }: { editionId: 
           <div className="flex gap-1">
             {!story.isSelected ? (
               <Button size="xs" variant="outline" disabled={pending} onClick={() => run(() => selectStoryAction(editionId, story.id))}>
-                <Check /> {" "}{tr("Select")}</Button>
+                <Check />{" "}{tr("Select")}</Button>
             ) : (
               <Button size="xs" variant="ghost" disabled={pending} onClick={() => run(() => dropStoryAction(editionId, story.id))} title={tr("Drop from the issue")}>
-                <X /> {" "}{tr("Drop")}</Button>
+                <X />{" "}{tr("Drop")}</Button>
             )}
             {story.isSelected && (!story.article || story.article.status === "EMPTY") ? (
               <Button size="xs" variant="brand" loading={pending} onClick={() => run(() => draftArticleAction(editionId, story.id))}>
-                <PenLine /> {" "}{tr("Draft")}</Button>
+                <PenLine />{" "}{tr("Draft")}</Button>
             ) : story.article && story.article.status !== "EMPTY" ? (
               <Button size="xs" variant="outline" asChild>
                 <Link href={`/articles/${story.article.id}`}>{tr("Edit")}</Link>

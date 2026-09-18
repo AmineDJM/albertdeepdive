@@ -74,7 +74,7 @@ export function FlatplanInspector({
                 <Badge variant={engineMade ? "info" : "muted"}>{page.templateName}</Badge>
                 {page.isLocked ? (
                   <Badge variant="brand" className="gap-1">
-                    <Lock className="size-3" /> {" "}{tr("Locked")}</Badge>
+                    <Lock className="size-3" />{" "}{tr("Locked")}</Badge>
                 ) : null}
               </SheetTitle>
               <SheetDescription>
@@ -120,7 +120,7 @@ export function FlatplanInspector({
                             {item.kicker ? <div className="label-caps">{item.kicker}</div> : null}
                             <p className="text-[13px] leading-snug font-medium">{item.headline}</p>
                             <p className="mt-0.5 text-2xs text-muted-foreground">
-                              {storyTypeLabel(item.storyType)} · <span className="tabular">{item.wordCount}</span> {" "}{tr("words")}</p>
+                              {storyTypeLabel(item.storyType)} · <span className="tabular">{item.wordCount}</span>{" "}{tr("words")}</p>
                           </div>
                           {item.articleStatus ? <ArticleStatusBadge status={item.articleStatus} /> : null}
                         </div>
@@ -287,15 +287,15 @@ export function FlatplanInspector({
                       <Label>{tr("Pages")}</Label>
                       <div className="flex gap-2">
                         <Button variant="outline" size="sm" disabled={pending || isFirst} onClick={() => onMove(page.id, "up")}>
-                          <ArrowUp /> {" "}{tr("Move earlier")}</Button>
+                          <ArrowUp />{" "}{tr("Move earlier")}</Button>
                         <Button variant="outline" size="sm" disabled={pending || isLast} onClick={() => onMove(page.id, "down")}>
-                          <ArrowDown /> {" "}{tr("Move later")}</Button>
+                          <ArrowDown />{" "}{tr("Move later")}</Button>
                       </div>
                       <div className="flex gap-2">
                         <Button variant="outline" size="sm" disabled={pending} onClick={() => onAddAfter(page.id)}>
-                          <Plus /> {" "}{tr("Add page after")}</Button>
+                          <Plus />{" "}{tr("Add page after")}</Button>
                         <Button variant="outline" size="sm" disabled={pending || page.isLocked} onClick={() => setConfirmRemove(true)} className="text-destructive hover:text-destructive">
-                          <Trash2 /> {" "}{tr("Remove page")}</Button>
+                          <Trash2 />{" "}{tr("Remove page")}</Button>
                       </div>
                       {page.isLocked ? <p className="text-2xs text-muted-foreground">{tr("Unlock the page above to remove it.")}</p> : null}
                     </div>
@@ -331,7 +331,7 @@ export function FlatplanInspector({
                 </Button>
                 {page.isLocked ? (
                   <span className="flex items-center gap-1 text-2xs text-muted-foreground">
-                    <Pin className="size-3" /> {" "}{tr("pinned")}</span>
+                    <Pin className="size-3" />{" "}{tr("pinned")}</span>
                 ) : null}
               </div>
             </div>
@@ -353,7 +353,7 @@ export function FlatplanInspector({
                       onRemove(page.id);
                     }}
                   >
-                    <Trash2 /> {" "}{tr("Remove page")}</AlertDialogAction>
+                    <Trash2 />{" "}{tr("Remove page")}</AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>

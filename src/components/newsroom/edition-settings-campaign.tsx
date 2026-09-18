@@ -70,7 +70,7 @@ export function EditionSettingsCampaign({
                 })
               }
             >
-              <RotateCcw /> {" "}{tr("Apply to this edition")}</Button>
+              <RotateCcw />{" "}{tr("Apply to this edition")}</Button>
           ) : null}
         </div>
       }

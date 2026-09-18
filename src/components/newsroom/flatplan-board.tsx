@@ -132,7 +132,7 @@ export function FlatplanBoard({
       {pending ? (
         <div className="sticky top-14 z-20 mb-2 flex items-center justify-center" aria-live="polite">
           <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1 text-xs shadow-md">
-            <Loader2 className="size-3.5 animate-spin text-brand" /> {" "}{tr("Saving the plan and re-running the copyfit pass…")}</span>
+            <Loader2 className="size-3.5 animate-spin text-brand" />{" "}{tr("Saving the plan and re-running the copyfit pass…")}</span>
         </div>
       ) : null}
       <DndContext id="flatplan-board" sensors={sensors} collisionDetection={closestCenter} onDragStart={onDragStart} onDragEnd={onDragEnd}>

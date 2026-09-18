@@ -71,7 +71,7 @@ export function MailboxList({ messages }: { messages: MailMessage[] }) {
           <DialogHeader>
             <DialogTitle>{open?.subject}</DialogTitle>
             <DialogDescription>
-              {tr("To")}{" "}{open?.to} · {open?.template ? enumLabel(open.template) : "no template"} {" "}{tr("· sent through “")}{open?.provider ?? "unknown"}”
+              {tr("To")}{" "}{open?.to} · {open?.template ? enumLabel(open.template) : "no template"}{" "}{tr("· sent through “")}{open?.provider ?? "unknown"}”
             </DialogDescription>
           </DialogHeader>
           {link ? (

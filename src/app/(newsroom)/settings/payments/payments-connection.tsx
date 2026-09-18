@@ -63,14 +63,14 @@ export function PaymentsConnection({ status }: { status: ReaderPaymentsStatus })
             <Badge variant={status.livemode ? "success" : "warning"}>{status.livemode ? "Live" : "Test mode"}</Badge>
           </p>
           <p className="text-xs text-muted-foreground">
-            {tr("Key")}{" "}{status.keyHint} {" "}{tr("· connected")}{" "}{new Date(status.connectedAt).toLocaleDateString("en-GB", { dateStyle: "medium" })}
+            {tr("Key")}{" "}{status.keyHint}{" "}{tr("· connected")}{" "}{new Date(status.connectedAt).toLocaleDateString("en-GB", { dateStyle: "medium" })}
             {status.accountId ? ` · ${status.accountId}` : ""}
           </p>
         </div>
         <AlertDialog>
           <AlertDialogTrigger asChild>
             <Button variant="outline" size="sm" disabled={pending}>
-              <Unplug /> {" "}{tr("Disconnect")}</Button>
+              <Unplug />{" "}{tr("Disconnect")}</Button>
           </AlertDialogTrigger>
           <AlertDialogContent>
             <AlertDialogHeader>

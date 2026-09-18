@@ -99,7 +99,7 @@ export function BulkActionBar({
       className="border-border bg-card/95 supports-[backdrop-filter]:bg-card/85 sticky bottom-3 z-20 flex flex-wrap items-center gap-2 rounded-lg border px-3 py-2 shadow-lg backdrop-blur"
     >
       <span className="tabular text-[13px] font-medium">
-        {n} {plural} {" "}{tr("selected")}</span>
+        {n} {plural}{" "}{tr("selected")}</span>
       <span className="bg-border mx-1 h-4 w-px" />
       {canRights ? (
         <Popover open={status !== null} onOpenChange={(open) => !open && setStatus(null)}>
@@ -122,7 +122,7 @@ export function BulkActionBar({
           </div>
           <PopoverContent align="start" side="top" className="w-80 space-y-3">
             <div className="text-[13px] font-medium">
-              {tr("Set")}{" "}{n} {plural} {" "}{tr("to")}{" "}{status ? RIGHTS_STATUS_LABELS[status] : ""}
+              {tr("Set")}{" "}{n} {plural}{" "}{tr("to")}{" "}{status ? RIGHTS_STATUS_LABELS[status] : ""}
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="bulk-rights-note">{tr("Note (why)")}</Label>
@@ -152,11 +152,11 @@ export function BulkActionBar({
         <>
           <span className="bg-border mx-1 h-4 w-px" />
           <Button variant="outline" size="sm" onClick={describe} loading={pending}>
-            <Sparkles /> {" "}{tr("Describe with AI")}</Button>
+            <Sparkles />{" "}{tr("Describe with AI")}</Button>
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button variant="outline" size="sm">
-                <Archive /> {" "}{tr("Archive")}</Button>
+                <Archive />{" "}{tr("Archive")}</Button>
             </AlertDialogTrigger>
             <AlertDialogContent>
               <AlertDialogHeader>
@@ -181,7 +181,7 @@ export function BulkActionBar({
         onClick={onDone}
         aria-label={tr("Clear selection")}
       >
-        <X /> {" "}{tr("Clear")}</Button>
+        <X />{" "}{tr("Clear")}</Button>
     </div>
   );
 }

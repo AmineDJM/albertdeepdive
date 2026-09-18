@@ -102,11 +102,11 @@ export function JobQueueTable({ rows, canManage }: { rows: JobRowView[]; canMana
                 </Button>
                 {canManage && RETRYABLE.has(j.status) ? (
                   <Button size="xs" variant="outline" loading={pending && busyId === j.id} onClick={() => act(j, () => retryJobAction(j.id))}>
-                    <RotateCcw /> {" "}{tr("Retry")}</Button>
+                    <RotateCcw />{" "}{tr("Retry")}</Button>
                 ) : null}
                 {canManage && j.status === "QUEUED" ? (
                   <Button size="xs" variant="ghost" loading={pending && busyId === j.id} onClick={() => act(j, () => cancelJobAction(j.id))}>
-                    <Ban /> {" "}{tr("Cancel")}</Button>
+                    <Ban />{" "}{tr("Cancel")}</Button>
                 ) : null}
               </span>
             ), align: "right" },
@@ -124,7 +124,7 @@ export function JobQueueTable({ rows, canManage }: { rows: JobRowView[]; canMana
                   {inspected.attempts >= inspected.maxAttempts && inspected.status === "DEAD" ? <Badge variant="destructive">{tr("Dead letter")}</Badge> : null}
                 </DialogTitle>
                 <DialogDescription>
-                  {tr("Attempt")}{" "}{inspected.attempts} {" "}{tr("of")}{" "}{inspected.maxAttempts} {" "}{tr("· created")}{" "}{inspected.display.createdAt} {" "}{tr("· run at")}{" "}{inspected.display.runAt}
+                  {tr("Attempt")}{" "}{inspected.attempts}{" "}{tr("of")}{" "}{inspected.maxAttempts}{" "}{tr("· created")}{" "}{inspected.display.createdAt}{" "}{tr("· run at")}{" "}{inspected.display.runAt}
                   {inspected.display.finishedAt ? ` · finished ${inspected.display.finishedAt}` : ""}
                   {inspected.lockedBy ? ` · worker ${inspected.lockedBy}` : ""}
                 </DialogDescription>
@@ -146,7 +146,7 @@ export function JobQueueTable({ rows, canManage }: { rows: JobRowView[]; canMana
                 ) : null}
                 {canManage && RETRYABLE.has(inspected.status) ? (
                   <Button size="sm" loading={pending && busyId === inspected.id} onClick={() => act(inspected, () => retryJobAction(inspected.id))}>
-                    <RotateCcw /> {" "}{tr("Retry this job")}</Button>
+                    <RotateCcw />{" "}{tr("Retry this job")}</Button>
                 ) : null}
               </div>
             </>
@@ -187,14 +187,14 @@ export function QueueControls({ canManage, retryable }: { canManage: boolean; re
     <div className="flex items-center gap-2">
       {canManage && retryable > 0 ? (
         <Button size="sm" variant="outline" loading={pending && action === "retry"} onClick={() => run("retry")}>
-          <RotateCcw /> {" "}{tr("Retry")}{" "}{retryable} {" "}{tr("failed")}</Button>
+          <RotateCcw />{" "}{tr("Retry")}{" "}{retryable}{" "}{tr("failed")}</Button>
       ) : null}
       {canManage ? (
         <Button size="sm" variant="outline" loading={pending && action === "drain"} onClick={() => run("drain")}>
-          <Play /> {" "}{tr("Process queue")}</Button>
+          <Play />{" "}{tr("Process queue")}</Button>
       ) : null}
       <Button size="sm" variant="ghost" loading={pending && action === "refresh"} onClick={() => run("refresh")}>
-        <RefreshCw /> {" "}{tr("Refresh")}</Button>
+        <RefreshCw />{" "}{tr("Refresh")}</Button>
     </div>
   );
 }

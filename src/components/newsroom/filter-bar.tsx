@@ -63,7 +63,7 @@ export function FilterBar({ filters, searchKey = "q", searchPlaceholder = "Searc
       {children}
       {active.length ? (
         <Button variant="ghost" size="sm" onClick={() => startTransition(() => router.replace(pathname, { scroll: false }))}>
-          <X /> {" "}{tr("Clear")}</Button>
+          <X />{" "}{tr("Clear")}</Button>
       ) : null}
       {pending ? <span className="text-2xs text-muted-foreground">{tr("Updating…")}</span> : null}
     </div>

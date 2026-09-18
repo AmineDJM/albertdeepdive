@@ -112,7 +112,7 @@ export function BrandEditor({
             action={
               canEdit && website ? (
                 <Button variant="ghost" size="xs" onClick={rediscover} disabled={discovering}>
-                  <RefreshCw className={cn("size-3", discovering && "animate-spin")} /> {" "}{tr("Read my site again")}</Button>
+                  <RefreshCw className={cn("size-3", discovering && "animate-spin")} />{" "}{tr("Read my site again")}</Button>
               ) : null
             }
           >
@@ -350,10 +350,10 @@ function BrandPreview({ tokens, contrast, failures, organizationName }: { tokens
           <h2 className="label-caps">{tr("Readability")}</h2>
           {failures ? (
             <span className="flex items-center gap-1.5 text-xs text-amber-600">
-              <AlertTriangle className="size-3.5" /> {failures} {" "}{tr("pair")}{failures === 1 ? "" : "s"} {" "}{tr("below target")}</span>
+              <AlertTriangle className="size-3.5" /> {failures}{" "}{tr("pair")}{failures === 1 ? "" : "s"}{" "}{tr("below target")}</span>
           ) : (
             <span className="flex items-center gap-1.5 text-xs text-emerald-600">
-              <Check className="size-3.5" /> {" "}{tr("Every pair passes")}</span>
+              <Check className="size-3.5" />{" "}{tr("Every pair passes")}</span>
           )}
         </div>
         <p className="mb-3 text-xs text-muted-foreground">

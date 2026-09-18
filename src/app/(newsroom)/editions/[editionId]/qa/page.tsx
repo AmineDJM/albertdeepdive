@@ -76,7 +76,7 @@ export default async function QaPage({ params }: { params: Promise<{ editionId: 
           <p className="flex items-start gap-2 rounded-lg border border-warning/40 bg-warning-soft/40 px-3.5 py-2.5 text-xs">
             <AlertTriangle className="mt-px size-4 shrink-0 text-warning" />
             <span>
-              {tr("Publication is blocked by")}{" "}{blocking.length} {" "}{tr("gate")}{blocking.length === 1 ? "" : "s"}: {blocking.map((g) => g.label).join(", ")}.
+              {tr("Publication is blocked by")}{" "}{blocking.length}{" "}{tr("gate")}{blocking.length === 1 ? "" : "s"}: {blocking.map((g) => g.label).join(", ")}.
             </span>
           </p>
         )}
@@ -92,7 +92,7 @@ export default async function QaPage({ params }: { params: Promise<{ editionId: 
           <aside className="space-y-5">
             <section>
               <SectionTitle>
-                {tr("Validation report")}{" "}<span className="tabular ml-1.5 font-normal text-muted-foreground">{report.issues.length} {" "}{tr("items")}</span>
+                {tr("Validation report")}{" "}<span className="tabular ml-1.5 font-normal text-muted-foreground">{report.issues.length}{" "}{tr("items")}</span>
               </SectionTitle>
               {report.issues.length ? (
                 <ul className="max-h-[520px] space-y-1.5 overflow-y-auto rounded-lg border border-border bg-card p-2.5">
@@ -120,7 +120,7 @@ export default async function QaPage({ params }: { params: Promise<{ editionId: 
                     <Badge variant={v.status === "READY" ? "success" : v.status === "FAILED" ? "destructive" : "muted"} className="text-2xs">
                       {v.status.toLowerCase()}
                     </Badge>
-                    <span className="ml-auto text-2xs text-muted-foreground">{v.assets.length} {" "}{tr("file")}{v.assets.length === 1 ? "" : "s"}</span>
+                    <span className="ml-auto text-2xs text-muted-foreground">{v.assets.length}{" "}{tr("file")}{v.assets.length === 1 ? "" : "s"}</span>
                   </li>
                 ))}
                 {!versions.length ? <li className="rounded-md border border-dashed border-border p-3 text-2xs text-muted-foreground">{tr("No version has been generated yet.")}</li> : null}

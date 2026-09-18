@@ -51,7 +51,7 @@ export default async function ContributorsPage({ searchParams }: { searchParams:
   ];
   return (
     <>
-      <PageHeader title={tr("Contributors")} description={tr("Who gets asked each month, and how they respond.")} actions={canManage ? <div className="flex items-center gap-2"><Button asChild variant="outline" size="sm"><Link href="/contributors/import"><Upload /> {" "}{tr("Import from a file")}</Link></Button><Suspense><ContributorEditor campuses={campuses} programs={programs} groups={groups} openOnParam /></Suspense></div> : null}
+      <PageHeader title={tr("Contributors")} description={tr("Who gets asked each month, and how they respond.")} actions={canManage ? <div className="flex items-center gap-2"><Button asChild variant="outline" size="sm"><Link href="/contributors/import"><Upload />{" "}{tr("Import from a file")}</Link></Button><Suspense><ContributorEditor campuses={campuses} programs={programs} groups={groups} openOnParam /></Suspense></div> : null}
       >
         <HubTabs tabs={AUDIENCE_TABS} />
       </PageHeader>

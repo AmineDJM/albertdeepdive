@@ -76,7 +76,7 @@ export default async function FlatplanPage({ params }: { params: Promise<{ editi
                 <FlatplanRunningOrder editionId={editionId} sectionRuns={flatplan.sectionRuns} stories={flatplan.stories} canEdit={canEdit} />
                 {report ? (
                   <p className="mt-3 text-2xs text-muted-foreground">
-                    {tr("Plan “")}{plan?.name}” · {plan?.status.toLowerCase()} · {stats.images} {" "}{tr("images available on the planned pages.")}</p>
+                    {tr("Plan “")}{plan?.name}” · {plan?.status.toLowerCase()} · {stats.images}{" "}{tr("images available on the planned pages.")}</p>
                 ) : null}
               </aside>
             </div>

@@ -119,7 +119,7 @@ export default async function PlatformLogsPage({ searchParams }: { searchParams:
         )}
 
         <p className="text-2xs text-muted-foreground">
-          {tr("Showing the")}{" "}{entries.length} {" "}{tr("most recent. Logs are kept as long as each workspace’s retention policy allows.")}</p>
+          {tr("Showing the")}{" "}{entries.length}{" "}{tr("most recent. Logs are kept as long as each workspace’s retention policy allows.")}</p>
       </PageBody>
     </>
   );

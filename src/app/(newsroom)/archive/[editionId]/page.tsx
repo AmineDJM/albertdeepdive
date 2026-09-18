@@ -155,7 +155,7 @@ export default async function ArchiveEditionPage({ params }: { params: Promise<{
                   <h3 className="text-[13px] font-semibold">{section.name}</h3>
                   {section.kicker ? <span className="text-2xs text-muted-foreground">{section.kicker}</span> : null}
                   <span className="tabular ml-auto text-2xs text-muted-foreground">
-                    {section.articles.length} {" "}{tr("article")}{section.articles.length === 1 ? "" : "s"}
+                    {section.articles.length}{" "}{tr("article")}{section.articles.length === 1 ? "" : "s"}
                     {section.targetPages ? ` · ${section.targetPages} pages targeted` : ""}
                   </span>
                 </div>
@@ -247,7 +247,7 @@ export default async function ArchiveEditionPage({ params }: { params: Promise<{
                         {r.headline || "(untitled)"}
                       </Link>
                       <p className="truncate text-2xs text-muted-foreground">
-                        v{r.version} · {r.changeSummary ?? (r.createdByAi ? "AI draft" : "Edit")} · {r.createdByName ?? (r.createdByAi ? "AI pipeline" : "Unknown")} · {formatNumber(r.wordCount)} {" "}{tr("words")}</p>
+                        v{r.version} · {r.changeSummary ?? (r.createdByAi ? "AI draft" : "Edit")} · {r.createdByName ?? (r.createdByAi ? "AI pipeline" : "Unknown")} · {formatNumber(r.wordCount)}{" "}{tr("words")}</p>
                     </div>
                     <span className="shrink-0 text-2xs text-muted-foreground" title={formatDateTime(r.createdAt)}>
                       {relativeTime(r.createdAt)}

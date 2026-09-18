@@ -61,9 +61,9 @@ export function ContributorEditor({ value, campuses, programs, groups, openOnPar
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         {value ? (
-          <Button size="sm" variant="outline"><Pencil /> {" "}{tr("Edit")}</Button>
+          <Button size="sm" variant="outline"><Pencil />{" "}{tr("Edit")}</Button>
         ) : (
-          <Button><Plus /> {" "}{tr("New contributor")}</Button>
+          <Button><Plus />{" "}{tr("New contributor")}</Button>
         )}
       </DialogTrigger>
       <DialogContent size="lg">

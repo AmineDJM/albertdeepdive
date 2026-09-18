@@ -76,7 +76,7 @@ export function GmailConnection({ status, appName, oauthAvailable, oauthRedirect
         <SettingsCard
           title={tr("Connect with Google")}
           description={tr("One click. Google asks you to approve, and the mailbox is connected — no password to create or paste.")}
-          action={status.connected && status.mode === "oauth" ? <Badge variant="success" className="gap-1"><CheckCircle2 className="size-3" /> {" "}{tr("Connected")}</Badge> : null}
+          action={status.connected && status.mode === "oauth" ? <Badge variant="success" className="gap-1"><CheckCircle2 className="size-3" />{" "}{tr("Connected")}</Badge> : null}
         >
           {status.connected && status.mode === "oauth" ? (
             <div className="flex flex-wrap items-center gap-2">
@@ -99,7 +99,7 @@ export function GmailConnection({ status, appName, oauthAvailable, oauthRedirect
       {!oauthAvailable ? (
         <p className="flex items-start gap-2 rounded-md border border-border bg-muted/30 p-2.5 text-2xs text-muted-foreground">
           <ExternalLink className="mt-px size-3 shrink-0" />
-          <span>{tr("To turn on one-click “Sign in with Google”, set")}{" "}<code>GOOGLE_CLIENT_ID</code> {" "}{tr("and")}{" "}<code>GOOGLE_CLIENT_SECRET</code> {" "}{tr("on the server and register this redirect URI in Google Cloud:")}{" "}<code className="break-all">{oauthRedirectUri}</code>{tr(". Until then, use an app password below.")}</span>
+          <span>{tr("To turn on one-click “Sign in with Google”, set")}{" "}<code>GOOGLE_CLIENT_ID</code>{" "}{tr("and")}{" "}<code>GOOGLE_CLIENT_SECRET</code>{" "}{tr("on the server and register this redirect URI in Google Cloud:")}{" "}<code className="break-all">{oauthRedirectUri}</code>{tr(". Until then, use an app password below.")}</span>
         </p>
       ) : null}
 
@@ -109,7 +109,7 @@ export function GmailConnection({ status, appName, oauthAvailable, oauthRedirect
         action={
           status.connected ? (
             <Badge variant="success" className="gap-1">
-              <CheckCircle2 className="size-3" /> {" "}{tr("Connected")}</Badge>
+              <CheckCircle2 className="size-3" />{" "}{tr("Connected")}</Badge>
           ) : (
             <Badge variant="warning">{tr("Not connected")}</Badge>
           )
@@ -138,15 +138,15 @@ export function GmailConnection({ status, appName, oauthAvailable, oauthRedirect
 
             <div className="flex flex-wrap items-center gap-2">
               <Button size="sm" variant="outline" loading={pending && busy === "send"} disabled={pending} onClick={() => run("send", () => sendTestEmailAction(status.address!))}>
-                <Send /> {" "}{tr("Send a test to myself")}</Button>
+                <Send />{" "}{tr("Send a test to myself")}</Button>
               {status.receiveEnabled ? (
                 <Button size="sm" variant="outline" loading={pending && busy === "poll"} disabled={pending} onClick={() => run("poll", () => pollInboxAction())}>
-                  <Download /> {" "}{tr("Check for replies now")}</Button>
+                  <Download />{" "}{tr("Check for replies now")}</Button>
               ) : null}
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button size="sm" variant="ghost" disabled={pending}>
-                    <Unplug /> {" "}{tr("Disconnect")}</Button>
+                    <Unplug />{" "}{tr("Disconnect")}</Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent>
                   <AlertDialogHeader>
@@ -222,7 +222,7 @@ export function GmailConnection({ status, appName, oauthAvailable, oauthRedirect
             disabled={pending || !address.trim() || !password.trim()}
             onClick={() => run("test", () => testGmailAction({ address: address.trim(), password }))}
           >
-            <PlugZap /> {" "}{tr("Test the sign-in")}</Button>
+            <PlugZap />{" "}{tr("Test the sign-in")}</Button>
           <Button
             size="sm"
             variant="brand"

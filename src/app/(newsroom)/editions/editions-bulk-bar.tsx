@@ -38,14 +38,14 @@ export function EditionsBulkBar({ canDelete }: { canDelete: boolean }) {
   return (
     <SelectionBar noun={{ one: "edition", other: "editions" }}>
       <Button variant="outline" size="sm" disabled={pending} onClick={() => run(() => setEditionsHiddenAction(ids, true))}>
-        <EyeOff /> {" "}{tr("Hide")}</Button>
+        <EyeOff />{" "}{tr("Hide")}</Button>
       <Button variant="outline" size="sm" disabled={pending} onClick={() => run(() => setEditionsHiddenAction(ids, false))}>
-        <Eye /> {" "}{tr("Show")}</Button>
+        <Eye />{" "}{tr("Show")}</Button>
       {canDelete ? (
         <AlertDialog>
           <AlertDialogTrigger asChild>
             <Button variant="outline" size="sm" disabled={pending} className="text-destructive hover:text-destructive">
-              <Trash2 /> {" "}{tr("Delete")}</Button>
+              <Trash2 />{" "}{tr("Delete")}</Button>
           </AlertDialogTrigger>
           <AlertDialogContent>
             <AlertDialogHeader>

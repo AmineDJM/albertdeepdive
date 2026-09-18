@@ -69,7 +69,7 @@ export function QualityGates({ editionId, gates, canOverride }: { editionId: str
               <div className="flex shrink-0 items-center gap-1">
                 {canOverride && FIXABLE.has(gate.key) && (gate.status === "fail" || gate.status === "warn" || gate.status === "pending") ? (
                   <Button size="xs" variant="secondary" disabled={pending} onClick={() => run(() => fixGateAction(editionId, gate.key))} title={tr("Fix this automatically")}>
-                    <Wrench /> {" "}{tr("Fix")}</Button>
+                    <Wrench />{" "}{tr("Fix")}</Button>
                 ) : null}
                 {gate.href ? (
                   <Button size="icon-sm" variant="ghost" asChild title={tr("Go and fix this by hand")} aria-label={tr("Go and fix this by hand")}>
@@ -80,13 +80,13 @@ export function QualityGates({ editionId, gates, canOverride }: { editionId: str
                 ) : null}
                 {canOverride && gate.overridden ? (
                   <Button size="xs" variant="ghost" disabled={pending} onClick={() => run(() => clearOverrideAction(editionId, gate.key))}>
-                    <Undo2 /> {" "}{tr("Lift")}</Button>
+                    <Undo2 />{" "}{tr("Lift")}</Button>
                 ) : canOverride && gate.overridable && (gate.status === "fail" || gate.status === "warn") ? (
                   <Button size="xs" variant="outline" disabled={pending} onClick={() => { setTarget(gate); setReason(""); }}>
-                    <ShieldAlert /> {" "}{tr("Override")}</Button>
+                    <ShieldAlert />{" "}{tr("Override")}</Button>
                 ) : !gate.overridable && gate.status === "fail" ? (
                   <span className="flex items-center gap-1 pr-1 text-2xs text-muted-foreground">
-                    <ShieldCheck className="size-3" /> {" "}{tr("Cannot be overridden")}</span>
+                    <ShieldCheck className="size-3" />{" "}{tr("Cannot be overridden")}</span>
                 ) : null}
               </div>
             </li>
@@ -114,7 +114,7 @@ export function QualityGates({ editionId, gates, canOverride }: { editionId: str
               disabled={!reason.trim()}
               onClick={() => target && run(() => overrideGateAction(editionId, target.key, reason), () => setTarget(null))}
             >
-              <ShieldAlert /> {" "}{tr("Override the gate")}</Button>
+              <ShieldAlert />{" "}{tr("Override the gate")}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -28,12 +28,12 @@ export default async function PromptDetailPage({ params }: { params: Promise<{ k
           <>
             <Badge variant="outline">{CATEGORY_LABELS[detail.category] ?? detail.category}</Badge>
             <span className="font-mono text-2xs text-muted-foreground">{detail.key}</span>
-            {detail.active ? <Badge variant="success">v{detail.active.version} {" "}{tr("active")}</Badge> : <Badge variant="muted">{tr("code default")}</Badge>}
+            {detail.active ? <Badge variant="success">v{detail.active.version}{" "}{tr("active")}</Badge> : <Badge variant="muted">{tr("code default")}</Badge>}
           </>
         }
         actions={
           <span className="text-2xs text-muted-foreground">
-            {formatNumber(usage.calls)} {" "}{tr("calls ·")}{" "}{usage.failed} {" "}{tr("failed ·")}{" "}{usage.avgLatencyMs ? `${formatNumber(usage.avgLatencyMs)} ms avg` : "no latency data"} · {formatCurrency(usage.costCents / 100)}
+            {formatNumber(usage.calls)}{" "}{tr("calls ·")}{" "}{usage.failed}{" "}{tr("failed ·")}{" "}{usage.avgLatencyMs ? `${formatNumber(usage.avgLatencyMs)} ms avg` : "no latency data"} · {formatCurrency(usage.costCents / 100)}
             {usage.lastUsedAt ? ` · last ${formatDateTime(usage.lastUsedAt)}` : ""}
           </span>
         }

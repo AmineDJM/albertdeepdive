@@ -118,7 +118,7 @@ export default async function OverviewPage() {
                       {c.name}
                     </span>
                     <span className="tabular text-muted-foreground">
-                      {c.submissions} {" "}{tr("submissions ·")}{" "}{c.stories} {" "}{tr("stories")}</span>
+                      {c.submissions}{" "}{tr("submissions ·")}{" "}{c.stories}{" "}{tr("stories")}</span>
                   </div>
                   <ProgressBar value={c.submissions} max={Math.max(1, ...d.campuses.map((x) => x.submissions))} className="mt-1" tone={c.submissions === 0 ? "warning" : "brand"} />
                 </li>
@@ -126,7 +126,7 @@ export default async function OverviewPage() {
             </ul>
             <div className="mt-3 flex items-center justify-between border-t pt-3 text-xs">
               <span className="text-muted-foreground">
-                {d.coverage.represented} / {d.coverage.total} {" "}{tr("campuses represented")}</span>
+                {d.coverage.represented} / {d.coverage.total}{" "}{tr("campuses represented")}</span>
               <Badge variant={d.coverage.label === "Balanced" ? "success" : d.coverage.label === "Uneven" ? "warning" : "destructive"}>{d.coverage.label}</Badge>
             </div>
             {d.coverage.underrepresented.length ? <p className="mt-2 text-2xs text-warning">{tr("Under-represented:")}{" "}{d.coverage.underrepresented.join(", ")}</p> : null}

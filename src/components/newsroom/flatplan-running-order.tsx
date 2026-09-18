@@ -59,7 +59,7 @@ export function FlatplanRunningOrder({
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-xs font-medium">{run.name}</span>
                 <span className="tabular block text-2xs text-muted-foreground">
-                  {run.firstPage === run.lastPage ? `p. ${run.firstPage}` : `pp. ${run.firstPage}–${run.lastPage}`} · {run.pages} {" "}{tr("page")}{run.pages === 1 ? "" : "s"} · {run.stories} {" "}{tr("stor")}{" "}{run.stories === 1 ? "y" : "ies"}
+                  {run.firstPage === run.lastPage ? `p. ${run.firstPage}` : `pp. ${run.firstPage}–${run.lastPage}`} · {run.pages}{" "}{tr("page")}{run.pages === 1 ? "" : "s"} · {run.stories}{" "}{tr("stor")}{" "}{run.stories === 1 ? "y" : "ies"}
                 </span>
               </span>
               {!run.contiguous ? (
@@ -119,7 +119,7 @@ export function FlatplanRunningOrder({
                   {story.title}
                 </Link>
                 <span className="tabular text-2xs text-muted-foreground">
-                  {storyTypeShort(story.storyType)} · {story.wordCount} {" "}{tr("words ·")}{" "}{story.sectionName ?? "no section"}
+                  {storyTypeShort(story.storyType)} · {story.wordCount}{" "}{tr("words ·")}{" "}{story.sectionName ?? "no section"}
                 </span>
               </li>
             ))}

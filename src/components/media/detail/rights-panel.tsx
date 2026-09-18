@@ -188,7 +188,7 @@ export function RightsPanel({
                   : "Record an image-rights confirmation for this asset"
               }
             >
-              <FileCheck2 /> {" "}{tr("Log confirmation")}</Button>
+              <FileCheck2 />{" "}{tr("Log confirmation")}</Button>
           ) : null}
         </div>
         {consents.length ? (

@@ -53,11 +53,11 @@ export async function EditionStrip({ editions, activeEditionId }: { editions: Ar
                     ))
                   ) : published ? (
                     <span className="inline-flex items-center gap-1 text-2xs text-muted-foreground">
-                      <FileText className="size-3" /> {" "}{tr("No export yet")}</span>
+                      <FileText className="size-3" />{" "}{tr("No export yet")}</span>
                   ) : (
                     <Button asChild size="xs" variant="ghost" className="-ml-1.5 text-muted-foreground">
                       <Link href={`/editions/${e.id}`}>
-                        <Hammer /> {" "}{tr("In production")}</Link>
+                        <Hammer />{" "}{tr("In production")}</Link>
                     </Button>
                   )}
                   {e.version ? <span className="ml-auto font-mono text-2xs text-muted-foreground">{e.version.label}</span> : null}

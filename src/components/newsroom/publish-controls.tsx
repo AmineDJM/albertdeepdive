@@ -77,7 +77,7 @@ export function PublishControls({
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button size="sm" variant="brand" disabled={pending || !versionId || !ready}>
-                  <BookCheck /> {" "}{tr("Publish the issue")}</Button>
+                  <BookCheck />{" "}{tr("Publish the issue")}</Button>
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
@@ -94,7 +94,7 @@ export function PublishControls({
           </>
         ) : (
           <span className="flex items-center gap-1.5 text-2xs text-muted-foreground">
-            <ShieldAlert className="size-3.5" /> {" "}{tr("Generate a v1.0 published version on the exports tab first.")}</span>
+            <ShieldAlert className="size-3.5" />{" "}{tr("Generate a v1.0 published version on the exports tab first.")}</span>
         )
       ) : null}
 
@@ -102,7 +102,7 @@ export function PublishControls({
         <AlertDialog>
           <AlertDialogTrigger asChild>
             <Button size="sm" variant="outline" disabled={pending}>
-              <Archive /> {" "}{tr("Move to the archive")}</Button>
+              <Archive />{" "}{tr("Move to the archive")}</Button>
           </AlertDialogTrigger>
           <AlertDialogContent>
             <AlertDialogHeader>
