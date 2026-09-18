@@ -235,6 +235,19 @@ export async function testIntegration(integrationKey: string): Promise<Integrati
           : { ok: true, message: `Connected. ${names.size} model${names.size === 1 ? "" : "s"} available.` };
       }
 
+      case "higgsfield": {
+        if (!config.apiKey) return { ok: false, message: "No credentials saved yet." };
+        if (!config.apiKey.includes(":")) return { ok: false, message: "Credentials must be key-id:key-secret, both halves from the Higgsfield console." };
+        // There is no "who am I" call; asking after a request that cannot exist tells the two
+        // things apart that matter — a key Higgsfield knows (404) and one it does not (401).
+        const base = (config.baseUrl || "https://api.higgsfield.ai").replace(/\/+$/, "");
+        const res = await fetch(`${base}/requests/00000000-0000-0000-0000-000000000000/status`, { headers: { authorization: `Key ${config.apiKey}`, accept: "application/json" }, signal: AbortSignal.timeout(12_000) });
+        if (res.status === 401) return { ok: false, message: "Higgsfield rejected those credentials." };
+        if (res.status === 403) return { ok: false, message: "The credentials work, but the Higgsfield account has no credits left." };
+        if (res.status >= 500) return { ok: false, message: `Higgsfield answered ${res.status}.` };
+        return { ok: true, message: `Connected. Pictures will come from ${config.imageModel?.trim() || "higgsfield-ai/soul/v2/standard"}.` };
+      }
+
       case "browserbase": {
         if (!config.apiKey) return { ok: false, message: "No API key saved yet." };
         const res = await fetch("https://api.browserbase.com/v1/projects", { headers: { "x-bb-api-key": config.apiKey, accept: "application/json" }, signal: AbortSignal.timeout(12_000) });

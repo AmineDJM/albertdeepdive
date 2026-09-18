@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import sharp from "sharp";
 import { fieldCss } from "./render-html";
 import { createLogger } from "@/server/logger";
 
@@ -122,43 +123,65 @@ html,body{width:${request.width}px;height:${request.height}px;overflow:hidden}
 
 /** What a Higgsfield image costs us, per picture. Kept here so the ledger and the plan agree. */
 export const HIGGSFIELD_IMAGE_CENTS = 4;
+export const HIGGSFIELD_DEFAULT_IMAGE_MODEL = "higgsfield-ai/soul/v2/standard";
 
+/** What the SDK resolves to, wide enough for both shapes its API has answered with. */
+export type HiggsfieldResult = { status: string; request_id?: string; images?: { url: string }[]; jobs?: ({ results?: { raw?: { url?: string } } | null } | null)[] };
+
+export type HiggsfieldClient = { subscribe: (model: string, options: { input: Record<string, unknown>; withPolling?: boolean }) => Promise<HiggsfieldResult> };
+export type HiggsfieldClientFactory = (config: { credentials: string; baseURL?: string; maxPollTime?: number }) => HiggsfieldClient;
+
+/** A stand-in for the SDK, for tests that must not reach Higgsfield. Null means the real one. */
+let higgsfieldFactory: HiggsfieldClientFactory | null = null;
+export function setHiggsfieldClientFactoryForTests(factory: HiggsfieldClientFactory | null) {
+  higgsfieldFactory = factory;
+}
+
+async function higgsfieldClient(config: { credentials: string; baseURL?: string; maxPollTime?: number }): Promise<HiggsfieldClient> {
+  if (higgsfieldFactory) return higgsfieldFactory(config);
+  const { createHiggsfieldClient } = await import("@higgsfield/client/v2");
+  return createHiggsfieldClient(config) as unknown as HiggsfieldClient;
+}
+
+/**
+ * Higgsfield, through its own SDK.
+ *
+ * The credentials are the console's "key-id:key-secret" pair, read from the integration (or
+ * HF_CREDENTIALS). The model is asked for a picture with polling and nothing else: the prompt is
+ * the composer's, the size is ours — whatever the model draws is fitted to the frame here, so the
+ * spec's numbers stay the file's numbers. A request that ends any way but "completed" is an
+ * error with that word in it, never a blank ground passed off as a picture.
+ */
 export const higgsfieldImagery: ImageryProvider = {
   name: "higgsfield",
   available: async () => {
     const { integrationConfig } = await import("@/server/integrations/service");
     const config = await integrationConfig("higgsfield");
-    return Boolean(config.apiKey);
+    return Boolean(config.apiKey && config.apiKey.includes(":"));
   },
   generate: async (request, deps) => {
     const { integrationConfig } = await import("@/server/integrations/service");
     const config = await integrationConfig("higgsfield");
-    const apiKey = config.apiKey;
-    if (!apiKey) throw new Error("Higgsfield has no API key configured.");
-    const baseUrl = (config.baseUrl || "https://api.higgsfield.ai").replace(/\/+$/, "");
+    const credentials = config.apiKey?.trim();
+    if (!credentials) throw new Error("Higgsfield has no credentials configured.");
+    if (!credentials.includes(":")) throw new Error("Higgsfield credentials must be key-id:key-secret.");
+    const model = config.imageModel?.trim() || HIGGSFIELD_DEFAULT_IMAGE_MODEL;
+    const baseURL = config.baseUrl?.trim().replace(/\/+$/, "");
 
-    const response = await deps.fetch(`${baseUrl}/v1/images/generations`, {
-      method: "POST",
-      headers: { "content-type": "application/json", authorization: `Bearer ${apiKey}` },
-      body: JSON.stringify({
-        prompt: promptFor(request),
-        width: request.width,
-        height: request.height,
-        // The key doubles as the seed, so the same ask is reproducible at the provider too.
-        seed: seedFrom(request.key),
-        n: 1,
-      }),
-    });
-    if (!response.ok) throw new Error(`Higgsfield returned ${response.status} ${response.statusText}`);
-
-    const payload = (await response.json()) as { data?: { url?: string; b64_json?: string }[] };
-    const first = payload.data?.[0];
-    if (!first) throw new Error("Higgsfield returned no image.");
+    const client = await higgsfieldClient({ credentials, ...(baseURL ? { baseURL } : {}), maxPollTime: 5 * 60 * 1000 });
+    const result = await client.subscribe(model, { input: { prompt: promptFor(request) }, withPolling: true });
+    const status = String(result?.status ?? "");
+    if (status !== "completed") {
+      throw new Error(status === "nsfw" ? "Higgsfield moderated the request and produced no picture." : `Higgsfield ended the request as "${status || "unknown"}" without a picture.`);
+    }
+    const url = result.images?.[0]?.url ?? result.jobs?.[0]?.results?.raw?.url;
+    if (!url) throw new Error("Higgsfield returned no image.");
 
     // Bytes, always. A result URL is a lease on somebody else's bucket, and a pack that renders today
-    // and 404s next month has not been rendered.
-    const bytes = first.b64_json ? Buffer.from(first.b64_json, "base64") : await download(first.url, deps);
-    return { bytes, mimeType: "image/png", provider: "higgsfield", model: "higgsfield-image", costCents: HIGGSFIELD_IMAGE_CENTS, credits: 1 };
+    // and 404s next month has not been rendered. Fitted to the frame: the model draws at its own size.
+    const raw = await download(url, deps);
+    const bytes = await sharp(raw).resize(request.width, request.height, { fit: "cover" }).png().toBuffer();
+    return { bytes, mimeType: "image/png", provider: "higgsfield", model, costCents: HIGGSFIELD_IMAGE_CENTS, credits: 1 };
   },
 };
 

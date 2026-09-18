@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import sharp from "sharp";
 import {
   brieflyImagery,
   generateImagery,
@@ -6,6 +7,7 @@ import {
   nearestSize,
   promptFor,
   seedFrom,
+  setHiggsfieldClientFactoryForTests,
   type ImageryDeps,
   type ImageryProvider,
   type ImageryRequest,
@@ -130,35 +132,33 @@ describe("the route", () => {
 });
 
 describe("Higgsfield", () => {
-  const response = (body: unknown, ok = true) =>
-    ({ ok, status: ok ? 200 : 500, statusText: ok ? "OK" : "Server Error", json: async () => body, arrayBuffer: async () => new ArrayBuffer(4) }) as Response;
+  const picture = () => sharp({ create: { width: 8, height: 8, channels: 3, background: "#2BAFE0" } }).png().toBuffer();
 
-  it("downloads the bytes rather than keeping the provider's URL", async () => {
+  it("downloads the bytes rather than keeping the provider's URL, and fits them to the frame", async () => {
     const calls: string[] = [];
+    const bytes = await picture();
     const fetchImpl = vi.fn(async (input: RequestInfo | URL) => {
-      const url = String(input);
-      calls.push(url);
-      if (url.includes("/v1/images/generations")) return response({ data: [{ url: "https://cdn.higgsfield.example/expires-in-an-hour.png" }] });
-      return { ok: true, status: 200, statusText: "OK", arrayBuffer: async () => new TextEncoder().encode("image-bytes").buffer } as Response;
+      calls.push(String(input));
+      return new Response(new Uint8Array(bytes), { status: 200, headers: { "content-type": "image/png" } });
     });
-
-    vi.doMock("@/server/integrations/service", () => ({ integrationConfig: async () => ({ apiKey: "hf_test", baseUrl: null }) }));
-    const result = await higgsfieldImagery.generate(REQUEST, deps(fetchImpl as unknown as typeof globalThis.fetch));
-
-    // A result URL is a lease on somebody else's bucket. The second call is the download.
-    expect(calls).toHaveLength(2);
-    expect(calls[1]).toContain("cdn.higgsfield.example");
-    expect(result.bytes.toString()).toBe("image-bytes");
-    expect(result.provider).toBe("higgsfield");
-    expect(result.credits).toBe(1);
+    vi.doMock("@/server/integrations/service", () => ({ integrationConfig: async () => ({ apiKey: "id:secret", baseUrl: null, imageModel: null }) }));
+    setHiggsfieldClientFactoryForTests(() => ({ subscribe: async () => ({ status: "completed", images: [{ url: "https://cdn.higgsfield.example/expires-in-an-hour.png" }] }) }));
+    try {
+      const result = await higgsfieldImagery.generate(REQUEST, deps(fetchImpl as unknown as typeof globalThis.fetch));
+      // The model answers with a lease on somebody else's bucket; the one fetch is the download.
+      expect(calls).toEqual(["https://cdn.higgsfield.example/expires-in-an-hour.png"]);
+      const meta = await sharp(result.bytes).metadata();
+      expect([meta.width, meta.height]).toEqual([REQUEST.width, REQUEST.height]);
+      expect(result.provider).toBe("higgsfield");
+      expect(result.credits).toBe(1);
+    } finally {
+      setHiggsfieldClientFactoryForTests(null);
+    }
   });
 
-  it("takes inline bytes without a second request when offered them", async () => {
-    const fetchImpl = vi.fn(async () => response({ data: [{ b64_json: Buffer.from("inline").toString("base64") }] }));
-    vi.doMock("@/server/integrations/service", () => ({ integrationConfig: async () => ({ apiKey: "hf_test", baseUrl: null }) }));
-    const result = await higgsfieldImagery.generate(REQUEST, deps(fetchImpl as unknown as typeof globalThis.fetch));
-    expect(fetchImpl).toHaveBeenCalledTimes(1);
-    expect(result.bytes.toString()).toBe("inline");
+  it("refuses credentials that are not the console's key-id:key-secret pair", async () => {
+    vi.doMock("@/server/integrations/service", () => ({ integrationConfig: async () => ({ apiKey: "hf_test", baseUrl: null, imageModel: null }) }));
+    await expect(higgsfieldImagery.generate(REQUEST, deps())).rejects.toThrow(/key-id:key-secret/);
   });
 
   it("seeds from the content-addressed key, so the same ask is reproducible at the provider too", () => {
