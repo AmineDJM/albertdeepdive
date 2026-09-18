@@ -6,8 +6,9 @@ import { registerJobHandler } from "@/server/jobs/registry";
 import { getStorage } from "@/server/storage";
 import { createLogger } from "@/server/logger";
 import { launchBrowser } from "@/server/publication/pdf";
-import { renderContactSheet, renderSpec } from "./render";
-import { attachRendered, failAsset, getPack, recordCost } from "./service";
+import { renderContactSheet, renderHtmlToImage, renderSpec } from "./render";
+import { generateImagery, type ImageryProviderName } from "./imagery";
+import { attachRendered, failAsset, getPack, hasCreditsLeft, recordCost } from "./service";
 import type { FrameImages } from "./render-html";
 
 const log = createLogger("creative-jobs");
@@ -54,6 +55,11 @@ registerJobHandler<RenderPayload, { frames: number; skipped: boolean }>(CREATIVE
   const images = await loadImages(pack.spec.frames.flatMap((frame) => (frame.image?.mediaId ? [frame.image.mediaId] : [])));
   const browser = await launchBrowser();
   let rendered = 0;
+
+  // Pictures the pack asked for and does not have yet. Done before the frames rather than during
+  // them, so a provider that is slow or down is one delay at the start rather than a stall between
+  // slides, and so the cost is recorded whether or not the render that follows succeeds.
+  await fulfilGenerated(pack, images, browser, ctx.log);
 
   try {
     await renderSpec(pack.spec, {
@@ -123,6 +129,93 @@ registerJobHandler<RenderPayload, { frames: number; skipped: boolean }>(CREATIVE
     await browser.close().catch(() => {});
   }
 });
+
+
+/**
+ * Make the pictures a spec asked for, once each, and keep them.
+ *
+ * Content-addressed on the key the composer put in the spec: an ask that has been fulfilled before —
+ * by this pack, by another pack, by a render last week — is fetched from storage rather than bought
+ * again. That is what stops "render again" from being a button that spends money, and it is why the
+ * key is part of the fingerprint rather than a runtime id.
+ *
+ * A failure here never fails the render. The route ends at Briefly's own generator, which cannot
+ * fail for want of a provider; if even that breaks, the frame falls back to the CSS field the
+ * renderer draws inline, and the pack ships looking designed rather than broken.
+ */
+async function fulfilGenerated(
+  pack: Awaited<ReturnType<typeof getPack>>,
+  images: FrameImages,
+  browser: Awaited<ReturnType<typeof launchBrowser>>,
+  logLine: (message: string, meta?: Record<string, unknown>) => void,
+): Promise<void> {
+  const wanted = new Map<string, NonNullable<NonNullable<(typeof pack.spec)>["frames"][number]["image"]>>();
+  for (const frame of pack.spec?.frames ?? []) {
+    if (frame.image?.generate && !frame.image.mediaId) wanted.set(frame.image.generate.key, frame.image);
+  }
+  if (!wanted.size) return;
+
+  const storage = getStorage();
+  // Super Admin may hold a workspace to a subset of providers — in-house only for a customer with a
+  // procurement rule, say — independently of which keys happen to be configured.
+  const organization = await db.query.organizations.findFirst({ where: eq(s.organizations.id, pack.organizationId), columns: { settings: true } });
+  const configured = (organization?.settings as { imageryProviders?: ImageryProviderName[] } | null)?.imageryProviders;
+
+  /*
+   * Out of credits is not out of pictures.
+   *
+   * A workspace that has spent its allowance falls back to Briefly's own generator, which costs
+   * nothing and produces a designed ground from the brand's colours. Failing the render instead
+   * would mean a customer loses a carousel they had already written because of a billing threshold,
+   * which is the wrong end of the trade — the upgrade prompt belongs in the studio, not in a
+   * half-rendered pack.
+   */
+  const affordable = await hasCreditsLeft(pack.organizationId, wanted.size);
+  const allow = affordable ? configured : (["briefly"] as ImageryProviderName[]);
+  if (!affordable) log.info("imagery allowance spent, drawing in-house", { packId: pack.id, images: wanted.size });
+
+  for (const [key, image] of wanted) {
+    const storageKey = `creative/generated/${key}.jpg`;
+    const existing = await storage.exists(storageKey).catch(() => false);
+    if (existing) {
+      const bytes = await storage.get(storageKey);
+      if (bytes) {
+        images.set(key, `data:image/jpeg;base64,${bytes.toString("base64")}`);
+        continue;
+      }
+    }
+
+    try {
+      const result = await generateImagery(
+        { ...image.generate!, width: image.width, height: image.height },
+        {
+          allow,
+          deps: {
+            fetch: globalThis.fetch,
+            renderHtml: (html, size) => renderHtmlToImage(html, size, { browser }),
+          },
+        },
+      );
+      await storage.put(storageKey, result.bytes, { contentType: result.mimeType, cacheControl: "public, max-age=31536000, immutable" });
+      images.set(key, `data:${result.mimeType};base64,${result.bytes.toString("base64")}`);
+      await recordCost({
+        organizationId: pack.organizationId,
+        packId: pack.id,
+        provider: result.provider,
+        operation: "image",
+        model: result.model,
+        units: 1,
+        unit: "image",
+        costCents: result.costCents,
+        credits: result.credits,
+      });
+      logLine(`generated a ${image.generate!.subject} ground`, { provider: result.provider, key });
+    } catch (error) {
+      // The frame keeps its inline CSS field, which is a designed ground rather than a hole.
+      log.warn("could not generate imagery", { packId: pack.id, key, error: error instanceof Error ? error.message : String(error) });
+    }
+  }
+}
 
 /**
  * The organisation's own photographs, as data URIs.

@@ -149,8 +149,15 @@ export type ShapeBlock = {
 export type ImageBlock = {
   /** The media asset to draw, or null when the frame's picture is to be generated. */
   mediaId: string | null;
-  /** Set when the picture must be produced before this frame can render. */
-  generate?: { treatment: string; palette: string[]; subject: "abstract" | "texture" | "gradient" };
+  /**
+   * Set when the picture must be produced before this frame can render.
+   *
+   * `key` is content-addressed from the request, so the same brand and the same frame always ask for
+   * the same picture, a second render finds it already made, and two packs wanting the same abstract
+   * field share one file rather than paying for it twice. It is part of the spec and therefore part
+   * of the fingerprint, which is what makes "re-render" mean re-render rather than re-generate.
+   */
+  generate?: { treatment: string; palette: string[]; subject: "abstract" | "texture" | "gradient"; key: string };
   x: number;
   y: number;
   width: number;

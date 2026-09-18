@@ -1,10 +1,10 @@
 import { createHash } from "node:crypto";
 import { FORMATS, MODES, typeBox, type CreativeFormat, type CreativeMode } from "./formats";
 import { designSystem, type DesignSystem } from "./design-systems";
-import { debalance, isWidow, leadingFor, maxMeasureWidth, MEASURE, minFontSize, opticalInset } from "./laws";
+import { debalance, isWidow, leadingFor, maxMeasureWidth, MEASURE, minFontSize, opticalInset, scrimFor, worstCaseUnder } from "./laws";
 import { inspect } from "./qa";
 import type { CreativeBrief, Emphasis, FrameBrief, FrameLayout, FrameSpec, ImageBlock, RenderSpec, ShapeBlock, TextBlock } from "./brief";
-import { ensureContrast } from "@/lib/brand/colour";
+import { contrastRatio, ensureContrast, mix, relativeLuminance } from "@/lib/brand/colour";
 import { FAMILIES } from "@/lib/brand/typography";
 import type { BrandTokens, SurfaceKey } from "@/lib/brand/system";
 
@@ -274,7 +274,38 @@ function composeFrame(frame: FrameBrief, index: number, ctx: Ctx): FrameSpec {
   // the type will actually sit on rather than against the surface's nominal fill.
   const hasImage = frame.layout === "image_full" || frame.layout === "image_top";
   const overImage = frame.layout === "image_full";
-  const effectiveBackground = overImage ? tokens.imagery.duotoneFrom : surface.background;
+  // What the type will actually sit on. For a generated ground we know every colour in it, because we
+  // built it from the brand's palette — so the worst case is the lightest of those under the scrim,
+  // not the duotone base. Assuming the base is assuming the dark half of a picture that has a light
+  // half, and a headline that clears 4.5:1 on one half and vanishes on the other has passed nothing.
+  const generatedPalette = MODES[ctx.mode].usesGeneratedImagery && !frame.mediaId
+    ? [tokens.surfaces.brand.background, tokens.surfaces.accent.background, tokens.surfaces.paper.background]
+    : null;
+
+  /*
+   * Type over a picture: decide the type first, then darken the picture until the type survives.
+   *
+   * The other order — pick a scrim, then find a colour that clears 4.5:1 against the picture's
+   * nominal shade — works only for a picture that is all one shade. A generated texture has a light
+   * region and a dark one, and there no single type colour works: light type disappears into the
+   * highlight and dark type into the shadow. So the scrim is sized to the picture rather than chosen,
+   * and the type is the light end, which is what a poster over a photograph wants anyway.
+   */
+  const toBlack = (colour: string, amount: number) => mix(colour, "#000000", amount);
+  const overType = overImage ? ensureContrast(tokens.surfaces.paper.background, "#000000", 4.5) : surface.foreground;
+  const scrim = overImage
+    ? scrimFor(
+        worstCaseUnder(generatedPalette ?? [tokens.imagery.duotoneFrom, tokens.imagery.duotoneTo], 0, toBlack, relativeLuminance),
+        overType,
+        4.5,
+        toBlack,
+        contrastRatio,
+        Math.max(0.45, tokens.imagery.scrim),
+      )
+    : 0;
+  const effectiveBackground = overImage
+    ? worstCaseUnder(generatedPalette ?? [tokens.imagery.duotoneFrom, tokens.imagery.duotoneTo], scrim, toBlack, relativeLuminance)
+    : surface.background;
   const foreground = overImage ? ensureContrast(surface.background, effectiveBackground, 4.5) : surface.foreground;
   const subdued = overImage ? ensureContrast(foreground, effectiveBackground, 4.5) : surface.subdued;
 
@@ -287,16 +318,21 @@ function composeFrame(frame: FrameBrief, index: number, ctx: Ctx): FrameSpec {
       width: canvas.width,
       height: imageHeight,
       // Type over a photograph needs the photograph darkened; type beside one does not.
-      dim: overImage ? Math.max(0.45, tokens.imagery.scrim) : 0,
+      dim: scrim,
       grain: tokens.imagery.grain,
       duotone: tokens.imagery.treatment === "duotone" ? { from: tokens.imagery.duotoneFrom, to: tokens.imagery.duotoneTo } : undefined,
     };
     if (MODES[ctx.mode].usesGeneratedImagery && !frame.mediaId) {
+      const palette = [tokens.surfaces.brand.background, tokens.surfaces.accent.background, tokens.surfaces.paper.background];
+      // Abstract only. A generated picture never depicts a real event, a real place or a person.
+      const subject = tokens.imagery.treatment === "duotone" ? ("gradient" as const) : ("texture" as const);
       image.generate = {
         treatment: tokens.imagery.treatment,
-        palette: [tokens.surfaces.brand.background, tokens.surfaces.accent.background, tokens.surfaces.paper.background],
-        // Abstract only. A generated picture never depicts a real event, a real place or a person.
-        subject: tokens.imagery.treatment === "duotone" ? "gradient" : "texture",
+        palette,
+        subject,
+        // Content-addressed: the same ask always resolves to the same file, so a re-render reuses the
+        // picture instead of buying another one, and two frames wanting the same field share it.
+        key: imageryKey({ treatment: tokens.imagery.treatment, palette, subject, width: canvas.width, height: imageHeight }),
       };
     }
   }
@@ -308,12 +344,32 @@ function composeFrame(frame: FrameBrief, index: number, ctx: Ctx): FrameSpec {
 
   // The design system's furniture: an index chip, a bled numeral, a header and footer. It declares
   // the room it took, so the content below cannot collide with it.
+  /*
+   * The system's furniture is coloured for what it will actually sit on.
+   *
+   * A design system knows nothing about photographs — it is handed a surface and asked for chrome.
+   * On a full-bleed frame that surface is not what the chrome lands on: the picture is. Handing over
+   * the nominal surface put a report header at 1.9:1 on a scrimmed ground, correct against a colour
+   * that was nowhere in the frame. So the surface the system receives is the one that is really
+   * there, and every colour it derives is derived from that.
+   */
+  const chromeSurface = overImage
+    ? {
+        ...surface,
+        background: effectiveBackground,
+        foreground,
+        subdued,
+        rule: ensureContrast(surface.rule, effectiveBackground, 3),
+        highlight: ensureContrast(surface.highlight, effectiveBackground, 3),
+      }
+    : surface;
+
   const chrome = ctx.system.chrome({
     format: ctx.format,
     canvas,
     box: contentBox,
     tokens,
-    surface,
+    surface: chromeSurface,
     index,
     total: ctx.total,
     organizationName: ctx.organizationName,
@@ -530,6 +586,18 @@ export function composeSpec(brief: CreativeBrief, tokens: BrandTokens, options: 
 function ratioOf(tokens: BrandTokens): number {
   const [a, b] = tokens.type.scale;
   return a > 0 ? b / a : 1.28;
+}
+
+/**
+ * The name of a generated picture, derived from everything that decides what it looks like.
+ *
+ * Pure, like the rest of the composer: no clock, no counter, no id. Two identical asks anywhere in
+ * the system produce the same name, which is what turns "generate an image" into "fetch this one if
+ * it exists" without a cache that can go stale.
+ */
+export function imageryKey(request: { treatment: string; palette: string[]; subject: string; width: number; height: number }): string {
+  const canonical = [request.treatment, request.subject, request.width, request.height, ...request.palette].join("|");
+  return createHash("sha256").update(canonical).digest("hex").slice(0, 32);
 }
 
 export function fingerprintOf(spec: Omit<RenderSpec, "fingerprint">): string {

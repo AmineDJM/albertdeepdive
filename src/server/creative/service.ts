@@ -360,6 +360,22 @@ export async function creditsUsedThisMonth(organizationId: string): Promise<numb
  * `null` means unlimited, which is deliberately different from a large number: an enterprise plan
  * should not silently acquire a cap the day somebody picks a round figure for it.
  */
+/**
+ * Whether `needed` more credits would fit inside this month's allowance.
+ *
+ * The same arithmetic as `assertCredits` without the throw, for the callers that would rather do
+ * something cheaper than fail. Both read the plan and the ledger rather than a counter, so a refund,
+ * a plan change or a correction takes effect immediately.
+ */
+export async function hasCreditsLeft(organizationId: string, needed: number): Promise<boolean> {
+  const plan = await resolveEntitlements(organizationId);
+  const allowance = (plan.entitlements as Record<string, unknown>).creativeCredits;
+  if (allowance === null || allowance === undefined) return true;
+  const limit = Number(allowance);
+  if (!Number.isFinite(limit)) return true;
+  return (await creditsUsedThisMonth(organizationId)) + needed <= limit;
+}
+
 export async function assertCredits(organizationId: string, needed: number) {
   const plan = await resolveEntitlements(organizationId);
   const allowance = (plan.entitlements as Record<string, unknown>).creativeCredits;
@@ -397,6 +413,11 @@ export async function generatePack(input: { packId: string; actorId?: string | n
   const record = await activeBrand(pack.organizationId);
   if (!record) throw new NotFoundError("Brand");
   const organization = await db.query.organizations.findFirst({ where: eq(s.organizations.id, pack.organizationId), columns: { name: true } });
+
+  // Directing is the one step that always costs a credit, so it is the one step that checks. The
+  // check is before the spend rather than after it: a ledger that records an overspend is an audit
+  // trail, not a limit.
+  await assertCredits(pack.organizationId, 1);
 
   await db.update(s.creativePacks).set({ status: "DIRECTING", error: null, updatedAt: new Date() }).where(eq(s.creativePacks.id, pack.id));
 

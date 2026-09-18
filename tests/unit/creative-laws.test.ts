@@ -17,10 +17,12 @@ import {
   minFontSize,
   opticalInset,
   PHONE_WIDTH,
+  scrimFor,
+  worstCaseUnder,
   vibrates,
 } from "@/lib/creative/laws";
 import { advanceFor, composeSpec, wrapLines } from "@/lib/creative/compose";
-import { hue, saturation } from "@/lib/brand/colour";
+import { contrastRatio, hue, mix, relativeLuminance, saturation } from "@/lib/brand/colour";
 import { inspect, lawFor, verdict } from "@/lib/creative/qa";
 import { DESIGN_SYSTEMS } from "@/lib/creative/design-systems";
 import { CREATIVE_FORMATS, FORMATS } from "@/lib/creative/formats";
@@ -257,6 +259,69 @@ describe("colour and alignment", () => {
     // A quotation mark hangs off the margin entirely, so it is pulled much further.
     expect(opticalInset(120, "“")).toBeGreaterThan(opticalInset(120, "T"));
     expect(opticalInset(120, "T")).toBeGreaterThan(0);
+  });
+});
+
+describe("type over a picture", () => {
+  const toBlack = (colour: string, amount: number) => mix(colour, "#000000", amount);
+
+  it("takes the lightest thing in a ground it knows, not a nominal colour", () => {
+    const palette = ["#10203A", "#2BAFE0", "#FFFFFF"];
+    // Undimmed, the worst case is the white in the palette — not the navy the duotone starts from.
+    expect(worstCaseUnder(palette, 0, toBlack, relativeLuminance).toUpperCase()).toBe("#FFFFFF");
+    // Dimmed, it is that white darkened by exactly the scrim.
+    expect(worstCaseUnder(palette, 0.5, toBlack, relativeLuminance)).toBe(mix("#FFFFFF", "#000000", 0.5));
+  });
+
+  it("sizes the scrim so light type clears 4.5:1 against the lightest the picture can be", () => {
+    for (const lightest of ["#FFFFFF", "#2BAFE0", "#F2F2F2", "#10203A"]) {
+      const dim = scrimFor(lightest, "#FFFFFF", 4.5, toBlack, contrastRatio, 0);
+      const worst = worstCaseUnder([lightest], dim, toBlack, relativeLuminance);
+      expect(contrastRatio("#FFFFFF", worst), `${lightest} at dim ${dim}`).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+
+  it("darkens no more than it has to", () => {
+    // A picture already dark enough needs no scrim at all beyond the floor, and flattening one that
+    // did not need it is how a photograph stops being a photograph.
+    expect(scrimFor("#10203A", "#FFFFFF", 4.5, toBlack, contrastRatio, 0)).toBe(0);
+    // And a white ground needs a great deal, but not all of it.
+    const white = scrimFor("#FFFFFF", "#FFFFFF", 4.5, toBlack, contrastRatio, 0);
+    expect(white).toBeGreaterThan(0.5);
+    expect(white).toBeLessThan(1);
+  });
+
+  it("respects a floor, so a brand that wants a moodier scrim keeps it", () => {
+    expect(scrimFor("#10203A", "#FFFFFF", 4.5, toBlack, contrastRatio, 0.45)).toBe(0.45);
+  });
+
+  it("says so rather than pretending, when no scrim can reach the threshold", () => {
+    // At AA this branch is unreachable, and that is worth knowing: for any foreground, either it
+    // already clears 4.5:1 on the lightest ground or a fully black one gets it there. It becomes
+    // reachable at AAA, where a mid grey fails against both ends — and then the answer is a full
+    // scrim and an honest 1, not a number that quietly does not work.
+    expect(scrimFor("#FFFFFF", "#949494", 7, toBlack, contrastRatio, 0)).toBe(1);
+    // The AA case it is often mistaken for: black type needs no scrim at all.
+    expect(scrimFor("#FFFFFF", "#000000", 4.5, toBlack, contrastRatio, 0)).toBe(0);
+  });
+
+  it("holds in real composed output: every Cinematic frame's type clears its own scrim", () => {
+    const brief: CreativeBrief = {
+      ...briefFor({ mode: "CINEMATIC" }),
+      frames: [
+        { layout: "image_full", headline: "Over a generated ground", surface: "ink", emphasis: "loud" },
+        { layout: "image_top", headline: "Beside one", body: "With the words underneath.", surface: "paper", emphasis: "normal" },
+        { layout: "cta", headline: "Read on", surface: "accent", emphasis: "normal" },
+      ],
+    };
+    for (const system of DESIGN_SYSTEMS) {
+      const spec = composeSpec(brief, tokens, { brandVersion: "v", system, organizationName: "Albert School" });
+      const findings = inspect(spec, brief).filter((finding) => finding.code === "contrast");
+      expect(findings, system).toEqual([]);
+      // And the frame that carries type over the picture really did get a scrim.
+      const over = spec.frames.find((frame) => frame.layout === "image_full")!;
+      expect(over.image!.dim, system).toBeGreaterThan(0);
+    }
   });
 });
 

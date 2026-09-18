@@ -1,0 +1,120 @@
+{
+  "surfaces": {
+    "paper": {
+      "key": "paper",
+      "background": "#FFFFFF",
+      "foreground": "#17191C",
+      "subdued": "#6F7072",
+      "rule": "#D5D6D6",
+      "highlight": "#27A0CD"
+    },
+    "ink": {
+      "key": "ink",
+      "background": "#17191C",
+      "foreground": "#FFFFFF",
+      "subdued": "#A7A8A9",
+      "rule": "#414245",
+      "highlight": "#2BAFE0"
+    },
+    "brand": {
+      "key": "brand",
+      "background": "#10203A",
+      "foreground": "#FFFFFF",
+      "subdued": "#A4AAB4",
+      "rule": "#3B485D",
+      "highlight": "#2BAFE0"
+    },
+    "accent": {
+      "key": "accent",
+      "background": "#2BAFE0",
+      "foreground": "#17191C",
+      "subdued": "#183E4E",
+      "rule": "#2794BD",
+      "highlight": "#165A74"
+    },
+    "muted": {
+      "key": "muted",
+      "background": "#F2F2F2",
+      "foreground": "#17191C",
+      "subdued": "#6A6B6D",
+      "rule": "#CBCBCB",
+      "highlight": "#2596C1"
+    }
+  },
+  "type": {
+    "personality": "editorial",
+    "display": {
+      "family": "fraunces",
+      "weight": 700,
+      "tracking": -0.022,
+      "leading": 1.02,
+      "case": "none"
+    },
+    "text": {
+      "family": "newsreader",
+      "weight": 400,
+      "tracking": 0,
+      "leading": 1.5,
+      "case": "none"
+    },
+    "label": {
+      "family": "inter",
+      "weight": 600,
+      "tracking": 0.08,
+      "leading": 1.2,
+      "case": "upper"
+    },
+    "figure": {
+      "family": "plexMono",
+      "weight": 500,
+      "tracking": 0,
+      "leading": 1.1,
+      "case": "none"
+    },
+    "scale": [
+      12.12,
+      16,
+      21.12,
+      27.88,
+      36.8,
+      48.58,
+      64.12
+    ],
+    "families": [
+      "\"Fraunces\", \"Georgia\", \"Times New Roman\", serif",
+      "\"Newsreader\", \"Georgia\", \"Times New Roman\", serif",
+      "\"Inter\", \"Helvetica Neue\", Arial, sans-serif",
+      "\"IBM Plex Mono\", \"Menlo\", \"Consolas\", monospace"
+    ]
+  },
+  "shape": {
+    "radiusSm": 3,
+    "radiusMd": 6,
+    "radiusLg": 12,
+    "borderWidth": 1,
+    "unit": 8,
+    "space": [
+      4,
+      8,
+      12,
+      16,
+      24,
+      32,
+      48,
+      64
+    ]
+  },
+  "imagery": {
+    "treatment": "editorial",
+    "grain": 0.12,
+    "scrim": 0.45,
+    "duotoneFrom": "#10203A",
+    "duotoneTo": "#FFFFFF"
+  },
+  "motion": {
+    "pace": "measured",
+    "durationMs": 650,
+    "stagger": 90,
+    "easing": "cubic-bezier(0.33, 0, 0.12, 1)"
+  }
+}

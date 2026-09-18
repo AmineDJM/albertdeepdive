@@ -1,4 +1,4 @@
-import { contrastRatio, hue, saturation } from "@/lib/brand/colour";
+import { contrastRatio, hue, mix, relativeLuminance, saturation } from "@/lib/brand/colour";
 import { FORMATS, type CreativeFormat } from "./formats";
 import {
   apparentPx,
@@ -11,6 +11,7 @@ import {
   MIN_APPARENT_PX,
   SURFACE_PROPORTION,
   vibrates,
+  worstCaseUnder,
   type Law,
 } from "./laws";
 import type { CreativeBrief, FrameSpec, RenderSpec } from "./brief";
@@ -289,13 +290,28 @@ function inspectFrame(frame: FrameSpec, safe?: { top: number; right: number; bot
   return findings;
 }
 
-/** What a block at this point is drawn on: a shape if one is under it, otherwise the surface. */
+/**
+ * What a block at this point is drawn on: a shape if one is under it, the picture if it is over the
+ * picture, otherwise the surface.
+ *
+ * The position check on the image is the part that matters. An `image_top` frame has a photograph
+ * across the top half and its type on the surface below; treating any frame that *has* an image as
+ * one whose type sits *on* it reported a contrast defect on every such frame — correct-looking,
+ * entirely wrong, and the sort of false alarm that teaches people to ignore the panel.
+ */
 function backgroundUnder(frame: FrameSpec, x: number, y: number): string {
   const shape = frame.shapes.find((candidate) => candidate.kind === "rect" && x >= candidate.x && x < candidate.x + candidate.width && y >= candidate.y && y < candidate.y + candidate.height);
   if (shape) return shape.colour;
-  if (frame.image) {
-    // Over a dimmed photograph the worst case is the lightest the picture could be under the scrim.
-    return frame.image.duotone?.from ?? "#000000";
+  const image = frame.image;
+  if (image && x >= image.x && x < image.x + image.width && y >= image.y && y < image.y + image.height) {
+    // A ground we generated is made of known colours, so the worst case is exact: the lightest one in
+    // the palette, under the scrim. A photograph could be anything, and the duotone base is what the
+    // composer already assumed — the same assumption in both places, so the checker and the composer
+    // cannot disagree about whether a frame passes.
+    if (image.generate) {
+      return worstCaseUnder(image.generate.palette, image.dim, (colour, amount) => mix(colour, "#000000", amount), relativeLuminance);
+    }
+    return image.duotone?.from ?? "#000000";
   }
   return frame.background;
 }

@@ -92,6 +92,29 @@ export async function renderSpec(
   }
 }
 
+/**
+ * Any HTML, to image bytes, on the same Chromium everything else uses.
+ *
+ * Exposed so the in-house imagery provider can draw a ground without knowing anything about
+ * browsers, and so a test can substitute something that does not need one.
+ */
+export async function renderHtmlToImage(html: string, size: { width: number; height: number }, options: { browser?: Browser } = {}): Promise<{ bytes: Buffer; mimeType: string }> {
+  const browser = options.browser ?? (await launchBrowser());
+  const owned = !options.browser;
+  try {
+    const context = await browser.newContext({ viewport: size, deviceScaleFactor: 1, locale: "en-GB", timezoneId: "UTC" });
+    const page = await context.newPage();
+    await page.setContent(html, { waitUntil: "load", timeout: 60_000 });
+    const raw = await page.screenshot({ type: "png", clip: { x: 0, y: 0, ...size } });
+    await context.close();
+    // A generated ground is continuous tone and goes under type, so JPEG at a high quality is the
+    // right trade: a PNG of a gradient is several megabytes for no visible gain.
+    return { bytes: await sharp(raw).jpeg({ quality: 90, mozjpeg: true, chromaSubsampling: "4:4:4" }).toBuffer(), mimeType: "image/jpeg" };
+  } finally {
+    if (owned) await browser.close().catch(() => {});
+  }
+}
+
 /** One image of the whole set, for the studio's list and for a share preview. */
 export async function renderContactSheet(spec: RenderSpec, options: { images?: FrameImages; browser?: Browser } = {}): Promise<RenderedFrame> {
   const fontCss = await loadEmbeddedFontCss();

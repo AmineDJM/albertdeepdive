@@ -25,7 +25,7 @@ import { ROLES, type Role } from "@/lib/auth/permissions";
  */
 
 /** The limits a person can raise or lower. `null` means unlimited and is not the same as 0. */
-export const LIMIT_KEYS = ["publications", "users", "subscribers", "editionsPerMonth"] as const;
+export const LIMIT_KEYS = ["publications", "users", "subscribers", "editionsPerMonth", "creativeCredits"] as const;
 
 /** The switches. Each is a capability the product genuinely gates on. */
 export const FLAG_KEYS = [
@@ -36,6 +36,10 @@ export const FLAG_KEYS = [
   "apiAccess",
   "webhooks",
   "printFeatures",
+  // Creative Studio. Each is a real gate: the studio, the imagery a model may invent, and video.
+  "socialPack",
+  "cinematicMode",
+  "videoGeneration",
 ] as const;
 
 export const OVERRIDE_LABELS: Record<string, string> = {
@@ -50,6 +54,10 @@ export const OVERRIDE_LABELS: Record<string, string> = {
   apiAccess: "API access",
   webhooks: "Webhooks",
   printFeatures: "Print delivery",
+  creativeCredits: "Creative credits a month",
+  socialPack: "Creative Studio",
+  cinematicMode: "Cinematic mode",
+  videoGeneration: "Video",
   outputs: "Formats",
 };
 

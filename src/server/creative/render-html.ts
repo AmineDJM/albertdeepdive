@@ -74,16 +74,26 @@ function imageHtml(image: ImageBlock, dataUri: string | null): string {
       layers.push(`<div style="position:absolute;inset:0;background:linear-gradient(160deg,${image.duotone.from},${image.duotone.to});mix-blend-mode:screen;opacity:0.35"></div>`);
     }
   } else if (image.generate) {
-    // No picture yet: a composed field from the brand's own palette, so an un-generated frame is
-    // still a designed frame rather than a grey box.
-    const [a, b, c] = image.generate.palette;
-    layers.push(`<div style="position:absolute;inset:0;background:radial-gradient(120% 90% at 20% 10%, ${a} 0%, ${b} 48%, ${c} 100%)"></div>`);
+    // No picture yet, or none was wanted: a composed field from the brand's own palette, so a frame
+    // waiting on a provider is still a designed frame rather than a grey box. The shape follows the
+    // subject the composer asked for, because a gradient and a texture are not the same request.
+    layers.push(`<div style="position:absolute;inset:0;${fieldCss(image.generate.palette, image.generate.subject)}"></div>`);
   } else {
     layers.push(`<div style="position:absolute;inset:0;background:${image.duotone?.from ?? "#000"}"></div>`);
   }
 
   if (image.dim > 0) {
-    layers.push(`<div style="position:absolute;inset:0;background:linear-gradient(180deg, rgba(0,0,0,${(image.dim * 0.5).toFixed(3)}) 0%, rgba(0,0,0,${image.dim.toFixed(3)}) 100%)"></div>`);
+    // A flat floor at the computed value, then a little extra toward the bottom for depth.
+    //
+    // The floor is the part that matters: the composer sized `dim` so that type clears 4.5:1 against
+    // the lightest the picture can be, and a gradient that starts at half strength quietly hands back
+    // half of that everywhere above the midpoint. The guarantee has to hold wherever type lands, not
+    // wherever the layout happens to put it today.
+    layers.push(`<div style="position:absolute;inset:0;background:rgba(0,0,0,${image.dim.toFixed(3)})"></div>`);
+    const extra = Math.min(0.28, (1 - image.dim) * 0.45);
+    if (extra > 0.01) {
+      layers.push(`<div style="position:absolute;inset:0;background:linear-gradient(180deg, rgba(0,0,0,0) 35%, rgba(0,0,0,${extra.toFixed(3)}) 100%)"></div>`);
+    }
   }
   if (image.grain > 0) {
     const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='g'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23g)' opacity='1'/></svg>`;
@@ -95,10 +105,42 @@ function imageHtml(image: ImageBlock, dataUri: string | null): string {
   return `<div style="${frame}">${layers.join("")}</div>`;
 }
 
+/**
+ * A field built from the brand's own three colours.
+ *
+ * This is what Briefly draws when no image provider is configured, and it is a real answer rather
+ * than a placeholder: three brand colours, composited deterministically, is a legitimate abstract
+ * ground for a poster and costs nothing. Cinematic mode therefore works out of the box, and adding a
+ * provider later changes how good the picture is, not whether there is one.
+ *
+ * Each subject is a different composition, because "gradient", "texture" and "abstract" are three
+ * different asks and rendering all three the same way makes the choice meaningless.
+ */
+export function fieldCss(palette: string[], subject: "abstract" | "texture" | "gradient"): string {
+  const [a, b, c] = [palette[0] ?? "#111111", palette[1] ?? palette[0] ?? "#333333", palette[2] ?? palette[0] ?? "#666666"];
+  if (subject === "gradient") return `background:linear-gradient(155deg, ${a} 0%, ${b} 55%, ${c} 100%)`;
+  if (subject === "texture") {
+    // Overlapping soft radials read as depth rather than as a sweep; three of them at different
+    // scales is the cheapest thing that stops a ground looking like a CSS gradient.
+    return [
+      `background-color:${a}`,
+      `background-image:radial-gradient(70% 55% at 18% 12%, ${b} 0%, transparent 62%),`
+        + `radial-gradient(55% 70% at 84% 28%, ${c} 0%, transparent 58%),`
+        + `radial-gradient(90% 60% at 50% 100%, ${b} 0%, transparent 70%)`,
+    ].join(";");
+  }
+  // Abstract: hard-edged bands at an angle, which is a composition rather than a wash.
+  return `background:conic-gradient(from 210deg at 35% 30%, ${a} 0deg, ${b} 130deg, ${c} 240deg, ${a} 360deg)`;
+}
+
 export type FrameImages = Map<string, string>;
 
 export function renderFrameHtml(frame: FrameSpec, options: { fontCss: string; images?: FrameImages }): string {
-  const image = frame.image ? imageHtml(frame.image, frame.image.mediaId ? (options.images?.get(frame.image.mediaId) ?? null) : null) : "";
+  // A frame's picture is either one of the organisation's own, looked up by media id, or a generated
+  // one, looked up by the content-addressed key the composer put in the spec. Both arrive through the
+  // same map, so the renderer never knows or cares which it got.
+  const source = frame.image ? (frame.image.mediaId ?? frame.image.generate?.key ?? null) : null;
+  const image = frame.image ? imageHtml(frame.image, source ? (options.images?.get(source) ?? null) : null) : "";
   // Background blocks first, then shapes, then content: a ghosted numeral is meant to be under the
   // headline, and draw order is the only thing that decides which of two overlapping blocks wins.
   const background = frame.text.filter((block) => block.layer === "background");

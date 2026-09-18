@@ -181,6 +181,67 @@ export function coloursVibrate(a: { hue: number; saturation: number }, b: { hue:
   return vibrates(a.hue, a.saturation, b.hue, b.saturation);
 }
 
+/**
+ * The worst thing type could be sitting on, once the scrim is applied.
+ *
+ * Contrast has to be judged against the lightest part of what is actually behind the words, not
+ * against a nominal background colour — a headline that clears 4.5:1 on the dark half of a picture
+ * and vanishes on the bright half has not passed anything.
+ *
+ * Which is knowable in one case and not the other. A ground Briefly generated is built from the
+ * brand's own palette, so the lightest thing in it is the lightest colour in that palette, exactly.
+ * Somebody's photograph could contain anything, so the only safe assumption is white — and applying
+ * that retroactively would fail packs that are fine, so the caller passes what it knows and this
+ * says what follows from it.
+ *
+ * `dim` is the scrim the renderer lays over the picture, so the worst case is that colour darkened
+ * by it rather than the raw colour.
+ */
+export function worstCaseUnder(candidates: string[], dim: number, mixTowardBlack: (colour: string, amount: number) => string, luminance: (colour: string) => number): string {
+  const lightest = candidates.reduce((best, colour) => (luminance(colour) > luminance(best) ? colour : best), candidates[0] ?? "#FFFFFF");
+  return dim > 0 ? mixTowardBlack(lightest, Math.min(1, dim)) : lightest;
+}
+
+/**
+ * How dark the scrim over a picture has to be for type to survive on it.
+ *
+ * The mistake this replaces: pick a scrim that looks about right, then pick a type colour that clears
+ * 4.5:1 against the picture's *nominal* colour. That works until the picture has a light region and a
+ * dark one, at which point no single type colour works — light type disappears into the highlight,
+ * dark type into the shadow, and the checker passes whichever end it happened to measure.
+ *
+ * The fix is the other way round: decide the type is light, then darken the picture until its
+ * lightest possible point supports light type. A scrim is a tool for making a ground, not a mood.
+ *
+ * Bisected rather than solved because `mix` works in gamma-encoded sRGB and the relationship between
+ * mix amount and contrast ratio has no closed form worth writing. Twenty iterations is exact to five
+ * decimal places, and it runs once per frame.
+ */
+export function scrimFor(
+  lightest: string,
+  foreground: string,
+  minimum: number,
+  mixTowardBlack: (colour: string, amount: number) => string,
+  ratio: (a: string, b: string) => number,
+  floor = 0,
+): number {
+  if (ratio(foreground, lightest) >= minimum) return floor;
+  // Fully black is the most a scrim can do. At AA this never fires — for any foreground, either it
+  // already clears on the lightest ground or a black one gets it there — but at AAA a mid grey fails
+  // against both ends, and then the honest answer is a full scrim rather than a number that does not
+  // work.
+  if (ratio(foreground, mixTowardBlack(lightest, 1)) < minimum) return 1;
+  let low = 0;
+  let high = 1;
+  for (let i = 0; i < 20; i += 1) {
+    const middle = (low + high) / 2;
+    if (ratio(foreground, mixTowardBlack(lightest, middle)) >= minimum) high = middle;
+    else low = middle;
+  }
+  // A hair over, so rounding in the renderer cannot take it back under.
+  return Math.max(floor, Math.min(1, Math.ceil(high * 100) / 100));
+}
+
 /* ── Composition ──────────────────────────────────────────────────────────────────────────── */
 
 /**

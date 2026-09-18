@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Sparkles } from "lucide-react";
 import { getCurrentUser, hasPermission } from "@/server/auth/session";
 import { requireTenant } from "@/server/tenancy/context";
-import { listPacks, qaFor } from "@/server/creative/service";
+import { creditsUsedThisMonth, listPacks, qaFor } from "@/server/creative/service";
 import { listEditions } from "@/server/editions/service";
 import { resolveEntitlements } from "@/server/billing/entitlements";
 import { getStorage } from "@/server/storage";
@@ -34,8 +34,28 @@ export default async function StudioPage() {
   if (!hasPermission(user, "edition:view")) return <NoAccess title="Studio" permission="edition:view" />;
 
   const tenant = await requireTenant();
-  const [packs, editions, plan] = await Promise.all([listPacks(tenant.organizationId), listEditions(), resolveEntitlements(tenant.organizationId)]);
+  const [packs, editions, plan, creditsUsed] = await Promise.all([
+    listPacks(tenant.organizationId),
+    listEditions(),
+    resolveEntitlements(tenant.organizationId),
+    creditsUsedThisMonth(tenant.organizationId),
+  ]);
   const allowed = (plan.entitlements as Record<string, unknown>).socialPack !== false;
+
+  /*
+   * What is left, in the customer's own currency.
+   *
+   * Shown because the alternative is finding out at the moment you press the button. `null` is
+   * unlimited and says nothing at all — a plan with no cap should not acquire a scoreboard.
+   */
+  const allowance = (plan.entitlements as Record<string, unknown>).creativeCredits;
+  const limit = allowance === null || allowance === undefined ? null : Number(allowance);
+  const creditLine =
+    limit === null || !Number.isFinite(limit)
+      ? null
+      : creditsUsed >= limit
+        ? `${creditsUsed} of ${limit} credits used this month. Briefly still draws everything itself — only invented imagery is paused.`
+        : `${limit - creditsUsed} of ${limit} credits left this month.`;
 
   // The cover of each pack, signed once here rather than per card.
   const covers = packs.length
@@ -65,6 +85,8 @@ export default async function StudioPage() {
       <PageBody className="space-y-4">
         {!allowed ? (
           <p className="rounded-lg border border-amber-soft bg-amber-soft/40 px-4 py-3 text-[13px]">Creative Studio is not included in this plan.</p>
+        ) : creditLine ? (
+          <p className="text-xs text-muted-foreground">{creditLine}</p>
         ) : null}
 
         {packs.length ? (
