@@ -3,7 +3,7 @@
 import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Eye } from "lucide-react";
-import { leaveViewAsAction } from "@/app/(newsroom)/platform/actions";
+import { leaveViewAsAction } from "@/app/(platform)/platform/actions";
 import { ROLE_LABELS, type Role } from "@/lib/auth/permissions";
 import { useUi } from "@/components/i18n/provider";
 

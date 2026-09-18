@@ -1,6 +1,7 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { chromium, type Browser, type Page } from "playwright";
+import { connectBrowserbase } from "@/server/integrations/browserbase";
 import { PDFDocument } from "pdf-lib";
 import type { DocumentMedia, EditionDocument } from "@/lib/publication/document";
 import { env } from "@/server/env";
@@ -122,6 +123,15 @@ export function signedUrlAssets(): AssetSource {
 }
 
 export async function launchBrowser(): Promise<Browser> {
+  // A connected Browserbase renders instead of the Chromium on this machine. The page is the same —
+  // fonts and pictures travel inside the HTML — so a host too small for a browser still prints.
+  // When Browserbase cannot be reached, the local browser is the fallback, not a failed job.
+  try {
+    const remote = await connectBrowserbase();
+    if (remote) return remote;
+  } catch (err) {
+    log.warn("Browserbase unavailable; rendering with the local browser", { err });
+  }
   const executablePath = env.PLAYWRIGHT_CHROMIUM_EXECUTABLE || process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE || undefined;
   return chromium.launch({
     executablePath,

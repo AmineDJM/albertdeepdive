@@ -235,6 +235,20 @@ export async function testIntegration(integrationKey: string): Promise<Integrati
           : { ok: true, message: `Connected. ${names.size} model${names.size === 1 ? "" : "s"} available.` };
       }
 
+      case "browserbase": {
+        if (!config.apiKey) return { ok: false, message: "No API key saved yet." };
+        const res = await fetch("https://api.browserbase.com/v1/projects", { headers: { "x-bb-api-key": config.apiKey, accept: "application/json" }, signal: AbortSignal.timeout(12_000) });
+        if (!res.ok) return { ok: false, message: res.status === 401 ? "Browserbase rejected that key." : `Browserbase answered ${res.status}.` };
+        const raw = (await res.json().catch(() => [])) as unknown;
+        const projects = (Array.isArray(raw) ? raw : ((raw as { projects?: unknown[] })?.projects ?? [])) as { id: string; name: string; concurrency?: number }[];
+        const wanted = config.projectId?.trim();
+        const project = wanted ? projects.find((p) => p.id === wanted) : projects[0];
+        if (wanted && !project) return { ok: false, message: `Connected, but this key cannot see project ${wanted}.` };
+        if (!project) return { ok: false, message: "Connected, but the key has no project. Create one in Browserbase first." };
+        const browsers = project.concurrency ? `, up to ${project.concurrency} browser${project.concurrency === 1 ? "" : "s"} at once` : "";
+        return { ok: true, message: `Connected. Renders will run in “${project.name}”${browsers}.` };
+      }
+
       default:
         return { ok: false, message: "This integration cannot be tested automatically." };
     }

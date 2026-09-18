@@ -28,7 +28,7 @@ export type IntegrationField = {
 export type IntegrationDefinition = {
   key: string;
   name: string;
-  category: "payments" | "email" | "ai" | "media" | "storage";
+  category: "payments" | "email" | "ai" | "media" | "rendering" | "storage";
   summary: string;
   /** Where to get the credentials, so nobody has to go hunting. */
   docsUrl?: string;
@@ -126,6 +126,22 @@ export const INTEGRATIONS: IntegrationDefinition[] = [
     ],
   },
   {
+    key: "browserbase",
+    name: "Browserbase",
+    category: "rendering",
+    summary: "Runs the browser that lays out print pages and draws Studio frames in the cloud, so this server does not have to carry a Chromium.",
+    docsUrl: "https://www.browserbase.com/settings",
+    docsLabel: "Browserbase → Settings → API keys",
+    primaryField: "apiKey",
+    testable: true,
+    whenMissing: "Pages and frames are rendered by the Chromium on this server, which needs a plan with enough memory for it.",
+    fields: [
+      { key: "apiKey", label: "API key", kind: "secret", placeholder: "bb_live_…", required: true, envVar: "BROWSERBASE_API_KEY" },
+      { key: "projectId", label: "Project ID", kind: "text", placeholder: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx", envVar: "BROWSERBASE_PROJECT_ID", help: "From Settings → Projects. Leave empty to use the key's default project." },
+      { key: "region", label: "Region", kind: "text", placeholder: "eu-central-1", envVar: "BROWSERBASE_REGION", help: "us-west-2, us-east-1, eu-central-1 or ap-southeast-1. Leave empty to let Browserbase choose." },
+    ],
+  },
+  {
     key: "storage",
     name: "Object storage",
     category: "storage",
@@ -148,6 +164,7 @@ export const CATEGORY_LABELS: Record<IntegrationDefinition["category"], string> 
   email: "Email",
   ai: "Intelligence",
   media: "Generated media",
+  rendering: "Rendering",
   storage: "Storage",
 };
 

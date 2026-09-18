@@ -4,7 +4,7 @@ import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Languages } from "lucide-react";
 import { toast } from "sonner";
-import { setLocaleAction } from "@/app/(newsroom)/settings/profile/actions";
+import { setLocaleAction } from "@/app/(platform)/settings/profile/actions";
 import { NativeSelect } from "@/components/ui/native-select";
 import { useLocale } from "./provider";
 import { LOCALES, LOCALE_LABELS, type Locale } from "@/lib/i18n";
