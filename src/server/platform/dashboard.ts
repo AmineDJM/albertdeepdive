@@ -194,7 +194,10 @@ export async function listWorkspaceRows(): Promise<WorkspaceRow[]> {
       .where(eq(s.subscribers.status, "SUBSCRIBED"))
       .groupBy(s.subscribers.organizationId),
     db
-      .select({ id: s.auditLog.organizationId, at: sql<Date>`max(${s.auditLog.createdAt})` })
+      // An aggregate comes back as a string, not a Date: drizzle only maps declared columns. It is
+      // coerced below, because a caller that sorts by it will otherwise call getTime on text — a
+      // crash that hid for months behind a single-row list, which never runs a comparator.
+      .select({ id: s.auditLog.organizationId, at: sql<string | Date | null>`max(${s.auditLog.createdAt})` })
       .from(s.auditLog)
       .where(isNotNull(s.auditLog.organizationId))
       .groupBy(s.auditLog.organizationId),
@@ -206,6 +209,11 @@ export async function listWorkspaceRows(): Promise<WorkspaceRow[]> {
   ]);
 
   const index = <T extends { id: string | null }>(rows: T[]) => new Map(rows.filter((row) => row.id).map((row) => [row.id as string, row]));
+  const asDate = (value: string | Date | null | undefined): Date | null => {
+    if (!value) return null;
+    const date = value instanceof Date ? value : new Date(value);
+    return Number.isNaN(date.getTime()) ? null : date;
+  };
   const subscriptionByOrg = new Map(subscriptions.map((row) => [row.organizationId, row]));
   const members = index(memberCounts);
   const publications = index(publicationCounts);
@@ -230,7 +238,7 @@ export async function listWorkspaceRows(): Promise<WorkspaceRow[]> {
       publications: Number(publications.get(organization.id)?.n ?? 0),
       editions: Number(editions.get(organization.id)?.n ?? 0),
       subscribers: Number(subscribers.get(organization.id)?.n ?? 0),
-      lastActivity: lastSeen.get(organization.id)?.at ?? null,
+      lastActivity: asDate(lastSeen.get(organization.id)?.at),
       aiCostCents: Number(costs.get(organization.id)?.cents ?? 0),
     };
   });

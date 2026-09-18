@@ -7,7 +7,7 @@
  */
 import { and, asc, desc, eq, gte, inArray, isNotNull, lte, max } from "drizzle-orm";
 import { db } from "@/server/db/client";
-import { articles, automationRuns, campuses, editionSections, editions, submissionCampaigns } from "@/server/db/schema";
+import { articles, automationRuns, campuses, editionSections, editions, organizations, publications, submissionCampaigns } from "@/server/db/schema";
 import { audit } from "@/server/audit";
 import { sendEmail } from "@/server/email";
 import { env } from "@/server/env";
@@ -121,23 +121,56 @@ function errorMessage(err: unknown) {
 
 // ── Step 1: edition creation ───────────────────────────────────────────────
 
+/**
+ * The next edition, for every workspace that publishes.
+ *
+ * This step predates multi-tenancy and quietly assumed one customer: it took the highest issue
+ * number across the whole table, wrote the masthead of the first customer Briefly ever had, and
+ * inserted a row belonging to nobody. With one workspace that looked correct. With two it means a
+ * customer's issue numbering jumps because somebody else published, and an edition with no owner
+ * that no workspace can see. So the step now runs once per workspace, inside that workspace, and
+ * every number, name and row belongs to it.
+ */
 export async function ensureNextEdition(input: { now: Date; defaults: CampaignDefaults; triggeredBy: TriggeredBy }): Promise<{ created: boolean; editionId: string | null; label: string; reason?: string }> {
+  const { runAsOrganization } = await import("@/server/tenancy/context");
+  // Briefly's own gallery workspaces are not newsrooms: nobody is waiting for their next issue,
+  // and running them would invent editions, send nothing and cost money every month.
+  const owners = await db
+    .selectDistinct({ organizationId: editions.organizationId })
+    .from(editions)
+    .innerJoin(organizations, eq(organizations.id, editions.organizationId))
+    .where(and(isNotNull(editions.organizationId), eq(organizations.isDemo, false)));
+  const { month, year } = nextEditionMonth(input.now);
+  const label = editionLabel(month, year);
+  let last: { created: boolean; editionId: string | null; label: string; reason?: string } = { created: false, editionId: null, label, reason: "no workspace publishes yet" };
+  for (const owner of owners) {
+    last = await runAsOrganization(owner.organizationId!, () => ensureNextEditionFor(owner.organizationId!, input));
+    if (last.created) break;
+  }
+  return last;
+}
+
+async function ensureNextEditionFor(organizationId: string, input: { now: Date; defaults: CampaignDefaults; triggeredBy: TriggeredBy }): Promise<{ created: boolean; editionId: string | null; label: string; reason?: string }> {
   const { month, year } = nextEditionMonth(input.now);
   const label = editionLabel(month, year);
   const schedule = computeCampaignSchedule({ month, year, defaults: input.defaults });
-  const existing = await db.query.editions.findFirst({ where: and(eq(editions.month, month), eq(editions.year, year)) });
+  const existing = await db.query.editions.findFirst({ where: and(eq(editions.organizationId, organizationId), eq(editions.month, month), eq(editions.year, year)) });
   if (existing) return { created: false, editionId: existing.id, label, reason: "already exists" };
   const daysUntilOpen = (schedule.opensAt.getTime() - input.now.getTime()) / 86_400_000;
   if (daysUntilOpen > EDITION_CREATION_WINDOW_DAYS) return { created: false, editionId: null, label, reason: `campaign opens in ${Math.ceil(daysUntilOpen)} days` };
 
-  const [maxRow] = await db.select({ n: max(editions.issueNumber) }).from(editions);
+  const [maxRow] = await db.select({ n: max(editions.issueNumber) }).from(editions).where(eq(editions.organizationId, organizationId));
   const issueNumber = (maxRow?.n ?? 0) + 1;
   const monthSlug = slugify(label);
+  // The masthead is the workspace's own recurring title, not the first customer Briefly ever had.
+  const publication = await db.query.publications.findFirst({ where: eq(publications.organizationId, organizationId), orderBy: [asc(publications.sortOrder), asc(publications.createdAt)] });
   const [edition] = await db
     .insert(editions)
     .values({
+      organizationId,
+      publicationId: publication?.id ?? null,
       issueNumber,
-      title: `Albert's Deep Dive — Issue N°${issueNumber}`,
+      title: `${publication?.name ?? "Edition"} — Issue N°${issueNumber}`,
       slug: `issue-${issueNumber}-${monthSlug}`,
       label,
       month,

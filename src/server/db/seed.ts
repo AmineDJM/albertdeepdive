@@ -31,6 +31,7 @@ function normalizeName(name: string) {
 function at(base: Date, days: number, hours = 0, minutes = 0) {
   return new Date(base.getTime() + ((days * 24 + hours) * 60 + minutes) * 60_000);
 }
+import { seedShowcase } from "./seed-showcase";
 
 async function truncateAll(quiet = false) {
   const names = Object.values(schema)
@@ -822,6 +823,12 @@ export async function runSeed(options: { quiet?: boolean } = {}): Promise<SeedRe
     contributors: SEED_CONTRIBUTORS.length,
     credits: SEED_CREDITS.length,
   };
+  // ── The public gallery ─────────────────────────────────────────────────────
+  // Briefly's own demo workspaces, so /collections has something on a fresh install. Albert School
+  // is a customer and stays out of it until somebody there says otherwise.
+  const showcase = await seedShowcase(admin.id);
+  say(`[seed] gallery: ${showcase.collections} collections, ${showcase.editions} demo editions from ${showcase.organizations} Briefly workspaces`);
+
   say("[seed] done", counts);
   say(`[seed] sign in with ${env.SEED_ADMIN_EMAIL} / ${env.SEED_ADMIN_PASSWORD} (all demo accounts share this password: eic@, editor@, lyon@, viewer@albertschool.com)`);
   return { editionId: edition.id, nextEditionId: next.id, adminEmail: env.SEED_ADMIN_EMAIL, password: env.SEED_ADMIN_PASSWORD };

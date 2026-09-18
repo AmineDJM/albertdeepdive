@@ -18,7 +18,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ edit
   if (!/^[0-9a-f-]{36}$/i.test(editionId)) return NextResponse.json({ error: "Invalid edition id" }, { status: 400 });
   try {
     const document = await buildEditionDocument(editionId, { versionLabel: "preview", includeUnapproved: true });
-    const html = renderPreviewHtml(document, { baseUrl: new URL(request.url).origin });
+    const html = renderPreviewHtml(document, { baseUrl: new URL(request.url).origin, editionId });
     return new NextResponse(html, {
       status: 200,
       headers: {

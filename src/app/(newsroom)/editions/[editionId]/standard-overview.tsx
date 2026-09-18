@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, ExternalLink, Send } from "lucide-react";
+import { ArrowRight, Download, ExternalLink, Send } from "lucide-react";
 import { editionDashboard, type EditionDashboard } from "@/server/editions/service";
 import { nextActionFor } from "@/server/home/service";
 import { outputMatrix } from "@/server/outputs/service";
@@ -86,6 +86,17 @@ export async function StandardOverview({ editionId }: { editionId: string }) {
             <Button asChild variant={published ? "default" : "outline"}>
               <a href={`/print/edition/${editionId}`} target="_blank" rel="noreferrer">
                 {tr("Preview")} <ExternalLink />
+              </a>
+            </Button>
+            {/* The two files people ask for while looking at the preview, one click earlier. */}
+            <Button asChild variant="ghost" size="sm">
+              <a href={`/print/edition/${editionId}/export?format=pdf`} download>
+                <Download /> {tr("PDF")}
+              </a>
+            </Button>
+            <Button asChild variant="ghost" size="sm">
+              <a href={`/print/edition/${editionId}/export?format=docx`} download>
+                <Download /> {tr("Word")}
               </a>
             </Button>
             {webUrl ? (

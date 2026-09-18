@@ -51,6 +51,8 @@ export type DocumentHtmlOptions = {
   preview?: boolean;
   /** Extra script injected before </body> (the pagination measurement pass). */
   script?: string;
+  /** Chrome for the on-screen preview only: never in the print pass, never in a rendered file. */
+  toolbar?: string;
 };
 
 export function renderDocumentHtml(doc: EditionDocument, options: DocumentHtmlOptions): string {
@@ -70,6 +72,7 @@ export function renderDocumentHtml(doc: EditionDocument, options: DocumentHtmlOp
 ${options.preview ? html`<style>${raw(PREVIEW_CSS)}</style>` : ""}
 </head>
 <body data-mode="${options.mode}" data-version="${doc.meta.versionLabel}">
+${options.toolbar ? raw(options.toolbar) : ""}
 ${pages}
 ${options.script ? html`<script>${raw(options.script)}</script>` : ""}
 ${options.preview ? html`<script>${raw(PREVIEW_SCRIPT)}</script>` : ""}

@@ -120,6 +120,8 @@ export default async function ControlRoomPage({ params, searchParams }: { params
                 <Button asChild size="sm" variant="outline"><Link href={`${ed}/layout`}>{tr("Flatplan")}</Link></Button>
                 <Button asChild size="sm" variant="outline"><Link href={`${ed}/qa`}>{tr("Quality gates")}</Link></Button>
                 <Button asChild size="sm" variant="ghost"><a href={`/print/edition/${editionId}`} target="_blank" rel="noreferrer">{tr("Live preview")}{" "}<ExternalLink /></a></Button>
+                <Button asChild size="sm" variant="ghost"><a href={`/print/edition/${editionId}/export?format=pdf`} download>{tr("PDF")}</a></Button>
+                <Button asChild size="sm" variant="ghost"><a href={`/print/edition/${editionId}/export?format=docx`} download>{tr("Word")}</a></Button>
                 {hasPermission(user, "settings:manage") ? <SimulateReturnsButton editionId={editionId} /> : null}
                 {hasPermission(user, "edition:publish") && d.edition.status !== "PUBLISHED" && d.edition.status !== "ARCHIVED" ? <AutopilotButton editionId={editionId} /> : null}
               </div>

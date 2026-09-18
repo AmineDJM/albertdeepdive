@@ -417,6 +417,9 @@ export function Landing({ plans, signedIn, t }: { plans: MarketingPlan[]; signed
             <a href="#product" className="hover:text-foreground">
               {t("marketing.footer.product")}
             </a>
+            <Link href="/collections" className="hover:text-foreground">
+              {t("marketing.footer.collections")}
+            </Link>
             <a href="#pricing" className="hover:text-foreground">
               {t("marketing.footer.pricing")}
             </a>

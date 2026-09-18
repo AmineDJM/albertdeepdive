@@ -9,6 +9,8 @@ import { PageBody, PageHeader } from "@/components/newsroom/page-header";
 import { DataTable } from "@/components/newsroom/data-table";
 import { Badge } from "@/components/ui/badge";
 import { PublicationEditor } from "./publication-editor";
+import { ShowcaseCard } from "./showcase-card";
+import { showcaseStatusFor } from "@/server/showcase/consent";
 import { enumLabel } from "@/lib/utils";
 import { getUi } from "@/server/i18n/locale";
 
@@ -19,7 +21,7 @@ const FORMAT_ICONS = { EMAIL: Mail, WEB: Globe, MAGAZINE: BookOpen, PRINT: Print
 export default async function PublicationsPage() {
   const tr = await getUi();
   const [user, tenant] = await Promise.all([getCurrentUser(), requireTenant()]);
-  const [publications, payments] = await Promise.all([listPublications(tenant.organizationId), readerPaymentsFor(tenant.organizationId)]);
+  const [publications, payments, showcase] = await Promise.all([listPublications(tenant.organizationId), readerPaymentsFor(tenant.organizationId), showcaseStatusFor(tenant.organizationId)]);
   const canManage = hasPermission(user, "edition:create");
   const paymentsConnected = Boolean(payments);
 
@@ -30,7 +32,7 @@ export default async function PublicationsPage() {
         description={tr("Your recurring titles. An edition belongs to one; where it is published is decided edition by edition.")}
         actions={canManage ? <PublicationEditor paymentsConnected={paymentsConnected} /> : null}
       />
-      <PageBody>
+      <PageBody className="space-y-4">
         <DataTable
           rows={publications}
           rowKey={(p) => p.id}
@@ -114,6 +116,7 @@ export default async function PublicationsPage() {
               : []),
           ]}
         />
+        <ShowcaseCard rows={showcase} canManage={canManage} />
       </PageBody>
     </>
   );

@@ -233,6 +233,7 @@ export const fr: Dictionary = {
   marketing: {
     nav: {
       product: "Produit",
+      collections: "Galerie",
       examples: "Exemples",
       pricing: "Tarifs",
       logIn: "Se connecter",
@@ -414,6 +415,7 @@ export const fr: Dictionary = {
     },
     footer: {
       product: "Produit",
+      collections: "Galerie",
       pricing: "Tarifs",
       logIn: "Se connecter",
       privacy: "Confidentialité",

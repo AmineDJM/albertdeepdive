@@ -5,6 +5,7 @@ import { requirePermission } from "@/server/auth/session";
 import { currentOrganizationId } from "@/server/tenancy/context";
 import { createPublication, deletePublication, updatePublication, type PublicationInput } from "@/server/publications/service";
 import { ok, toActionFailure, type ActionResult } from "@/lib/action-result";
+import { getUi } from "@/server/i18n/locale";
 
 export type { PublicationInput };
 
@@ -39,6 +40,28 @@ export async function deletePublicationAction(id: string): Promise<ActionResult>
     await deletePublication(organizationId, id, user.id);
     revalidatePath("/publications");
     return ok(null);
+  } catch (err) {
+    return toActionFailure(err);
+  }
+}
+
+/**
+ * Show this title in Briefly's public gallery, or stop showing it.
+ *
+ * The customer's own decision about their own work, and reversible in one click: turning it off
+ * empties the gallery of their editions immediately, because the gallery checks consent when it
+ * reads rather than when a curator adds.
+ */
+export async function setShowcaseConsentAction(publicationId: string, on: boolean): Promise<ActionResult> {
+  const tr = await getUi();
+  try {
+    const user = await requirePermission("settings:manage");
+    const organizationId = await currentOrganizationId();
+    const { setCustomerConsent } = await import("@/server/showcase/consent");
+    await setCustomerConsent(organizationId, publicationId, on, user.id);
+    revalidatePath("/publications");
+    revalidatePath("/collections");
+    return ok(null, on ? tr("Your published editions can now appear in Briefly's gallery.") : tr("Removed from Briefly's gallery."));
   } catch (err) {
     return toActionFailure(err);
   }

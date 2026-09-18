@@ -230,6 +230,7 @@ export const en = {
   marketing: {
     nav: {
       product: "Product",
+      collections: "Gallery",
       examples: "Examples",
       pricing: "Pricing",
       logIn: "Log in",
@@ -411,6 +412,7 @@ export const en = {
     },
     footer: {
       product: "Product",
+      collections: "Gallery",
       pricing: "Pricing",
       logIn: "Log in",
       privacy: "Privacy",

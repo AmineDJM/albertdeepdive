@@ -4,7 +4,7 @@ import { useTransition } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { LucideIcon } from "lucide-react";
-import { Activity, ArrowLeft, Building2, CircleDollarSign, Coins, Flag, Gauge, LifeBuoy, LogOut, Plug, ScrollText, Server, Users, Wallet } from "lucide-react";
+import { Activity, ArrowLeft, Building2, CircleDollarSign, Coins, Flag, GalleryVerticalEnd, Gauge, LifeBuoy, LogOut, Plug, ScrollText, Server, Users, Wallet } from "lucide-react";
 import { cn, initials } from "@/lib/utils";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { BrieflyMark } from "@/components/brand/briefly-mark";
@@ -30,6 +30,10 @@ export function adminNavigation(tr: (text: string) => string): AdminNavGroup[] {
         { href: "/admin/organizations", label: tr("Organizations"), icon: Building2 },
         { href: "/admin/users", label: tr("Users"), icon: Users },
       ],
+    },
+    {
+      label: tr("Acquisition"),
+      items: [{ href: "/admin/collections", label: tr("Collections"), icon: GalleryVerticalEnd }],
     },
     {
       label: tr("Revenue"),

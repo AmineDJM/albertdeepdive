@@ -245,9 +245,42 @@ export async function renderPdf(doc: EditionDocument, options: RenderPdfOptions 
  * Same HTML as the PDF pass, but with signed http URLs instead of data URIs and a preview
  * stylesheet (grey desk, centred pages, overflow markers). Used by the /print routes.
  */
-export function renderPreviewHtml(doc: EditionDocument, options: { baseUrl?: string } = {}): string {
+export function renderPreviewHtml(doc: EditionDocument, options: { baseUrl?: string; editionId?: string } = {}): string {
   const base = (options.baseUrl ?? env.NEXT_PUBLIC_APP_URL).replace(/\/$/, "");
-  return renderDocumentHtml(doc, { mode: "preview", assetSource: signedUrlAssets(), fontCss: fontCssForUrls(base), preview: true });
+  return renderDocumentHtml(doc, {
+    mode: "preview",
+    assetSource: signedUrlAssets(),
+    fontCss: fontCssForUrls(base),
+    preview: true,
+    toolbar: options.editionId ? previewToolbar(options.editionId) : undefined,
+  });
+}
+
+/**
+ * Two buttons over the preview: take this away as a PDF, or as a Word file.
+ *
+ * It is the thought everybody has while looking at a preview, and it used to mean leaving the page
+ * to go and queue a version. The bar floats, never prints, and says plainly that the file is of
+ * the edition as it stands rather than of an approved version.
+ *
+ * Written as a string rather than a component because the preview is not React: it is a document
+ * the renderer produces, and the same function makes the file the buttons download.
+ */
+export function previewToolbar(editionId: string): string {
+  const href = (format: "pdf" | "docx") => `/print/edition/${encodeURIComponent(editionId)}/export?format=${format}`;
+  return `<div class="briefly-preview-bar" role="toolbar" aria-label="Preview actions">
+  <span class="briefly-preview-bar__note">This is the edition as it stands now, approved or not.</span>
+  <a class="briefly-preview-bar__button" href="${href("pdf")}" download data-testid="preview-export-pdf">Download PDF</a>
+  <a class="briefly-preview-bar__button" href="${href("docx")}" download data-testid="preview-export-docx">Download Word</a>
+  <style>
+    .briefly-preview-bar{position:fixed;top:12px;right:12px;z-index:9999;display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:999px;background:rgba(17,17,19,.92);box-shadow:0 8px 28px rgba(0,0,0,.28);backdrop-filter:blur(8px);font:500 13px/1.2 ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}
+    .briefly-preview-bar__note{max-width:210px;color:rgba(255,255,255,.62);font-size:11px;line-height:1.35}
+    .briefly-preview-bar__button{padding:6px 12px;border-radius:999px;background:#fff;color:#111;text-decoration:none;white-space:nowrap;transition:opacity .15s ease}
+    .briefly-preview-bar__button:hover{opacity:.82}
+    .briefly-preview-bar__button:active{opacity:.65}
+    @media print{.briefly-preview-bar{display:none!important}}
+  </style>
+</div>`;
 }
 
 /** Renders one page of the print HTML to a PNG (used for visual checks in development and tests). */

@@ -20,6 +20,7 @@ chief approves every issue.
 - [What it does](#what-it-does)
 - [The interface](#the-interface)
 - [Standard and Advanced](#standard-and-advanced)
+- [The public gallery](#the-public-gallery)
 - [Architecture](#architecture)
 - [Getting started](#getting-started)
 - [Configuration](#configuration)
@@ -115,6 +116,31 @@ The core workflows, counted in clicks from the moment you are signed in:
 | Edition → publish | 4 (Editions, edition, Distribution, Publish) | 2 (`Continue edition`, `Publish`) |
 | Library asset → use in edition | 4 (Library, asset, edition, Media) | 3 (edition, `Pictures`, Upload) |
 | Subscriber import → first send | 6 (Audience, Import, edition, Outputs, Email, Send) | 4 (Audience, Import, edition, `Publish`) |
+
+## The public gallery
+
+`/collections` is a curated gallery of real publications, on the marketing site rather than in the
+workspace. A visitor browses collections (Universities, Communities, Featured this month…), filters
+by category or language, sorts by curated, latest or most viewed, and opens any publication at its
+own public address. It is the product arguing for itself with its own output.
+
+**Nothing is public by default, and a collection cannot make it so.** An edition appears only when
+all four hold: its title's owner consented, the edition is published, it already has a published
+web page, and its workspace is active. A curator adding an edition whose title has not consented
+creates a row that draws nothing, and the console says why on the item. Consent is checked when the
+gallery reads, so withdrawing it empties the gallery at once, with no cache to purge.
+
+Consent has three sources, all audited: **the customer**, from Publications in their own workspace,
+where a switch per title says exactly what would become visible; **a Briefly demo workspace**, which
+has no customer to ask and is flagged as such; and **a recorded permission**, which a super admin may
+enter for a real customer and which demands a note saying where the permission was given. The
+customer's own switch clears any of the three.
+
+Super admins curate at `/admin/collections`: create, publish, feature and pin collections, set
+covers, SEO title and description, categories and tags; add, remove, reorder and feature items;
+write a per-collection blurb for an item. The gallery counts views, publication opens and clicks
+through to signup, with no address, cookie or fingerprint, and reports click-through per collection
+and the most opened publications.
 
 ## Architecture
 
@@ -234,6 +260,11 @@ mobile-first form that adapts to the story type (Business Deep Dives get their s
 questions). Requests for more information use the same mechanism (`/respond/<token>`).
 
 ## Exports
+
+From an edition's live preview, **Download PDF** and **Download Word** hand over the edition exactly
+as it stands, unapproved articles included. Nothing is stored and nothing is numbered: it is a copy
+of what you are looking at, which is a different promise from a version. The same two buttons sit
+beside Preview on the edition's overview.
 
 `pnpm export:sample` renders the seeded edition to `exports/*.pdf` and `exports/*.docx` and
 prints the validation report. In the app, **QA & publish → Export** creates a publication version

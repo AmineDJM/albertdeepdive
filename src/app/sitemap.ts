@@ -9,14 +9,15 @@ export const dynamic = "force-dynamic";
 /**
  * The sitemap.
  *
- * Only what is genuinely public and genuinely worth indexing: the landing page, each open
- * publication's subscribe page, and each published web edition. Everything behind a sign-in is
+ * Only what is genuinely public and genuinely worth indexing: the landing page, the gallery and
+ * its published collections, each open publication's subscribe page, and each published web
+ * edition. Everything behind a sign-in is
  * absent, and so is anything a workspace has not published — an unpublished slug is a 404 anyway.
  */
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const base = env.NEXT_PUBLIC_APP_URL.replace(/\/$/, "");
 
-  const [publications, editions] = await Promise.all([
+  const [publications, editions, collections] = await Promise.all([
     db
       .select({ slug: s.publications.subscribeSlug, updatedAt: s.publications.updatedAt })
       .from(s.publications)
@@ -25,10 +26,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       .select({ slug: s.editionOutputs.publicSlug, publishedAt: s.editionOutputs.publishedAt, updatedAt: s.editionOutputs.updatedAt })
       .from(s.editionOutputs)
       .where(and(eq(s.editionOutputs.format, "WEB"), eq(s.editionOutputs.status, "PUBLISHED"))),
+    db.select({ slug: s.collections.slug, updatedAt: s.collections.updatedAt }).from(s.collections).where(eq(s.collections.isPublished, true)),
   ]);
 
   return [
     { url: `${base}/`, changeFrequency: "weekly", priority: 1 },
+    { url: `${base}/collections`, changeFrequency: "weekly", priority: 0.9 },
+    ...collections.map((c) => ({ url: `${base}/collections/${c.slug}`, lastModified: c.updatedAt, changeFrequency: "weekly" as const, priority: 0.7 })),
     ...publications
       .filter((p): p is { slug: string; updatedAt: Date } => !!p.slug)
       .map((p) => ({ url: `${base}/s/${p.slug}`, lastModified: p.updatedAt, changeFrequency: "monthly" as const, priority: 0.6 })),

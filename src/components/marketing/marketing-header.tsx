@@ -36,9 +36,9 @@ export function MarketingHeader({ signedIn }: { signedIn: boolean }) {
   }, [open]);
 
   const links = [
-    { href: "#product", label: t("marketing.nav.product") },
-    { href: "#examples", label: t("marketing.nav.examples") },
-    { href: "#pricing", label: t("marketing.nav.pricing") },
+    { href: "/#product", label: t("marketing.nav.product") },
+    { href: "/collections", label: t("marketing.nav.collections") },
+    { href: "/#pricing", label: t("marketing.nav.pricing") },
   ];
 
   return (

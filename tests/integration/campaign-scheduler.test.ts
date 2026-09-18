@@ -73,7 +73,9 @@ describe("automation scheduler", () => {
     expect(next).toBeTruthy();
     expect(next?.issueNumber).toBe(3);
     expect(next?.label).toBe("November 2026");
-    expect(next?.title).toBe("Albert's Deep Dive — Issue N°3");
+    expect(next?.title).toBe("Albert Deep Dive — Issue N°3");
+    // The workspace's own numbering and its own row: another customer publishing must not move either.
+    expect(next?.organizationId).toBeTruthy();
     expect(next?.status).toBe("UPCOMING");
     expect(next?.publicationTargetAt?.toISOString()).toBe("2026-11-15T09:00:00.000Z"); // 10:00 CET
     const sections = await db.select().from(editionSections).where(eq(editionSections.editionId, next!.id));

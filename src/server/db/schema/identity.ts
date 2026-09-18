@@ -1,6 +1,6 @@
 import type { AnyPgColumn } from "drizzle-orm/pg-core";
 import { boolean, index, integer, jsonb, pgTable, primaryKey, real, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
-import { contributorTypeEnum, organizationRoleEnum, organizationStatusEnum, organizationTypeEnum, publicationStatusEnum, userRoleEnum } from "./enums";
+import { contributorTypeEnum, organizationRoleEnum, organizationStatusEnum, organizationTypeEnum, publicationStatusEnum, showcaseConsentEnum, userRoleEnum } from "./enums";
 
 /**
  * Multi-tenancy.
@@ -43,6 +43,12 @@ export const organizations = pgTable(
     slug: text("slug").notNull(),
     type: organizationTypeEnum("type").notNull().default("COMPANY"),
     status: organizationStatusEnum("status").notNull().default("ACTIVE"),
+    /**
+     * A workspace Briefly runs itself, to have something beautiful in the gallery on day one.
+     * It is not a customer: it pays nothing, counts for nothing in the platform's numbers, and its
+     * editions may be shown without asking anybody, because there is nobody to ask.
+     */
+    isDemo: boolean("is_demo").notNull().default(false),
     website: text("website"),
     description: text("description"),
     /** Stored in the media library once confirmed; the discovery pass may propose one. */
@@ -108,6 +114,19 @@ export const publications = pgTable(
     /** Public subscription page slug, e.g. /s/acme-weekly. */
     subscribeSlug: text("subscribe_slug"),
     isPublic: boolean("is_public").notNull().default(true),
+    /**
+     * Whether this title may be shown in Briefly's public gallery, and on whose word.
+     *
+     * `NONE` until somebody decides otherwise, and nothing about publishing an edition changes it:
+     * a customer's work going out to their own readers is not consent to appear in our marketing.
+     * The customer sets `CUSTOMER` from their own settings and can withdraw it at any moment;
+     * `PLATFORM_DEMO` is for workspaces Briefly made for the gallery; `PERMISSION` records a
+     * customer who agreed elsewhere, and requires a note saying where.
+     */
+    showcaseConsent: showcaseConsentEnum("showcase_consent").notNull().default("NONE"),
+    showcaseNote: text("showcase_note"),
+    showcaseConsentAt: timestamp("showcase_consent_at", { withTimezone: true }),
+    showcaseConsentById: uuid("showcase_consent_by_id").references((): AnyPgColumn => users.id, { onDelete: "set null" }),
     /**
      * Whether readers pay. A paid title checks out through the organisation's own Stripe account —
      * their key, their money, their receipts. Briefly never holds the funds.

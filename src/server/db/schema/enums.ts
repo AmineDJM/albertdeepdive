@@ -301,3 +301,14 @@ export const notificationTypeEnum = pgEnum("notification_type", [
   "NARRATION_FAILED",
   "SYSTEM",
 ]);
+
+/**
+ * How a title came to be showable in the public gallery.
+ *
+ * `NONE` is the default and the only value anything gets without a person deciding otherwise, which
+ * is the whole privacy model: a customer's work is never in the gallery because nobody said no.
+ */
+export const showcaseConsentEnum = pgEnum("showcase_consent", ["NONE", "CUSTOMER", "PLATFORM_DEMO", "PERMISSION"]);
+
+/** What a visitor did in the gallery. */
+export const showcaseEventEnum = pgEnum("showcase_event", ["COLLECTION_VIEW", "GALLERY_VIEW", "ITEM_OPEN", "SIGNUP_CLICK"]);
