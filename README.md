@@ -23,6 +23,7 @@ chief approves every issue.
 - [Configuration](#configuration)
 - [Running the newsroom](#running-the-newsroom)
 - [Exports](#exports)
+- [Pictures](#pictures)
 - [Tests](#tests)
 - [Deployment](#deployment)
 - [Documentation](#documentation)
@@ -180,6 +181,42 @@ text's, the brand voice, consented cloning, a second take, and minutes a month; 
 Cloning a real person's voice happens only from Settings → Voice, with the person's consent written
 down, confirmed and kept with the voice; withdrawing it deletes the voice at the provider. Nothing
 is ever cloned on Briefly's initiative.
+
+## Pictures
+
+Real photographs from the library always come first. For what nobody photographed, a media tab
+offers **Generate image**, and every picture's page offers **Edit image**: one sentence in plain
+words — "a warm photograph of the terrace at dusk", "make the sky bluer", "remove the bin on the
+left" — and, folded away, three dials (preserve more / change more, how many variations, how
+photographic). Nothing names a model or a provider.
+
+Every edit is a new **version** of the picture, never a change to it: the original stays untouched,
+the line keeps every version with what was asked, what was protected and what came back, and any
+version can be compared with the current one, restored, thrown out (greyed, still in the history)
+or used as the start of a branch. A generated picture lands in the library like any other, marked
+as made by Briefly, with the rights of the pictures it was made from.
+
+Behind the sentence: the rules and, when one is connected, a model write an **edit plan** — the
+operation (localised or global), what changes, what must not, which references help (the current
+version, the original master, a person, a product, a brand mark), how sensitive the subject is. A
+face, a product, a logo, a building or any "only" is HIGH: the master and the references are sent
+along, the prompt ends with what must stay, a mask is drawn where the change is confined, and the
+answer is checked harder. After three edits in a row on a protected subject the next one starts
+again from the master and the accumulated specification, so a face never becomes a copy of a copy.
+A **router** (`src/lib/images/router.ts`) then orders the connected models that can honour the
+plan — the precise editor for surgical edits, the photorealist for people, products and scenes
+with several references, the illustrator for vector work, the typographer for posters, Briefly's
+own gradient field as the last resort for an abstract ground — and each answer is measured against
+the version before it (how much changed, whether anything did) and, when a seeing model is
+connected, looked at; an answer that fails is asked for again, then from the next model. Every
+attempt is written down with its model, latency, cost and score: the ledger the routing is tuned
+from, and what platform staff see under **Routing** on a version.
+
+Words and logos are never drawn by a picture model: the design engine sets them afterwards, in
+the brand's type. Providers sit behind one interface (`src/server/images/providers`): Google's
+image model, OpenAI's, Recraft, Ideogram and Higgsfield. Platform → Integrations holds each key and
+**Picture routing** holds the order per kind of job, the check thresholds, the retries and whether
+customers may see the routing. Pictures spend the plan's creative credits.
 
 ## Tests
 

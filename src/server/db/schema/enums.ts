@@ -275,6 +275,12 @@ export const narrationStatusEnum = pgEnum("narration_status", ["QUEUED", "ADAPTI
 
 export const voiceCloneStatusEnum = pgEnum("voice_clone_status", ["PENDING", "READY", "FAILED", "REVOKED"]);
 
+/** One version of a generated or edited picture, from asked-for to kept or thrown away. */
+export const imageVersionStatusEnum = pgEnum("image_version_status", ["QUEUED", "RUNNING", "READY", "FAILED", "REJECTED"]);
+
+/** How much of the picture must survive an edit untouched. */
+export const imageSensitivityEnum = pgEnum("image_sensitivity", ["LOW", "MEDIUM", "HIGH"]);
+
 export const actorTypeEnum = pgEnum("actor_type", ["USER", "SYSTEM", "AI", "CONTRIBUTOR"]);
 
 export const notificationTypeEnum = pgEnum("notification_type", [

@@ -42,6 +42,7 @@ export const JOB_TYPES = {
   INFO_REQUEST_SEND: "info_request.send",
   CREATIVE_RENDER: "creative.render",
   SPEECH_NARRATE: "speech.narrate",
+  IMAGE_RENDER: "image.render",
 } as const;
 
 export type JobType = (typeof JOB_TYPES)[keyof typeof JOB_TYPES];

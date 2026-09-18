@@ -15,6 +15,10 @@ import { ViewToggle, type MediaView } from "@/components/media/view-toggle";
 import { FilterChips } from "@/components/media/filter-chips";
 import { MediaPagination } from "@/components/media/pagination";
 import { DescribeMissingButton } from "@/components/media/describe-missing-button";
+import { GenerateImageDialog } from "@/components/images/generate-image-dialog";
+import { PicturesInProgress } from "@/components/images/pictures-in-progress";
+import { mayShowRouting, pendingViews, referenceCandidates } from "@/server/images/views";
+import { requireTenant } from "@/server/tenancy/context";
 import { getUi } from "@/server/i18n/locale";
 
 export const dynamic = "force-dynamic";
@@ -55,10 +59,14 @@ export default async function MediaLibraryPage({
   const canRights = hasPermission(user, "media:rights");
   const basePath = `/editions/${editionId}/media`;
 
-  const [stats, list, stories] = await Promise.all([
+  const tenant = await requireTenant();
+  const showRouting = await mayShowRouting(user);
+  const [stats, list, stories, pending, candidates] = await Promise.all([
     mediaStats(editionId),
     listMedia(editionId, { ...sp, pageSize: view === "list" ? 60 : 48 }),
     listStoriesForPicker(editionId),
+    pendingViews(tenant.organizationId, editionId, { showRouting }),
+    canManage ? referenceCandidates(tenant.organizationId, editionId) : Promise.resolve([]),
   ]);
   const hasFilters = FILTER_KEYS.some((k) => k !== "view" && k !== "page" && k !== "sort" && sp[k]);
   const missingDescriptions = Math.max(0, stats.total - stats.described);
@@ -76,6 +84,7 @@ export default async function MediaLibraryPage({
             <Suspense>
               <ViewToggle view={view} />
             </Suspense>
+            {canManage ? <GenerateImageDialog editionId={editionId} candidates={candidates} /> : null}
             {canManage ? (
               <UploadDialog
                 editionId={editionId}
@@ -88,6 +97,7 @@ export default async function MediaLibraryPage({
         }
       />
       <PageBody className="space-y-4">
+        <PicturesInProgress versions={pending} />
         <StatGrid columns={6}>
           <Stat
             label={tr("Assets")}

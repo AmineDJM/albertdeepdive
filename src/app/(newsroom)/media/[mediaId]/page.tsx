@@ -27,6 +27,8 @@ import { AiPanel } from "@/components/media/detail/ai-panel";
 import { ArchiveButton } from "@/components/media/detail/archive-button";
 import { AuditTrail } from "@/components/media/detail/audit-trail";
 import { VariantsList } from "@/components/media/detail/variants-list";
+import { VersionHistory } from "@/components/images/version-history";
+import { lineViewForMedia, mayShowRouting, referenceCandidates } from "@/server/images/views";
 import { cn, enumLabel, formatDate, formatDateTime } from "@/lib/utils";
 import { storyTypeLabel } from "@/lib/constants";
 import { getUi } from "@/server/i18n/locale";
@@ -69,6 +71,10 @@ export default async function MediaDetailPage({
     describedAt?: string;
   };
   const lowQuality = a.qualityScore !== null && a.qualityScore < LOW_QUALITY_THRESHOLD;
+  const isPicture = /^image\//.test(a.mimeType) && a.mimeType !== "image/svg+xml";
+  const showRouting = await mayShowRouting(user);
+  const [line, candidates] = isPicture && a.organizationId ? await Promise.all([lineViewForMedia(a.id, { showRouting }), canManage ? referenceCandidates(a.organizationId, editionId, [a.id]) : Promise.resolve([])]) : [null, []];
+  const emptyLine = { rootId: a.id, versions: [], current: null, busy: false };
 
   return (
     <>
@@ -190,6 +196,13 @@ export default async function MediaDetailPage({
                 ) : null}
               </div>
             </section>
+
+            {isPicture && (canManage || line) ? (
+              <section>
+                <SectionTitle>{tr("Edit image")}</SectionTitle>
+                <VersionHistory line={line ?? emptyLine} mediaId={a.id} candidates={candidates} canManage={canManage && !a.isArchived} />
+              </section>
+            ) : null}
 
             <section>
               <SectionTitle>{tr("Similar & duplicates")}</SectionTitle>

@@ -279,6 +279,43 @@ export async function testIntegration(integrationKey: string): Promise<Integrati
         return { ok: true, message: `Connected. Pictures will come from ${config.imageModel?.trim() || "higgsfield-ai/soul/v2/standard"}.` };
       }
 
+      case "google": {
+        if (!config.apiKey) return { ok: false, message: "No API key saved yet." };
+        const base = (config.baseUrl || "https://generativelanguage.googleapis.com/v1beta").replace(/\/+$/, "");
+        const res = await fetch(`${base}/models?pageSize=50`, { headers: { "x-goog-api-key": config.apiKey }, signal: AbortSignal.timeout(12_000) });
+        if (!res.ok) return { ok: false, message: res.status === 400 || res.status === 403 ? "Google rejected that key." : `Google answered ${res.status}.` };
+        const body = (await res.json().catch(() => ({}))) as { models?: { name: string }[] };
+        const wanted = config.imageModel?.trim() || "gemini-3-pro-image-preview";
+        const names = (body.models ?? []).map((model) => model.name.replace(/^models\//, ""));
+        const seen = names.includes(wanted);
+        return { ok: true, message: seen ? `Connected. Pictures will come from ${wanted}.` : `Connected, but this key does not list ${wanted}${names.some((name) => /image/.test(name)) ? ` (it does list ${names.filter((name) => /image/.test(name)).slice(0, 3).join(", ")})` : ""}.` };
+      }
+
+      case "recraft": {
+        if (!config.apiKey) return { ok: false, message: "No API key saved yet." };
+        const res = await fetch("https://external.api.recraft.ai/v1/users/me", { headers: { authorization: `Bearer ${config.apiKey}` }, signal: AbortSignal.timeout(12_000) });
+        if (!res.ok) return { ok: false, message: res.status === 401 ? "Recraft rejected that key." : `Recraft answered ${res.status}.` };
+        const body = (await res.json().catch(() => ({}))) as { credits?: number; email?: string };
+        return { ok: true, message: `Connected${body.email ? ` as ${body.email}` : ""}${typeof body.credits === "number" ? ` · ${body.credits} credits left` : ""}.` };
+      }
+
+      case "images": {
+        const { parseRouting, DEFAULT_ROUTING } = await import("@/lib/images/capabilities");
+        const { availableModels } = await import("@/server/images/providers");
+        let broken = false;
+        if (config.routing?.trim()) {
+          try {
+            JSON.parse(config.routing);
+          } catch {
+            broken = true;
+          }
+        }
+        const routing = parseRouting(config.routing);
+        const available = await availableModels();
+        const lines = (Object.keys(DEFAULT_ROUTING) as (keyof typeof DEFAULT_ROUTING)[]).map((task) => `${task.replace("_", " ")}: ${routing[task].map((key) => (available.has(key) ? key : `${key} (off)`)).join(" → ")}`);
+        return { ok: !broken, message: `${broken ? "The routing field is not valid JSON, so the defaults apply. " : ""}${lines.join(" · ")}. Connected: ${[...available].join(", ") || "none"}.` };
+      }
+
       case "browserbase": {
         if (!config.apiKey) return { ok: false, message: "No API key saved yet." };
         const res = await fetch("https://api.browserbase.com/v1/projects", { headers: { "x-bb-api-key": config.apiKey, accept: "application/json" }, signal: AbortSignal.timeout(12_000) });

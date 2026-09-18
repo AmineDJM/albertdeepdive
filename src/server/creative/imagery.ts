@@ -137,7 +137,7 @@ export function setHiggsfieldClientFactoryForTests(factory: HiggsfieldClientFact
   higgsfieldFactory = factory;
 }
 
-async function higgsfieldClient(config: { credentials: string; baseURL?: string; maxPollTime?: number }): Promise<HiggsfieldClient> {
+export async function higgsfieldClient(config: { credentials: string; baseURL?: string; maxPollTime?: number }): Promise<HiggsfieldClient> {
   if (higgsfieldFactory) return higgsfieldFactory(config);
   const { createHiggsfieldClient } = await import("@higgsfield/client/v2");
   return createHiggsfieldClient(config) as unknown as HiggsfieldClient;

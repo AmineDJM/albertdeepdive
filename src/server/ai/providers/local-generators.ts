@@ -115,6 +115,8 @@ export function generateLocal(request: ProviderRequest): unknown {
       return localSpeechAdapter(input);
     case "voice_director":
       return localVoiceDirector(input);
+    case "image_planner":
+      return localImagePlanner(input);
     default:
       throw new Error(`Local generator not implemented for ${service}`);
   }
@@ -1233,4 +1235,23 @@ function localSpeechAdapter(input: Input): unknown {
 
 function localVoiceDirector(input: Input): unknown {
   return { stance: str(input, "baseStance"), energy: str(input, "baseEnergy") || "medium", pauses: str(input, "basePauses") || "natural", tags: [] };
+}
+
+// ─── Pictures ────────────────────────────────────────────────────────────────
+
+/** Without a model the rules' own plan stands: the caller reconciles this with the same floor it computed. */
+function localImagePlanner(input: Input): unknown {
+  const floor = obj(input, "floor");
+  const instruction = str(input, "instruction");
+  return {
+    operation: str(floor, "operation") || (str(input, "mode").startsWith("edit") ? "global_edit" : "generate"),
+    task: str(floor, "task") || "realistic_scene",
+    change: [instruction],
+    preserve: arr<string>(floor, "preserve"),
+    references: [],
+    sensitivity: str(floor, "sensitivity") || "LOW",
+    region: null,
+    output: "raster",
+    prompt: "",
+  };
 }
