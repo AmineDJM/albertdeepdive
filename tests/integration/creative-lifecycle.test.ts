@@ -46,7 +46,7 @@ describe("a pack's files", () => {
   /** Stand in for a render: attach a real stored file to every pending frame. */
   async function pretendRendered(packId: string) {
     const pack = await getPack(packId);
-    const storage = getStorage();
+    const storage = await getStorage();
     for (const asset of pack.assets.filter((a) => a.kind === "FRAME")) {
       const key = `creative/${packId}/frame-${String(asset.index + 1).padStart(2, "0")}.jpg`;
       await storage.put(key, Buffer.from(`frame ${asset.index}`), { contentType: "image/jpeg" });
@@ -62,7 +62,7 @@ describe("a pack's files", () => {
       const keys = await pretendRendered(pack.id);
       expect(keys.length).toBe(4);
 
-      const storage = getStorage();
+      const storage = await getStorage();
       for (const key of keys) expect(await storage.exists(key), key).toBe(true);
 
       await deletePack(pack.id, adminId);
@@ -74,7 +74,7 @@ describe("a pack's files", () => {
 
   it("do not go with somebody else's pack: a shared generated ground survives", async () => {
     await runAsOrganization(orgId, async () => {
-      const storage = getStorage();
+      const storage = await getStorage();
       const shared = "creative/generated/deadbeefdeadbeefdeadbeefdeadbeef.jpg";
       await storage.put(shared, Buffer.from("a ground two packs use"), { contentType: "image/jpeg" });
 
@@ -102,7 +102,7 @@ describe("a pack's files", () => {
       const after = await getPack(pack.id);
       expect(after.assets.filter((a) => a.kind === "FRAME")).toHaveLength(3);
 
-      const storage = getStorage();
+      const storage = await getStorage();
       // The rows for 4, 5 and 6 are gone; so are their files.
       for (const key of before.slice(3)) expect(await storage.exists(key), key).toBe(false);
       // And the ones still in the spec are untouched.

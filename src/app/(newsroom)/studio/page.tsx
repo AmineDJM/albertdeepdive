@@ -66,7 +66,7 @@ export default async function StudioPage() {
         columns: { packId: true, storageKey: true },
       })
     : [];
-  const storage = getStorage();
+  const storage = await getStorage();
   const coverUrls = new Map(
     await Promise.all(
       covers

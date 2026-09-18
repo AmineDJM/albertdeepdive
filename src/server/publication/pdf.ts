@@ -95,7 +95,7 @@ export type AssetQuality = "print" | "measure";
  * explicit sizes, so the image resolution never changes the layout).
  */
 export async function loadDataUriAssets(doc: EditionDocument, quality: AssetQuality): Promise<{ source: AssetSource; missing: string[] }> {
-  const storage = getStorage();
+  const storage = await getStorage();
   const map = new Map<string, string>();
   const missing: string[] = [];
   for (const media of doc.media) {

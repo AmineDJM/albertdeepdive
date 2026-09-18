@@ -64,7 +64,7 @@ function describeSubject(assets: Asset[]): string {
 
 /** The picture's bytes at a size a model will accept, and never the original file's 30 MB. */
 async function bytesFor(asset: Asset): Promise<{ bytes: Buffer; mimeType: string; width: number; height: number }> {
-  const raw = await getStorage().get(asset.storageKey);
+  const raw = await (await getStorage()).get(asset.storageKey);
   if (!raw) throw new Error(`The file for ${asset.fileName} is missing from storage.`);
   const image = sharp(raw, { failOn: "none" }).rotate();
   const meta = await image.metadata();

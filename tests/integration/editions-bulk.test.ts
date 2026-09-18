@@ -48,7 +48,7 @@ describe("hiding and deleting editions", () => {
   });
 
   it("deletes several at once, files included, and leaves the library alone", async () => {
-    const storage = getStorage();
+    const storage = await getStorage();
     // A rendered file that belongs to the edition, and a photograph that only passed through it.
     const [submission] = await db
       .insert(s.submissions)

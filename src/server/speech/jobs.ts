@@ -99,7 +99,7 @@ async function performPassages(input: {
   directory: string;
 }): Promise<Performed[]> {
   const { narration, script, direction, provider } = input;
-  const storage = getStorage();
+  const storage = await getStorage();
   const performed: Performed[] = [];
   const language = narration.language as SpeechLanguage;
   let previousRequestId: string | null = null;
@@ -180,7 +180,7 @@ function placementFor(script: SpeechScript, segments: NarrationSegmentRow[]): Pl
 
 /** Stitch the current take of every passage into the programme, and write it down. */
 async function master(narration: NarrationRow, script: SpeechScript, segments: NarrationSegmentRow[], directory: string, take: number): Promise<{ storageKey: string; durationSeconds: number; sizeBytes: number; sha256: string; chapters: NarrationRow["chapters"]; holds: number[] | null; overruns: number[] }> {
-  const storage = getStorage();
+  const storage = await getStorage();
   const ordered = script.passages.map((passage) => segments.find((row) => row.index === passage.index && row.status === "READY"));
   const missing = ordered.findIndex((segment) => !segment?.storageKey);
   if (missing >= 0) throw new Error(`Passage ${missing + 1} has no audio.`);

@@ -265,7 +265,7 @@ export async function archiveEditions(): Promise<ArchiveEdition[]> {
     .orderBy(s.publicationVersions.editionId, desc(s.publicationVersions.sequence));
   const versionMap = new Map(versions.map((v) => [v.editionId, v]));
   const assets = versions.length ? await db.select().from(s.publicationAssets).where(inArray(s.publicationAssets.versionId, versions.map((v) => v.id))) : [];
-  const storage = getStorage();
+  const storage = await getStorage();
   const coverIds = editions.map((e) => e.coverMediaAssetId).filter((v): v is string => !!v);
   const covers = coverIds.length ? await mediaUrls(coverIds, "WEB") : {};
   const out: ArchiveEdition[] = [];

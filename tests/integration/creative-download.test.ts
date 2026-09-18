@@ -76,7 +76,7 @@ describe("downloading a pack", () => {
       packId = pack.id;
       await setBrief({ packId, brief: BRIEF, actorId: adminId });
       // Stand in for the renderer: a real stored file behind every frame.
-      const storage = getStorage();
+      const storage = await getStorage();
       for (const asset of (await getPack(packId)).assets.filter((a) => a.kind === "FRAME")) {
         const key = `creative/${packId}/frame-${String(asset.index + 1).padStart(2, "0")}.jpg`;
         await storage.put(key, Buffer.from(`frame ${asset.index}`), { contentType: "image/jpeg" });

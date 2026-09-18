@@ -84,7 +84,8 @@ services:
       - key: EMAIL_PROVIDER
         value: log
 
-      # Photographs, variants and exports go on the attached disk.
+      # Photographs, variants and exports go on the attached disk until a bucket is connected in
+      # Admin → Providers → Object storage, which overrides this without a redeploy.
       - key: STORAGE_PROVIDER
         value: local
       - key: STORAGE_LOCAL_DIR

@@ -18,7 +18,7 @@ export async function mediaUrl(
     variant?.storageKey ??
     (await db.query.mediaAssets.findFirst({ where: eq(s.mediaAssets.id, assetId) }))?.storageKey;
   if (!key) return null;
-  return getStorage().getSignedUrl(key, { expiresInSeconds: ttlSeconds });
+  return (await getStorage()).getSignedUrl(key, { expiresInSeconds: ttlSeconds });
 }
 
 /** Signed URLs for many assets at once: { assetId: url }. */
@@ -32,7 +32,7 @@ export async function mediaUrls(
   const variants = await db.query.mediaVariants.findMany({
     where: and(inArray(s.mediaVariants.assetId, ids), eq(s.mediaVariants.kind, kind)),
   });
-  const storage = getStorage();
+  const storage = await getStorage();
   const out: Record<string, string> = {};
   for (const v of variants)
     out[v.assetId] = await storage.getSignedUrl(v.storageKey, { expiresInSeconds: ttlSeconds });

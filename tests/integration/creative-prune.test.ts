@@ -18,7 +18,6 @@ import { getStorage } from "@/server/storage";
  * names but written a moment ago, one a pack's spec names. Only the first may go.
  */
 describe("pruning generated grounds", () => {
-  const storage = getStorage();
   const hex = () => crypto.randomUUID().replace(/-/g, "");
   const orphan = `${GENERATED_PREFIX}${hex()}.jpg`;
   const fresh = `${GENERATED_PREFIX}${hex()}.jpg`;
@@ -30,6 +29,7 @@ describe("pruning generated grounds", () => {
 
   const age = async (key: string, hours: number) => {
     const when = new Date(Date.now() - hours * 3_600_000);
+    const storage = await getStorage();
     await fs.utimes(storage.localPath!(key), when, when);
   };
 
@@ -40,6 +40,7 @@ describe("pruning generated grounds", () => {
     orgId = (await db.query.organizations.findFirst({ where: eq(s.organizations.slug, "albert-school") }))!.id;
     await setOverrides({ organizationId: orgId, patch: { socialPack: true, creativeCredits: null }, actorId: adminId });
 
+    const storage = await getStorage();
     for (const key of [orphan, fresh, named]) await storage.put(key, Buffer.from("a ground"), { contentType: "image/jpeg" });
     await age(orphan, 72);
     await age(named, 72);
@@ -60,12 +61,14 @@ describe("pruning generated grounds", () => {
     expect(dry.removed).not.toContain(fresh);
     expect(dry.removed).not.toContain(named);
     expect(dry.referenced).toBeGreaterThanOrEqual(1);
+    const storage = await getStorage();
     expect(await storage.exists(orphan)).toBe(true);
   });
 
   it("removes the orphan and keeps the named one and the one just written", async () => {
     const result = await pruneGeneratedGrounds();
     expect(result.removed).toContain(orphan);
+    const storage = await getStorage();
     expect(await storage.exists(orphan)).toBe(false);
     expect(await storage.exists(named)).toBe(true);
     expect(await storage.exists(fresh)).toBe(true);
@@ -74,6 +77,7 @@ describe("pruning generated grounds", () => {
   it("lets a ground go once the last pack naming it is gone", async () => {
     await runAsOrganization(orgId, () => deletePack(packId, adminId));
     expect((await pruneGeneratedGrounds({ dryRun: true })).removed).toContain(named);
+    const storage = await getStorage();
     await storage.delete(named);
     await storage.delete(fresh);
   });

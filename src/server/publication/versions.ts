@@ -142,7 +142,7 @@ export async function renderVersion(versionId: string, options: RenderVersionOpt
     if (!verified.ok) throw new Error(`DOCX verification failed: ${verified.error}`);
 
     await progress(9, 10, "Storing files");
-    const storage = getStorage();
+    const storage = await getStorage();
     const base = `albert-deep-dive-${fileSlug(edition.slug)}-${version.label}`;
     const pdfName = `${base}.pdf`;
     const docxName = `${base}.docx`;
@@ -250,7 +250,7 @@ export async function compareVersions(aId: string, bId: string): Promise<Version
 export async function downloadUrl(assetId: string): Promise<{ url: string; fileName: string; mimeType: string }> {
   const asset = await db.query.publicationAssets.findFirst({ where: eq(publicationAssets.id, assetId) });
   if (!asset) throw new NotFoundError("Publication asset");
-  const url = await getStorage().getSignedUrl(asset.storageKey, { expiresInSeconds: 3600, download: { fileName: asset.fileName } });
+  const url = await (await getStorage()).getSignedUrl(asset.storageKey, { expiresInSeconds: 3600, download: { fileName: asset.fileName } });
   return { url, fileName: asset.fileName, mimeType: asset.mimeType };
 }
 

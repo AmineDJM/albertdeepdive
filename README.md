@@ -23,6 +23,7 @@ chief approves every issue.
 - [Architecture](#architecture)
 - [Getting started](#getting-started)
 - [Configuration](#configuration)
+- [Object storage, in one press](#object-storage-in-one-press)
 - [Running the newsroom](#running-the-newsroom)
 - [Exports](#exports)
 - [Pictures](#pictures)
@@ -175,7 +176,7 @@ there). The important ones:
 | `AI_PROVIDER` | `local` (deterministic, no network) or `openai` |
 | `OPENAI_API_KEY`, `AI_MODEL_FAST`, `AI_MODEL_STRONG`, `AI_PRICING` | Model routing and cost estimation |
 | `EMAIL_PROVIDER`, `RESEND_API_KEY`, `EMAIL_FROM` | Only for Resend. A Gmail mailbox connected in Settings → Email overrides all of it and needs no environment variable |
-| `STORAGE_PROVIDER`, `STORAGE_LOCAL_DIR`, `STORAGE_S3_*` | Where originals, variants and exports are stored |
+| `STORAGE_PROVIDER`, `STORAGE_LOCAL_DIR`, `STORAGE_S3_*` | Where originals, variants and exports are stored. A bucket connected in Admin → Providers overrides all of it and needs no environment variable |
 | `JOBS_RUNNER` | `inprocess` (default), `cli` (`pnpm worker`) or `none` |
 | `PLAYWRIGHT_CHROMIUM_EXECUTABLE` | Chromium used for PDF rendering |
 | `AUTOMATION_TICK_TOKEN` | Protects `POST /api/automations/tick` for external schedulers |
@@ -187,6 +188,27 @@ empty and start Node with `NODE_USE_ENV_PROXY=1` (Node 22.21+) so that `fetch` h
 Runtime settings (masthead, contact, campaign day defaults, default sections, automation
 toggles, AI budget, retention) are edited in **Settings** and stored in `system_settings`.
 Prompts are versioned in **Settings → Prompts**.
+
+### Object storage, in one press
+
+Files go to local disk until a bucket is connected, which is right for a laptop and wrong for every
+host that wipes its disk on redeploy. Connecting one is three values and a button, in
+Admin → Providers → Object storage. Nothing to set on the host, and no redeploy.
+
+With Supabase: create a bucket (or let Briefly create `briefly-media`), then open Project settings →
+Storage → S3 access keys and make a key. Paste the project URL and both halves of the key into the
+card, and press **Connect storage**. Briefly completes the project URL into the S3 endpoint, asks
+the service which region it is in and remembers the answer, creates the bucket if it is not there,
+then writes a real file, reads it back, compares it and deletes it. It says it is connected only
+after that round trip, and every step is reported in a sentence you can check.
+
+Any S3-compatible service works the same way: paste that service's endpoint instead of a Supabase
+project URL and the rest is identical. Cloudflare R2, Scaleway and MinIO are all path-style, which
+is switched on automatically whenever an endpoint is given.
+
+Two things worth knowing. Files already written to disk stay there, so a switch is not a migration.
+And the bucket stays private: Briefly signs a time-limited URL for every file rather than making
+the bucket public, unless a CDN base URL is given on the card.
 
 ## Running the newsroom
 

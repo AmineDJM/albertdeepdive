@@ -511,7 +511,7 @@ export async function setCrop(assetId: string, rawCrop: CropInput, actor: MediaA
       crop: ["Out of bounds"],
     });
   }
-  const storage = getStorage();
+  const storage = await getStorage();
   const original = await storage.get(asset.storageKey);
   if (!original) throw new NotFoundError("Original file");
 
@@ -590,7 +590,7 @@ export async function clearCrop(assetId: string, actor: MediaActor) {
     .returning();
   if (!deleted.length) throw new AppError("This asset has no crop", "NOT_FOUND", 404);
   try {
-    await getStorage().delete(deleted[0].storageKey);
+    await (await getStorage()).delete(deleted[0].storageKey);
   } catch (err) {
     log.warn("could not delete crop file", { key: deleted[0].storageKey, err });
   }

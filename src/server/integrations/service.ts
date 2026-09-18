@@ -90,6 +90,8 @@ export type IntegrationStatus = {
   docsLabel?: string;
   whenMissing: string;
   testable: boolean;
+  testLabel?: string;
+  kind: "connection" | "tuning";
   configured: boolean;
   fields: {
     key: string;
@@ -135,6 +137,8 @@ export const integrationStatuses = cache(async (): Promise<IntegrationStatus[]> 
       docsLabel: definition.docsLabel,
       whenMissing: definition.whenMissing,
       testable: definition.testable ?? false,
+      testLabel: definition.testLabel,
+      kind: definition.kind ?? "connection",
       configured: Boolean(fields.find((f) => f.key === definition.primaryField)?.display),
       fields,
     });
@@ -167,6 +171,7 @@ export async function saveIntegration(integrationKey: string, patch: Record<stri
   }
 
   await writeSecretSetting(settingKeyFor(integrationKey), { values, updatedAt: new Date().toISOString() }, `${definition.name} integration`, userId);
+  await forgetStorageIfNeeded(integrationKey);
   await audit({ action: "integration.save", userId, metadata: { integration: integrationKey, fields: Object.keys(patch) } });
   log.info("integration saved", { integration: integrationKey });
 }
@@ -175,7 +180,19 @@ export async function clearIntegration(integrationKey: string, userId?: string |
   const definition = integrationByKey(integrationKey);
   if (!definition) throw new NotFoundError("Integration");
   await writeSecretSetting(settingKeyFor(integrationKey), { values: {}, updatedAt: new Date().toISOString() }, `${definition.name} integration`, userId);
+  await forgetStorageIfNeeded(integrationKey);
   await audit({ action: "integration.clear", userId, metadata: { integration: integrationKey } });
+}
+
+/**
+ * The storage card decides where every file goes, and the answer is cached for speed. Saving it
+ * has to take effect on the next upload, not thirty seconds later.
+ */
+async function forgetStorageIfNeeded(integrationKey: string) {
+  if (integrationKey !== "storage") return;
+  const [{ resetStorageConfig }, { resetStorage }] = await Promise.all([import("@/server/storage/config"), import("@/server/storage")]);
+  resetStorageConfig();
+  resetStorage();
 }
 
 export type IntegrationTestResult = { ok: boolean; message: string };
@@ -328,6 +345,25 @@ export async function testIntegration(integrationKey: string): Promise<Integrati
         if (!project) return { ok: false, message: "Connected, but the key has no project. Create one in Browserbase first." };
         const browsers = project.concurrency ? `, up to ${project.concurrency} browser${project.concurrency === 1 ? "" : "s"} at once` : "";
         return { ok: true, message: `Connected. Renders will run in “${project.name}”${browsers}.` };
+      }
+
+      case "storage": {
+        // The only honest test for a bucket is a file in it, so that is the test.
+        const { normaliseEndpoint, resolve } = await import("@/server/storage/config");
+        const { s3ClientFor } = await import("@/server/storage/s3");
+        const { DeleteObjectCommand, GetObjectCommand, PutObjectCommand } = await import("@aws-sdk/client-s3");
+        const endpoint = normaliseEndpoint(config.endpoint);
+        const resolved = resolve({ ...config, endpoint });
+        if (resolved.provider !== "s3") return { ok: false, message: "Nothing is connected: files are going to local disk, which most hosts wipe on redeploy." };
+        const client = s3ClientFor(resolved);
+        const key = `_briefly/connection-check-${Date.now()}.txt`;
+        const token = `briefly ${new Date().toISOString()}`;
+        await client.send(new PutObjectCommand({ Bucket: resolved.bucket, Key: key, Body: Buffer.from(token), ContentType: "text/plain" }));
+        const back = await client.send(new GetObjectCommand({ Bucket: resolved.bucket, Key: key }));
+        const read = await back.Body?.transformToString();
+        await client.send(new DeleteObjectCommand({ Bucket: resolved.bucket, Key: key }));
+        if (read !== token) return { ok: false, message: `${resolved.bucket} gave back something other than what was written.` };
+        return { ok: true, message: `Connected. A file made the round trip to ${resolved.bucket}${resolved.region ? ` in ${resolved.region}` : ""}.` };
       }
 
       default:

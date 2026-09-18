@@ -49,7 +49,7 @@ export type ImageLineView = { rootId: string; versions: ImageVersionView[]; curr
 async function urlsFor(mediaIds: string[]): Promise<Map<string, { previewUrl: string; thumbUrl: string; width: number | null; height: number | null }>> {
   const out = new Map<string, { previewUrl: string; thumbUrl: string; width: number | null; height: number | null }>();
   if (!mediaIds.length) return out;
-  const storage = getStorage();
+  const storage = await getStorage();
   const [assets, variants] = await Promise.all([
     db.query.mediaAssets.findMany({ where: inArray(s.mediaAssets.id, mediaIds), columns: { id: true, storageKey: true, width: true, height: true } }),
     db.query.mediaVariants.findMany({ where: and(inArray(s.mediaVariants.assetId, mediaIds), inArray(s.mediaVariants.kind, ["THUMBNAIL", "WEB"])), columns: { assetId: true, kind: true, storageKey: true } }),

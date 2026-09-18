@@ -508,7 +508,7 @@ export type MediaDetail = {
 export async function getMediaDetail(assetId: string): Promise<MediaDetail> {
   const asset = await db.query.mediaAssets.findFirst({ where: eq(s.mediaAssets.id, assetId) });
   if (!asset) throw new NotFoundError("Media asset");
-  const storage = getStorage();
+  const storage = await getStorage();
   const ttl = 3600;
 
   const [

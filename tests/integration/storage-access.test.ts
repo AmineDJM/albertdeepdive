@@ -61,7 +61,7 @@ describe("file access across organisations", () => {
       .returning();
     albertKey = `media/${asset.id}/web.webp`;
     await db.update(s.mediaAssets).set({ storageKey: albertKey }).where(eq(s.mediaAssets.id, asset.id));
-    await getStorage().put(albertKey, Buffer.from("jpg"), { contentType: "image/webp" });
+    await (await getStorage()).put(albertKey, Buffer.from("jpg"), { contentType: "image/webp" });
   });
 
   it("names the owner of every kind of key, and nobody for the rest", async () => {
@@ -91,15 +91,15 @@ describe("file access across organisations", () => {
 
   it("still honours a signed link, whoever holds it", async () => {
     // Sharing is done by minting a time-limited URL, not by being signed in.
-    const signed = await getStorage().getSignedUrl(albertKey, { expiresInSeconds: 60 });
+    const signed = await (await getStorage()).getSignedUrl(albertKey, { expiresInSeconds: 60 });
     const url = new URL(signed);
     const response = await GET(request(`${url.pathname}${url.search}`, outsiderCookie), { params: Promise.resolve({ key: albertKey.split("/") }) });
     expect(response.status).toBe(200);
   });
 
   it("never serves a shared generated ground or a temp file on the signed-in path", async () => {
-    await getStorage().put("creative/generated/deadbeefdeadbeefdeadbeefdeadbeef.jpg", Buffer.from("x"), { contentType: "image/jpeg" });
+    await (await getStorage()).put("creative/generated/deadbeefdeadbeefdeadbeefdeadbeef.jpg", Buffer.from("x"), { contentType: "image/jpeg" });
     expect((await get("creative/generated/deadbeefdeadbeefdeadbeefdeadbeef.jpg", albertMemberCookie)).status).toBe(403);
-    await getStorage().delete("creative/generated/deadbeefdeadbeefdeadbeefdeadbeef.jpg");
+    await (await getStorage()).delete("creative/generated/deadbeefdeadbeefdeadbeefdeadbeef.jpg");
   });
 });

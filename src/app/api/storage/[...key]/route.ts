@@ -56,7 +56,7 @@ export async function GET(request: Request, ctx: RouteContext<"/api/storage/[...
   }
   if (!allowed) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  const storage = getStorage();
+  const storage = await getStorage();
   const ext = key.split(".").pop()?.toLowerCase() ?? "";
   const contentType = MIME[ext] ?? "application/octet-stream";
   const download = url.searchParams.get("download");

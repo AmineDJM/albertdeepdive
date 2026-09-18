@@ -2,7 +2,7 @@ import { and, desc, eq, gte, inArray, sql } from "drizzle-orm";
 import { db } from "@/server/db/client";
 import * as s from "@/server/db/schema";
 import { audit } from "@/server/audit";
-import { getStorage } from "@/server/storage";
+import { getStorage, type StorageAdapter } from "@/server/storage";
 import { createLogger } from "@/server/logger";
 import { ForbiddenError, NotFoundError, ValidationError } from "@/lib/action-result";
 import { guardTenant } from "@/server/tenancy/scope";
@@ -444,7 +444,7 @@ export async function deletePack(packId: string, actorId?: string | null) {
  */
 async function forget(keys: string[]) {
   if (!keys.length) return;
-  const storage = getStorage();
+  const storage = await getStorage();
   await Promise.all(
     keys.map((key) =>
       storage.delete(key).catch((error: unknown) => {
@@ -648,7 +648,7 @@ export const GENERATED_PREFIX = "creative/generated/";
  * is exactly the kind of race a nightly job produces and nobody can reproduce.
  */
 export async function pruneGeneratedGrounds(options: { dryRun?: boolean; graceHours?: number } = {}): Promise<{ kept: number; removed: string[]; referenced: number }> {
-  const storage = getStorage();
+  const storage = await getStorage();
   const stored = await storage.list(GENERATED_PREFIX);
 
   const packs = await db.query.creativePacks.findMany({ columns: { spec: true } });
@@ -672,7 +672,7 @@ export async function pruneGeneratedGrounds(options: { dryRun?: boolean; graceHo
 }
 
 /** Whether a stored file was written recently. Only disk can say; anything else is treated as old. */
-async function isYoungerThan(storage: ReturnType<typeof getStorage>, key: string, ms: number): Promise<boolean> {
+async function isYoungerThan(storage: StorageAdapter, key: string, ms: number): Promise<boolean> {
   if (!storage.localPath) return false;
   try {
     const { promises: fs } = await import("node:fs");

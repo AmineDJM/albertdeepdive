@@ -106,7 +106,7 @@ describe("narration", () => {
     const done = (await db.query.narrations.findFirst({ where: eq(s.narrations.id, row.id) }))!;
     expect(done.status).toBe("READY");
     expect(done.storageKey).toBe(`audio/${row.id}/narration.mp3`);
-    expect(await getStorage().exists(done.storageKey!)).toBe(true);
+    expect(await (await getStorage()).exists(done.storageKey!)).toBe(true);
     expect(done.durationSeconds).toBeGreaterThan(10);
     expect(done.sizeBytes).toBeGreaterThan(1000);
     expect(done.sha256).toMatch(/^[0-9a-f]{64}$/);
@@ -172,7 +172,7 @@ describe("narration", () => {
     const done = (await db.query.narrations.findFirst({ where: eq(s.narrations.id, row.id) }))!;
     expect(done.status).toBe("READY");
     expect(done.takes.map((take) => take.take)).toEqual([2]);
-    expect(await getStorage().exists(done.takes[0].storageKey)).toBe(true);
+    expect(await (await getStorage()).exists(done.takes[0].storageKey)).toBe(true);
     // Two whole performances, not the same one twice.
     expect(done.takes[0].sha256).not.toBe(done.sha256);
     const segments = await db.query.narrationSegments.findMany({ where: eq(s.narrationSegments.narrationId, row.id) });
@@ -227,7 +227,7 @@ describe("narration", () => {
       await deleteNarration(narration.id, adminId);
     });
     expect(await db.query.narrations.findFirst({ where: eq(s.narrations.id, narration.id) })).toBeUndefined();
-    expect(await getStorage().list(`audio/${narration.id}/`)).toEqual([]);
+    expect(await (await getStorage()).list(`audio/${narration.id}/`)).toEqual([]);
   });
 
   it("clones a voice only with consent on record, and withdraws it for good", async () => {

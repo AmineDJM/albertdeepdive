@@ -56,7 +56,7 @@ const TWO_COLUMN_MIN_WORDS = 300;
 type LoadedImage = { data: Buffer; type: "jpg" | "png"; width: number; height: number };
 
 async function loadImage(media: DocumentMedia): Promise<LoadedImage | null> {
-  const storage = getStorage();
+  const storage = await getStorage();
   for (const key of [media.src.web?.key, media.src.print?.key, media.src.thumb?.key]) {
     if (!key) continue;
     const buffer = await storage.get(key);

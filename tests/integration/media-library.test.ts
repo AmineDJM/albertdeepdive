@@ -193,7 +193,7 @@ describe("setCrop", () => {
     expect(variant.height).toBe(hero.height);
     expect(variant.cropSpec).toMatchObject({ name: "hero", aspect: "3:2" });
     expect(url).toContain("/api/storage/media/");
-    const storage = getStorage();
+    const storage = await getStorage();
     expect(await storage.exists(variant.storageKey)).toBe(true);
     const meta = await sharp((await storage.get(variant.storageKey))!).metadata();
     expect(meta.width).toBe(hero.width);

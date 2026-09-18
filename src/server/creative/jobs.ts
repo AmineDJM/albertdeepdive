@@ -67,7 +67,7 @@ registerJobHandler<RenderPayload, { frames: number; skipped: boolean }>(CREATIVE
     .set({ status: "RENDERING", updatedAt: new Date() })
     .where(and(eq(s.creativeAssets.packId, pack.id), eq(s.creativeAssets.status, "PENDING")));
 
-  const storage = getStorage();
+  const storage = await getStorage();
   const images = await loadImages(pack.spec.frames.flatMap((frame) => (frame.image?.mediaId ? [frame.image.mediaId] : [])));
   const browser = await launchBrowser();
   let rendered = 0;
@@ -236,7 +236,7 @@ async function fulfilGenerated(
   }
   if (!wanted.size) return;
 
-  const storage = getStorage();
+  const storage = await getStorage();
   // Super Admin may hold a workspace to a subset of providers — in-house only for a customer with a
   // procurement rule, say — independently of which keys happen to be configured.
   const organization = await db.query.organizations.findFirst({ where: eq(s.organizations.id, pack.organizationId), columns: { settings: true } });
@@ -309,7 +309,7 @@ async function narrationForPack(packId: string): Promise<{ input: { path: string
   const { readyNarrationForPack } = await import("@/server/speech/service");
   const ready = await readyNarrationForPack(packId);
   if (!ready?.narration.storageKey || !ready.narration.script) return null;
-  const bytes = await getStorage().get(ready.narration.storageKey);
+  const bytes = await (await getStorage()).get(ready.narration.storageKey);
   if (!bytes) return null;
   const directory = await mkdtemp(join(tmpdir(), "briefly-narration-mix-"));
   const path = join(directory, "narration.mp3");
@@ -336,7 +336,7 @@ async function loadImages(mediaIds: string[]): Promise<FrameImages> {
   const images: FrameImages = new Map();
   if (!mediaIds.length) return images;
 
-  const storage = getStorage();
+  const storage = await getStorage();
   const ids = [...new Set(mediaIds)];
   const assets = await db.query.mediaAssets.findMany({
     where: (media, { inArray }) => inArray(media.id, ids),

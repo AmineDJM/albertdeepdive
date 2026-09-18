@@ -32,7 +32,7 @@ export async function GET(request: Request, ctx: RouteContext<"/api/creative/[pa
   }
 
   const pack = await runAsOrganization(owner, () => getPack(packId));
-  const storage = getStorage();
+  const storage = await getStorage();
   const zip = new JSZip();
   const format = FORMATS[pack.format];
   // What has actually been rendered. The caption rides along but does not count: a zip holding

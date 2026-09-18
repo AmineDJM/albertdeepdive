@@ -242,7 +242,7 @@ export async function archiveEditionDetail(editionId: string): Promise<ArchiveEd
 
   const versionIds = versions.map((v) => v.version.id);
   const assets = versionIds.length ? await db.select().from(s.publicationAssets).where(inArray(s.publicationAssets.versionId, versionIds)) : [];
-  const storage = getStorage();
+  const storage = await getStorage();
   const versionViews: ArchiveVersion[] = [];
   for (const { version, createdByName } of versions) {
     const own = assets.filter((a) => a.versionId === version.id);

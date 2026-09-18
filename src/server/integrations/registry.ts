@@ -38,6 +38,15 @@ export type IntegrationDefinition = {
   primaryField: string;
   /** Set when the integration can be checked against the live service. */
   testable?: boolean;
+  /** What the check button says, when "Test connection" would be a lie. */
+  testLabel?: string;
+  /**
+   * A connection holds somebody else's credentials and is either made or not. A tuning card holds
+   * our own settings, works on its defaults, and has nothing to connect — so it must not wear a
+   * "Not connected" badge, which reads as a job left undone and sends people hunting for a key
+   * that does not exist.
+   */
+  kind?: "connection" | "tuning";
   /** Shown when the integration is off, so the consequence is obvious. */
   whenMissing: string;
 };
@@ -231,9 +240,11 @@ export const INTEGRATIONS: IntegrationDefinition[] = [
     key: "images",
     name: "Picture routing",
     category: "media",
-    summary: "Which model gets which kind of picture, how strictly results are checked, and how many tries a job gets. Customers never see any of it.",
+    kind: "tuning",
+    summary: "Which model gets which kind of picture, how strictly results are checked, and how many tries a job gets. Customers never see any of it. Nothing to connect: leave it empty and the defaults below apply.",
     primaryField: "routing",
     testable: true,
+    testLabel: "Show routing",
     whenMissing: "The defaults apply: Nano Banana Pro for scenes, GPT Image for precise edits, Recraft for illustration, Ideogram for posters, Briefly's own field last.",
     fields: [
       { key: "routing", label: "Routing", kind: "text", placeholder: '{"realistic_scene":["nano-banana-pro","sunburst"],"precise_edit":["sunburst","nano-banana-pro"],"illustration":["recraft"],"typography":["ideogram"],"abstract":["briefly"]}', envVar: "IMAGE_ROUTING", help: "Ordered model keys per task: nano-banana-pro, sunburst, recraft, ideogram, higgsfield, briefly. A model that cannot do what a job needs is skipped whatever the order." },
@@ -266,16 +277,19 @@ export const INTEGRATIONS: IntegrationDefinition[] = [
     key: "storage",
     name: "Object storage",
     category: "storage",
-    summary: "Where uploaded photographs, rendered PDFs and generated media live.",
-    primaryField: "bucket",
-    testable: false,
+    summary: "Where uploaded photographs, rendered PDFs and generated media live. Paste the three values Supabase shows on its S3 access key page, then press Connect storage.",
+    docsUrl: "https://supabase.com/dashboard/project/_/settings/storage",
+    docsLabel: "Supabase → Project settings → Storage",
+    primaryField: "accessKeyId",
+    testable: true,
     whenMissing: "Files are written to local disk, which does not survive a redeploy on most hosts.",
     fields: [
-      { key: "bucket", label: "Bucket", kind: "text", placeholder: "briefly-media", envVar: "STORAGE_S3_BUCKET", required: true },
-      { key: "region", label: "Region", kind: "text", placeholder: "eu-west-3", envVar: "STORAGE_S3_REGION" },
-      { key: "endpoint", label: "Endpoint", kind: "url", placeholder: "https://s3.eu-west-3.amazonaws.com", envVar: "STORAGE_S3_ENDPOINT", help: "For S3-compatible providers such as Cloudflare R2 or Scaleway." },
-      { key: "accessKeyId", label: "Access key ID", kind: "text", envVar: "STORAGE_S3_ACCESS_KEY_ID" },
-      { key: "secretAccessKey", label: "Secret access key", kind: "secret", envVar: "STORAGE_S3_SECRET_ACCESS_KEY" },
+      { key: "endpoint", label: "Supabase project URL", kind: "url", placeholder: "https://xxxxxxxx.supabase.co", required: true, envVar: "STORAGE_S3_ENDPOINT", help: "The project URL or the S3 endpoint; either works, Briefly completes it. For Cloudflare R2, Scaleway or MinIO, paste that service's endpoint instead." },
+      { key: "accessKeyId", label: "Access key ID", kind: "text", required: true, envVar: "STORAGE_S3_ACCESS_KEY_ID", help: "Supabase → Project settings → Storage → S3 access keys → New access key." },
+      { key: "secretAccessKey", label: "Secret access key", kind: "secret", required: true, envVar: "STORAGE_S3_SECRET_ACCESS_KEY", help: "Shown once, when the key is created." },
+      { key: "bucket", label: "Bucket", kind: "text", placeholder: "briefly-media", envVar: "STORAGE_S3_BUCKET", help: "Leave empty and Briefly creates briefly-media for you." },
+      { key: "region", label: "Region", kind: "text", placeholder: "eu-west-3", envVar: "STORAGE_S3_REGION", help: "Filled in by “Connect storage”, which asks the service which region it is in." },
+      { key: "publicBaseUrl", label: "Public base URL", kind: "url", envVar: "STORAGE_S3_PUBLIC_BASE_URL", help: "Only for a bucket served by a CDN. Leave empty and Briefly signs a time-limited URL for every file." },
     ],
   },
 ];

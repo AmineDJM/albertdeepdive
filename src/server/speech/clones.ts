@@ -74,7 +74,7 @@ export async function requestVoiceClone(input: CloneRequest) {
     })
     .returning();
 
-  const storage = getStorage();
+  const storage = await getStorage();
   const keys: string[] = [];
   for (const [index, sample] of input.samples.entries()) {
     const key = `voices/${row.id}/sample-${index + 1}.${extensionForMime(sample.mimeType)}`;
@@ -108,7 +108,7 @@ export async function revokeVoiceClone(cloneId: string, organizationId: string, 
     const provider = await getSpeechProvider("FINAL");
     if (provider?.deleteVoice) await provider.deleteVoice(clone.providerVoiceId).catch((error) => log.warn("could not delete the cloned voice at the provider", { cloneId, error: error instanceof Error ? error.message : String(error) }));
   }
-  const storage = getStorage();
+  const storage = await getStorage();
   for (const key of clone.sampleKeys) await storage.delete(key).catch(() => {});
   await db.update(s.brandVoices).set({ cloneId: null, updatedAt: new Date() }).where(eq(s.brandVoices.cloneId, clone.id));
   const [row] = await db.update(s.voiceClones).set({ status: "REVOKED", revokedAt: new Date(), revokedById: actorId, providerVoiceId: null, sampleKeys: [], updatedAt: new Date() }).where(eq(s.voiceClones.id, clone.id)).returning();

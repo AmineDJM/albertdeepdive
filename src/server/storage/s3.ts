@@ -1,26 +1,36 @@
 import { DeleteObjectCommand, GetObjectCommand, HeadObjectCommand, ListObjectsV2Command, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { getSignedUrl as presign } from "@aws-sdk/s3-request-presigner";
 import { env } from "@/server/env";
+import type { ResolvedStorage } from "./config";
 import type { PutOptions, SignedUrlOptions, StorageAdapter } from "./types";
+
+/**
+ * A client for one resolved configuration.
+ *
+ * Path-style addressing whenever an endpoint is given: every S3-compatible service that is not
+ * AWS needs it, and Supabase is one of them.
+ */
+export function s3ClientFor(config: ResolvedStorage): S3Client {
+  return new S3Client({
+    region: config.region,
+    endpoint: config.endpoint || undefined,
+    forcePathStyle: !!config.endpoint,
+    credentials: config.accessKeyId && config.secretAccessKey ? { accessKeyId: config.accessKeyId, secretAccessKey: config.secretAccessKey } : undefined,
+  });
+}
 
 /** S3-compatible storage: AWS S3, Cloudflare R2, Supabase Storage (S3 protocol), MinIO. */
 export class S3StorageAdapter implements StorageAdapter {
   readonly name = "s3" as const;
   private readonly client: S3Client;
   private readonly bucket: string;
+  private readonly publicBaseUrl: string | null;
 
-  constructor() {
-    if (!env.STORAGE_S3_BUCKET) throw new Error("STORAGE_S3_BUCKET is required when STORAGE_PROVIDER=s3");
-    this.bucket = env.STORAGE_S3_BUCKET;
-    this.client = new S3Client({
-      region: env.STORAGE_S3_REGION,
-      endpoint: env.STORAGE_S3_ENDPOINT || undefined,
-      forcePathStyle: !!env.STORAGE_S3_ENDPOINT,
-      credentials:
-        env.STORAGE_S3_ACCESS_KEY_ID && env.STORAGE_S3_SECRET_ACCESS_KEY
-          ? { accessKeyId: env.STORAGE_S3_ACCESS_KEY_ID, secretAccessKey: env.STORAGE_S3_SECRET_ACCESS_KEY }
-          : undefined,
-    });
+  constructor(config: ResolvedStorage) {
+    if (!config.bucket) throw new Error("Object storage has no bucket: name one on the storage card.");
+    this.bucket = config.bucket;
+    this.publicBaseUrl = config.publicBaseUrl;
+    this.client = s3ClientFor(config);
   }
 
   async put(key: string, body: Buffer | Uint8Array, options: PutOptions) {
@@ -64,8 +74,8 @@ export class S3StorageAdapter implements StorageAdapter {
   }
 
   async getSignedUrl(key: string, options?: SignedUrlOptions) {
-    if (env.STORAGE_S3_PUBLIC_BASE_URL && !options?.download) {
-      return `${env.STORAGE_S3_PUBLIC_BASE_URL.replace(/\/$/, "")}/${key}`;
+    if (this.publicBaseUrl && !options?.download) {
+      return `${this.publicBaseUrl.replace(/\/$/, "")}/${key}`;
     }
     const command = new GetObjectCommand({
       Bucket: this.bucket,

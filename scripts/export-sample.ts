@@ -37,7 +37,7 @@ async function main() {
 
   const outDir = path.join(process.cwd(), "exports");
   await fs.mkdir(outDir, { recursive: true });
-  const storage = getStorage();
+  const storage = await getStorage();
   const base = `albert-deep-dive-${fileSlug(edition.slug)}-${version.label}`;
   const outputs: Record<string, string> = {};
   for (const asset of version.assets) {

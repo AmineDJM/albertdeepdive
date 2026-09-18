@@ -146,7 +146,7 @@ export async function attachmentDTOs(submissionId: string): Promise<AttachmentDT
         .where(and(inArray(mediaVariants.assetId, assetIds), eq(mediaVariants.kind, "THUMBNAIL")))
     : [];
   const thumbKey = new Map(thumbs.map((t) => [t.assetId, t.key]));
-  const storage = getStorage();
+  const storage = await getStorage();
   const out: AttachmentDTO[] = [];
   for (const r of rows) {
     const key = r.attachment.mediaAssetId ? thumbKey.get(r.attachment.mediaAssetId) : undefined;

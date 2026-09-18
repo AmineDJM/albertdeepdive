@@ -2728,4 +2728,11 @@ export const UI_FR: Record<string, string> = {
   "Publish date changed": "Date de publication changée",
   "Remove {format}": "Retirer {format}",
   "Add format": "Ajouter un format",
+  // The storage card, and the settings cards that have nothing to connect.
+  "Tuned by hand": "Réglé à la main",
+  "Default settings": "Réglages par défaut",
+  "In use now:": "Actuellement :",
+  "Show routing": "Voir le routage",
+  "Supabase project URL": "URL du projet Supabase",
+  "Connect storage": "Connecter le stockage",
 };

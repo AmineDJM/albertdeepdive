@@ -76,7 +76,7 @@ function guessKind(
  * thumbnail/web/print variants and stores everything. Never alters the original file.
  */
 export async function ingestMedia(input: IngestMediaInput): Promise<IngestedMedia> {
-  const storage = getStorage();
+  const storage = await getStorage();
   const mimeType = await sniffMime(input.buffer, input.mimeType);
   if (!(SUPPORTED_IMAGE_MIMES as readonly string[]).includes(mimeType)) {
     throw new Error(`Unsupported image type: ${mimeType}`);

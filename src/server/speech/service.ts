@@ -215,7 +215,7 @@ export async function regeneratePassages(narrationId: string, indices: number[],
 
 export async function deleteNarration(narrationId: string, actorId?: string | null) {
   const narration = await getNarration(narrationId);
-  const storage = getStorage();
+  const storage = await getStorage();
   const keys = await storage.list(`audio/${narration.id}/`).catch(() => [] as string[]);
   for (const key of keys) await storage.delete(key).catch((error) => log.warn("could not delete narration file", { key, error: error instanceof Error ? error.message : String(error) }));
   await db.delete(s.narrations).where(eq(s.narrations.id, narration.id));
@@ -236,7 +236,7 @@ export async function narrationUrl(narrationId: string, options: { download?: bo
   const key = options.take && options.take > 1 ? narration.takes.find((take) => take.take === options.take)?.storageKey : narration.storageKey;
   if (!key) return null;
   const fileName = `${narration.title.replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-|-$/g, "").toLowerCase() || "narration"}${options.take && options.take > 1 ? `-take-${options.take}` : ""}.mp3`;
-  const url = await getStorage().getSignedUrl(key, { expiresInSeconds: 3600, download: options.download ? { fileName } : undefined });
+  const url = await (await getStorage()).getSignedUrl(key, { expiresInSeconds: 3600, download: options.download ? { fileName } : undefined });
   return { url, fileName };
 }
 
@@ -244,7 +244,7 @@ export async function narrationUrl(narrationId: string, options: { download?: bo
 export async function publishedNarrationUrl(narrationId: string): Promise<string | null> {
   const narration = await db.query.narrations.findFirst({ where: and(eq(s.narrations.id, narrationId), isNotNull(s.narrations.publishedAt), eq(s.narrations.status, "READY")) });
   if (!narration?.storageKey) return null;
-  return getStorage().getSignedUrl(narration.storageKey, { expiresInSeconds: 6 * 60 * 60 });
+  return (await getStorage()).getSignedUrl(narration.storageKey, { expiresInSeconds: 6 * 60 * 60 });
 }
 
 export async function publishedNarrationsForEdition(editionId: string): Promise<NarrationRow[]> {

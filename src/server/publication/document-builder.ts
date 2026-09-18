@@ -74,7 +74,7 @@ function readSetting<T>(rows: { key: string; value: unknown }[], key: string): T
 export async function buildEditionDocument(editionId: string, options: BuildDocumentOptions): Promise<EditionDocument> {
   const includeUnapproved = options.includeUnapproved ?? false;
   const ttl = options.signedUrlTtlSeconds ?? SIGNED_URL_TTL;
-  const storage = getStorage();
+  const storage = await getStorage();
   const warnings: Warning[] = [];
 
   const edition = await db.query.editions.findFirst({ where: eq(editions.id, editionId) });

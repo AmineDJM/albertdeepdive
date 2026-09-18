@@ -12,7 +12,7 @@ const log = createLogger("storage");
  * one.
  */
 export async function forgetFiles(keys: Iterable<string>): Promise<number> {
-  const storage = getStorage();
+  const storage = await getStorage();
   const unique = [...new Set([...keys].filter(Boolean))];
   await Promise.all(
     unique.map((key) =>

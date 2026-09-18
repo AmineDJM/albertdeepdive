@@ -35,7 +35,7 @@ export default async function PackPage({ params }: { params: Promise<{ packId: s
   if (!pack) notFound();
 
   const qa = qaFor(pack);
-  const storage = getStorage();
+  const storage = await getStorage();
   const frames = await Promise.all(
     pack.assets
       .filter((asset) => asset.kind === "FRAME")

@@ -222,7 +222,7 @@ describe("publication versions", () => {
     expect(rendered.renderLog.some((l) => l.message.includes("PDF"))).toBe(true);
     const assets = await db.select().from(publicationAssets).where(eq(publicationAssets.versionId, created.id));
     expect(assets.map((a) => a.kind).sort()).toEqual(["DOCX", "PDF"]);
-    const storage = getStorage();
+    const storage = await getStorage();
     for (const asset of assets) {
       expect(asset.storageKey).toBe(`publications/${editionId}/${created.id}/${asset.fileName}`);
       expect(asset.fileName).toMatch(/^albert-deep-dive-special-issue-1-may-2025-v0\.1\.(pdf|docx)$/);

@@ -201,22 +201,115 @@ async function setUpOpenAi(actorId?: string | null): Promise<SetupResult> {
 
 /* ── Storage ──────────────────────────────────────────────────────────────────────────────── */
 
+/** The region a service names when it refuses a request signed for another one. */
+function regionHint(error: unknown): string | null {
+  const e = error as { Region?: string; message?: string; $response?: { headers?: Record<string, string> } };
+  if (e?.Region) return e.Region;
+  const header = e?.$response?.headers?.["x-amz-bucket-region"];
+  if (header) return header;
+  const message = e?.message ?? "";
+  return /expecting '([a-z0-9-]+)'/i.exec(message)?.[1] ?? /region '([a-z0-9-]+)' is the correct/i.exec(message)?.[1] ?? null;
+}
+
+const describe = (error: unknown) => (error instanceof Error ? error.message : String(error));
+
 /**
- * There is nothing to call here, so this checks rather than provisions.
+ * Connect a bucket, in one press.
  *
- * A bucket with no credentials is the configuration that looks finished and fails on the first
- * upload, so saying so plainly is the whole value.
+ * Three values are the customer's to supply, because only they can create a key: the project URL
+ * and the two halves of it. Everything after that is ours, and each of the four steps here is one
+ * a person otherwise does by hand and gets subtly wrong. The project URL is not the S3 endpoint,
+ * so it is completed. The region is part of every signature and is shown in a different corner of
+ * the dashboard, so it is asked for rather than guessed: a wrong one is refused by the service
+ * naming the right one, which is a better source than anybody's memory. The bucket may not exist,
+ * so it is created. And none of that proves anything, so a real file is written, read back,
+ * compared and deleted before this says a word about being connected.
  */
-async function checkStorage(): Promise<SetupResult> {
-  const config = await integrationConfig("storage");
-  const missing = (["bucket", "accessKeyId", "secretAccessKey"] as const).filter((field) => !config[field]);
-  if (missing.length) {
-    return fail(`Storage is incomplete: ${missing.join(", ")} missing. Uploads are going to local disk, which most hosts wipe on redeploy.`);
+async function connectStorage(actorId?: string | null): Promise<SetupResult> {
+  const { normaliseEndpoint, resolve, DEFAULT_BUCKET, FALLBACK_REGION } = await import("@/server/storage/config");
+  const { resetStorage } = await import("@/server/storage");
+  const { resetStorageConfig } = await import("@/server/storage/config");
+  const { CreateBucketCommand, DeleteObjectCommand, GetObjectCommand, HeadBucketCommand, PutObjectCommand } = await import("@aws-sdk/client-s3");
+  const { s3ClientFor } = await import("@/server/storage/s3");
+
+  const saved = await integrationConfig("storage");
+  const endpoint = normaliseEndpoint(saved.endpoint);
+  const missing = ([["endpoint", endpoint], ["accessKeyId", saved.accessKeyId], ["secretAccessKey", saved.secretAccessKey]] as const).filter(([, value]) => !value).map(([name]) => name);
+  if (missing.length) return fail(`Paste the project URL and both halves of the access key first: ${missing.join(", ")} missing.`);
+
+  const bucket = saved.bucket?.trim() || DEFAULT_BUCKET;
+  const steps: SetupStep[] = [];
+  steps.push({ label: "Endpoint", detail: endpoint !== saved.endpoint?.trim() ? `${endpoint} (completed from the project URL)` : endpoint!, ok: true });
+
+  // Ask the service which region it is in rather than trusting the field, and remember the answer.
+  const tried = new Set<string>();
+  const queue = [saved.region?.trim() || "", FALLBACK_REGION].filter(Boolean);
+  let region: string | null = null;
+  let created = false;
+  let lastError = "";
+  while (queue.length) {
+    const candidate = queue.shift()!;
+    if (tried.has(candidate)) continue;
+    tried.add(candidate);
+    const config = resolve({ ...saved, endpoint, region: candidate, bucket });
+    const client = s3ClientFor(config);
+    try {
+      await client.send(new HeadBucketCommand({ Bucket: bucket }));
+      region = candidate;
+      break;
+    } catch (error) {
+      const hint = regionHint(error);
+      if (hint && !tried.has(hint)) {
+        queue.push(hint);
+        continue;
+      }
+      // The bucket is the thing missing, not the region: make it and carry on with this region.
+      const name = (error as { name?: string }).name ?? "";
+      if (/NotFound|NoSuchBucket/i.test(name)) {
+        try {
+          await client.send(new CreateBucketCommand({ Bucket: bucket }));
+          region = candidate;
+          created = true;
+          break;
+        } catch (createError) {
+          lastError = describe(createError);
+          continue;
+        }
+      }
+      lastError = describe(error);
+    }
   }
+  if (!region) {
+    steps.push({ label: "Bucket", detail: lastError || "The service refused the key.", ok: false });
+    return { ok: false, summary: `Briefly could not reach ${bucket}. Check the key, and that the bucket exists.`, steps };
+  }
+  steps.push({ label: "Region", detail: region, ok: true });
+  steps.push({ label: "Bucket", detail: created ? `${bucket} created` : `${bucket} already there`, ok: true });
+
+  // Nothing above proves a file can be written. This does.
+  const config = resolve({ ...saved, endpoint, region, bucket });
+  const client = s3ClientFor(config);
+  const probeKey = `_briefly/connection-check-${Date.now()}.txt`;
+  const token = `briefly ${new Date().toISOString()}`;
+  try {
+    await client.send(new PutObjectCommand({ Bucket: bucket, Key: probeKey, Body: Buffer.from(token), ContentType: "text/plain" }));
+    const back = await client.send(new GetObjectCommand({ Bucket: bucket, Key: probeKey }));
+    const read = await back.Body?.transformToString();
+    if (read !== token) throw new Error("the file read back did not match the one written");
+    await client.send(new DeleteObjectCommand({ Bucket: bucket, Key: probeKey }));
+    steps.push({ label: "Write, read, delete", detail: "A test file made the whole round trip.", ok: true });
+  } catch (error) {
+    steps.push({ label: "Write, read, delete", detail: describe(error), ok: false });
+    return { ok: false, summary: `${bucket} answered, but Briefly could not put a file in it. The key may be read-only.`, steps };
+  }
+
+  await saveIntegration("storage", { endpoint: endpoint!, region, bucket }, actorId);
+  resetStorageConfig();
+  resetStorage();
   return {
     ok: true,
-    summary: `Uploads go to ${config.bucket}${config.region ? ` in ${config.region}` : ""}.`,
-    steps: [{ label: "Bucket", detail: `${config.bucket} · ${config.endpoint || "AWS S3"}`, ok: true }],
+    summary: `Connected. Uploads, exports and generated media now go to ${bucket}.`,
+    steps,
   };
 }
 
@@ -387,7 +480,7 @@ export async function runSetup(integrationKey: string, actorId?: string | null):
       case "elevenlabs":
         return setUpVoices(actorId);
       case "storage":
-        return checkStorage();
+        return connectStorage(actorId);
       default:
         return fail("This integration has nothing to set up beyond its credentials.");
     }

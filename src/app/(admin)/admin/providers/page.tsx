@@ -26,7 +26,7 @@ const SETUP_LABELS: Record<string, string> = {
   resend: "Set up delivery",
   openai: "Choose models",
   elevenlabs: "Set up voices",
-  storage: "Check storage",
+  storage: "Connect storage",
 };
 export default async function IntegrationsPage() {
   const tr = await getUi();

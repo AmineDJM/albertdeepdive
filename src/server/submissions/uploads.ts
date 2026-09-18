@@ -119,7 +119,7 @@ export async function attachUpload(submissionId: string, rawToken: string, input
   const fileName = sanitiseFileName(input.fileName);
   const resolvedKind = await classifyUpload(input.buffer, fileName, input.mimeType);
   const sortOrder = existing.reduce((n, a) => Math.max(n, a.sortOrder + 1), 0);
-  const storage = getStorage();
+  const storage = await getStorage();
 
   let row: typeof submissionAttachments.$inferSelect;
   let dims: { width: number | null; height: number | null } = { width: null, height: null };
@@ -216,7 +216,7 @@ export async function removeUpload(submissionId: string, rawToken: string, attac
   const { draft } = await requireOwnedDraft(submissionId, rawToken);
   const existing = await db.query.submissionAttachments.findFirst({ where: and(eq(submissionAttachments.id, attachmentId), eq(submissionAttachments.submissionId, draft.id)) });
   if (!existing) throw new NotFoundError("Attachment");
-  const storage = getStorage();
+  const storage = await getStorage();
   await db.delete(submissionAttachments).where(eq(submissionAttachments.id, existing.id));
   if (existing.mediaAssetId) {
     const variants = await db.select({ key: mediaVariants.storageKey }).from(mediaVariants).where(eq(mediaVariants.assetId, existing.mediaAssetId));
