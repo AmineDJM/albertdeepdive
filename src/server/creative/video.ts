@@ -51,22 +51,22 @@ export type EncodedVideo = {
  * which ships a full one with libx264 and is why this works on a host that has none. Then the plain
  * name, for a container that put one on the path.
  *
- * Resolved once and remembered: this is called before every encode and a failed require is not free.
+ * Resolved on every call, deliberately. Remembering the first answer looked like an obvious saving —
+ * `require` is cached by Node anyway, so it saves almost nothing — and it made the function unable
+ * to notice a changed environment: a test that swapped `FFMPEG_PATH` kept getting the old value, and
+ * so would a worker whose first resolution happened before the binary finished installing.
  */
-let resolved: string | null = null;
-
 export function ffmpegPath(): string {
-  if (resolved) return resolved;
   const configured = process.env.FFMPEG_PATH || process.env.FFMPEG_BINARY;
-  if (configured) return (resolved = configured);
+  if (configured) return configured;
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const bundled = require("ffmpeg-static") as string | null;
-    if (bundled) return (resolved = bundled);
+    if (bundled) return bundled;
   } catch {
     // Not installed; fall through to whatever is on the path.
   }
-  return (resolved = "ffmpeg");
+  return "ffmpeg";
 }
 
 /**
@@ -97,7 +97,20 @@ export async function encoderReady(): Promise<{ ok: boolean; detail: string }> {
  */
 export async function renderVideo(
   spec: RenderSpec,
-  options: { system?: string | null; browser?: Browser; images?: Map<string, string>; fps?: number },
+  options: {
+    system?: string | null;
+    browser?: Browser;
+    images?: Map<string, string>;
+    fps?: number;
+    /**
+     * Frames the caller has already rendered, by index.
+     *
+     * The render job has just drawn every one of these to store as a deliverable. Drawing them again
+     * for the encoder is a full Chromium pass per scene for bytes already in hand — so they are
+     * passed in, and only a scene that moves (which needs its two layers separately) is re-rendered.
+     */
+    stills?: Map<number, { bytes: Buffer; mimeType: string }>;
+  },
 ): Promise<EncodedVideo> {
   const ready = await encoderReady();
   if (!ready.ok) throw new Error(`Cannot encode video. ${ready.detail}`);
@@ -127,9 +140,13 @@ export async function renderVideo(
         await writeFile(`${stem}-type.png`, layers.type);
         scenes.push({ picture: `${stem}-image.png`, type: `${stem}-type.png` });
       } else {
-        const [rendered] = await renderSpec({ ...spec, frames: [frame] }, { browser: options.browser, images: options.images });
-        await writeFile(`${stem}.png`, rendered.bytes);
-        scenes.push({ picture: `${stem}.png`, type: null });
+        const already = options.stills?.get(frame.index);
+        const bytes = already?.bytes ?? (await renderSpec({ ...spec, frames: [frame] }, { browser: options.browser, images: options.images }))[0].bytes;
+        // The extension has to match the bytes: ffmpeg sniffs the content, but `image2` picks its
+        // demuxer from the name first, and a JPEG called .png is a confusing failure.
+        const extension = already?.mimeType === "image/jpeg" ? "jpg" : "png";
+        await writeFile(`${stem}.${extension}`, bytes);
+        scenes.push({ picture: `${stem}.${extension}`, type: null });
       }
     }
 

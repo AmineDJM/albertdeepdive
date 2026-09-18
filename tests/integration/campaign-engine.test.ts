@@ -107,6 +107,16 @@ describe("campaign engine", () => {
     expect(result.skipped).toBe(false);
     expect(result.invited).toBe(18);
     expect(result.emailsSent).toBe(18);
+    /*
+     * Nobody was dropped for having written last issue — this campaign has people to invite.
+     *
+     * The count matters when it is not zero: a campaign whose every eligible contributor wrote for
+     * the previous issue, with re-invites off, correctly invites nobody, and used to report that as
+     * "0 contributors invited" beside a tick. That reads exactly like a campaign that went out fine,
+     * and an issue can reach its deadline with no contributions and nobody able to say why. This is
+     * what lets the interface name the cause instead of the symptom.
+     */
+    expect(result.excludedAsPrevious).toBe(0);
     expect(result.shortfall).toMatchObject({ school: 3 });
     links = result.links ?? [];
     expect(links).toHaveLength(18);

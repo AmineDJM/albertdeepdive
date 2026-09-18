@@ -14,6 +14,14 @@ test.describe("newsroom smoke", () => {
     await expect(page.locator("main").getByText("Campus coverage")).toBeVisible();
   });
 
+  /*
+   * The sidebar is six hubs, and a hub's own tabs appear only once you are in it — so Contributors
+   * is reached through Audience, not from wherever you happen to be standing.
+   *
+   * This test used to click a top-level "Contributors" link that the navigation rework removed. It
+   * went on passing in nobody's eyes for the same reason the rework went unnoticed: the end-to-end
+   * suite could not start at all, so a stale test and a broken one looked identical.
+   */
   test("navigates to editions, control room, contributors and campuses", async ({ page }) => {
     await login(page);
     await page.getByRole("link", { name: "Editions", exact: true }).click();
@@ -21,9 +29,12 @@ test.describe("newsroom smoke", () => {
     await page.getByRole("link", { name: "May 2025" }).first().click();
     await expect(page.locator("main").getByText("Control room", { exact: true }).first()).toBeVisible();
     await expect(page.locator("main").getByText("Workflow", { exact: true })).toBeVisible();
+
+    await page.getByRole("link", { name: "Audience", exact: true }).click();
     await page.getByRole("link", { name: "Contributors", exact: true }).click();
     await expect(page.getByRole("heading", { name: "Contributors" })).toBeVisible();
     await expect(page.locator("main").getByText("Milan Viallet").first()).toBeVisible();
+
     await page.getByRole("link", { name: "Campuses", exact: true }).click();
     await expect(page.getByRole("heading", { name: "Campuses" })).toBeVisible();
     await expect(page.locator("main").getByText("Marseille", { exact: true }).first()).toBeVisible();

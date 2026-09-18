@@ -63,6 +63,22 @@ const clampLimit = (limit: number) => Math.max(1, Math.min(200, limit));
 const ts = (date: Date) => sql`${date.toISOString()}::timestamptz`;
 
 
+/**
+ * A timestamp, whatever the driver handed back.
+ *
+ * Three of these four sources select a real column and get a `Date`; the jobs one selects
+ * `coalesce(finished, started, created)`, and a raw SQL expression has no column to borrow a type
+ * mapper from, so it arrives as a string however it is typed in TypeScript. Sorting then threw
+ * `at.getTime is not a function` and the whole Logs page rendered nothing — blank, in production,
+ * the moment a single job had run.
+ *
+ * Normalised here rather than at the one query that was wrong, because the next raw expression
+ * somebody adds will have the same problem and should not be able to blank the page again.
+ */
+function asDate(value: Date | string | number): Date {
+  return value instanceof Date ? value : new Date(value);
+}
+
 export async function readLogs(filters: LogFilters = {}, limit = 80): Promise<LogEntry[]> {
   const sources = filters.sources?.length ? filters.sources : [...LOG_SOURCES];
   const since = new Date(Date.now() - (filters.sinceDays ?? 7) * 24 * 60 * 60 * 1000);
@@ -183,7 +199,7 @@ export async function readLogs(filters: LogFilters = {}, limit = 80): Promise<Lo
     ...audits.map((row) => ({
       id: `audit-${row.id}`,
       source: "audit" as const,
-      at: row.at,
+      at: asDate(row.at),
       action: row.action,
       actor: row.actorName ?? (row.actorType === "USER" ? "Someone" : row.actorType.toLowerCase()),
       subject: row.entityType ? `${row.entityType.toLowerCase()}${row.entityId ? ` ${row.entityId.slice(0, 8)}` : ""}` : null,
@@ -195,7 +211,7 @@ export async function readLogs(filters: LogFilters = {}, limit = 80): Promise<Lo
     ...jobs.map((row) => ({
       id: `jobs-${row.id}`,
       source: "jobs" as const,
-      at: row.at,
+      at: asDate(row.at),
       action: row.type,
       actor: "queue",
       subject: row.status.toLowerCase(),
@@ -207,7 +223,7 @@ export async function readLogs(filters: LogFilters = {}, limit = 80): Promise<Lo
     ...emails.map((row) => ({
       id: `email-${row.id}`,
       source: "email" as const,
-      at: row.at,
+      at: asDate(row.at),
       action: row.status.toLowerCase(),
       actor: "mailer",
       subject: row.to,
@@ -219,7 +235,7 @@ export async function readLogs(filters: LogFilters = {}, limit = 80): Promise<Lo
     ...ai.map((row) => ({
       id: `ai-${row.id}`,
       source: "ai" as const,
-      at: row.at,
+      at: asDate(row.at),
       action: row.service,
       actor: row.model ?? "model",
       subject: row.status.toLowerCase(),

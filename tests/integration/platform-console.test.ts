@@ -155,6 +155,39 @@ describe("the platform console", () => {
       expect(times).toEqual([...times].sort((a, b) => b - a));
     });
 
+    it("reads a job's timestamp as a date, not as the string the driver returns", async () => {
+      /*
+       * The jobs source selects `coalesce(finished, started, created)` — a raw SQL expression, which
+       * has no column to borrow a type mapper from and so arrives as a string however it is typed.
+       * Sorting then threw `at.getTime is not a function` and the entire Logs page rendered blank in
+       * production.
+       *
+       * The suite already called `.getTime()` on every entry and passed, because the seeded database
+       * had no job rows at all: the code was covered and the broken branch was not. So this inserts
+       * one and makes the branch unavoidable.
+       */
+      const now = new Date();
+      await db.insert(s.jobs).values({
+        organizationId: albertOrgId,
+        type: "creative.render",
+        status: "SUCCEEDED",
+        payload: {},
+        startedAt: now,
+        finishedAt: now,
+        attempts: 1,
+      });
+
+      const entries = await readLogs({ sinceDays: 365 }, 100);
+      const job = entries.find((entry) => entry.source === "jobs");
+      expect(job, "a job row must reach the timeline").toBeTruthy();
+      expect(job!.at).toBeInstanceOf(Date);
+      expect(Number.isNaN(job!.at.getTime())).toBe(false);
+
+      // And the merge still sorts, which is what actually blew up.
+      const times = entries.map((entry) => entry.at.getTime());
+      expect(times).toEqual([...times].sort((a, b) => b - a));
+    });
+
     it("narrows to one workspace", async () => {
       const entries = await readLogs({ organizationId: albertOrgId, sinceDays: 365 }, 50);
       expect(entries.every((entry) => entry.organizationId === albertOrgId)).toBe(true);

@@ -72,7 +72,15 @@ export default async function ControlRoomPage({ params }: { params: Promise<{ ed
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <div className="label-caps">Control room</div>
-                  <h2 className="masthead text-[24px] leading-tight font-semibold tracking-tight">{d.edition.title}</h2>
+                  {/*
+                    * The edition's title is this page's title, so it is the h1.
+                    *
+                    * It was an h2, which left the control room as the one edition tab with no page
+                    * title at all — every other tab gets one from its PageHeader. A heading outline
+                    * that opens at level two reads, to anything navigating by heading, as a section
+                    * of a page that is not there.
+                    */}
+                  <h1 className="masthead text-[24px] leading-tight font-semibold tracking-tight">{d.edition.title}</h1>
                   <p className="mt-1 text-xs text-muted-foreground">{STATUS_LABELS[d.edition.status]} · publication target {formatDate(d.edition.publicationTargetAt)} · final review {formatDateTime(d.edition.finalReviewAt)}</p>
                 </div>
                 {canTransition ? <EditionStatusControls editionId={editionId} current={d.edition.status} options={options} /> : null}

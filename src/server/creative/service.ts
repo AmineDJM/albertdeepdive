@@ -2,6 +2,8 @@ import { and, desc, eq, gte, inArray, sql } from "drizzle-orm";
 import { db } from "@/server/db/client";
 import * as s from "@/server/db/schema";
 import { audit } from "@/server/audit";
+import { getStorage } from "@/server/storage";
+import { createLogger } from "@/server/logger";
 import { ForbiddenError, NotFoundError, ValidationError } from "@/lib/action-result";
 import { guardTenant } from "@/server/tenancy/scope";
 import { activeBrand } from "@/server/brand/service";
@@ -10,6 +12,8 @@ import { composeSpec } from "@/lib/creative/compose";
 import { inspect, repair, verdict, type Finding } from "@/lib/creative/qa";
 import { parseBrief, type CreativeBrief } from "@/lib/creative/brief";
 import { clampFrames, FORMATS, MODES, type CreativeFormat, type CreativeMode } from "@/lib/creative/formats";
+
+const log = createLogger("creative");
 import { resolveEntitlements } from "@/server/billing/entitlements";
 
 /**
@@ -206,9 +210,17 @@ export async function recompose(packId: string, actorId?: string | null): Promis
 /**
  * Make the asset rows match the spec.
  *
- * A frame that already rendered and whose spec has not changed keeps its file; everything else is
- * reset to PENDING for the worker. Frames removed by an edit have their rows deleted, which is what
- * the unique index on (pack, kind, index) is for.
+ * Everything derived from the spec goes back to PENDING — every frame, and the cover and video that
+ * are built from them. All of it, not only what changed: a recompose changes the spec, the spec is
+ * what every file was drawn from, and working out which frames happen to be byte-identical costs
+ * more than redrawing them.
+ *
+ * The cover and the video matter here as much as the frames. Leaving them READY while the frames
+ * they are made of go PENDING left the studio showing last week's video above this week's slides,
+ * labelled ready, for as long as the render took.
+ *
+ * Frames removed by an edit have their rows deleted and their files forgotten, which is what the
+ * unique index on (pack, kind, index) is for.
  */
 async function syncAssetRows(pack: CreativePack) {
   if (!pack.spec) return;
@@ -220,7 +232,16 @@ async function syncAssetRows(pack: CreativePack) {
     await db.delete(s.creativeAssets).where(
       and(eq(s.creativeAssets.packId, pack.id), eq(s.creativeAssets.kind, "FRAME"), gte(s.creativeAssets.index, wanted)),
     );
+    // A re-direct that produces fewer slides leaves the surplus files behind otherwise: the rows go,
+    // and `frame-06.jpg` sits in the bucket with nothing left pointing at it.
+    await forget(toDelete.map((asset) => asset.storageKey).filter((key): key is string => Boolean(key)));
   }
+
+  // The cover and the video are derived from the frames, so a changed spec invalidates them too.
+  await db
+    .update(s.creativeAssets)
+    .set({ status: "PENDING", error: null, updatedAt: new Date() })
+    .where(and(eq(s.creativeAssets.packId, pack.id), inArray(s.creativeAssets.kind, ["COVER", "VIDEO"])));
 
   for (const frame of pack.spec.frames) {
     const alt = frame.alt;
@@ -388,10 +409,49 @@ export async function assertCredits(organizationId: string, needed: number) {
   }
 }
 
+/**
+ * Delete a pack and the files it owned.
+ *
+ * The rows go by cascade; the files do not, and nothing else was ever going to remove them. A
+ * workspace that makes and discards a pack a day was leaving half a megabyte behind each time, in a
+ * bucket somebody pays for, with no way to tell an orphan from a live file after the row was gone.
+ *
+ * Only the pack's own files. Generated grounds live under a shared, content-addressed prefix because
+ * two packs asking for the same abstract field share one file — deleting those with the pack that
+ * happened to be first would blank a frame in somebody else's.
+ */
 export async function deletePack(packId: string, actorId?: string | null) {
   const pack = await getPack(packId);
+  const keys = pack.assets.map((asset) => asset.storageKey).filter((key): key is string => Boolean(key));
   await db.delete(s.creativePacks).where(eq(s.creativePacks.id, packId));
-  await audit({ action: "creative.pack.delete", entityType: "SETTING", entityId: packId, organizationId: pack.organizationId, userId: actorId ?? null, metadata: { name: pack.name } });
+  await forget(keys);
+  await audit({
+    action: "creative.pack.delete",
+    entityType: "SETTING",
+    entityId: packId,
+    organizationId: pack.organizationId,
+    userId: actorId ?? null,
+    metadata: { name: pack.name, files: keys.length },
+  });
+}
+
+/**
+ * Remove files, and never fail the caller over it.
+ *
+ * A delete that cannot reach the bucket must not undo a delete that already succeeded in the
+ * database: the row is gone either way, and a leaked file is a smaller problem than a pack that
+ * reappears. Logged so it is a known leak rather than an invisible one.
+ */
+async function forget(keys: string[]) {
+  if (!keys.length) return;
+  const storage = getStorage();
+  await Promise.all(
+    keys.map((key) =>
+      storage.delete(key).catch((error: unknown) => {
+        log.warn("could not remove a stored file", { key, error: error instanceof Error ? error.message : String(error) });
+      }),
+    ),
+  );
 }
 
 

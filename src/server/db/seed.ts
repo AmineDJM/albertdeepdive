@@ -773,6 +773,16 @@ export async function runSeed(options: { quiet?: boolean } = {}): Promise<SeedRe
     targets: { [campusBySlug.get("paris")!.id]: 20, [campusBySlug.get("lyon")!.id]: 10, [campusBySlug.get("marseille")!.id]: 10, [campusBySlug.get("geneva")!.id]: 5 },
     contributorGroupIds: groupRows.filter((g) => ["paris-ambassadors", "lyon-ambassadors", "marseille-ambassadors", "geneva-ambassadors", "associations", "bdd-representatives", "student-entrepreneurs", "administration"].includes(g.slug)).map((g) => g.id),
     introMessage: "The new academic year has started: tell us about your first Business Deep Dives, your associations and your campus.",
+    /*
+     * The next issue asks last issue's contributors again, which is both realistic and necessary.
+     *
+     * Every contributor in these groups wrote for May, so with re-invites off this campaign is
+     * correctly allowed to invite nobody — and a demo whose one launchable campaign sends zero
+     * invitations teaches the wrong thing about the product. A school with four campuses and a
+     * standing group of ambassadors does ask them again; the rule exists for the case where the
+     * newsroom wants fresh voices, not as the default for a returning cohort.
+     */
+    reinvitePrevious: true,
     createdById: editor.id,
   });
   await db.insert(s.automationRuns).values({ editionId: next.id, step: "EDITION_CREATION", runKey: `${next.id}:EDITION_CREATION`, status: "SUCCEEDED", triggeredBy: "SCHEDULER", scheduledFor: new Date("2026-09-01T07:00:00Z"), startedAt: new Date("2026-09-01T07:00:00Z"), finishedAt: new Date("2026-09-01T07:00:02Z"), summary: { editionId: next.id }, createdAt: new Date("2026-09-01T07:00:00Z") });

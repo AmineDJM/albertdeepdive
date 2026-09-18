@@ -39,10 +39,21 @@ registerJobHandler<RenderPayload, { frames: number; skipped: boolean }>(CREATIVE
   const pack = await getPack(payload.packId);
   if (!pack.spec) throw new Error("This pack has no spec to render. Direct it first.");
 
-  // Everything already rendered at this fingerprint: nothing to do. The check is on the assets
-  // rather than on the pack's status, because status is derived and assets are the truth.
+  /*
+   * Everything already made at this fingerprint: nothing to do.
+   *
+   * On the assets rather than on the pack's status, because status is derived and assets are the
+   * truth — and on the video too, not only the frames. Counting frames alone meant a Reel whose
+   * frames rendered but whose encode was skipped (no ffmpeg on the host that day) reported "nothing
+   * to render" forever afterwards: pressing Render again, which is exactly what somebody does after
+   * installing the encoder, did nothing at all.
+   */
   const done = pack.assets.filter((asset) => asset.kind === "FRAME" && asset.status === "READY").length;
-  if (!payload.force && done === pack.spec.frames.length) {
+  const missingVideo = FORMATS[pack.format].moving && !pack.assets.some((asset) => asset.kind === "VIDEO" && asset.status === "READY");
+  // Owed only if it could actually be delivered. On a host with no encoder every "render again"
+  // would otherwise redraw every frame in Chromium to arrive back at the same missing video.
+  const owesVideo = missingVideo && (await encoderReady()).ok;
+  if (!payload.force && done === pack.spec.frames.length && !owesVideo) {
     ctx.log("nothing to render", { packId: pack.id, fingerprint: pack.fingerprint });
     return { frames: done, skipped: true };
   }
@@ -63,11 +74,16 @@ registerJobHandler<RenderPayload, { frames: number; skipped: boolean }>(CREATIVE
   // slides, and so the cost is recorded whether or not the render that follows succeeds.
   await fulfilGenerated(pack, images, browser, ctx.log);
 
+  // Kept so the video can reuse them. Rendering a Reel's scenes a second time for the encoder is a
+  // full Chromium pass per frame for bytes we already have in hand.
+  const stills = new Map<number, { bytes: Buffer; mimeType: string }>();
+
   try {
     await renderSpec(pack.spec, {
       browser,
       images,
       onFrame: async (frame) => {
+        stills.set(frame.index, { bytes: frame.bytes, mimeType: frame.mimeType });
         const extension = frame.mimeType === "image/jpeg" ? "jpg" : "png";
         const key = keyFor(pack.id, `frame-${String(frame.index + 1).padStart(2, "0")}.${extension}`);
         await storage.put(key, frame.bytes, { contentType: frame.mimeType, cacheControl: "public, max-age=31536000, immutable" });
@@ -97,7 +113,7 @@ registerJobHandler<RenderPayload, { frames: number; skipped: boolean }>(CREATIVE
       if (!ready.ok) {
         ctx.log(`no video: ${ready.detail}`);
       } else {
-        const video = await renderVideo(pack.spec, { system: pack.motionSystem, browser, images });
+        const video = await renderVideo(pack.spec, { system: pack.motionSystem, browser, images, stills });
         const videoKey = keyFor(pack.id, "video.mp4");
         await storage.put(videoKey, video.bytes, { contentType: video.mimeType, cacheControl: "public, max-age=31536000, immutable" });
         await db

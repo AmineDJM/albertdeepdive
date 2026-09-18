@@ -78,6 +78,26 @@ export async function launchCampaignAction(editionId: string): Promise<ActionRes
     revalidateCampaign(editionId);
     if (result.skipped) return ok({ invited: 0, emailsSent: 0 }, result.reason ?? "Nothing to do");
     const shortfall = Object.values(result.shortfall).reduce((n, v) => n + v, 0);
+
+    /*
+     * A campaign that invites nobody says so, and says why.
+     *
+     * The usual cause is a rule doing its job: everyone in the chosen groups wrote for the last
+     * issue and re-inviting them is off, so there is nobody new to ask. That is a decision the
+     * editor made weeks ago and will not remember, and "0 contributors invited" beside a tick looks
+     * exactly like a campaign that went out fine — which is how an issue reaches its deadline with
+     * no contributions and nobody knowing why.
+     */
+    if (result.invited === 0) {
+      const because = result.excludedAsPrevious
+        ? `every one of the ${result.excludedAsPrevious} eligible contributors wrote for the previous issue, and re-inviting them is switched off`
+        : "no contributor in the selected groups is eligible";
+      return ok(
+        { invited: 0, emailsSent: 0 },
+        `Campaign opened, but nobody was invited: ${because}. Turn on “Invite previous contributors”, choose other groups, or add contributors by hand.`,
+      );
+    }
+
     return ok(
       { invited: result.invited, emailsSent: result.emailsSent },
       `${result.invited} contributor${result.invited === 1 ? "" : "s"} invited · ${result.emailsSent} email${result.emailsSent === 1 ? "" : "s"} sent${result.emailsFailed ? ` · ${result.emailsFailed} failed` : ""}${shortfall ? ` · ${shortfall} short of target` : ""}`,

@@ -437,6 +437,14 @@ export type OpenCampaignResult = {
   shortfall: Record<string, number>;
   emailsSent: number;
   emailsFailed: number;
+  /**
+   * How many eligible contributors the previous-edition rule removed.
+   *
+   * Reported because it is the usual reason a campaign opens and invites nobody: everyone in the
+   * chosen groups wrote for the last issue and re-inviting them is switched off. Without this the
+   * editor is told "0 contributors invited" and left to guess whether that is a rule or a fault.
+   */
+  excludedAsPrevious: number;
   links?: { contributorId: string; requestId: string; link: string }[];
 };
 
@@ -448,13 +456,15 @@ export async function openCampaign(campaignId: string, opts: OpenCampaignOptions
   const now = opts.now ?? new Date();
   const { campaign, edition } = await loadCampaignWithEdition(campaignId);
   if (campaign.status !== "DRAFT" && campaign.status !== "SCHEDULED") {
-    return { skipped: true, reason: `Campaign is already ${campaign.status}`, invited: 0, byCampus: {}, shortfall: {}, emailsSent: 0, emailsFailed: 0 };
+    return { skipped: true, reason: `Campaign is already ${campaign.status}`, invited: 0, byCampus: {}, shortfall: {}, emailsSent: 0, emailsFailed: 0, excludedAsPrevious: 0 };
   }
   let links: OpenCampaignResult["links"];
+  let excludedAsPrevious = 0;
   const step = await runStep({ editionId: edition.id, step: "CAMPAIGN_OPEN", runKey: `${edition.id}:CAMPAIGN_OPEN`, triggeredBy: opts.triggeredBy, scheduledFor: campaign.opensAt, now }, async () => {
     const pool = await loadEligibleContributors(campaign.contributorGroupIds);
     const { excludeIds, strictExclude } = await exclusionFor(campaign);
     const selection = selectContributors({ contributors: pool, groupIds: campaign.contributorGroupIds, targets: campaign.targets ?? {}, seed: campaign.id, excludeIds, strictExclude });
+    excludedAsPrevious = strictExclude ? pool.filter((contributor) => excludeIds.has(contributor.id)).length : 0;
     await createPendingRequests(campaign, selection.selected, now);
     const pending = await db.select().from(submissionRequests).where(and(eq(submissionRequests.campaignId, campaign.id), eq(submissionRequests.status, "PENDING")));
     const sent = await sendInvitations(campaign, edition, pending, now);
@@ -492,10 +502,10 @@ export async function openCampaign(campaignId: string, opts: OpenCampaignOptions
       editionId: edition.id,
       metadata: { triggeredBy: opts.triggeredBy, invited: invitedTotal[0]?.n ?? 0, emailsSent: sent.sent, emailsFailed: sent.failed, shortfall: selection.shortfall, editionStatus },
     });
-    return { invited: invitedTotal[0]?.n ?? 0, byCampus, shortfall: selection.shortfall, emailsSent: sent.sent, emailsFailed: sent.failed };
+    return { invited: invitedTotal[0]?.n ?? 0, byCampus, shortfall: selection.shortfall, emailsSent: sent.sent, emailsFailed: sent.failed, excludedAsPrevious };
   });
   if (step.status === "skipped") {
-    return { skipped: true, reason: `CAMPAIGN_OPEN already ${step.reason}`, invited: 0, byCampus: {}, shortfall: {}, emailsSent: 0, emailsFailed: 0 };
+    return { skipped: true, reason: `CAMPAIGN_OPEN already ${step.reason}`, invited: 0, byCampus: {}, shortfall: {}, emailsSent: 0, emailsFailed: 0, excludedAsPrevious: 0 };
   }
   return { skipped: false, ...step.result, ...(opts.collectLinks ? { links: links ?? [] } : {}) };
 }
