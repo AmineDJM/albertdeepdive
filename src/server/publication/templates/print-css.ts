@@ -435,6 +435,9 @@ a { color: inherit; text-decoration: none; }
 .flow.shorts .blk.crosshead::before { display: none; }
 .flow.shorts .blk.para { font-size: calc(10.4pt * var(--fit)); line-height: calc(14.2pt * var(--fit)); }
 .flow.shorts .blk.para + .blk.para { text-indent: 0; margin-top: 0; }
+.shorts-page .short-item { display: flex; flex-direction: column; min-height: 0; }
+.shorts-page .short-item + .short-item { margin-top: 4mm; border-top: 0.2mm solid var(--rule); padding-top: 3.4mm; }
+.shorts-page .short-item:last-child { flex: 1 1 0; }
 .event-cards { display: grid; grid-template-columns: repeat(3, 1fr); column-gap: var(--gutter); margin-bottom: 4mm; }
 .event-card { border-top: 0.7mm solid var(--section); padding-top: 2.6mm; font: 400 9.4pt/12.8pt var(--font-text); }
 .event-card .label { display: block; font-family: var(--font-display); font-weight: 700; font-size: 15pt; letter-spacing: -0.01em; text-transform: uppercase; color: var(--section); margin-bottom: 1.8mm; }

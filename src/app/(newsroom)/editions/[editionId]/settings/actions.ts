@@ -14,6 +14,7 @@ export type EditionSettingsPatch = {
   isSpecialIssue: boolean;
   pageSize: "A4" | "TABLOID" | "LETTER";
   targetPageCount: number;
+  pageCountMode: "auto" | "fixed";
   publicationTargetAt: string | null;
   finalReviewAt: string | null;
   editorInChiefId: string | null;

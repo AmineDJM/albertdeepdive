@@ -120,6 +120,13 @@
       "when": 1789758517688,
       "tag": "0016_unique_jasper_sitwell",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1789768485171,
+      "tag": "0017_real_chamber",
+      "breakpoints": true
     }
   ]
 }

@@ -1,0 +1,1 @@
+ALTER TABLE "editions" ADD COLUMN "page_count_mode" text DEFAULT 'auto' NOT NULL;

@@ -26,6 +26,11 @@ export const editions = pgTable(
     publicationTargetAt: timestamp("publication_target_at", { withTimezone: true }),
     finalReviewAt: timestamp("final_review_at", { withTimezone: true }),
     pageSize: text("page_size").notNull().default("A4"),
+    /**
+     * `auto` sizes the issue to the copy; `fixed` keeps `targetPageCount` and spends the room on
+     * pictures and air. A printer's booklet needs the second; everything else is better with the first.
+     */
+    pageCountMode: text("page_count_mode").notNull().default("auto"),
     targetPageCount: integer("target_page_count").notNull().default(24),
     coverStoryId: uuid("cover_story_id"),
     coverHeadline: text("cover_headline"),

@@ -55,6 +55,7 @@ export default async function EditionSettingsPage({ params }: { params: Promise<
     isSpecialIssue: edition.isSpecialIssue,
     pageSize: edition.pageSize === "TABLOID" || edition.pageSize === "LETTER" ? edition.pageSize : "A4",
     targetPageCount: edition.targetPageCount,
+    pageCountMode: edition.pageCountMode === "fixed" ? "fixed" : "auto",
     publicationTargetAt: edition.publicationTargetAt?.toISOString() ?? null,
     finalReviewAt: edition.finalReviewAt?.toISOString() ?? null,
     editorInChiefId: edition.editorInChiefId ?? "",

@@ -72,7 +72,7 @@ export function MarketingHeader({ signedIn }: { signedIn: boolean }) {
                 <Link href="/login">{t("marketing.nav.logIn")}</Link>
               </Button>
               <Button size="sm" asChild>
-                <Link href="/login?next=%2Fonboarding">{t("marketing.nav.startFree")}</Link>
+                <Link href="/signup">{t("marketing.nav.startFree")}</Link>
               </Button>
             </>
           )}
@@ -106,7 +106,7 @@ export function MarketingHeader({ signedIn }: { signedIn: boolean }) {
             ) : (
               <>
                 <Button size="lg" asChild>
-                  <Link href="/login?next=%2Fonboarding">{t("marketing.nav.startFree")}</Link>
+                  <Link href="/signup">{t("marketing.nav.startFree")}</Link>
                 </Button>
                 <Button size="lg" variant="outline" asChild>
                   <Link href="/login">{t("marketing.nav.logIn")}</Link>

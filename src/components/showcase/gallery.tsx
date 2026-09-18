@@ -180,7 +180,7 @@ export function ShowcaseCta({ onClick, variant = "block" }: { onClick: () => voi
   if (variant === "inline") {
     return (
       <Button asChild size="lg" onClick={onClick}>
-        <Link href="/onboarding">
+        <Link href="/signup">
           <Sparkles /> {tr("Create yours")}
         </Link>
       </Button>
@@ -194,7 +194,7 @@ export function ShowcaseCta({ onClick, variant = "block" }: { onClick: () => voi
       </p>
       <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
         <Button asChild size="lg" onClick={onClick}>
-          <Link href="/onboarding">
+          <Link href="/signup">
             <Sparkles /> {tr("Start with Briefly")}
           </Link>
         </Button>

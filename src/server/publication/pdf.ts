@@ -231,9 +231,20 @@ export async function renderPdf(doc: EditionDocument, options: RenderPdfOptions 
         rounds: report.rounds,
         engine: report.engine,
         pageCountMismatch: mismatch,
+        // What the engine actually did. Dropping these was why the quality screens showed no sign
+        // that it had run out of budget half way through fixing the issue.
+        densityPasses: report.densityPasses,
+        densityChanges: report.densityChanges,
+        templateSwaps: report.templateSwaps,
+        // Pictures the storage could not hand over. They were only ever a line in the log, which is
+        // why an issue could print a page of empty frames and still be called clean.
+        mediaMissing: printAssets.missing,
       });
       await progress(6, 6, "PDF ready");
-      say("pdf rendered", "info", { pages: pageCount, bytes: buffer.length, rounds: report.rounds, continuation: report.continuationPagesAdded });
+      if (layoutReport.underfilled.length) {
+        say(`${layoutReport.underfilled.length} page(s) came out too empty`, "warn", { pages: layoutReport.underfilled.map((p) => `${p.page} (${Math.round(p.occupancy * 100)} %)`) });
+      }
+      say("pdf rendered", "info", { pages: pageCount, bytes: buffer.length, rounds: report.rounds, continuation: report.continuationPagesAdded, underfilled: layoutReport.underfilled.length });
       return { buffer, pageCount, layoutReport, finalDocument, html };
     } finally {
       await context.close().catch(() => {});

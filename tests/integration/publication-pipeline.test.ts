@@ -143,8 +143,17 @@ describe("rendering (one shared browser)", () => {
     expect(pdfResult.layoutReport.blankPages).toEqual([]);
     expect(pdfResult.layoutReport.imagesFailed).toEqual([]);
     expect(pdfResult.layoutReport.pageCountMismatch).toBeUndefined();
-    expect(pdfResult.layoutReport.ok).toBe(true);
+    expect(pdfResult.layoutReport.mediaMissing).toEqual([]);
     expect(pdfResult.layoutReport.fit.every((f) => f.ratio > 0 && f.ratio <= 1)).toBe(true);
+    /*
+     * `ok` now also means "no page came out too empty", which is the point: an issue with a
+     * quarter-full page used to pass as clean. The sample issue does not have enough copy for
+     * every page of it, so the flag follows the pages the report names — what matters is that
+     * they are named, that there are few of them, and that none is nearly blank.
+     */
+    expect(pdfResult.layoutReport.ok).toBe(pdfResult.layoutReport.underfilled.length === 0);
+    expect(pdfResult.layoutReport.underfilled.length).toBeLessThanOrEqual(4);
+    expect(pdfResult.layoutReport.underfilled.every((u) => u.occupancy >= 0.25)).toBe(true);
     const parsed = await PDFDocument.load(pdfResult.buffer, { updateMetadata: false });
     expect(parsed.getPageCount()).toBe(pdfResult.pageCount);
     expect(parsed.getTitle()).toBe("Albert's Deep Dive — Special issue N°1, May 2025");

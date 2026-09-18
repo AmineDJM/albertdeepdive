@@ -42,6 +42,8 @@ export const ISSUE_CODES = {
   IMAGE_FAILED: "IMAGE_FAILED",
   PAGE_COUNT_MISMATCH: "PAGE_COUNT_MISMATCH",
   CONTINUATION_UNDERFULL: "CONTINUATION_UNDERFULL",
+  PAGE_UNDERFILLED: "PAGE_UNDERFILLED",
+  EXTENT_MISSED: "EXTENT_MISSED",
 } as const;
 
 export const HEADLINE_MAX_LENGTH = 90;
@@ -181,6 +183,14 @@ export function layoutReportAsValidation(report: LayoutReport): ValidationReport
   for (const o of report.remainingOverflow) issues.push({ code: ISSUE_CODES.TEXT_OVERFLOW, severity: "error", message: `Page ${o.page}: ${o.blocks.length} block(s) still overflow.`, page: o.page, entityId: o.articleId });
   for (const p of report.blankPages) issues.push({ code: ISSUE_CODES.BLANK_PAGE, severity: "error", message: `Page ${p} is blank.`, page: p });
   for (const f of report.imagesFailed) issues.push({ code: ISSUE_CODES.IMAGE_FAILED, severity: "error", message: `Page ${f.page}: an image failed to load.`, page: f.page, entityId: f.mediaId });
+  // A picture the storage could not hand over prints as an empty frame, which is how an issue came
+  // back with a page that looked blank. It is the same defect as a failed image, named where it can
+  // be acted on rather than left in a log line.
+  for (const mediaId of report.mediaMissing ?? []) issues.push({ code: ISSUE_CODES.MISSING_IMAGE_FILE, severity: "error", message: "An image file could not be read from storage, so it prints as an empty frame.", entityId: mediaId });
+  // Pages that came out too empty. A warning, not a blocker: sometimes there genuinely is not
+  // enough copy, and the editor is the one who decides whether to cut a page or write more.
+  for (const u of report.underfilled) issues.push({ code: ISSUE_CODES.PAGE_UNDERFILLED, severity: "warning", message: `Page ${u.page} (${u.template}) is only ${Math.round(u.occupancy * 100)}% full.`, page: u.page });
+  if (report.extentMissed) issues.push({ code: ISSUE_CODES.EXTENT_MISSED, severity: "warning", message: `This issue was set to exactly ${report.extentMissed.target} pages but came out at ${report.extentMissed.actual}.` });
   if (report.pageCountMismatch) issues.push({ code: ISSUE_CODES.PAGE_COUNT_MISMATCH, severity: "error", message: `The PDF has ${report.pageCountMismatch.actual} pages but the layout has ${report.pageCountMismatch.expected}.` });
   for (const f of report.fit) {
     if (f.template === "CONTINUATION" && f.ratio < 0.35) issues.push({ code: ISSUE_CODES.CONTINUATION_UNDERFULL, severity: "info", message: `Page ${f.page} is a continuation page that is only ${Math.round(f.ratio * 100)}% full — consider a denser template for the article.`, page: f.page, entityId: f.articleId });

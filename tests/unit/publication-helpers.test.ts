@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { compareLabels, nextVersionLabel } from "@/lib/publication/labels";
 import { fileSlug, humanList, issueLabelFor, monthName, splitParagraphAtSentence, splitSentences } from "@/lib/publication/text";
 import type { EditionDocument } from "@/lib/publication/document";
-import { applyMeasurements, rebuildToc, renumberPages, resetLayout, type PageMeasurement } from "@/server/publication/paginate";
+import { applyMeasurements, planTailFill, planUnsplitJump, rebuildToc, renumberPages, resetLayout, type PageMeasurement } from "@/server/publication/paginate";
 import { escapeHtml, html, join, raw } from "@/server/publication/templates/html";
 import { checkXmlWellFormed } from "@/server/publication/zip";
 
@@ -210,5 +210,74 @@ describe("pagination helpers", () => {
     const changed = applyMeasurements(doc, [measurement("cont_p2_1", 3, "CONTINUATION", [{ id: "b3", type: "paragraph", fits: false, partial: false, sentencesFit: 0, sentenceCount: 0 }], 3)], stats);
     expect(changed).toBe(false);
     expect(doc.pages).toHaveLength(3);
+  });
+});
+
+describe("moving stories between pages", () => {
+  /** A loose page followed by a finished story, which is what the fill pass is for. */
+  function twoPageDoc(looseTemplate: string): EditionDocument {
+    const doc = layoutDoc();
+    doc.articles.push({ ...doc.articles[0], id: "a2", storyId: "st2", headline: "Headline two", body: [{ id: "c1", type: "paragraph", text: "Alpha. Beta." }] });
+    doc.pages = [
+      { id: "p1", number: 1, template: looseTemplate, sectionId: "s", articleIds: ["a1"], mediaIds: [], continuationOf: null, isLocked: false, notes: null },
+      { id: "p2", number: 2, template: "ARTICLE_TWO_COLUMN", sectionId: "s", articleIds: ["a2"], mediaIds: [], continuationOf: null, isLocked: false, notes: null },
+    ];
+    return doc;
+  }
+
+  function loose(pageId: string, number: number, template: string, occupancy: number): PageMeasurement {
+    return { ...measurement(pageId, number, template, []), density: { occupancy, tailGapRatio: 0.3, sheetHeight: 1000, contentBottom: 400 }, flows: [] };
+  }
+
+  it("pours a story onto a page that sets every story it is given", () => {
+    const doc = twoPageDoc("NEWS_GRID");
+    const plan = planTailFill(doc, [loose("p1", 1, "NEWS_GRID", 0.4), loose("p2", 2, "ARTICLE_TWO_COLUMN", 0.9)], new Set());
+    expect(plan?.moved.articleId).toBe("a2");
+    expect(plan?.document.pages).toHaveLength(1);
+    expect(plan?.document.pages[0].articleIds).toEqual(["a1", "a2"]);
+  });
+
+  it("never pours a story onto a page that would print only the first one", () => {
+    // A contents page renders the table of contents and nothing else, so a story moved onto it
+    // would leave the issue without a word of warning.
+    for (const template of ["CONTENTS", "ARTICLE_TWO_COLUMN", "BDD_CASE", "BACK_PAGE", "EVENT"]) {
+      const doc = twoPageDoc(template);
+      expect(planTailFill(doc, [loose("p1", 1, template, 0.4), loose("p2", 2, "ARTICLE_TWO_COLUMN", 0.9)], new Set())).toBeNull();
+    }
+  });
+
+  it("refuses a page that is already at its story limit", () => {
+    const doc = twoPageDoc("NEWS_GRID");
+    doc.pages[0].articleIds = ["a1", "a1", "a1", "a1"];
+    expect(planTailFill(doc, [loose("p1", 1, "NEWS_GRID", 0.4), loose("p2", 2, "ARTICLE_TWO_COLUMN", 0.9)], new Set())).toBeNull();
+  });
+
+  it("gives a whole story its own page instead of trickling onto a jump page", () => {
+    const doc = layoutDoc();
+    doc.articles.push({ ...doc.articles[0], id: "a2", storyId: "st2", headline: "Headline two", body: [{ id: "c1", type: "paragraph", text: "Alpha." }, { id: "c2", type: "paragraph", text: "Beta." }] });
+    doc.pages = [
+      { id: "p1", number: 1, template: "NEWS_GRID", sectionId: "s", articleIds: ["a1", "a2"], mediaIds: [], continuationOf: null, isLocked: false, notes: null, slices: [{ articleId: "a1", blockIds: ["b1", "b2", "b3"] }, { articleId: "a2", blockIds: ["c1"] }] },
+      { id: "cont_p1_1", number: 2, template: "CONTINUATION", sectionId: "s", articleIds: ["a2"], mediaIds: [], continuationOf: 1, continuationOfPageId: "p1", isContinuation: true, isLocked: false, notes: null, slices: [{ articleId: "a2", blockIds: ["c2"] }] },
+    ];
+    const plan = planUnsplitJump(doc, [loose("p1", 1, "NEWS_GRID", 0.8), loose("cont_p1_1", 2, "CONTINUATION", 0.18)], new Set());
+    expect(plan?.moved.articleId).toBe("a2");
+    const pages = plan!.document.pages;
+    // The shared page keeps the stories that stayed; the new sheet is a real page, because every
+    // flow pass rebuilds jump pages from what overflows and would take this one away again.
+    expect(pages[0].articleIds).toEqual(["a1"]);
+    expect(pages[1].articleIds).toEqual(["a2"]);
+    expect(pages[1].template).toBe("NEWS_GRID");
+    expect(pages[1].continuationOfPageId).toBeNull();
+    expect(pages[1].id.startsWith("cont_")).toBe(false);
+    expect(resetLayout(plan!.document).pages.map((p) => p.id)).toContain(pages[1].id);
+  });
+
+  it("leaves a jump page alone when the page it came from has nothing else on it", () => {
+    const doc = layoutDoc();
+    doc.pages = [
+      { id: "p1", number: 1, template: "ARTICLE_TWO_COLUMN", sectionId: "s", articleIds: ["a1"], mediaIds: [], continuationOf: null, isLocked: false, notes: null, slices: [{ articleId: "a1", blockIds: ["b1"] }] },
+      { id: "cont_p1_1", number: 2, template: "CONTINUATION", sectionId: "s", articleIds: ["a1"], mediaIds: [], continuationOf: 1, continuationOfPageId: "p1", isContinuation: true, isLocked: false, notes: null, slices: [{ articleId: "a1", blockIds: ["b3"] }] },
+    ];
+    expect(planUnsplitJump(doc, [loose("p1", 1, "ARTICLE_TWO_COLUMN", 0.9), loose("cont_p1_1", 2, "CONTINUATION", 0.18)], new Set())).toBeNull();
   });
 });

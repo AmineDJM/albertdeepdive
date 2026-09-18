@@ -2,7 +2,7 @@ import type { DocumentArticle, DocumentBdd, DocumentMedia, DocumentPage } from "
 import { firstBlockOfType } from "./blocks";
 import type { TemplateContext } from "./context";
 import { EMPTY, html, join, when, type Html } from "./html";
-import { CONTENT_WIDTH_MM, articleHeader, colWidth, figureFor, flowRegion, galleryMedia, heroMedia, headlineClass, placeholder, pullQuoteSide, sideBox, type TemplateOutput } from "./parts";
+import { CONTENT_WIDTH_MM, articleHeader, colWidth, figureFor, flowRegion, galleryMedia, heroMedia, headlineClass, placeholder, pullQuoteBlockId, pullQuoteSide, sideBox, type TemplateOutput } from "./parts";
 
 /** Business Deep Dive templates: the structured case page and the visual (dashboards/diagrams) page. */
 
@@ -134,7 +134,7 @@ export function bddVisual(page: DocumentPage, ctx: TemplateContext): TemplateOut
   const chips = (bdd?.technologies ?? []).map((t) => html`<span class="chip">${t}</span>`);
   const strip = bodyElsewhere
     ? html`<div class="grid" style="align-items:start"><div class="span-5">${when(bdd?.metrics.length || chips.length, () => html`<div class="case-panel">${when(bdd?.metrics.length, () => html`<div class="metrics">${join((bdd?.metrics ?? []).map((m) => html`<div class="metric"><div class="v">${m.value}</div><div class="l">${m.label}</div></div>`))}</div>`)}${when(chips.length, () => html`<div class="item"><span class="label">The methods</span><div class="chips">${join(chips)}</div></div>`)}</div>`)}</div><div class="span-7">${when(bdd?.keyTakeaways.length, () => html`<div class="side-box"><div class="box-title">Key takeaways</div><ul>${join((bdd?.keyTakeaways ?? []).map((t) => html`<li>${t}</li>`))}</ul></div>`)}${when(!bdd?.keyTakeaways.length, () => pullQuoteSide(article))}</div></div>`
-    : html`<div class="grid grow" style="min-height:0"><div class="span-5 side">${figureFor(team, ctx, colWidth(5), { widthMm: colWidth(5), minMm: 36, maxMm: 50 })}${sideBox(box)}${when(chips.length, () => html`<div class="chips">${join(chips)}</div>`)}</div><div class="span-7 fill">${flowRegion(page, article, ctx, { cols: 2, className: "compact", exclude: new Set(box ? [box.id] : []) })}</div></div>`;
+    : html`<div class="grid grow" style="min-height:0"><div class="span-5 side">${figureFor(team, ctx, colWidth(5), { widthMm: colWidth(5), minMm: 36, maxMm: 50 })}${sideBox(box)}${when(chips.length, () => html`<div class="chips">${join(chips)}</div>`)}</div><div class="span-7 fill">${flowRegion(page, article, ctx, { cols: 2, className: "compact", exclude: new Set([box?.id, bdd?.keyTakeaways.length ? undefined : pullQuoteBlockId(article)].filter((id): id is string => !!id)) })}</div></div>`;
   const body = html`${bddTop(article, ctx, page, "sm")}
 <div class="visual-grid">${join(grid)}</div>
 ${strip}`;

@@ -245,7 +245,7 @@ the bucket public, unless a CDN base URL is given on the card.
 - **Stories** — clusters and story candidates with sources, facts, quotes, people, media, AI notes.
 - **Articles** — the editor: headline, standfirst, blocks, pull quotes, provenance ("Why is this sentence here?"), explicit AI actions, revision history, approval.
 - **Media** — library with rights status (green / yellow / red), quality, duplicates, crops.
-- **Layout** — the flatplan: spreads, drag-and-drop pages, templates, locks, pinned stories, the real copyfit measurement, and signing the plan off.
+- **Layout** — the flatplan: spreads, drag-and-drop pages, templates, locks, pinned stories, the real copyfit measurement, and signing the plan off. The page count on an edition's settings is either a ceiling — the issue is sized to the copy, short stories share a page rather than each getting one — or a promise to a printer, in which case the extent is kept and the room goes on the photographs a story brought and on giving each story more air. Pages that still come out too empty are named in QA rather than quietly shipped.
 - **QA & publish** — quality gates (overrides require a reason), exports, versions, approval, archive.
 - **Automations** — the nine scheduled steps, the job queue (retry, cancel, inspect a dead letter) and the AI call log.
 - **Analytics** — contributions, response rates, conversion, section coverage, AI cost, time to decision.

@@ -42,7 +42,9 @@ describe("page allocation planner", () => {
     expect(numbers).toEqual(Array.from({ length: numbers.length }, (_, i) => numbers[0] + i));
     expect(bddPages[0].storyIds).toEqual(["bdd-1"]);
     expect(bddPages.every((p) => p.template.startsWith("BDD_"))).toBe(true);
-    expect(bddPages.filter((p) => p.storyIds[0] === "bdd-1").map((p) => p.template)).toEqual(["BDD_CASE", "BDD_VISUAL"]);
+    // In `auto` the four pictures bdd-1 brought do not buy a page of their own: see the fixed-extent
+    // test below, where they do.
+    expect(bddPages.filter((p) => p.storyIds[0] === "bdd-1").map((p) => p.template)).toEqual(["BDD_CASE"]);
   });
 
   it("packs 2–4 short stories of a section into a NEWS_GRID and gives long ones their own page", () => {
@@ -76,5 +78,56 @@ describe("page allocation planner", () => {
     const odd = planPages({ sections, stories: [story("x", "spotlight", "SCHOOL_NEWS", 200, 0), story("y", "campus-life", "ANECDOTE", 200, 0)] });
     expect(odd.pages).toHaveLength(5);
     expect(odd.warnings.some((w) => w.includes("multiple of 4"))).toBe(true);
+  });
+
+  it("sizes the issue to the copy: a story that cannot fill a page shares one", () => {
+    // 400 words on a template built for 720 is the half-empty page people complain about.
+    const shortish = planPages({ sections, stories: [story("a", "actus", "SCHOOL_NEWS", 400, 1), story("b", "actus", "SCHOOL_NEWS", 200, 1)] });
+    const shared = shortish.pages.find((p) => p.storyIds.length === 2);
+    expect(shared?.storyIds.sort()).toEqual(["a", "b"]);
+    // A story that does fill its page keeps it.
+    const solo = planPages({ sections, stories: [story("a", "actus", "SCHOOL_NEWS", 640, 1), story("b", "actus", "SCHOOL_NEWS", 200, 1)] });
+    expect(solo.pages.every((p) => p.storyIds.length <= 1)).toBe(true);
+  });
+
+  it("packs shorts across a section boundary rather than giving each section a near-empty page", () => {
+    const spread = planPages({
+      sections,
+      stories: [story("a", "actus", "SCHOOL_NEWS", 150, 0), story("b", "campus-life", "ACADEMIC_NEWS", 150, 0), story("c", "associations", "ASSOCIATION", 150, 0)],
+    });
+    // Two neighbouring sections may share a page; a third section is too far to still belong.
+    const packed = spread.pages.filter((p) => p.storyIds.length > 1);
+    expect(packed.length).toBeGreaterThanOrEqual(1);
+    expect(spread.pages.filter((p) => p.storyIds.some((id) => ["a", "b", "c"].includes(id))).length).toBeLessThan(3);
+  });
+
+  it("fills a fixed extent with pictures and unpacked pages instead of handing back a shorter issue", () => {
+    const fixed = planPages({ sections, stories, targetPageCount: 16, pageCountMode: "fixed" });
+    expect(fixed.pages).toHaveLength(16);
+    expect(fixed.warnings).toEqual([]);
+    // The spare photographs of a Business Deep Dive are what the extra room is spent on first.
+    expect(fixed.pages.filter((p) => p.storyIds[0] === "bdd-1").map((p) => p.template)).toContain("BDD_VISUAL");
+    // Nothing is inserted into the front or back furniture.
+    expect(fixed.pages[0].template).toBe("COVER_A");
+    expect(fixed.pages[1].template).toBe("CONTENTS");
+    expect(fixed.pages[fixed.pages.length - 1].template).toBe("BACK_PAGE");
+    // Page numbers and continuation links are renumbered after the expansion.
+    expect(fixed.pages.map((p) => p.pageNumber)).toEqual(fixed.pages.map((_, i) => i + 1));
+    for (const page of fixed.pages) {
+      if (page.continuationOfPage === null) continue;
+      expect(page.continuationOfPage).toBeLessThan(page.pageNumber);
+    }
+  });
+
+  it("says so when a fixed extent cannot be filled honestly, rather than padding it", () => {
+    const thin = planPages({ sections, stories: [story("a", "actus", "SCHOOL_NEWS", 200, 0)], targetPageCount: 32, pageCountMode: "fixed" });
+    expect(thin.pages.length).toBeLessThan(32);
+    expect(thin.warnings.some((w) => w.includes("not enough material"))).toBe(true);
+  });
+
+  it("says so when the copy needs more paper than a fixed extent allows", () => {
+    const fat = planPages({ sections, stories, targetPageCount: 8, pageCountMode: "fixed" });
+    expect(fat.pages.length).toBeGreaterThan(8);
+    expect(fat.warnings.some((w) => w.includes("shorten a story or raise the extent"))).toBe(true);
   });
 });

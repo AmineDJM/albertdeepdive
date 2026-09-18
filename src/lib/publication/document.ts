@@ -153,6 +153,15 @@ export const documentPageSchema = z.object({
    * (a news grid, a shorts page). A slice's own `fit`, set while flowing text, overrides it.
    */
   textScale: z.number().optional(),
+  /**
+   * The levers a jump page generated from this one is created with.
+   *
+   * Every flow pass rebuilds jump pages from what overflows, so a lever set on one is thrown away
+   * before it can do anything. They live here instead, on the page that generates them, which is
+   * also the page whose own levers decide how much copy travels down.
+   */
+  continuationImageScale: z.number().optional(),
+  continuationTextScale: z.number().optional(),
 });
 export type DocumentPage = z.infer<typeof documentPageSchema>;
 
@@ -194,6 +203,11 @@ export const editionDocumentSchema = z.object({
     layout: z
       .object({ paginatedAt: z.string(), continuationPages: z.number(), engine: z.string() })
       .optional(),
+    /**
+     * The extent the issue was planned to. `fixed` is a promise made to a printer: the layout pass
+     * may fill those pages but must not hand back fewer than were bought.
+     */
+    extent: z.object({ mode: z.enum(["auto", "fixed"]), pages: z.number().nullable() }).optional(),
   }),
   sections: z.array(z.object({ id: z.string(), slug: z.string(), name: z.string(), kicker: z.string().nullable(), colour: z.string().nullable(), sortOrder: z.number() })),
   articles: z.array(documentArticleSchema),

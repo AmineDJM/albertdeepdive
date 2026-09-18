@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/server/auth/session";
 import { homeFor } from "@/server/tenancy/context";
@@ -56,6 +57,10 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
           <h2 className="text-lg font-semibold tracking-tight">{tr("Sign in")}</h2>
           <p className="mt-1 mb-6 text-[13px] text-muted-foreground">{tr("Sign in to your workspace. Contributors use their personal link instead.")}</p>
           <LoginForm next={next} demo={demo} />
+          <p className="mt-6 text-center text-[13px] text-muted-foreground">
+            {tr("No account yet?")}{" "}
+            <Link href={next ? `/signup?next=${encodeURIComponent(next)}` : "/signup"} className="font-medium text-brand hover:underline">{tr("Start for free")}</Link>
+          </p>
           {demo ? (
             // Development only. The sign-in page belongs to Briefly, so it names no customer: the
             // sample workspace's accounts are in the README, not here.

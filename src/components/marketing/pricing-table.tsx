@@ -112,7 +112,7 @@ export function PricingTable({ plans }: { plans: MarketingPlan[] }) {
                   </Button>
                 ) : (
                   <Button variant={plan.isFeatured ? "default" : "outline"} className="w-full" asChild>
-                    <Link href={`/login?next=${encodeURIComponent(`/onboarding?plan=${plan.key}`)}`}>
+                    <Link href={`/signup?plan=${encodeURIComponent(plan.key)}`}>
                       {plan.isFree ? t("marketing.pricing.startFree") : t("marketing.pricing.choose", { plan: plan.name })}
                     </Link>
                   </Button>

@@ -37,6 +37,15 @@ export const SPARSE_BY_DESIGN = new Set(["COVER_A", "COVER_B", "SECTION_OPENER",
 export const LOOSE_ALLOWED = new Set(["CONTENTS", "BACK_PAGE", "PHOTO_STORY", "BDD_VISUAL", "EVENT"]);
 
 /**
+ * Templates that set every story placed on them, and how many.
+ *
+ * Every other template prints the first story and ignores the rest, so moving a story onto one
+ * would take it out of the issue without saying so. The layout pass may only pour copy onto a page
+ * named here, and only while it is under the count.
+ */
+export const MULTI_STORY_TEMPLATES: Record<string, number> = { NEWS_GRID: 4, SHORTS: 4, CONTINUATION: 4 };
+
+/**
  * Layout variants an article page may be recomposed into, ordered by increasing text capacity.
  *
  * The engine does not decide up front that a story is "a hero page"; when a composition spills onto

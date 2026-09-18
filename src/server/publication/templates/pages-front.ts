@@ -143,6 +143,24 @@ export function quotePage(page: DocumentPage, ctx: TemplateContext): TemplateOut
   return { body, className: "quote-page opener" };
 }
 
+/**
+ * What the back page prints when no community story was placed on it.
+ *
+ * It used to print "Place the community story on this page." — an instruction to the editor, set in
+ * a magazine that had already been sent to its readers. The back page always has standing furniture
+ * (the colophon, the credits, how to reach the newsroom), so the missing story is replaced by the
+ * invitation that furniture is there to make. The quality gate still reports the page as thin; the
+ * difference is that the reader is not told to do the editor's job.
+ */
+function standingInvitation(ctx: TemplateContext): Html {
+  const doc = ctx.doc;
+  const reach = [doc.meta.contactEmail, doc.meta.website].filter(Boolean).join(" · ");
+  return html`<div class="flow cols-2 grow back-flow">
+<p class="blk para">Every issue of ${doc.meta.masthead.title} is made of what its community sends in: what happened, what was built, who is worth reading about.</p>
+<p class="blk para">Tell the newsroom about it${reach ? html` — ${reach}` : EMPTY} — and it can be in the next one.</p>
+</div><div class="flow-foot"></div>`;
+}
+
 export function backPage(page: DocumentPage, ctx: TemplateContext): TemplateOutput {
   const doc = ctx.doc;
   const article = ctx.articlesOf(page)[0];
@@ -159,7 +177,7 @@ export function backPage(page: DocumentPage, ctx: TemplateContext): TemplateOutp
 ${head}
 ${when(hero, () => figureFor(hero, ctx, CONTENT_WIDTH_MM, { widthMm: CONTENT_WIDTH_MM, minMm: 34, maxMm: 62, className: "hero-figure" }))}
 <div class="back-grid">
-  <div class="fill">${article ? flowRegion(page, article, ctx, { cols: 2, className: "back-flow" }) : placeholder(page, "Place the community story on this page.")}</div>
+  <div class="fill">${article ? flowRegion(page, article, ctx, { cols: 2, className: "back-flow" }) : standingInvitation(ctx)}</div>
   <div class="side">
     ${when(social || instagram, () => html`<div class="social-card">${when(social, () => figureFor(social, ctx, colWidth(4), { widthMm: colWidth(4), heightMm: 40, caption: false, contain: true }))}<div class="handle">${instagram ? `@${instagram}` : doc.meta.masthead.title}</div><div class="hint">${instagram ? "Follow the newsroom on Instagram for photos, behind the scenes and the next call for contributions." : "Write to the newsroom to contribute to the next issue."}</div></div>`)}
   </div>

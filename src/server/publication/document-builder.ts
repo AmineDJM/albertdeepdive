@@ -455,6 +455,7 @@ export async function buildEditionDocument(editionId: string, options: BuildDocu
       publicationDate: (edition.publishedAt ?? edition.publicationTargetAt)?.toISOString() ?? null,
       generatedAt: new Date().toISOString(),
       pageSize: { name: pageSize.name, widthMm: pageSize.widthMm, heightMm: pageSize.heightMm },
+      extent: { mode: edition.pageCountMode === "fixed" ? "fixed" : "auto", pages: edition.targetPageCount ?? null },
       masthead: { title: masthead?.title || "Albert's Deep Dive", tagline: masthead?.tagline ?? null },
       cover: {
         storyId: coverStory?.id ?? null,

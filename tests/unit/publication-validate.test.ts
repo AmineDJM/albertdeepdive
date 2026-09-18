@@ -220,6 +220,7 @@ describe("layoutReportAsValidation", () => {
       rounds: 3,
       remainingOverflow: [{ page: 2, pageId: "p2", articleId: "a1", blocks: ["b1"] }],
       blankPages: [4],
+      underfilled: [],
       imagesFailed: [{ page: 1, mediaId: "m1" }],
       fit: [{ page: 5, pageId: "c1", template: "CONTINUATION", articleId: "a1", ratio: 0.1 }],
       engine: "test",

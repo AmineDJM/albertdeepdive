@@ -99,7 +99,7 @@ export function Landing({ plans, signedIn, t }: { plans: MarketingPlan[]; signed
             <p className="mt-6 max-w-xl text-[18px] leading-[1.6] text-muted-foreground">{t("marketing.hero.body")}</p>
             <div className="mt-8 flex flex-wrap items-center gap-3">
               <Button size="lg" asChild>
-                <Link href={signedIn ? "/overview" : "/login?next=%2Fonboarding"}>
+                <Link href={signedIn ? "/overview" : "/signup"}>
                   {t("marketing.hero.cta")} <ArrowRight />
                 </Link>
               </Button>
@@ -400,7 +400,7 @@ export function Landing({ plans, signedIn, t }: { plans: MarketingPlan[]; signed
         <p className="mx-auto mt-5 max-w-xl text-[17px] leading-7 text-white/60">{t("marketing.finalCta.body")}</p>
         <div className="mt-9 flex justify-center">
           <Button size="lg" asChild className="bg-white text-[#101014] hover:bg-white/90">
-            <Link href={signedIn ? "/overview" : "/login?next=%2Fonboarding"}>
+            <Link href={signedIn ? "/overview" : "/signup"}>
               {t("marketing.finalCta.cta")} <ArrowRight />
             </Link>
           </Button>

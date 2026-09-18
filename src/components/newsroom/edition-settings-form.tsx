@@ -28,6 +28,7 @@ export type EditionSettingsValues = {
   isSpecialIssue: boolean;
   pageSize: "A4" | "TABLOID" | "LETTER";
   targetPageCount: number;
+  pageCountMode: "auto" | "fixed";
   /** "YYYY-MM-DDTHH:mm" in the school's timezone, or "" when unset. */
   publicationTargetAt: string;
   finalReviewAt: string;
@@ -101,6 +102,7 @@ export function EditionSettingsForm({
         isSpecialIssue: values.isSpecialIssue,
         pageSize: values.pageSize,
         targetPageCount: values.targetPageCount,
+        pageCountMode: values.pageCountMode,
         publicationTargetAt: fromLocalInput(values.publicationTargetAt),
         finalReviewAt: fromLocalInput(values.finalReviewAt),
         editorInChiefId: values.editorInChiefId || null,
@@ -207,6 +209,26 @@ export function EditionSettingsForm({
             />
             <p className="text-2xs text-muted-foreground">{meta.sections}{" "}{tr("sections planned")}</p>
             <FieldError errors={fieldErrors} name="targetPageCount" />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="edition-page-count-mode" className="text-xs">
+              {tr("How that number is used")}</Label>
+            <NativeSelect
+              id="edition-page-count-mode"
+              value={values.pageCountMode}
+              onChange={(e) => set("pageCountMode", e.target.value as EditionSettingsValues["pageCountMode"])}
+              disabled={readOnly}
+            >
+              <option value="auto">{tr("A ceiling — make the issue as long as the stories need")}</option>
+              <option value="fixed">{tr("Exactly this many — a printer has been promised the extent")}</option>
+            </NativeSelect>
+            <p className="text-2xs text-muted-foreground">
+              {values.pageCountMode === "fixed"
+                ? tr("Spare photographs get picture pages and stories get more air, so the issue lands on the page count.")
+                : tr("Short stories share a page rather than each getting one, so the issue has no half-empty pages.")}{" "}
+              {tr("Applied the next time the layout is regenerated.")}
+            </p>
+            <FieldError errors={fieldErrors} name="pageCountMode" />
           </div>
           <div className="space-y-1">
             <Label htmlFor="edition-page-size" className="text-xs">

@@ -15,6 +15,7 @@ import {
   leftoverMedia,
   mediaByRole,
   placeholder,
+  pullQuoteBlockId,
   pullQuoteSide,
   sideBox,
   type TemplateOutput,
@@ -42,6 +43,7 @@ export function articleTwoColumn(page: DocumentPage, ctx: TemplateContext): Temp
   const hero = heroMedia(article, ctx, page);
   const box = firstBlockOfType(article, "box");
   const exclude = new Set<string>(box ? [box.id] : []);
+  const quoteId = pullQuoteBlockId(article);
   const aside = article.pullQuotes.length ? pullQuoteSide(article) : box ? sideBox(box) : EMPTY;
   const hasAside = aside !== EMPTY;
   const heroWidth = hasAside ? colWidth(7) : CONTENT_WIDTH_MM;
@@ -54,7 +56,7 @@ export function articleTwoColumn(page: DocumentPage, ctx: TemplateContext): Temp
       : EMPTY;
   const body = html`${articleHeader(article, ctx, page, { size: "lg", rule: true })}
 ${band}
-${flowRegion(page, article, ctx, { cols: 2, dropCap: true, exclude: hasAside && box && !article.pullQuotes.length ? exclude : new Set() })}`;
+${flowRegion(page, article, ctx, { cols: 2, dropCap: true, exclude: hasAside && box && !article.pullQuotes.length ? exclude : new Set(quoteId && article.pullQuotes.length ? [quoteId] : []) })}`;
   return { body };
 }
 
@@ -74,6 +76,9 @@ export function interview(page: DocumentPage, ctx: TemplateContext): TemplateOut
   const portrait = mediaByRole(article, ctx, ["portrait"])[0] ?? heroMedia(article, ctx, page);
   const box = firstBlockOfType(article, "box");
   const exclude = new Set<string>(box ? [box.id] : []);
+  // The quote lifted into the margin must not also be set in the column beside it.
+  const quoteId = pullQuoteBlockId(article);
+  if (quoteId) exclude.add(quoteId);
   const sideWidth = colWidth(4);
   const body = html`<div class="grid grow" style="min-height:0">
   <div class="span-4 side">
@@ -101,7 +106,7 @@ export function profile(page: DocumentPage, ctx: TemplateContext): TemplateOutpu
   <div>${figureFor(portrait, ctx, width, { widthMm: width, heightMm: height, position: "50% 15%" })}</div>
   <div>${articleHeader(article, ctx, page, { size: "md" })}${pullQuoteSide(article)}${when(secondary && !article.pullQuotes.length, () => html`<div style="max-width:60mm;margin-top:2mm">${figureFor(secondary, ctx, 60, { widthMm: 60, minMm: 24, maxMm: 40 })}</div>`)}</div>
 </div>
-${flowRegion(page, article, ctx, { cols: 2, dropCap: true })}`;
+${flowRegion(page, article, ctx, { cols: 2, dropCap: true, exclude: new Set([pullQuoteBlockId(article)].filter((id): id is string => !!id)) })}`;
   return { body, className: "profile" };
 }
 
@@ -132,11 +137,20 @@ ${flowRegion(page, article, ctx, { cols: 3, className: "compact" })}`;
   return { body, className: "news" };
 }
 
+/**
+ * Anecdotes and one-liners. The page takes as many items as the planner put on it: a shorts page
+ * holding one anecdote used to print it and silently drop the rest of the batch, which lost copy
+ * between the flatplan and the paper.
+ */
 export function shorts(page: DocumentPage, ctx: TemplateContext): TemplateOutput {
-  const article = ctx.articlesOf(page)[0];
-  if (!article) return noArticle(page);
-  const body = html`${articleHeader(article, ctx, page, { size: "lg", rule: true })}
-${flowRegion(page, article, ctx, { cols: 2, className: "shorts" })}`;
+  const articles = ctx.articlesOf(page).slice(0, 4);
+  if (!articles.length) return noArticle(page);
+  const body = join(
+    articles.map(
+      (article, index) => html`<div class="short-item">${articleHeader(article, ctx, page, { size: index === 0 ? "lg" : "md", rule: index === 0 })}
+${flowRegion(page, article, ctx, { cols: 2, className: "shorts", grow: index === articles.length - 1 })}</div>`,
+    ),
+  );
   return { body, className: "shorts-page" };
 }
 

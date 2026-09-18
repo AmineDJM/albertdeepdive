@@ -54,6 +54,6 @@ export async function planEditionPageAllocation(editionId: string, options: { in
     priority: s.priority,
     isCover: s.isCover,
   }));
-  const plan = planPages({ sections, stories: planStories, targetPageCount: edition.targetPageCount });
+  const plan = planPages({ sections, stories: planStories, targetPageCount: edition.targetPageCount, pageCountMode: edition.pageCountMode === "fixed" ? "fixed" : "auto" });
   return { ...plan, sections, stories: planStories };
 }

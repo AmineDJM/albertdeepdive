@@ -129,6 +129,22 @@ export function galleryMedia(article: DocumentArticle, ctx: TemplateContext, use
     .filter((m): m is DocumentMedia => !!m && m.rightsStatus !== "RED" && (!kinds || kinds.includes(m.kind)));
 }
 
+/**
+ * The body block a lifted pull quote came from, so the flow can leave it out.
+ *
+ * `article.pullQuotes` merges quotes gathered from the submissions with the `pullquote` blocks in
+ * the copy. When a template lifts the first one into the margin and the flow still sets the block
+ * it came from, the same sentence prints twice on the same spread — which is exactly what the last
+ * issue did. Templates that lift a quote pass this id to `flowRegion`'s `exclude`.
+ */
+export function pullQuoteBlockId(article: DocumentArticle): string | undefined {
+  const quote = article.pullQuotes[0];
+  if (!quote) return undefined;
+  const key = (text: string) => text.trim().toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  const wanted = key(quote.text);
+  return article.body.find((b) => b.type === "pullquote" && key(b.text) === wanted)?.id;
+}
+
 export function pullQuoteSide(article: DocumentArticle): Html {
   const quote = article.pullQuotes[0];
   if (!quote) return EMPTY;

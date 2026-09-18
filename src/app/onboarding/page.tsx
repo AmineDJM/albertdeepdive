@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 export default async function OnboardingPage() {
   const user = await getCurrentUser();
-  if (!user) redirect("/login?next=/onboarding");
+  if (!user) redirect("/signup?next=%2Fonboarding");
   return (
     <main className="min-h-screen bg-background">
       <OnboardingFlow suggestedTimezone="Europe/Paris" />
