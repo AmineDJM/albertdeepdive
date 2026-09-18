@@ -99,8 +99,12 @@ describe("the platform console", () => {
   describe("people", () => {
     it("lists accounts with the workspaces they belong to", async () => {
       const people = await listPlatformUsers();
+      // The sample newsroom's owner belongs to it; the platform admin belongs to nobody, and
+      // reaches every workspace as staff instead.
+      const owner = people.find((person) => person.email === "admin@albertschool.com")!;
+      expect(owner.workspaces.map((w) => w.organizationId)).toContain(albertOrgId);
       const admin = people.find((person) => person.id === adminId)!;
-      expect(admin.workspaces.map((w) => w.organizationId)).toContain(albertOrgId);
+      expect(admin.workspaces).toHaveLength(0);
     });
 
     it("will not demote or suspend the last platform admin", async () => {
