@@ -103,8 +103,9 @@ describe("the platform console", () => {
       // reaches every workspace as staff instead.
       const owner = people.find((person) => person.email === "admin@albertschool.com")!;
       expect(owner.workspaces.map((w) => w.organizationId)).toContain(albertOrgId);
+      // (It owns the pilot workspace this file created above, and nothing it did not create.)
       const admin = people.find((person) => person.id === adminId)!;
-      expect(admin.workspaces).toHaveLength(0);
+      expect(admin.workspaces.map((w) => w.organizationId)).not.toContain(albertOrgId);
     });
 
     it("will not demote or suspend the last platform admin", async () => {
