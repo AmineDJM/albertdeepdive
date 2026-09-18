@@ -170,6 +170,7 @@ export default async function PlatformPage() {
             <DataTable
               rows={organizations}
               rowKey={(o) => o.id}
+              onRowHref={(o) => `/platform/workspaces/${o.id}`}
               empty={{ title: tr("No workspaces"), description: tr("The first one is created by onboarding."), icon: Building2 }}
               columns={[
                 {

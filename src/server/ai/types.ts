@@ -45,6 +45,8 @@ export type AiTaskRequest<T> = {
   /** When true, an identical input (same prompt version + model) re-uses the last successful output. */
   cacheable?: boolean;
   jobId?: string | null;
+  /** The person this is done for. Left out, it is the signed-in person or the job's author. */
+  userId?: string | null;
 };
 
 export type EntityTypeForAi = "EDITION" | "SUBMISSION" | "CLUSTER" | "STORY" | "ARTICLE" | "MEDIA" | "PAGE_PLAN" | "PUBLICATION_VERSION";

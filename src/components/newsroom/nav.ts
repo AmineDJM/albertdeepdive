@@ -62,6 +62,8 @@ export const PLATFORM_TABS: readonly SubTab[] = [
   { href: "/platform", label: "nav.health", permission: "settings:manage", exact: true },
   { href: "/platform/workspaces", label: "nav.customers", permission: "settings:manage" },
   { href: "/platform/people", label: "nav.people", permission: "settings:manage" },
+  { href: "/platform/costs", label: "nav.costs", permission: "settings:manage" },
+  { href: "/platform/payments", label: "nav.payments", permission: "settings:manage" },
   { href: "/platform/logs", label: "nav.logs", permission: "settings:manage" },
   { href: "/platform/integrations", label: "nav.integrations", permission: "settings:manage" },
 ];

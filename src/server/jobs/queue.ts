@@ -1,4 +1,5 @@
 import { and, asc, eq, inArray, lte, sql } from "drizzle-orm";
+import { runAsActor } from "@/server/auth/actor";
 import { db } from "@/server/db/client";
 import { jobs } from "@/server/db/schema";
 import { createLogger } from "@/server/logger";
@@ -72,14 +73,17 @@ export async function runJob(job: JobRecord, workerId: string): Promise<void> {
     return;
   }
   try {
-    const result = await handler(job.payload, {
-      job,
-      workerId,
-      progress: async (done, total, message) => {
-        await db.update(jobs).set({ progress: { done, total, message } }).where(eq(jobs.id, job.id));
-      },
-      log: (message, meta) => scoped.info(message, { jobId: job.id, ...meta }),
-    });
+    // The job runs on behalf of whoever queued it, so what it spends is written to their name.
+    const result = await runAsActor(job.createdById, () =>
+      handler(job.payload, {
+        job,
+        workerId,
+        progress: async (done, total, message) => {
+          await db.update(jobs).set({ progress: { done, total, message } }).where(eq(jobs.id, job.id));
+        },
+        log: (message, meta) => scoped.info(message, { jobId: job.id, ...meta }),
+      }),
+    );
     await db
       .update(jobs)
       .set({ status: "SUCCEEDED", finishedAt: new Date(), result: (result ?? null) as Record<string, unknown> | null, lockedBy: null, lockedAt: null, lastError: null })

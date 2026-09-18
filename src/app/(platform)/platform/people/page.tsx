@@ -55,6 +55,7 @@ export default async function PlatformPeoplePage() {
         <DataTable
           rows={people}
           rowKey={(person) => person.id}
+          onRowHref={(person) => `/platform/people/${person.id}`}
           empty={{ title: tr("No accounts"), description: tr("Nobody has signed up yet."), icon: Users }}
           columns={[
             {

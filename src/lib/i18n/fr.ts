@@ -53,6 +53,8 @@ export const fr: Dictionary = {
     people: "Personnes",
     logs: "Journaux",
     integrations: "Intégrations",
+    costs: "Coûts",
+    payments: "Paiements",
     workingOn: "En cours",
     noEdition: "Aucune parution",
     switchEdition: "Changer de parution",

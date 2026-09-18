@@ -288,6 +288,55 @@ export async function provisionPlanPrices(plan: {
   };
 }
 
+/* ── Invoices ─────────────────────────────────────────────────────────────────────────────── */
+
+/** The part of a Stripe invoice the console reads. Amounts are in the currency's smallest unit. */
+export type StripeInvoice = {
+  id: string;
+  number: string | null;
+  status: "draft" | "open" | "paid" | "uncollectible" | "void" | string;
+  customer: string | null;
+  subscription: string | null;
+  amount_due: number;
+  amount_paid: number;
+  amount_remaining: number;
+  currency: string;
+  created: number;
+  due_date: number | null;
+  hosted_invoice_url: string | null;
+  invoice_pdf: string | null;
+  attempted: boolean;
+  attempt_count: number;
+  next_payment_attempt: number | null;
+  paid: boolean;
+  collection_method: "charge_automatically" | "send_invoice" | string;
+  customer_email?: string | null;
+  customer_name?: string | null;
+};
+
+/** Invoices, newest first — one customer's, or everyone's. */
+export async function listInvoices(input: { customerId?: string; status?: "draft" | "open" | "paid" | "uncollectible" | "void"; limit?: number } = {}): Promise<StripeInvoice[]> {
+  const body: Record<string, unknown> = { limit: Math.max(1, Math.min(100, input.limit ?? 50)) };
+  if (input.customerId) body.customer = input.customerId;
+  if (input.status) body.status = input.status;
+  const page = await call<{ data: StripeInvoice[] }>("/invoices", { method: "GET", body });
+  return page.data ?? [];
+}
+
+export async function getInvoice(invoiceId: string): Promise<StripeInvoice> {
+  return call<StripeInvoice>(`/invoices/${invoiceId}`, { method: "GET" });
+}
+
+/** Charge the customer's card for an open invoice again, now. */
+export async function payInvoice(invoiceId: string): Promise<StripeInvoice> {
+  return call<StripeInvoice>(`/invoices/${invoiceId}/pay`, { body: {} });
+}
+
+/** Have Stripe email an invoice that is collected by transfer rather than by card. */
+export async function sendInvoice(invoiceId: string): Promise<StripeInvoice> {
+  return call<StripeInvoice>(`/invoices/${invoiceId}/send_invoice`, { body: {} });
+}
+
 /** Who the key belongs to, so the console can say which account it just connected. */
 export async function accountSummary(): Promise<{ id: string; name: string | null; livemode: boolean }> {
   const account = await call<{ id: string; settings?: { dashboard?: { display_name?: string } }; charges_enabled?: boolean }>("/account", { method: "GET" });

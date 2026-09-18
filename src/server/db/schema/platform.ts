@@ -101,10 +101,17 @@ export const aiJobs = pgTable(
     error: text("error"),
     cached: boolean("cached").notNull().default(false),
     jobId: uuid("job_id").references(() => jobs.id, { onDelete: "set null" }),
+    /** Who asked: the person in the request, or the one who queued the job that made the call. */
+    userId: uuid("user_id").references(() => users.id, { onDelete: "set null" }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     completedAt: timestamp("completed_at", { withTimezone: true }),
   },
-  (t) => [index("ai_jobs_edition_idx").on(t.editionId), index("ai_jobs_entity_idx").on(t.entityType, t.entityId), index("ai_jobs_input_hash_idx").on(t.service, t.inputHash)],
+  (t) => [
+    index("ai_jobs_edition_idx").on(t.editionId),
+    index("ai_jobs_entity_idx").on(t.entityType, t.entityId),
+    index("ai_jobs_input_hash_idx").on(t.service, t.inputHash),
+    index("ai_jobs_user_idx").on(t.userId, t.createdAt),
+  ],
 );
 
 export const notifications = pgTable(

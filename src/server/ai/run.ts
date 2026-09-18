@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { currentActorId } from "@/server/auth/actor";
 import { and, desc, eq } from "drizzle-orm";
 import { db } from "@/server/db/client";
 import { aiJobs, promptTemplates } from "@/server/db/schema";
@@ -98,6 +99,10 @@ export async function runAiTask<T>(req: AiTaskRequest<T>): Promise<AiTaskResult<
   const user = renderTemplate(prompt.user, req.input);
   const schema = toStrictJsonSchema(req.schema);
   const inputHash = hashInput([req.service, prompt.version, model, system, user]);
+  // Every call is written down with the person behind it, so a bill can be read per customer *and*
+  // per person — a cached answer included, because "who asks for what" is the question, not "what
+  // did the model charge".
+  const userId = req.userId ?? (await currentActorId());
 
   if (req.cacheable !== false) {
     const cachedRow = await db.query.aiJobs.findFirst({
@@ -131,6 +136,7 @@ export async function runAiTask<T>(req: AiTaskRequest<T>): Promise<AiTaskResult<
             attempts: 0,
             cached: true,
             jobId: req.jobId ?? null,
+            userId,
             completedAt: new Date(),
           })
           .returning({ id: aiJobs.id });
@@ -156,6 +162,7 @@ export async function runAiTask<T>(req: AiTaskRequest<T>): Promise<AiTaskResult<
       inputHash,
       attempts: 0,
       jobId: req.jobId ?? null,
+      userId,
     })
     .returning({ id: aiJobs.id });
 

@@ -41,4 +41,36 @@ test.describe("platform staff", () => {
     await expect(page.getByText("Platform access")).toHaveCount(0);
     await expect(sidebar.getByRole("link", { name: "Overview" })).toHaveCount(0);
   });
+
+  test("read a customer, a person, the bill and the money", async ({ page }) => {
+    await login(page, PLATFORM_ADMIN);
+
+    // The customer list opens a customer; the customer's members open a person.
+    await page.goto("/platform/workspaces");
+    await page.getByRole("cell", { name: /Albert School/ }).first().click();
+    await page.waitForURL(/\/platform\/workspaces\/[0-9a-f-]{36}$/);
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Albert School");
+    await expect(page.getByRole("heading", { name: "Plan & usage" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Cost by month" })).toBeVisible();
+    await page.getByRole("cell", { name: /Editor in Chief/ }).first().click();
+    await page.waitForURL(/\/platform\/people\/[0-9a-f-]{36}$/);
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Editor in Chief");
+    await expect(page.getByRole("button", { name: "Sign out everywhere" })).toBeVisible();
+
+    // The bill, cut four ways, over a chosen window, with a file to take away.
+    await page.goto("/platform/costs?days=7");
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Costs");
+    await expect(page.getByRole("link", { name: "7 days" })).toHaveAttribute("aria-current", "page");
+    await expect(page.getByRole("heading", { name: "By customer" })).toBeVisible();
+    await expect(page.getByRole("cell", { name: /Albert School/ }).first()).toBeVisible();
+    const download = page.waitForEvent("download");
+    await page.getByRole("link", { name: "Export CSV" }).click();
+    expect((await download).suggestedFilename()).toBe("briefly-costs-7d.csv");
+
+    // Money: without Stripe, the screen says so and still shows every subscription.
+    await page.goto("/platform/payments");
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Payments");
+    await expect(page.getByRole("heading", { name: "Subscriptions" })).toBeVisible();
+    await expect(page.getByRole("cell", { name: /Albert School/ }).first()).toBeVisible();
+  });
 });

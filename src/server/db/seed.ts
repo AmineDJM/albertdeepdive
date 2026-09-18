@@ -680,7 +680,16 @@ export async function runSeed(options: { quiet?: boolean } = {}): Promise<SeedRe
     }
   }
 
-  await db.insert(s.aiJobs).values(aiJobRows);
+  // Stamped with the workspace and the person, and spread over the last three weeks, so the
+  // console's cost views have something true to show on a fresh install rather than a blank month.
+  const aiActor = userRows.find((u) => u.email === "eic@albertschool.com") ?? userRows[0];
+  const seededAt = new Date();
+  await db.insert(s.aiJobs).values(
+    aiJobRows.map((row, i) => {
+      const createdAt = at(seededAt, -(1 + (i % 21)), -(i % 9), -((i * 7) % 60));
+      return { ...row, organizationId: org.id, userId: aiActor.id, createdAt, completedAt: new Date(createdAt.getTime() + (row.latencyMs ?? 1000)) };
+    }),
+  );
 
   // Cover
   const coverAsset = await ingestFile(SEED_COVER.media, { caption: "Cover — Special issue N°1", kind: "photo", rights: "GREEN" });

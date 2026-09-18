@@ -50,6 +50,8 @@ export const en = {
     people: "People",
     logs: "Logs",
     integrations: "Integrations",
+    costs: "Costs",
+    payments: "Payments",
     workingOn: "Working on",
     noEdition: "No edition yet",
     switchEdition: "Switch edition",

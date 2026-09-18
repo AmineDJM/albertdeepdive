@@ -2,9 +2,11 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { requirePermission } from "@/server/auth/session";
+import { destroyAllUserSessions, requirePermission } from "@/server/auth/session";
 import { startViewAs, stopViewAs } from "@/server/auth/view-as";
-import { setActiveOrganization } from "@/server/tenancy/context";
+import { setActiveOrganization, type OrganizationRole } from "@/server/tenancy/context";
+import { removeMember, setMemberRole } from "@/server/tenancy/service";
+import { activeSessionCount } from "@/server/platform/insights";
 import { clearOverrides, setOverrides, setPlatformRole, setUserActive } from "@/server/platform/overrides";
 import { audit } from "@/server/audit";
 import { pruneGeneratedGrounds } from "@/server/creative/service";
@@ -93,6 +95,54 @@ export async function setPlatformRoleAction(userId: string, role: Role): Promise
     await setPlatformRole({ userId, role, actorId: user.id });
     revalidatePath("/platform/people");
     return ok(null, tr("Role changed"));
+  } catch (err) {
+    return toActionFailure(err);
+  }
+}
+
+/** A person's role inside one customer's workspace, changed from the console rather than from inside it. */
+export async function setMemberRoleAction(organizationId: string, userId: string, role: OrganizationRole): Promise<ActionResult> {
+  const tr = await getUi();
+  try {
+    const actor = await requirePermission("settings:manage");
+    await setMemberRole(organizationId, userId, role, actor.id);
+    revalidatePath(`/platform/workspaces/${organizationId}`);
+    revalidatePath(`/platform/people/${userId}`);
+    return ok(null, tr("Role changed"));
+  } catch (err) {
+    return toActionFailure(err);
+  }
+}
+
+export async function removeMemberAction(organizationId: string, userId: string): Promise<ActionResult> {
+  const tr = await getUi();
+  try {
+    const actor = await requirePermission("settings:manage");
+    await removeMember(organizationId, userId, actor.id);
+    revalidatePath(`/platform/workspaces/${organizationId}`);
+    revalidatePath(`/platform/people/${userId}`);
+    return ok(null, tr("Removed from the workspace"));
+  } catch (err) {
+    return toActionFailure(err);
+  }
+}
+
+/**
+ * End every session an account holds, everywhere, now.
+ *
+ * The thing to do when a laptop is lost or a password has leaked: the person keeps their account
+ * and their work, and signs in again with a new password. Recorded with the number of sessions it
+ * ended, which is the number a person asking "was anyone else in?" wants.
+ */
+export async function signOutEverywhereAction(userId: string): Promise<ActionResult<{ sessions: number }>> {
+  const tr = await getUi();
+  try {
+    const actor = await requirePermission("settings:manage");
+    const sessions = await activeSessionCount(userId);
+    await destroyAllUserSessions(userId);
+    await audit({ action: "platform.signout", entityType: "USER", entityId: userId, userId: actor.id, metadata: { sessions } });
+    revalidatePath(`/platform/people/${userId}`);
+    return ok({ sessions }, tr("Signed out everywhere"));
   } catch (err) {
     return toActionFailure(err);
   }
