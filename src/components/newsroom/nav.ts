@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react";
-import { BarChart3, Home, Library, Newspaper, Settings, Shield, Users } from "lucide-react";
+import { BarChart3, Home, Images, Layers, Newspaper, Palette, Settings, Users } from "lucide-react";
 import { roleHasPermission, type Permission, type Role } from "@/lib/auth/permissions";
 import type { TranslationKey } from "@/lib/i18n";
 import type { Hue } from "@/lib/brand/palette";
@@ -27,13 +27,20 @@ export type SubTab = { href: string; label: TranslationKey; permission?: Permiss
  * where the readers are. That only works if the assignment is fixed and written down, which is what
  * this field is; a palette without assignments becomes confetti within a month.
  */
-export type NavItem = { href: string; label: TranslationKey; icon: LucideIcon; hue: Hue; permission?: Permission; tabs?: readonly SubTab[] };
+export type NavItem = { href: string; label: TranslationKey; icon: LucideIcon; hue: Hue; permission?: Permission; tabs?: readonly SubTab[]; /** Paths under `href` that belong to another entry. */ exclude?: readonly string[] };
 
 /** Editions in flight, and everything that has already been published. */
 export const WORKBENCH_TABS: readonly SubTab[] = [
   { href: "/editions", label: "nav.editions", permission: "edition:view" },
+  { href: "/publications", label: "nav.publications", permission: "edition:view" },
   { href: "/studio", label: "nav.studio", permission: "edition:view" },
   { href: "/archive", label: "nav.archive", permission: "archive:view" },
+];
+
+/** What the organisation has to say: the stories found, and the people asked for them. */
+export const CONTENT_TABS: readonly SubTab[] = [
+  { href: "/content", label: "nav.stories", permission: "edition:view", exact: true },
+  { href: "/content/contributions", label: "nav.contributions", permission: "submission:view" },
 ];
 
 /** Everyone the workspace writes to, writes with, or organises by. */
@@ -51,31 +58,25 @@ export const INSIGHTS_TABS: readonly SubTab[] = [
 ];
 
 /**
- * Running Briefly itself, which is not the same job as running a workspace.
+ * The client workspace's sidebar: six places to work, two to configure.
  *
- * `settings:manage` is the platform role — workspace owners are OWNER on their membership, not
- * SUPER_ADMIN on their user — so this entry is invisible to customers. It used to sit at the bottom
- * of workspace settings, one heading away from "Sections", which made "every customer on this
- * Briefly" look like a preference. It is a different job, so it gets its own door.
+ * Home says what is happening; Content is what the organisation has to say; Editions are what is
+ * being made of it; Library is its visual memory; Audience is who reads; Analytics is what
+ * worked. Brand and Settings sit apart because they are set up once and visited rarely. Running
+ * Briefly itself is a different job with its own door (`/admin`) and is not on this list.
  */
-export const PLATFORM_TABS: readonly SubTab[] = [
-  { href: "/platform", label: "nav.health", permission: "settings:manage", exact: true },
-  { href: "/platform/workspaces", label: "nav.customers", permission: "settings:manage" },
-  { href: "/platform/people", label: "nav.people", permission: "settings:manage" },
-  { href: "/platform/costs", label: "nav.costs", permission: "settings:manage" },
-  { href: "/platform/payments", label: "nav.payments", permission: "settings:manage" },
-  { href: "/platform/logs", label: "nav.logs", permission: "settings:manage" },
-  { href: "/platform/integrations", label: "nav.integrations", permission: "settings:manage" },
-];
-
 export const NAV_ITEMS: readonly NavItem[] = [
-  { href: "/overview", label: "nav.overview", icon: Home, hue: "cobalt" },
-  { href: "/publications", label: "nav.publications", icon: Library, hue: "violet", permission: "edition:view" },
-  { href: "/editions", label: "nav.workbench", icon: Newspaper, hue: "magenta", tabs: WORKBENCH_TABS },
+  { href: "/overview", label: "nav.home", icon: Home, hue: "cobalt" },
+  { href: "/content", label: "nav.content", icon: Layers, hue: "coral", tabs: CONTENT_TABS },
+  { href: "/editions", label: "nav.workbench", icon: Newspaper, hue: "violet", tabs: WORKBENCH_TABS },
+  { href: "/library", label: "nav.library", icon: Images, hue: "magenta", permission: "edition:view" },
   { href: "/subscribers", label: "nav.audience", icon: Users, hue: "teal", tabs: AUDIENCE_TABS },
   { href: "/analytics", label: "nav.insights", icon: BarChart3, hue: "green", tabs: INSIGHTS_TABS },
-  { href: "/settings", label: "nav.settings", icon: Settings, hue: "amber", permission: "edition:view" },
-  { href: "/platform", label: "nav.platform", icon: Shield, hue: "coral", permission: "settings:manage", tabs: PLATFORM_TABS },
+];
+
+export const SETUP_ITEMS: readonly NavItem[] = [
+  { href: "/settings/brand", label: "nav.brand", icon: Palette, hue: "magenta", permission: "edition:edit" },
+  { href: "/settings", label: "nav.settings", icon: Settings, hue: "amber", permission: "edition:view", exclude: ["/settings/brand"] },
 ];
 
 export function visibleTabs(role: Role, tabs: readonly SubTab[]): SubTab[] {
@@ -94,20 +95,58 @@ export function resolveNavItem(role: Role, item: NavItem, pathname: string): { h
   if (item.tabs && !tabs.length) return null;
   if (item.permission && !roleHasPermission(role, item.permission)) return null;
   const hrefs = tabs.length ? tabs.map((t) => t.href) : [item.href];
-  const active = hrefs.some((href) => pathname === href || pathname.startsWith(`${href}/`));
+  const excluded = item.exclude?.some((href) => pathname === href || pathname.startsWith(`${href}/`)) ?? false;
+  const active = !excluded && hrefs.some((href) => pathname === href || pathname.startsWith(`${href}/`));
   return { href: hrefs[0], active };
 }
 
-export const EDITION_TABS: { slug: string; label: TranslationKey; permission?: Permission }[] = [
-  { slug: "", label: "editionTabs.controlRoom" },
-  { slug: "campaign", label: "editionTabs.campaign", permission: "campaign:manage" },
-  { slug: "inbox", label: "nav.inbox", permission: "submission:view" },
-  { slug: "stories", label: "nav.stories" },
-  { slug: "articles", label: "nav.articles" },
-  { slug: "media", label: "nav.media" },
-  { slug: "layout", label: "nav.layout" },
-  { slug: "qa", label: "editionTabs.qa" },
-  { slug: "exports", label: "editionTabs.exports" },
-  { slug: "audio", label: "editionTabs.audio" },
-  { slug: "settings", label: "nav.settings", permission: "edition:edit" },
+/**
+ * An edition's workspace: six doors, each with a few rooms.
+ *
+ * Overview is where you stand; Stories is the content and the people who sent it; Design is
+ * how it looks; Outputs are the shapes it takes; Distribution is who gets it and when;
+ * Analytics is what happened. Eleven tabs became six and nothing was removed — every earlier
+ * screen is a room behind one of the doors.
+ */
+export type EditionRoom = { slug: string; label: TranslationKey; permission?: Permission };
+export type EditionDoor = { key: string; label: TranslationKey; rooms: readonly EditionRoom[]; permission?: Permission };
+
+export const EDITION_DOORS: readonly EditionDoor[] = [
+  { key: "overview", label: "editionTabs.overview", rooms: [{ slug: "", label: "editionTabs.overview" }] },
+  {
+    key: "stories",
+    label: "nav.stories",
+    rooms: [
+      { slug: "stories", label: "nav.stories" },
+      { slug: "articles", label: "nav.articles" },
+      { slug: "inbox", label: "nav.contributions", permission: "submission:view" },
+      { slug: "campaign", label: "editionTabs.campaign", permission: "campaign:manage" },
+    ],
+  },
+  {
+    key: "design",
+    label: "editionTabs.design",
+    rooms: [
+      { slug: "layout", label: "nav.layout" },
+      { slug: "media", label: "nav.media" },
+    ],
+  },
+  {
+    key: "outputs",
+    label: "editionTabs.outputs",
+    rooms: [
+      { slug: "exports", label: "editionTabs.exports" },
+      { slug: "audio", label: "editionTabs.audio" },
+    ],
+  },
+  { key: "distribution", label: "editionTabs.distribution", rooms: [{ slug: "qa", label: "editionTabs.qa" }] },
+  { key: "settings", label: "nav.settings", rooms: [{ slug: "settings", label: "nav.settings", permission: "edition:edit" }], permission: "edition:edit" },
 ];
+
+/** Every room, flat, for the places that still list tabs one by one. */
+export const EDITION_TABS: { slug: string; label: TranslationKey; permission?: Permission }[] = EDITION_DOORS.flatMap((door) => door.rooms.map((room) => ({ slug: room.slug, label: room.label, permission: room.permission ?? door.permission })));
+
+/** Which door a path inside an edition is behind. */
+export function editionDoorFor(slug: string): EditionDoor | null {
+  return EDITION_DOORS.find((door) => door.rooms.some((room) => room.slug === slug)) ?? null;
+}

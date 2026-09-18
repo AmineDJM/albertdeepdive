@@ -7,11 +7,13 @@ test.describe("newsroom smoke", () => {
     await expect(page).toHaveURL(/\/login/);
   });
 
-  test("signs in and shows the current edition on the overview", async ({ page }) => {
+  test("signs in and finds home: the pulse, the next edition, the recent ones", async ({ page }) => {
     await login(page);
-    await expect(page.locator("main").getByText("Current edition", { exact: true })).toBeVisible();
-    await expect(page.getByRole("link", { name: /continue editing/i })).toBeVisible();
-    await expect(page.locator("main").getByText("Campus coverage")).toBeVisible();
+    await expect(page.locator("main").getByText("Organization pulse", { exact: true })).toBeVisible();
+    await expect(page.locator("main").getByText("Next edition", { exact: true })).toBeVisible();
+    await expect(page.getByRole("link", { name: /continue edition/i })).toBeVisible();
+    await expect(page.getByRole("link", { name: /new edition/i }).first()).toBeVisible();
+    await expect(page.locator("main").getByText("Recent editions", { exact: true })).toBeVisible();
   });
 
   /*

@@ -15,13 +15,14 @@ import { RIGHTS_STATUS_LABELS } from "@/lib/constants";
 
 const INLINE_DESCRIBE_LIMIT = 6;
 
-function revalidate(editionId: string, ids: string[] = []) {
-  revalidatePath(`/editions/${editionId}/media`);
+function revalidate(editionId: string | null, ids: string[] = []) {
+  if (editionId) revalidatePath(`/editions/${editionId}/media`);
+  revalidatePath("/library");
   for (const id of ids) revalidatePath(`/media/${id}`);
 }
 
 export async function bulkSetRightsAction(
-  editionId: string,
+  editionId: string | null,
   ids: string[],
   status: RightsStatus,
   note: string | null,
@@ -41,7 +42,7 @@ export async function bulkSetRightsAction(
 }
 
 export async function bulkArchiveAction(
-  editionId: string,
+  editionId: string | null,
   ids: string[],
 ): Promise<ActionResult<{ archived: number }>> {
   try {
@@ -56,7 +57,7 @@ export async function bulkArchiveAction(
 
 /** Describes a few assets inline; larger selections are queued as background jobs. */
 export async function bulkDescribeAction(
-  editionId: string,
+  editionId: string | null,
   ids: string[],
 ): Promise<ActionResult<{ described: number; queued: number; failed: number }>> {
   try {

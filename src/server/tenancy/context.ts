@@ -196,7 +196,7 @@ export async function withoutWorkspace(): Promise<boolean> {
 
 /** Where a signed-in person with no workspace belongs: staff on the console, anyone else creating one. */
 export function homeWithoutWorkspace(user: Staff): string {
-  return isPlatformStaff(user) ? "/platform" : "/onboarding";
+  return isPlatformStaff(user) ? "/admin" : "/onboarding";
 }
 
 /**

@@ -31,7 +31,7 @@ export const fr: Dictionary = {
     publications: "Publications",
     workbench: "Parutions",
     audience: "Audience",
-    insights: "Analyse",
+    insights: "Statistiques",
     editions: "En cours",
     inbox: "Réception",
     stories: "Sujets",
@@ -62,6 +62,15 @@ export const fr: Dictionary = {
     toReview: "à relire",
     flagged: "signalés",
     search: "Rechercher ou aller à…",
+    home: "Accueil",
+    content: "Contenu",
+    contributions: "Contributions",
+    library: "Bibliothèque",
+    brand: "Marque",
+    admin: "Console admin",
+    planUsage: "Formule et usage",
+    notifications: "Notifications",
+    account: "Compte",
   },
 
   editionTabs: {
@@ -70,6 +79,11 @@ export const fr: Dictionary = {
     qa: "Contrôle & publication",
     exports: "Exports",
     audio: "Audio",
+    overview: "Vue d’ensemble",
+    design: "Design",
+    outputs: "Sorties",
+    distribution: "Diffusion",
+    analytics: "Statistiques",
   },
 
   auth: {

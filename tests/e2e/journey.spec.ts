@@ -66,7 +66,7 @@ async function clearToasts(page: Page) {
 test.describe("the critical journey", () => {
   test("1–2 · an editor signs in and finds the edition in progress", async ({ page }) => {
     await login(page);
-    await expect(page.locator("main").getByText("Current edition", { exact: true })).toBeVisible();
+    await expect(page.locator("main").getByText("Next edition", { exact: true })).toBeVisible();
     const editionId = await currentEditionId();
     await page.goto(`/editions/${editionId}`);
     await expect(page.locator("main").getByText("Control room", { exact: true }).first()).toBeVisible();

@@ -18,6 +18,7 @@ chief approves every issue.
 ## Contents
 
 - [What it does](#what-it-does)
+- [The interface](#the-interface)
 - [Architecture](#architecture)
 - [Getting started](#getting-started)
 - [Configuration](#configuration)
@@ -43,6 +44,31 @@ Every month:
 Editors then select stories, draft articles with AI assistance (every sentence traceable to its
 sources), approve them, lay out the issue on a drag-and-drop flatplan, pass the quality gates and
 export. The editor in chief approves; the version becomes immutable and is archived.
+
+## The interface
+
+Two surfaces, one brand. The **client workspace** is light, editorial and calm: a persistent left
+column with the supplied Briefly logo, the organisation, the edition in hand and six places to
+work — Home, Content, Editions, Library, Audience, Analytics — then Brand and Settings, and at the
+foot the plan, notifications, search and the account. Home answers three questions on arrival:
+what is happening (the organisation's pulse), what needs a person (the next edition, its gaps and
+one thing to do), what can go out next (recent editions as the shapes they take: Email, Web, PDF,
+Print, Video, Social). Content is the organisation's stories in four states — Ready, Needs review,
+Missing information, Used — with the contributions behind them. The Library is the organisation's
+visual memory, sorted onto shelves by what the describer saw, never filed by hand. An edition opens
+as a focused workspace with six doors: Overview, Stories, Design, Outputs, Distribution, Settings
+(and Analytics once it has gone out); every earlier tab is a room behind one of them.
+
+The **Super Admin console** at `/admin` is a separate product surface — dark, dense, operational —
+for the person who runs Briefly: Overview (MRR, run rate, organisations, subscribers managed,
+platform health), Organizations and Users, Plans & pricing and Billing, Usage & costs, Providers,
+Jobs, Feature flags, Audit log, Support and System. Only a platform super admin reaches it, checked
+server-side on the real role; everyone else is told nothing exists there. Old `/platform` links land
+on their new names.
+
+Design tokens live in `src/app/globals.css` and `src/lib/brand/palette.ts`: neutrals from the
+logo's charcoal and paper, one indigo accent read off the logo, the rest of the logo's sweep held
+for meaning (money, audience, attention, done) and never for decoration.
 
 ## Architecture
 
@@ -171,7 +197,7 @@ finished narration can be published to readers: the web edition then carries a p
 
 Providers sit behind one interface (`src/server/speech/providers`): ElevenLabs v3 for the final
 performance and Flash for previews, OpenAI's speech model as the fallback, Hume and Fish Audio
-reachable for benchmarking. Platform → Integrations → ElevenLabs holds the key, the models, the
+reachable for benchmarking. Admin → Providers → ElevenLabs holds the key, the models, the
 providers per tier, the cost per thousand characters, the caps, the cloning switch and the map from
 Briefly's named voices to provider voices; **Set up voices** fills that map from the account and the
 shared library. Plans grant narration, the premium voice, audio editions, another language than the
@@ -214,7 +240,7 @@ from, and what platform staff see under **Routing** on a version.
 
 Words and logos are never drawn by a picture model: the design engine sets them afterwards, in
 the brand's type. Providers sit behind one interface (`src/server/images/providers`): Google's
-image model, OpenAI's, Recraft, Ideogram and Higgsfield. Platform → Integrations holds each key and
+image model, OpenAI's, Recraft, Ideogram and Higgsfield. Admin → Providers holds each key and
 **Picture routing** holds the order per kind of job, the check thresholds, the retries and whether
 customers may see the routing. Pictures spend the plan's creative credits.
 

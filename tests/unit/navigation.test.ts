@@ -1,9 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { AUDIENCE_TABS, INSIGHTS_TABS, NAV_ITEMS, PLATFORM_TABS, WORKBENCH_TABS, resolveNavItem, visibleTabs } from "@/components/newsroom/nav";
-import type { Role } from "@/lib/auth/permissions";
+import { AUDIENCE_TABS, CONTENT_TABS, EDITION_DOORS, INSIGHTS_TABS, NAV_ITEMS, SETUP_ITEMS, WORKBENCH_TABS, editionDoorFor, resolveNavItem, visibleTabs } from "@/components/newsroom/nav";
 import { HEX, HUES, HUE_MEANING, PALETTE } from "@/lib/brand/palette";
 
-const GROUPS = [WORKBENCH_TABS, AUDIENCE_TABS, INSIGHTS_TABS, PLATFORM_TABS];
+const GROUPS = [CONTENT_TABS, WORKBENCH_TABS, AUDIENCE_TABS, INSIGHTS_TABS];
 
 describe("the sidebar", () => {
   it("offers a customer six destinations and no more", () => {
@@ -12,12 +11,19 @@ describe("the sidebar", () => {
     expect(shown).toHaveLength(6);
   });
 
-  it("shows the platform console only to platform staff", () => {
-    const platform = NAV_ITEMS.find((item) => item.href === "/platform")!;
-    expect(resolveNavItem("SUPER_ADMIN", platform, "/overview")).not.toBeNull();
-    for (const role of ["EDITOR_IN_CHIEF", "EDITOR", "CAMPUS_EDITOR", "VIEWER"] as Role[]) {
-      expect(resolveNavItem(role, platform, "/overview"), role).toBeNull();
-    }
+  it("keeps the console off the customer's list altogether", () => {
+    // Running Briefly is a different job with its own door; it is never a sidebar entry here.
+    expect([...NAV_ITEMS, ...SETUP_ITEMS].some((item) => item.href.startsWith("/admin") || item.href.startsWith("/admin"))).toBe(false);
+  });
+
+  it("lights Brand and Settings for their own paths only", () => {
+    const brand = SETUP_ITEMS.find((item) => item.href === "/settings/brand")!;
+    const settings = SETUP_ITEMS.find((item) => item.href === "/settings")!;
+    expect(resolveNavItem("EDITOR_IN_CHIEF", brand, "/settings/brand")?.active).toBe(true);
+    expect(resolveNavItem("EDITOR_IN_CHIEF", settings, "/settings/brand")?.active).toBe(false);
+    expect(resolveNavItem("EDITOR_IN_CHIEF", settings, "/settings/billing")?.active).toBe(true);
+    // A reader with no say in the editions has no business at the brand's door either.
+    expect(resolveNavItem("VIEWER", brand, "/overview")).toBeNull();
   });
 
   it("never lists the same route in two places", () => {
@@ -44,6 +50,20 @@ describe("the sidebar", () => {
     expect(resolveNavItem("EDITOR", workbench, "/archive")?.active).toBe(true);
     expect(resolveNavItem("EDITOR", workbench, "/editions/abc/layout")?.active).toBe(true);
     expect(resolveNavItem("EDITOR", workbench, "/subscribers")?.active).toBe(false);
+  });
+});
+
+describe("an edition's doors", () => {
+  it("put every earlier tab behind one door, and only one", () => {
+    // Eleven tabs became six doors; nothing was removed and nothing is reachable twice.
+    const slugs = EDITION_DOORS.flatMap((door) => door.rooms.map((room) => room.slug));
+    expect(new Set(slugs).size).toBe(slugs.length);
+    for (const slug of ["", "campaign", "inbox", "stories", "articles", "media", "layout", "qa", "exports", "audio", "settings"]) expect(editionDoorFor(slug), slug).not.toBeNull();
+    expect(EDITION_DOORS.length).toBeLessThanOrEqual(6);
+  });
+
+  it("open Stories on the stories themselves, not on the inbox", () => {
+    expect(editionDoorFor("inbox")?.rooms[0].slug).toBe("stories");
   });
 });
 

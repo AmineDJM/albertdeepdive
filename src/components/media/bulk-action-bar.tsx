@@ -36,7 +36,7 @@ export function BulkActionBar({
   canRights,
   onDone,
 }: {
-  editionId: string;
+  editionId: string | null;
   ids: string[];
   canManage: boolean;
   canRights: boolean;

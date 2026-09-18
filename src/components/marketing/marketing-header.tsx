@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Menu, X } from "lucide-react";
-import { BrieflyMark } from "@/components/brand/briefly-mark";
+import { BrieflyLogo } from "@/components/brand/briefly-mark";
 import { Button } from "@/components/ui/button";
 import { useTranslations } from "@/components/i18n/provider";
 import { BRAND } from "@/lib/brand";
@@ -50,8 +50,7 @@ export function MarketingHeader({ signedIn }: { signedIn: boolean }) {
     >
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-5 sm:px-8">
         <Link href="/" className="flex shrink-0 items-center gap-2 rounded-md focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:outline-none" aria-label={BRAND.name}>
-          <BrieflyMark className="size-[26px]" />
-          <span className="text-[17px] font-semibold tracking-[-0.03em]">{BRAND.name}</span>
+          <BrieflyLogo height={24} />
         </Link>
 
         <nav className="hidden items-center gap-7 md:flex" aria-label={BRAND.name}>

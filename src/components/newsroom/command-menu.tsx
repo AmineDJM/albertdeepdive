@@ -80,12 +80,13 @@ export function CommandMenu({ open, onOpenChange, currentEditionId, role }: { op
     { label: tr("Analytics"), href: "/analytics", icon: BarChart3, need: "analytics:view" as Permission },
     { label: tr("Automations"), href: "/automations", icon: Workflow },
     { label: tr("Archive"), href: "/archive", icon: Archive, need: "archive:view" as Permission },
-    { label: tr("Media library"), href: "/media", icon: Image },
+    { label: tr("Library"), href: "/library", icon: Image },
+    { label: tr("Content"), href: "/content", icon: Sparkles },
     { label: tr("Settings"), href: "/settings", icon: Settings },
     { label: tr("Plan & usage"), href: "/settings/billing", icon: Settings, need: "settings:manage" as Permission },
     { label: tr("Users & roles"), href: "/settings/users", icon: Users, need: "user:manage" as Permission },
-    { label: tr("Platform: customers & plans"), href: "/platform", icon: Shield, need: "settings:manage" as Permission },
-    { label: tr("Platform: integrations"), href: "/platform/integrations", icon: Plug, need: "settings:manage" as Permission },
+    { label: tr("Admin console"), href: "/admin", icon: Shield, need: "settings:manage" as Permission },
+    { label: tr("Admin: providers"), href: "/admin/providers", icon: Plug, need: "settings:manage" as Permission },
   ].filter((q) => !q.need || roleHasPermission(role, q.need));
 
   return (

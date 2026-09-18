@@ -38,7 +38,30 @@ export type MediaListFilters = {
   sort?: MediaSort | string;
   page?: number | string;
   pageSize?: number | string;
+  /** One of `LIBRARY_CATEGORIES`, read off the describer's tags and the asset's kind. */
+  category?: string;
 };
+
+/**
+ * The library's shelves.
+ *
+ * Nobody files an upload by hand: the describer's tags and the asset's kind put it on a shelf, and
+ * a picture can sit on several. The words are the ones the describer actually uses; a new tag the
+ * model starts using lands under "Other" until it is added here, which is a one-line change.
+ */
+export const LIBRARY_CATEGORIES = {
+  people: { kinds: [], tags: ["people", "person", "portrait", "student", "students", "founder", "speaker", "crowd", "group", "headshot", "face", "man", "woman"] },
+  team: { kinds: [], tags: ["team", "staff", "colleagues", "employees", "meeting", "workshop", "classroom"] },
+  events: { kinds: [], tags: ["event", "conference", "ceremony", "stage", "audience", "talk", "panel", "graduation", "dinner", "party", "award"] },
+  office: { kinds: [], tags: ["office", "campus", "building", "interior", "workspace", "desk", "lobby", "architecture", "room"] },
+  product: { kinds: [], tags: ["product", "packaging", "device", "app", "interface", "prototype"] },
+  logo: { kinds: ["logo"], tags: ["logo", "wordmark", "brandmark"] },
+  screenshots: { kinds: ["screenshot"], tags: ["screenshot", "dashboard"] },
+  illustrations: { kinds: ["diagram", "chart"], tags: ["illustration", "diagram", "chart", "graphic", "vector", "icon"] },
+  generated: { kinds: [], tags: ["generated"] },
+  documents: { kinds: ["document"], tags: ["document", "poster", "flyer", "slide"] },
+} as const;
+export type LibraryCategory = keyof typeof LIBRARY_CATEGORIES;
 
 export type MediaStoryLink = {
   id: string;
@@ -115,9 +138,11 @@ const unusedCondition = () =>
       and not exists (select 1 from ${s.businessDeepDives} b where ${s.mediaAssets.id} in (b.logo_asset_id, b.team_photo_asset_id, b.dashboard_asset_id, b.diagram_asset_id))
       and not exists (select 1 from ${s.editions} e where e.cover_media_asset_id = ${s.mediaAssets.id})`;
 
-function scopeCondition(editionId: string | null, archived: boolean) {
+function scopeCondition(editionId: string | null, archived: boolean, organizationId?: string | null) {
   return and(
     editionId ? eq(s.mediaAssets.editionId, editionId) : undefined,
+    // The whole library is the workspace's, never the platform's: with no edition, the workspace scopes it.
+    !editionId && organizationId ? eq(s.mediaAssets.organizationId, organizationId) : undefined,
     eq(s.mediaAssets.isArchived, archived),
   );
 }
@@ -166,6 +191,11 @@ function filterConditions(filters: MediaListFilters): (SQL | undefined)[] {
     );
   }
   if (filters.unused === "true") conditions.push(unusedCondition());
+  if (filters.category && filters.category in LIBRARY_CATEGORIES) {
+    const shelf = LIBRARY_CATEGORIES[filters.category as LibraryCategory];
+    const byTag = sql`${s.mediaAssets.aiTags} && ${sql.raw(`ARRAY[${shelf.tags.map((tag) => `'${tag}'`).join(",")}]::text[]`)}`;
+    conditions.push(shelf.kinds.length ? or(inArray(s.mediaAssets.kind, [...shelf.kinds]), byTag) : byTag);
+  }
   if (filters.contributorId)
     conditions.push(eq(s.mediaAssets.uploadedByContributorId, filters.contributorId));
   return conditions;
@@ -342,10 +372,11 @@ async function facetsFor(scope: SQL | undefined): Promise<MediaFacets> {
 export async function listMedia(
   editionId: string | null,
   filters: MediaListFilters = {},
+  organizationId?: string | null,
 ): Promise<MediaListResult> {
   const page = toInt(filters.page, 1, 1, 100_000);
   const pageSize = toInt(filters.pageSize, 48, 1, 200);
-  const scope = scopeCondition(editionId, filters.archived === "true");
+  const scope = scopeCondition(editionId, filters.archived === "true", organizationId);
   const where = and(scope, ...filterConditions(filters));
 
   const [assets, [{ n: total }], facets] = await Promise.all([
@@ -785,7 +816,7 @@ export type MediaStats = {
   archived: number;
 };
 
-export async function mediaStats(editionId: string): Promise<MediaStats> {
+export async function mediaStats(editionId: string | null, organizationId?: string | null): Promise<MediaStats> {
   const [row] = await db
     .select({
       total: sql<number>`count(*) filter (where not ${s.mediaAssets.isArchived})`,
@@ -801,7 +832,7 @@ export async function mediaStats(editionId: string): Promise<MediaStats> {
       archived: sql<number>`count(*) filter (where ${s.mediaAssets.isArchived})`,
     })
     .from(s.mediaAssets)
-    .where(eq(s.mediaAssets.editionId, editionId));
+    .where(editionId ? eq(s.mediaAssets.editionId, editionId) : organizationId ? eq(s.mediaAssets.organizationId, organizationId) : sql`false`);
   return {
     total: Number(row?.total ?? 0),
     byRights: {

@@ -28,7 +28,7 @@ export function MediaLibrary({
   canRights,
 }: {
   rows: MediaListRow[];
-  editionId: string;
+  editionId: string | null;
   view: "grid" | "list";
   canManage: boolean;
   canRights: boolean;

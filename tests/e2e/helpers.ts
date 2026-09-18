@@ -18,6 +18,6 @@ export async function login(page: Page, user = ADMIN) {
   await page.getByLabel("Email").fill(user.email);
   await page.getByLabel("Password").fill(user.password);
   await page.getByRole("button", { name: /sign in/i }).click();
-  await page.waitForURL(/\/(overview|editions|platform)/);
+  await page.waitForURL(/\/(overview|editions|admin)/);
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
 }

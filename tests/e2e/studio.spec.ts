@@ -59,7 +59,7 @@ test.describe("creative studio", () => {
 
   test("the platform checks the bucket before it cleans it", async ({ page }) => {
     await login(page, PLATFORM_ADMIN);
-    await page.goto("/platform");
+    await page.goto("/admin/system");
     await page.getByRole("button", { name: "Check" }).click();
     await expect(page.locator("main").getByText(/\d+ stored · \d+ named by a pack · \d+ unreferenced/)).toBeVisible();
   });

@@ -12,7 +12,6 @@ export const metadata: Metadata = {
   },
   description: BRAND.description,
   applicationName: BRAND.name,
-  icons: { icon: "/icon.svg" },
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {

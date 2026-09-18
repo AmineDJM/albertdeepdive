@@ -4,7 +4,7 @@ import { getCurrentUser } from "@/server/auth/session";
 import { homeFor } from "@/server/tenancy/context";
 import { env } from "@/server/env";
 import { LoginForm } from "./login-form";
-import { BrieflyMark } from "@/components/brand/briefly-mark";
+import { BrieflyLogo, BrieflyMark } from "@/components/brand/briefly-mark";
 import { BRAND } from "@/lib/brand";
 import { getUi } from "@/server/i18n/locale";
 
@@ -18,7 +18,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
   const demo = env.NODE_ENV !== "production" ? { email: env.SEED_ADMIN_EMAIL, password: env.SEED_ADMIN_PASSWORD } : null;
   return (
     <div className="grid min-h-screen lg:grid-cols-[1.1fr_1fr]">
-      <aside className="relative hidden flex-col justify-between overflow-hidden bg-[oklch(0.22_0.05_262)] p-12 text-white lg:flex">
+      <aside className="relative hidden flex-col justify-between overflow-hidden bg-[oklch(0.17_0.012_280)] p-12 text-white lg:flex">
         <div className="flex items-center gap-3">
           <BrieflyMark className="size-8" />
           <span className="text-sm font-medium tracking-wide text-white/80">{BRAND.name}</span>
@@ -46,15 +46,12 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
           </dl>
         </div>
         <p className="text-xs text-white/40">{tr("One edition. Every format your organization publishes in.")}</p>
-        <div className="pointer-events-none absolute -right-40 -bottom-40 size-[520px] rounded-full bg-brand/30 blur-3xl" />
-        <div className="pointer-events-none absolute -right-10 top-1/3 size-56 rounded-full bg-brand/60" />
-        <div className="pointer-events-none absolute right-40 top-[calc(33%+80px)] size-10 rounded-full bg-[oklch(0.2_0.04_262)]" />
+        <div className="pointer-events-none absolute -right-40 -bottom-40 size-[520px] rounded-full bg-[radial-gradient(circle_at_30%_30%,#5F6AF6_0%,#6CDED1_45%,#F5A8B8_80%,transparent_100%)] opacity-40 blur-3xl" />
       </aside>
       <main className="flex items-center justify-center p-6">
         <div className="w-full max-w-sm">
-          <div className="mb-8 flex items-center gap-2 lg:hidden">
-            <BrieflyMark className="size-7" />
-            <span className="text-xl font-semibold tracking-[-0.02em]">{BRAND.name}</span>
+          <div className="mb-8 lg:hidden">
+            <BrieflyLogo height={26} />
           </div>
           <h2 className="text-lg font-semibold tracking-tight">{tr("Sign in")}</h2>
           <p className="mt-1 mb-6 text-[13px] text-muted-foreground">{tr("Sign in to your workspace. Contributors use their personal link instead.")}</p>

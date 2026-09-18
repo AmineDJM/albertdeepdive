@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
-import { getCurrentEdition } from "@/server/editions/service";
 
-export default async function Redirect() {
-  const current = await getCurrentEdition();
-  redirect(current ? `/editions/${current.id}/media` : "/editions");
+/** The media library grew into the Library; old links still land there. */
+export default function Redirect() {
+  redirect("/library");
 }

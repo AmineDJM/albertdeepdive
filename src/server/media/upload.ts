@@ -1,6 +1,7 @@
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/server/db/client";
+import { optionalOrganizationId } from "@/server/tenancy/context";
 import * as s from "@/server/db/schema";
 import { env } from "@/server/env";
 import { audit } from "@/server/audit";
@@ -34,7 +35,8 @@ export type UploadFile = UploadFileMeta & {
 
 export type UploadMediaInput = {
   files: UploadFile[];
-  editionId: string;
+  /** The edition the files belong to; none means the workspace's library at large. */
+  editionId: string | null;
   storyId?: string | null;
   role?: string | null;
   actor: MediaActor;
@@ -82,13 +84,16 @@ export async function uploadMedia(input: UploadMediaInput): Promise<UploadedAsse
       400,
       "TOO_MANY_FILES",
     );
-  if (!z.string().uuid().safeParse(input.editionId).success)
+  if (input.editionId && !z.string().uuid().safeParse(input.editionId).success)
     throw new UploadError("editionId must be a UUID", 400, "BAD_EDITION");
-  const edition = await db.query.editions.findFirst({
-    where: eq(s.editions.id, input.editionId),
-    columns: { id: true, status: true },
-  });
-  if (!edition) throw new NotFoundError("Edition");
+  const edition = input.editionId
+    ? await db.query.editions.findFirst({
+        where: eq(s.editions.id, input.editionId),
+        columns: { id: true, status: true },
+      })
+    : null;
+  if (input.editionId && !edition) throw new NotFoundError("Edition");
+  if (!edition && !(await optionalOrganizationId())) throw new UploadError("Choose an edition or open a workspace first", 400, "BAD_EDITION");
   let story: { id: string; editionId: string } | null = null;
   if (input.storyId) {
     if (!z.string().uuid().safeParse(input.storyId).success)
@@ -99,7 +104,7 @@ export async function uploadMedia(input: UploadMediaInput): Promise<UploadedAsse
         columns: { id: true, editionId: true },
       })) ?? null;
     if (!story) throw new NotFoundError("Story");
-    if (story.editionId !== edition.id)
+    if (!edition || story.editionId !== edition.id)
       throw new ValidationError("The story belongs to another edition");
   }
   const role =
@@ -144,7 +149,7 @@ export async function uploadMedia(input: UploadMediaInput): Promise<UploadedAsse
       buffer: file.buffer,
       fileName: file.fileName.replace(/[\\/]/g, "_").slice(0, 200) || "upload",
       mimeType,
-      editionId: edition.id,
+      editionId: edition?.id ?? null,
       userId: input.actor.id,
       caption: meta.caption || null,
       altText: meta.altText || null,
@@ -159,7 +164,7 @@ export async function uploadMedia(input: UploadMediaInput): Promise<UploadedAsse
       userId: input.actor.id,
       entityType: "MEDIA",
       entityId: asset.id,
-      editionId: edition.id,
+      editionId: edition?.id ?? null,
       metadata: {
         fileName: asset.fileName,
         sizeBytes: asset.sizeBytes,
@@ -180,7 +185,7 @@ export async function uploadMedia(input: UploadMediaInput): Promise<UploadedAsse
       }
     }
     if (!input.skipProcessing) {
-      await enqueueMediaProcessing(asset.id, { editionId: edition.id, userId: input.actor.id });
+      await enqueueMediaProcessing(asset.id, { editionId: edition?.id ?? null, userId: input.actor.id });
     }
     out.push({
       id: asset.id,
@@ -205,7 +210,7 @@ export async function uploadMedia(input: UploadMediaInput): Promise<UploadedAsse
   }
   log.info("uploaded", {
     count: out.length,
-    editionId: edition.id,
+    editionId: edition?.id ?? null,
     storyId: story?.id ?? null,
     userId: input.actor.id,
   });
@@ -217,7 +222,7 @@ export async function parseUploadForm(
   form: FormData,
 ): Promise<{
   files: UploadFile[];
-  editionId: string;
+  editionId: string | null;
   storyId: string | null;
   role: string | null;
 }> {
@@ -267,7 +272,7 @@ export async function parseUploadForm(
   }
   return {
     files,
-    editionId: text("editionId") ?? "",
+    editionId: text("editionId") || null,
     storyId: text("storyId") || null,
     role: text("role") || null,
   };

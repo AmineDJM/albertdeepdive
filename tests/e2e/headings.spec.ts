@@ -27,6 +27,9 @@ const NEWSROOM = [
   "/analytics",
   "/automations",
   "/media",
+  "/library",
+  "/content",
+  "/content/contributions",
   "/inbox",
   "/stories",
   "/articles",
@@ -38,7 +41,7 @@ const NEWSROOM = [
 ];
 
 /** The console has no workspace behind it, so it is checked as the person who runs the platform. */
-const PLATFORM = ["/platform", "/platform/workspaces", "/platform/people", "/platform/costs", "/platform/payments", "/platform/logs", "/platform/integrations"];
+const PLATFORM = ["/admin", "/admin/organizations", "/admin/users", "/admin/costs", "/admin/billing", "/admin/audit", "/admin/providers"];
 
 async function untitledAmong(page: Parameters<typeof login>[0], routes: string[]) {
   const untitled: string[] = [];

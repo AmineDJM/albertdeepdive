@@ -23,13 +23,15 @@ export type Hue = (typeof HUES)[number];
 
 /** Degrees in OKLCH. Chosen for even spacing by eye, not by arithmetic — 60° steps put two greens next to each other. */
 const ANGLE: Record<Hue, number> = {
-  cobalt: 258,
-  violet: 300,
-  magenta: 346,
-  coral: 28,
-  amber: 78,
-  green: 148,
-  teal: 200,
+  // Read off the logo: its indigo corner is the product's own colour, the rest of its sweep gives
+  // the others their angle. Green is the one hue the logo does not carry; "done" still needs it.
+  cobalt: 275,
+  violet: 292,
+  magenta: 328,
+  coral: 18,
+  amber: 86,
+  green: 150,
+  teal: 190,
 };
 
 /**
@@ -41,10 +43,10 @@ const ANGLE: Record<Hue, number> = {
  * rather than equally *specified*.
  */
 const CHROMA: Record<Hue, number> = {
-  cobalt: 0.17,
-  violet: 0.17,
+  cobalt: 0.19,
+  violet: 0.18,
   magenta: 0.18,
-  coral: 0.175,
+  coral: 0.17,
   amber: 0.145,
   green: 0.145,
   teal: 0.125,
@@ -71,14 +73,32 @@ export const PALETTE = Object.fromEntries(
  * is the mark in the product.
  */
 export const HEX: Record<Hue, string> = {
-  cobalt: "#4B62E8",
-  violet: "#9B4FD8",
-  magenta: "#D6408E",
-  coral: "#E8603A",
-  amber: "#C08A16",
+  cobalt: "#5F63F2",
+  violet: "#8A5CEB",
+  magenta: "#D64FB0",
+  coral: "#E85F5A",
+  amber: "#BE8B12",
   green: "#2E9B5F",
-  teal: "#2B93A8",
+  teal: "#2496A8",
 };
+
+/**
+ * The logo's own colours, exactly as sampled from it.
+ *
+ * For the places the identity itself appears — the sign-in screen, the marketing site, an
+ * illustration — not for the interface, which uses the one indigo and the neutrals. A product with
+ * the whole sweep across its buttons is a toy; a product with it only in its mark is a brand.
+ */
+export const LOGO_COLOURS = {
+  indigo: "#5F6AF6",
+  purple: "#8276F5",
+  blue: "#60B4F1",
+  teal: "#6CDED1",
+  yellow: "#F6DC8E",
+  pink: "#F5A8B8",
+  magenta: "#D970DD",
+  ink: "#181820",
+} as const;
 
 /**
  * What each hue is for.
@@ -90,11 +110,11 @@ export const HUE_MEANING: Record<Hue, string> = {
   cobalt: "Briefly itself — the product speaking, and anything about the whole workspace",
   violet: "Publications and editions: the things being made",
   magenta: "Creative and design: brand, layout, anything visual",
-  coral: "Attention — errors, overdue work, things that will not publish",
+  coral: "Attention — errors, overdue work, content waiting for a decision, things that will not publish",
   amber: "Money: plans, invoices, usage against a limit, AI spend",
   green: "Done, sent, published, healthy",
   teal: "Audience: subscribers, contributors, the people on the other end",
 };
 
 /** The Briefly gradient, used by the mark and nowhere that needs to be read. */
-export const GRADIENT = [HEX.cobalt, HEX.violet, HEX.magenta] as const;
+export const GRADIENT = [LOGO_COLOURS.indigo, LOGO_COLOURS.teal, LOGO_COLOURS.pink] as const;

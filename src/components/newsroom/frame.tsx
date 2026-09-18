@@ -6,6 +6,8 @@ import { db } from "@/server/db/client";
 import * as s from "@/server/db/schema";
 import { NewsroomShell } from "@/components/newsroom/shell";
 import { listMyOrganizations, type TenantContext } from "@/server/tenancy/context";
+import { usageReport } from "@/server/billing/entitlements";
+import { getTranslations } from "@/server/i18n/locale";
 
 type Editions = Awaited<ReturnType<typeof listEditions>>;
 
@@ -18,12 +20,17 @@ type Editions = Awaited<ReturnType<typeof listEditions>>;
  * itself around the console alone.
  */
 export async function NewsroomFrame({ user, tenant, children }: { user: CurrentUser; tenant: TenantContext | null; children: React.ReactNode }) {
-  const [workspaces, current, editions, notifications] = await Promise.all([
+  const [workspaces, current, editions, notifications, report, t] = await Promise.all([
     listMyOrganizations(),
     tenant ? getCurrentEdition() : Promise.resolve(null),
     tenant ? listEditions() : Promise.resolve([] as Editions),
     listNotificationsForUser(user.id, 15),
+    tenant ? usageReport(tenant.organizationId).catch(() => null) : Promise.resolve(null),
+    getTranslations(),
   ]);
+  // The plan, in one line: the tightest allowance is the one worth watching.
+  const tightest = report?.lines.filter((line) => line.limit !== null).sort((a, b) => b.ratio - a.ratio)[0] ?? null;
+  const plan = report ? { name: report.plan.planName, usedLabel: tightest ? `${tightest.used.toLocaleString()} / ${tightest.limit!.toLocaleString()} ${t(`billing.${tightest.key}` as "billing.publications").toLowerCase()}` : t("common.unlimited"), ratio: tightest ? tightest.ratio : null, href: "/settings/billing" } : null;
   let badges = { inbox: 0, flags: 0 };
   if (current) {
     const [[inbox], [flags]] = await Promise.all([
@@ -44,6 +51,7 @@ export async function NewsroomFrame({ user, tenant, children }: { user: CurrentU
       badges={badges}
       notifications={notifications.rows.map((n) => ({ id: n.id, title: n.title, body: n.body, href: n.href, readAt: n.readAt, createdAt: n.createdAt, type: n.type }))}
       unread={notifications.unread}
+      plan={plan}
     >
       {children}
     </NewsroomShell>

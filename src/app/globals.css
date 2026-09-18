@@ -21,42 +21,43 @@
 :root {
   /* The spectrum. solid = a chip or a chart series; soft = a wash, always with
      deep on top; deep = text on soft, and the solid step in dark mode. */
-  --cobalt: oklch(0.62 0.17 258);
-  --cobalt-soft: oklch(0.955 0.037 258);
-  --cobalt-deep: oklch(0.45 0.156 258);
-  --violet: oklch(0.62 0.17 300);
-  --violet-soft: oklch(0.955 0.037 300);
-  --violet-deep: oklch(0.45 0.156 300);
-  --magenta: oklch(0.62 0.18 346);
-  --magenta-soft: oklch(0.955 0.04 346);
-  --magenta-deep: oklch(0.45 0.166 346);
-  --coral: oklch(0.62 0.175 28);
-  --coral-soft: oklch(0.955 0.039 28);
-  --coral-deep: oklch(0.45 0.161 28);
-  --amber: oklch(0.62 0.145 78);
-  --amber-soft: oklch(0.955 0.032 78);
-  --amber-deep: oklch(0.45 0.133 78);
-  --green: oklch(0.62 0.145 148);
-  --green-soft: oklch(0.955 0.032 148);
-  --green-deep: oklch(0.45 0.133 148);
-  --teal: oklch(0.62 0.125 200);
-  --teal-soft: oklch(0.955 0.028 200);
-  --teal-deep: oklch(0.45 0.115 200);
+  --cobalt: oklch(0.62 0.190 275);
+  --cobalt-soft: oklch(0.955 0.042 275);
+  --cobalt-deep: oklch(0.45 0.175 275);
+  --violet: oklch(0.62 0.180 292);
+  --violet-soft: oklch(0.955 0.040 292);
+  --violet-deep: oklch(0.45 0.166 292);
+  --magenta: oklch(0.62 0.180 328);
+  --magenta-soft: oklch(0.955 0.040 328);
+  --magenta-deep: oklch(0.45 0.166 328);
+  --coral: oklch(0.62 0.170 18);
+  --coral-soft: oklch(0.955 0.037 18);
+  --coral-deep: oklch(0.45 0.156 18);
+  --amber: oklch(0.62 0.145 86);
+  --amber-soft: oklch(0.955 0.032 86);
+  --amber-deep: oklch(0.45 0.133 86);
+  --green: oklch(0.62 0.145 150);
+  --green-soft: oklch(0.955 0.032 150);
+  --green-deep: oklch(0.45 0.133 150);
+  --teal: oklch(0.62 0.125 190);
+  --teal-soft: oklch(0.955 0.028 190);
+  --teal-deep: oklch(0.45 0.115 190);
 
-  --background: oklch(0.985 0.003 90);
-  --foreground: oklch(0.19 0.02 260);
+  /* Neutrals. A very light, faintly cool paper; white surfaces on it; charcoal ink; borders a
+     shade below the surface so a card is a card without a line shouting it. */
+  --background: oklch(0.982 0.002 275);
+  --foreground: oklch(0.2 0.012 280);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.19 0.02 260);
+  --card-foreground: oklch(0.2 0.012 280);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.19 0.02 260);
-  /* Cobalt at its deep step, not its solid one: white on solid cobalt is 2.9:1, which looks
-     fine in a mock-up and cannot be read by anybody. */
+  --popover-foreground: oklch(0.2 0.012 280);
+  /* Semantic names the components read, so "the accent" can move without touching them. */
   --primary: var(--cobalt-deep);
-  --primary-foreground: oklch(0.985 0.003 90);
-  --secondary: oklch(0.955 0.005 90);
-  --secondary-foreground: oklch(0.27 0.03 260);
-  --muted: oklch(0.955 0.005 90);
-  --muted-foreground: oklch(0.5 0.02 260);
+  --primary-foreground: oklch(0.985 0.002 275);
+  --secondary: oklch(0.955 0.004 275);
+  --secondary-foreground: oklch(0.3 0.015 280);
+  --muted: oklch(0.96 0.004 275);
+  --muted-foreground: oklch(0.52 0.015 280);
   --accent: var(--cobalt-soft);
   --accent-foreground: var(--cobalt-deep);
   --brand: var(--cobalt);
@@ -70,13 +71,30 @@
   --warning-soft: var(--amber-soft);
   --info: var(--cobalt-deep);
   --info-soft: var(--cobalt-soft);
-  --border: oklch(0.905 0.006 90);
-  --input: oklch(0.905 0.006 90);
+  --border: oklch(0.915 0.005 275);
+  --input: oklch(0.9 0.005 275);
   --ring: var(--cobalt);
-  --sidebar: oklch(0.975 0.004 90);
-  --sidebar-foreground: oklch(0.3 0.02 260);
-  --sidebar-border: oklch(0.905 0.006 90);
-  --sidebar-accent: oklch(0.935 0.008 90);
+  --sidebar: oklch(0.975 0.003 275);
+  --sidebar-foreground: oklch(0.34 0.015 280);
+  --sidebar-border: oklch(0.915 0.005 275);
+  --sidebar-accent: oklch(0.935 0.006 275);
+  /* The vocabulary the brief asked for, as aliases of the above. */
+  --surface: var(--card);
+  --surface-muted: var(--muted);
+  --text-primary: var(--foreground);
+  --text-secondary: var(--muted-foreground);
+  --text-tertiary: oklch(0.66 0.012 280);
+  --accent-primary: var(--cobalt);
+  --accent-purple: var(--violet);
+  --accent-blue: oklch(0.72 0.13 240);
+  --accent-teal: var(--teal);
+  --accent-pink: var(--coral);
+  --accent-yellow: var(--amber);
+  --error: var(--destructive);
+  /* Motion: one curve, two durations. Fast for hover and focus, slow for anything that moves. */
+  --ease-out: cubic-bezier(0.2, 0, 0, 1);
+  --duration-fast: 140ms;
+  --duration-slow: 220ms;
   --radius: 0.375rem;
   /* A chart reaching for its fifth series gets the fifth hue of the same family,
      not whatever looked free — which is how a palette turns into decoration. */
@@ -92,27 +110,27 @@
 .dark {
   /* Dark mode flips the spectrum rather than reusing it: the solid step is too bright
      against near-black, and the soft step disappears entirely. */
-  --cobalt-soft: oklch(0.29 0.077 258);
-  --violet-soft: oklch(0.29 0.077 300);
-  --magenta-soft: oklch(0.29 0.081 346);
-  --coral-soft: oklch(0.29 0.079 28);
-  --amber-soft: oklch(0.29 0.065 78);
-  --green-soft: oklch(0.29 0.065 148);
-  --teal-soft: oklch(0.29 0.056 200);
+  --cobalt-soft: oklch(0.29 0.086 275);
+  --violet-soft: oklch(0.29 0.081 292);
+  --magenta-soft: oklch(0.29 0.081 328);
+  --coral-soft: oklch(0.29 0.077 18);
+  --amber-soft: oklch(0.29 0.065 86);
+  --green-soft: oklch(0.29 0.065 150);
+  --teal-soft: oklch(0.29 0.056 190);
   --cobalt: oklch(0.7 0.16 258);
   --violet: oklch(0.7 0.16 300);
   --magenta: oklch(0.7 0.165 346);
   --coral: oklch(0.7 0.16 28);
-  --amber: oklch(0.72 0.14 78);
+  --amber: oklch(0.72 0.123 86);
   --green: oklch(0.7 0.14 148);
-  --teal: oklch(0.72 0.12 200);
-  --cobalt-deep: oklch(0.82 0.1 258);
-  --violet-deep: oklch(0.82 0.1 300);
-  --magenta-deep: oklch(0.82 0.1 346);
-  --coral-deep: oklch(0.82 0.1 28);
-  --amber-deep: oklch(0.85 0.09 78);
-  --green-deep: oklch(0.82 0.09 148);
-  --teal-deep: oklch(0.85 0.08 200);
+  --teal: oklch(0.72 0.106 190);
+  --cobalt-deep: oklch(0.84 0.095 275);
+  --violet-deep: oklch(0.84 0.090 292);
+  --magenta-deep: oklch(0.84 0.090 328);
+  --coral-deep: oklch(0.84 0.085 18);
+  --amber-deep: oklch(0.84 0.072 86);
+  --green-deep: oklch(0.84 0.072 150);
+  --teal-deep: oklch(0.84 0.062 190);
   --background: oklch(0.17 0.015 260);
   --foreground: oklch(0.95 0.005 90);
   --card: oklch(0.21 0.015 260);
@@ -145,6 +163,8 @@
   --sidebar-foreground: oklch(0.85 0.01 260);
   --sidebar-border: oklch(0.26 0.015 260);
   --sidebar-accent: oklch(0.24 0.02 260);
+  --text-tertiary: oklch(0.6 0.015 260);
+  --accent-blue: oklch(0.75 0.12 240);
 }
 
 @theme inline {
@@ -180,6 +200,19 @@
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent: var(--sidebar-accent);
+  --color-surface: var(--surface);
+  --color-surface-muted: var(--surface-muted);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-tertiary: var(--text-tertiary);
+  --color-accent-primary: var(--accent-primary);
+  --color-accent-purple: var(--accent-purple);
+  --color-accent-blue: var(--accent-blue);
+  --color-accent-teal: var(--accent-teal);
+  --color-accent-pink: var(--accent-pink);
+  --color-accent-yellow: var(--accent-yellow);
+  --color-error: var(--error);
+  --ease-out: var(--ease-out);
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
   --color-chart-3: var(--chart-3);
@@ -260,5 +293,23 @@
   }
   .focus-ring {
     @apply focus-visible:ring-ring/60 focus-visible:ring-2 focus-visible:outline-none;
+  }
+  /* A surface that lifts a hair under the pointer: shadow and border, never position. */
+  .lift {
+    transition: box-shadow var(--duration-fast) var(--ease-out), border-color var(--duration-fast) var(--ease-out), background-color var(--duration-fast) var(--ease-out);
+  }
+  .lift:hover {
+    border-color: color-mix(in oklch, var(--foreground) 14%, var(--border));
+    box-shadow: 0 1px 2px color-mix(in oklch, var(--foreground) 6%, transparent), 0 4px 12px -4px color-mix(in oklch, var(--foreground) 10%, transparent);
+  }
+  .fade-in {
+    animation: fade-in var(--duration-slow) var(--ease-out) both;
+  }
+  @keyframes fade-in {
+    from { opacity: 0; transform: translateY(2px); }
+    to { opacity: 1; transform: none; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .fade-in { animation: none; }
   }
 }

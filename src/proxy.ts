@@ -2,10 +2,10 @@ import { NextResponse, type NextRequest } from "next/server";
 
 // `/s` is where readers live: the subscribe page for a title, and the confirm and unsubscribe links
 // sent to them by email. None of it belongs behind a sign-in — a reader has no account.
-const PUBLIC_PREFIXES = ["/login", "/contribute", "/respond", "/s", "/r", "/api/public", "/api/webhooks", "/api/storage", "/api/automations", "/api/health", "/print", "/fonts", "/_next", "/favicon.ico", "/icon.svg"];
+const PUBLIC_PREFIXES = ["/login", "/contribute", "/respond", "/s", "/r", "/api/public", "/api/webhooks", "/api/storage", "/api/automations", "/api/health", "/print", "/fonts", "/brand", "/_next", "/favicon.ico", "/icon.png", "/apple-icon.png"];
 
 /** Pages anyone may open without a session: the landing page and what search engines read. */
-const PUBLIC_EXACT = new Set(["/", "/sitemap.xml", "/robots.txt", "/opengraph-image", "/icon.svg", "/manifest.webmanifest"]);
+const PUBLIC_EXACT = new Set(["/", "/sitemap.xml", "/robots.txt", "/opengraph-image", "/icon.png", "/apple-icon.png", "/manifest.webmanifest"]);
 
 /** Lightweight gate: unauthenticated visitors (no session cookie) are sent to /login. Real authorization happens server-side. */
 export function proxy(request: NextRequest) {

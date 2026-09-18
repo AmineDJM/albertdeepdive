@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ArrowRight, BookOpen, Check, ClipboardCheck, Globe, Grid2x2, Mail, Palette, PenLine, Printer, Ruler, Send, ShieldCheck, Sparkles } from "lucide-react";
-import { BrieflyMark } from "@/components/brand/briefly-mark";
+import { BrieflyLogo } from "@/components/brand/briefly-mark";
 import { HeroDemo } from "@/components/marketing/hero-demo";
 import { FormatShowcase } from "@/components/marketing/format-showcase";
 import { AudienceTabs } from "@/components/marketing/audience-tabs";
@@ -411,8 +411,7 @@ export function Landing({ plans, signedIn, t }: { plans: MarketingPlan[]; signed
       <footer className="border-t border-border px-5 py-10 sm:px-8">
         <div className="mx-auto flex max-w-6xl flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
           <Link href="/" className="flex items-center gap-2">
-            <BrieflyMark className="size-5" />
-            <span className="text-[15px] font-semibold tracking-[-0.02em]">{BRAND.name}</span>
+            <BrieflyLogo height={20} />
           </Link>
           <nav className="flex flex-wrap gap-x-6 gap-y-2 text-[13px] text-muted-foreground" aria-label={BRAND.name}>
             <a href="#product" className="hover:text-foreground">

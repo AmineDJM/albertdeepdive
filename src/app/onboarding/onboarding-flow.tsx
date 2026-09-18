@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { NativeSelect } from "@/components/ui/native-select";
-import { BrieflyMark } from "@/components/brand/briefly-mark";
+import { BrieflyLogo } from "@/components/brand/briefly-mark";
 import { cn } from "@/lib/utils";
 import { useTranslations } from "@/components/i18n/provider";
 import type { ActionResult } from "@/lib/action-result";
@@ -70,8 +70,7 @@ export function OnboardingFlow({ suggestedTimezone }: { suggestedTimezone: strin
   return (
     <div className="mx-auto w-full max-w-xl px-6 py-16">
       <div className="mb-10 flex items-center gap-2.5">
-        <BrieflyMark className="size-7" />
-        <span className="text-[17px] font-semibold tracking-[-0.02em]">Briefly</span>
+        <BrieflyLogo height={26} />
       </div>
 
       {step === 1 ? (

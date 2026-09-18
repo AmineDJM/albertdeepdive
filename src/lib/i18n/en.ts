@@ -28,7 +28,7 @@ export const en = {
     publications: "Publications",
     workbench: "Editions",
     audience: "Audience",
-    insights: "Insights",
+    insights: "Analytics",
     editions: "In progress",
     inbox: "Inbox",
     stories: "Stories",
@@ -59,6 +59,15 @@ export const en = {
     toReview: "to review",
     flagged: "flagged",
     search: "Search or jump to…",
+    home: "Home",
+    content: "Content",
+    contributions: "Contributions",
+    library: "Library",
+    brand: "Brand",
+    admin: "Admin console",
+    planUsage: "Plan & usage",
+    notifications: "Notifications",
+    account: "Account",
   },
 
   editionTabs: {
@@ -67,6 +76,11 @@ export const en = {
     qa: "QA & publish",
     exports: "Exports",
     audio: "Audio",
+    overview: "Overview",
+    design: "Design",
+    outputs: "Outputs",
+    distribution: "Distribution",
+    analytics: "Analytics",
   },
 
   auth: {

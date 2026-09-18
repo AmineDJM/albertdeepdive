@@ -99,7 +99,7 @@ export function UploadDialog({
   defaultStoryId,
   maxFileMb,
 }: {
-  editionId: string;
+  editionId: string | null;
   stories: StoryPickerItem[];
   defaultStoryId?: string | null;
   maxFileMb: number;
@@ -177,7 +177,7 @@ export function UploadDialog({
       try {
         const result = await uploadOne(
           item,
-          { editionId, storyId, role: storyId ? role : "" },
+          { editionId: editionId ?? "", storyId, role: storyId ? role : "" },
           (pct) => update(item.key, { progress: pct }),
         );
         update(item.key, { status: "done", progress: 100, result });

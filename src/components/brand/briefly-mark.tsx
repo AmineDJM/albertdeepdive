@@ -3,86 +3,59 @@ import { BRAND } from "@/lib/brand";
 import { GRADIENT } from "@/lib/brand/palette";
 
 /**
- * The Briefly mark.
+ * The Briefly logo, as supplied.
  *
- * A geometric B, and inside it the thing the product makes. The bowls are constructed rather than
- * drawn: each is a rectangle closed by a true semicircle, which is what a B looks like when it comes
- * off a grid. The counters are not the usual wedges but rounded slots of unequal length, so the
- * letter reads at the same time as a B and as two lines of set text — the lower one longer than the
- * upper, the way a paragraph is ragged.
+ * A rounded square carrying the brand's gradient with a white inner tile, and the wordmark set in
+ * a heavy geometric sans. It is an image, not a drawing of ours: nothing here redesigns it. The
+ * symbol goes where space is tight — a sidebar header, a browser tab, an avatar — and the full
+ * wordmark where there is room to read it: sign-in, onboarding, the marketing site.
  *
- * One weight throughout, on a 100-unit grid. Cap height 72, bowls 36 each, horizontals 11, stem 15 —
- * horizontals lighter than the stem because that is what keeps a geometric letter from looking
- * bottom-heavy. Every counter sits 11 from the outer edge at its widest, including around the
- * curve, which is the number that makes the thing look drawn by somebody rather than assembled.
- * The two outer stem corners carry a 5-unit radius: square against bowls that round makes the spine
- * look snapped off, and the eye reads the softening long before it can name it.
- *
- * Nothing here is eyeballed, which is why it survives being sixteen pixels wide in a browser tab.
+ * `mono` is for the one place the colours cannot be used, an inline SVG that must take
+ * `currentColor` (a print masthead, an email in text mode): the same silhouette in one ink.
  */
 
-/**
- * The letter, as one path.
- *
- * Even-odd fill, so the two slots knock through to whatever is behind rather than being painted in
- * a colour that has to guess at the background. A mark that only works on white is not a mark.
- */
-const LETTER =
-  "M23 14 h31 a18 18 0 0 1 0 36 h-36 v-31 a5 5 0 0 1 5-5 z " +
-  "M18 50 h46 a18 18 0 0 1 0 36 h-41 a5 5 0 0 1-5-5 z " +
-  "M40 25 h14 a7 7 0 0 1 0 14 h-14 a7 7 0 0 1 0-14 z " +
-  "M40 61 h24 a7 7 0 0 1 0 14 h-24 a7 7 0 0 1 0-14 z";
+export const LOGO = {
+  symbol: "/brand/briefly-symbol.png",
+  wordmark: "/brand/briefly-wordmark.png",
+  /** The wordmark's aspect ratio, so a height alone sizes it without a reflow. */
+  wordmarkRatio: 1271 / 334,
+} as const;
 
-function Gradient({ id }: { id: string }) {
-  return (
-    <linearGradient id={id} x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stopColor={GRADIENT[0]} />
-      <stop offset="52%" stopColor={GRADIENT[1]} />
-      <stop offset="100%" stopColor={GRADIENT[2]} />
-    </linearGradient>
-  );
-}
-
-export function BrieflyMark({ className, mono = false, gradientId = "briefly-mark" }: { className?: string; mono?: boolean; gradientId?: string }) {
-  return (
-    <svg viewBox="0 0 100 100" aria-hidden="true" className={cn("size-6 shrink-0", className)}>
-      {mono ? null : (
-        <defs>
-          <Gradient id={gradientId} />
-        </defs>
-      )}
-      <path fillRule="evenodd" fill={mono ? "currentColor" : `url(#${gradientId})`} d={LETTER} />
-    </svg>
-  );
+export function BrieflyMark({ className, mono = false }: { className?: string; mono?: boolean; gradientId?: string }) {
+  if (mono) {
+    return (
+      <svg viewBox="0 0 100 100" aria-hidden="true" className={cn("size-6 shrink-0", className)}>
+        <rect width="100" height="100" rx="26" fill="currentColor" />
+        <rect x="26" y="26" width="48" height="48" rx="13" fill={BRAND.paper} />
+      </svg>
+    );
+  }
+  // eslint-disable-next-line @next/next/no-img-element
+  return <img src={LOGO.symbol} alt="" aria-hidden="true" draggable={false} className={cn("size-6 shrink-0 select-none", className)} />;
 }
 
 /**
- * The mark on its own tile, for a favicon, an avatar, or anywhere it needs a defined edge.
- *
- * The same path, placed by transform rather than redrawn at another size — a second set of
- * coordinates is a second thing to keep in step, and it never stays in step.
+ * The symbol on a defined edge, for the OG image and anywhere the raster cannot go: the brand's
+ * gradient drawn as the logo draws it, top-left indigo to bottom-right pink.
  */
 export function BrieflyTile({ className, gradientId = "briefly-tile" }: { className?: string; gradientId?: string }) {
   return (
     <svg viewBox="0 0 100 100" aria-hidden="true" className={cn("size-8 shrink-0", className)}>
       <defs>
-        <Gradient id={gradientId} />
+        <linearGradient id={gradientId} x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor={GRADIENT[0]} />
+          <stop offset="50%" stopColor={GRADIENT[1]} />
+          <stop offset="100%" stopColor={GRADIENT[2]} />
+        </linearGradient>
       </defs>
-      <rect width="100" height="100" rx="24" fill={`url(#${gradientId})`} />
-      {/* 0.722 puts the 72-unit cap height at 52 and leaves an equal 26.9 either side. */}
-      <g transform="translate(13.9 13.9) scale(0.722)">
-        <path fillRule="evenodd" fill={BRAND.paper} d={LETTER} />
-      </g>
+      <rect width="100" height="100" rx="26" fill={`url(#${gradientId})`} />
+      <rect x="26" y="26" width="48" height="48" rx="13" fill={BRAND.paper} />
     </svg>
   );
 }
 
-/** Mark plus wordmark, for the sign-in screen, emails and the marketing site. */
-export function BrieflyLogo({ className, markClassName }: { className?: string; markClassName?: string }) {
-  return (
-    <span className={cn("inline-flex items-center gap-2", className)}>
-      <BrieflyMark className={cn("size-6", markClassName)} />
-      <span className="text-[17px] font-semibold tracking-[-0.025em] text-foreground">{BRAND.name}</span>
-    </span>
-  );
+/** Symbol and wordmark together, sized by height. */
+export function BrieflyLogo({ className, height = 22 }: { className?: string; height?: number; markClassName?: string }) {
+  // eslint-disable-next-line @next/next/no-img-element
+  return <img src={LOGO.wordmark} alt={BRAND.name} draggable={false} style={{ height, width: Math.round(height * LOGO.wordmarkRatio) }} className={cn("inline-block shrink-0 select-none", className)} />;
 }

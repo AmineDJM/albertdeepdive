@@ -4,7 +4,6 @@ import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Check, ChevronsUpDown, LogOut, Plus, ShieldAlert } from "lucide-react";
-import { BrieflyMark } from "@/components/brand/briefly-mark";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { leaveWorkspaceAction, switchWorkspaceAction } from "@/app/(newsroom)/workspace-actions";
 import { cn } from "@/lib/utils";
@@ -45,11 +44,14 @@ export function WorkspaceSwitcher({ current, options, impersonated }: { current:
     </button>
   ) : null;
 
+  const name = current?.name ?? "Briefly";
   const header = (
     <span className="flex min-w-0 items-center gap-2">
-      <BrieflyMark className="size-5" />
+      <span aria-hidden className="flex size-6 shrink-0 items-center justify-center rounded-md bg-foreground text-[11px] font-semibold text-background">
+        {name.trim().charAt(0).toUpperCase()}
+      </span>
       <span className="min-w-0 flex-1">
-        <span className="block truncate text-[14px] font-semibold tracking-[-0.01em] text-foreground">{current?.name ?? "Briefly"}</span>
+        <span className="block truncate text-[13px] font-semibold tracking-[-0.01em] text-foreground">{name}</span>
         {impersonated ? (
           <span className="flex items-center gap-1 text-2xs text-amber-600 dark:text-amber-500">
             <ShieldAlert className="size-3" />{" "}{tr("Platform access")}</span>
@@ -60,7 +62,7 @@ export function WorkspaceSwitcher({ current, options, impersonated }: { current:
 
   if (!canSwitch) {
     return (
-      <div className="flex h-12 items-center gap-1 px-4">
+      <div className="flex items-center gap-1 px-4 pb-2 pt-0.5">
         <div className="min-w-0 flex-1">{header}</div>
         {exit}
       </div>
@@ -68,7 +70,7 @@ export function WorkspaceSwitcher({ current, options, impersonated }: { current:
   }
 
   return (
-    <div className="px-3 pt-2">
+    <div className="px-3 pb-1 pt-0.5">
       <DropdownMenu>
         <DropdownMenuTrigger
           disabled={pending}
