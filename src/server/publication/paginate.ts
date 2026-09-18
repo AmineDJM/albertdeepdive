@@ -692,11 +692,15 @@ export function planTemplateSwap(doc: EditionDocument, measures: PageMeasurement
 /**
  * Whether a page can take one more story without losing it.
  *
- * A contents page, a cover and every single-story template print the first article placed on them
- * and silently ignore the rest — so pouring copy onto one removes it from the issue. Only the
- * templates that set every story they are given, and only while they are under their count.
+ * Two ways a page cannot. A contents page, a cover and every single-story template print the first
+ * article placed on them and silently ignore the rest. And a jump page is not a place at all: every
+ * flow pass rebuilds jump pages from what actually overflows, so a story moved onto one is thrown
+ * away with the page before it is ever set — which is how two stories disappeared out of an issue
+ * that still reported itself clean. A starved jump page is dealt with by `planUnsplitJump`, which
+ * turns it into a real page first.
  */
 function canHostAnotherStory(page: DocumentPage): boolean {
+  if (page.template === CONTINUATION_TEMPLATE) return false;
   const limit = MULTI_STORY_TEMPLATES[page.template];
   return !!limit && page.articleIds.length < limit;
 }
@@ -719,7 +723,9 @@ export function planTailFill(doc: EditionDocument, measures: PageMeasurement[], 
     // Only absorb a plain, single-story article page — never a cover, opener, contents or a
     // structured page whose shape carries meaning, and never another jump page.
     if (next.template === CONTINUATION_TEMPLATE || SPARSE_BY_DESIGN.has(next.template)) continue;
-    if (!(TEMPLATE_ALTERNATIVES[next.template] ?? []).length && next.template !== "ARTICLE_THREE_COLUMN") continue;
+    // A plain article page, or a news page: both are made to be re-set elsewhere. A structured page
+    // — a case study, an event — carries its meaning in its shape and stays where it is.
+    if (!(TEMPLATE_ALTERNATIVES[next.template] ?? []).length && next.template !== "ARTICLE_THREE_COLUMN" && !MULTI_STORY_TEMPLATES[next.template]) continue;
     if (next.articleIds.length !== 1) continue;
     if (!canHostAnotherStory(page)) continue;
     const articleId = next.articleIds[0];
@@ -847,6 +853,24 @@ export async function paginateDocument(input: EditionDocument, options: Paginate
   const extent = input.meta.extent;
   const floorPages = extent?.mode === "fixed" && extent.pages ? Math.min(extent.pages, plannedPages) : 0;
   const keepsExtent = (doc: EditionDocument) => doc.pages.length >= floorPages;
+
+  /**
+   * No pass may lose a story. Ever.
+   *
+   * Every stage below moves stories between pages, and a move that quietly leaves one on no page
+   * at all takes it out of the magazine — the reader never sees it and nothing in the report says
+   * so. The invariant is checked on the result of each candidate rather than trusted to the move
+   * that made it, because it is the one kind of mistake there is no recovering from.
+   */
+  const placed = (doc: EditionDocument) => new Set(doc.pages.flatMap((p) => p.articleIds));
+  const everyStoryPlaced = new Set(input.articles.map((a) => a.id));
+  const keepsEveryStory = (doc: EditionDocument) => {
+    const after = placed(doc);
+    const lost = [...everyStoryPlaced].filter((id) => !after.has(id) && placed(input).has(id));
+    if (lost.length) log("pass rejected: it would drop a story", { articles: lost });
+    return lost.length === 0;
+  };
+  const sound = (doc: EditionDocument) => keepsExtent(doc) && keepsEveryStory(doc);
   const generation = { generation: 0 };
 
   const first = await flowDocument(input, options, generation);
@@ -876,7 +900,7 @@ export async function paginateDocument(input: EditionDocument, options: Paginate
     // the same magazine, and insisting on a page being removed was why a jump page could sit at a
     // third full with a denser variant of the same story available.
     const cost = densityCost(next.measures);
-    const better = (fewerPages || cost < best.cost) && keepsExtent(next.document);
+    const better = (fewerPages || cost < best.cost) && sound(next.document);
     log("variant pass", { pass: passes, swap: `${attempt.swap.from}→${attempt.swap.to}`, pages: next.document.pages.length, was: best.document.pages.length, cost: Math.round(cost * 10) / 10, was_cost: Math.round(best.cost * 10) / 10, fewerPages, clean, better });
     if (better && clean) {
       best = { document: next.document, measures: next.measures, stats: next.stats, cost };
@@ -904,7 +928,7 @@ export async function paginateDocument(input: EditionDocument, options: Paginate
       const absorbed = next.document.pages.length < best.document.pages.length;
       const clean = !next.measures.some((m) => m.flows.some((f) => f.overflow));
       log(label, { pass: passes, pages: next.document.pages.length, was: best.document.pages.length, absorbed, clean });
-      if (absorbed && clean && keepsExtent(next.document)) {
+      if (absorbed && clean && sound(next.document)) {
         best = { document: next.document, measures: next.measures, stats: next.stats, cost: densityCost(next.measures) };
         applied.push(...attempt.changes);
       }
@@ -928,7 +952,7 @@ export async function paginateDocument(input: EditionDocument, options: Paginate
       // Judged on the score alone, which already prices a sheet of paper: pulling a story up is not
       // worth it when all it buys is a jump page at a fifth full where a whole page used to be.
       const cost = densityCost(next.measures);
-      const better = cost < best.cost && keepsExtent(next.document);
+      const better = cost < best.cost && sound(next.document);
       log(label, { pass: passes, pages: next.document.pages.length, was: best.document.pages.length, cost: Math.round(cost * 10) / 10, was_cost: Math.round(best.cost * 10) / 10, clean, better });
       if (clean && better) {
         best = { document: next.document, measures: next.measures, stats: next.stats, cost };
@@ -960,42 +984,57 @@ export async function paginateDocument(input: EditionDocument, options: Paginate
       rounds += next.rounds;
       const clean = !next.measures.some((m) => m.flows.some((f) => f.overflow));
       const cost = densityCost(next.measures);
-      const better = cost < best.cost && keepsExtent(next.document);
+      const better = cost < best.cost && sound(next.document);
       log(label, { pass: passes, pages: next.document.pages.length, was: best.document.pages.length, cost: Math.round(cost * 10) / 10, was_cost: Math.round(best.cost * 10) / 10, clean, better });
       if (clean && better) {
         best = { document: next.document, measures: next.measures, stats: next.stats, cost };
       }
     }
   };
-  await unsplitStage("unsplit pass");
-
   // ── stage 1d2 · a jump page that nothing could remove is made to earn its paper ──
   const triedSpread = new Set<string>();
-  stage = 0;
-  for (;;) {
-    if (stage >= perStage) break;
-    const attempt = planSpreadJump(best.document, best.measures, triedSpread);
-    if (!attempt) break;
-    triedSpread.add(attempt.targetPageId);
-    passes += 1;
-    stage += 1;
-    const next = await flowDocument(attempt.document, options, generation);
-    rounds += next.rounds;
-    const clean = !next.measures.some((m) => m.flows.some((f) => f.overflow));
-    const cost = densityCost(next.measures);
-    const better = cost < best.cost && keepsExtent(next.document);
-    log("spread pass", { pass: passes, pages: next.document.pages.length, was: best.document.pages.length, cost: Math.round(cost * 10) / 10, was_cost: Math.round(best.cost * 10) / 10, clean, better });
-    if (clean && better) {
-      best = { document: next.document, measures: next.measures, stats: next.stats, cost };
-      applied.push(...attempt.changes);
+  const spreadStage = async (label: string) => {
+    let used = 0;
+    for (;;) {
+      if (used >= perStage) break;
+      const attempt = planSpreadJump(best.document, best.measures, triedSpread);
+      if (!attempt) break;
+      triedSpread.add(attempt.targetPageId);
+      passes += 1;
+      used += 1;
+      const next = await flowDocument(attempt.document, options, generation);
+      rounds += next.rounds;
+      const clean = !next.measures.some((m) => m.flows.some((f) => f.overflow));
+      const cost = densityCost(next.measures);
+      const better = cost < best.cost && sound(next.document);
+      log(label, { pass: passes, pages: next.document.pages.length, was: best.document.pages.length, cost: Math.round(cost * 10) / 10, was_cost: Math.round(best.cost * 10) / 10, clean, better });
+      if (clean && better) {
+        best = { document: next.document, measures: next.measures, stats: next.stats, cost };
+        applied.push(...attempt.changes);
+      }
     }
-  }
+  };
 
-  // ── stage 1e · and fill once more ──
-  // A story given a sheet of its own leaves the page it came from with room, and takes only part of
-  // its new one. Both are pages the fill stage can work with, and it has not seen them yet.
-  triedFills.clear();
-  await tailFillStage("tail-fill pass (after unsplit)");
+  /*
+   * Un-splitting, spreading and filling are each other's work.
+   *
+   * Pulling a story up leaves the tail of it on a new jump page, which un-splitting turns into a
+   * real page, which has room the fill stage can use — and round it goes. Running each once, in a
+   * fixed order, left whatever the last of them did unanswered: an issue ended with a jump page at
+   * two fifths and a shorts page at a third, both of them made by the pass that ran last. So the
+   * three repeat until a round buys nothing, which on a normal issue is the second or the third.
+   */
+  for (let round = 0; round < 3; round += 1) {
+    const before = best.cost;
+    triedUnsplit.clear();
+    triedSpread.clear();
+    triedFills.clear();
+    const suffix = round ? ` (round ${round + 1})` : "";
+    await unsplitStage(`unsplit pass${suffix}`);
+    await spreadStage(`spread pass${suffix}`);
+    await tailFillStage(`tail-fill pass${suffix || " (after unsplit)"}`);
+    if (best.cost >= before) break;
+  }
 
   // ── stage 2 · grow the pages that are merely loose ──
   stage = 0;
@@ -1008,7 +1047,7 @@ export async function paginateDocument(input: EditionDocument, options: Paginate
     rounds += next.rounds;
     const cost = densityCost(next.measures);
     log("growth pass", { pass: passes, changes: plan.changes.length, cost: Math.round(cost * 10) / 10, best: Math.round(best.cost * 10) / 10 });
-    if (cost >= best.cost) break; // no further gain — keep the best composition
+    if (cost >= best.cost || !sound(next.document)) break; // no further gain — keep the best composition
     best = { document: next.document, measures: next.measures, stats: next.stats, cost };
     applied.push(...plan.changes);
   }

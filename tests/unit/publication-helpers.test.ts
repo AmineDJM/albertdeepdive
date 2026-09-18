@@ -246,6 +246,13 @@ describe("moving stories between pages", () => {
     }
   });
 
+  it("never pours a story onto a jump page, which the next flow pass rebuilds from scratch", () => {
+    // A story moved onto a continuation page is deleted with it before it is ever set.
+    const doc = twoPageDoc("CONTINUATION");
+    doc.pages[0].isContinuation = true;
+    expect(planTailFill(doc, [loose("p1", 1, "CONTINUATION", 0.2), loose("p2", 2, "ARTICLE_TWO_COLUMN", 0.9)], new Set())).toBeNull();
+  });
+
   it("refuses a page that is already at its story limit", () => {
     const doc = twoPageDoc("NEWS_GRID");
     doc.pages[0].articleIds = ["a1", "a1", "a1", "a1"];
