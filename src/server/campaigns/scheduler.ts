@@ -111,6 +111,30 @@ export async function runAutomationTick(opts: TickOptions = {}): Promise<TickRes
     result.errors.push(`PAID_READERS: ${errorMessage(err)}`);
   }
 
+  /*
+   * 7. What has already gone out.
+   *
+   * A published issue is not a finished thing. Its pictures live in a bucket somebody can empty,
+   * its rights can be withdrawn, and the document it was frozen from goes on changing. An artefact
+   * that was correct in March can be wrong in September with nobody having touched it, and the only
+   * way to find out is to measure it again in September. The sweep measures and never repairs: a
+   * published issue quietly edited by a nightly job is the last surprise anybody wants.
+   */
+  try {
+    const { enqueueJob } = await import("@/server/jobs/queue");
+    const { JOB_TYPES } = await import("@/server/jobs/registry");
+    await enqueueJob({
+      type: JOB_TYPES.QC_SWEEP,
+      payload: {},
+      // Once a day, whatever the tick's cadence.
+      idempotencyKey: `qc.sweep:${now.toISOString().slice(0, 10)}`,
+      maxAttempts: 1,
+    });
+    result.ran.push("QUALITY_SWEEP: queued");
+  } catch (err) {
+    result.errors.push(`QUALITY_SWEEP: ${errorMessage(err)}`);
+  }
+
   log.info("tick done", { ran: result.ran.length, skipped: result.skipped.length, errors: result.errors });
   return result;
 }

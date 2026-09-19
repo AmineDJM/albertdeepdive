@@ -10,3 +10,4 @@ import "@/server/email/jobs";
 import "@/server/creative/jobs";
 import "@/server/speech/jobs";
 import "@/server/images/jobs";
+import "@/server/qc/jobs";

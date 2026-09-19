@@ -43,6 +43,8 @@ export const JOB_TYPES = {
   CREATIVE_RENDER: "creative.render",
   SPEECH_NARRATE: "speech.narrate",
   IMAGE_RENDER: "image.render",
+  QC_PREFLIGHT: "qc.preflight",
+  QC_SWEEP: "qc.sweep",
 } as const;
 
 export type JobType = (typeof JOB_TYPES)[keyof typeof JOB_TYPES];
