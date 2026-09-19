@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { NativeSelect } from "@/components/ui/native-select";
-import { CREATIVE_FORMATS, CREATIVE_MODES, FORMATS, MODES, type CreativeFormat, type CreativeMode } from "@/lib/creative/formats";
+import { CREATIVE_MODES, FORMATS, MODES, STILL_FORMATS, VIDEO_FORMATS, durationSeconds, type CreativeFormat, type CreativeMode } from "@/lib/creative/formats";
 import { DESIGN_SYSTEMS, SYSTEMS } from "@/lib/creative/design-systems";
 import { MOTION, MOTION_SYSTEMS } from "@/lib/creative/motion";
 import { cn } from "@/lib/utils";
@@ -39,9 +39,6 @@ export function NewPackDialog({ editions }: { editions: { id: string; label: str
   const [motion, setMotion] = useState<string>("cut");
   const [angle, setAngle] = useState("");
 
-  // Every shape, moving or not. A Reel is the same frames with time added, so there is no reason to
-  // hide it behind a different flow.
-  const shapes = CREATIVE_FORMATS;
   const moving = FORMATS[format].moving;
 
   function submit() {
@@ -101,10 +98,19 @@ export function NewPackDialog({ editions }: { editions: { id: string; label: str
             </div>
           </div>
 
+          {/*
+            * Video is two choices, not one.
+            *
+            * A vertical cut and a landscape cut are different films made from the same material:
+            * one is thumbed past in a second and watched muted, the other is played on a screen
+            * somebody is already looking at. Offering "video" and then a dimension box would hide
+            * the only decision that matters, so the two sit side by side with where each one goes.
+            */}
           <div>
             <Label>{tr("Shape")}</Label>
+            <p className="mt-0.5 text-2xs text-muted-foreground">{tr("Stills")}</p>
             <div className="mt-1.5 grid gap-1.5 sm:grid-cols-3">
-              {shapes.map((key) => (
+              {STILL_FORMATS.map((key) => (
                 <button
                   key={key}
                   type="button"
@@ -113,14 +119,46 @@ export function NewPackDialog({ editions }: { editions: { id: string; label: str
                   onClick={() => setFormat(key)}
                   className={cn("rounded-lg border p-2.5 text-left transition-colors", format === key ? "border-brand bg-brand-soft/40" : "border-border hover:bg-muted/50")}
                 >
-                  <span className="block text-[13px] font-medium">{FORMATS[key].name}</span>
+                  <span className="block text-[13px] font-medium">{tr(FORMATS[key].name)}</span>
                   <span className="block text-2xs text-muted-foreground">
                     {FORMATS[key].width}×{FORMATS[key].height}
-                    {FORMATS[key].moving ? " · moves" : ""}
                   </span>
                 </button>
               ))}
             </div>
+            <p className="mt-2.5 text-2xs text-muted-foreground">{tr("Video")}</p>
+            <div className="mt-1.5 grid gap-1.5 sm:grid-cols-2">
+              {VIDEO_FORMATS.map((key) => (
+                <button
+                  key={key}
+                  type="button"
+                  disabled={pending}
+                  aria-pressed={format === key}
+                  onClick={() => setFormat(key)}
+                  className={cn(
+                    "flex items-start gap-2.5 rounded-lg border p-2.5 text-left transition-colors",
+                    format === key ? "border-brand bg-brand-soft/40" : "border-border hover:bg-muted/50",
+                  )}
+                >
+                  <span
+                    aria-hidden
+                    className={cn(
+                      "mt-0.5 shrink-0 rounded-[3px] border-2",
+                      format === key ? "border-brand" : "border-muted-foreground/50",
+                      FORMATS[key].width > FORMATS[key].height ? "h-3.5 w-6" : "h-6 w-3.5",
+                    )}
+                  />
+                  <span className="min-w-0">
+                    <span className="block text-[13px] font-medium">{tr(FORMATS[key].name)}</span>
+                    <span className="block text-2xs text-muted-foreground">{FORMATS[key].platforms.join(" · ")}</span>
+                    <span className="block text-2xs text-muted-foreground">
+                      {FORMATS[key].width}×{FORMATS[key].height} · {tr("about {seconds}s", { seconds: Math.round(durationSeconds(key, FORMATS[key].minFrames + 1)) })}
+                    </span>
+                  </span>
+                </button>
+              ))}
+            </div>
+            <p className="mt-1 text-2xs text-muted-foreground">{tr(FORMATS[format].description)}</p>
           </div>
 
           <div>

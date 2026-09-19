@@ -16,7 +16,7 @@ import { ok, toActionFailure, type ActionResult } from "@/lib/action-result";
 import { getUi } from "@/server/i18n/locale";
 
 function revalidateEdition(editionId: string) {
-  revalidatePath(`/editions/${editionId}/studio`);
+  revalidatePath(`/editions/${editionId}/revise`);
   revalidatePath(`/editions/${editionId}/layout`);
   revalidatePath(`/editions/${editionId}`);
 }

@@ -391,6 +391,7 @@ Every word you write is drawn as real type on the real canvas. Keep headlines sh
 
 Tone: {{tone}}. Write in the {{person}}. Never use these words: {{avoid}}.`,
     user: `Format: {{formatName}} — {{formatDescription}}
+Shape: {{orientation}}. {{shapeNote}}
 Frames: between {{minFrames}} and {{maxFrames}}.
 Mode: {{mode}} — {{modeDescription}}
 

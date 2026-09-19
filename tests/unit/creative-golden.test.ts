@@ -3,8 +3,10 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { composeSpec } from "@/lib/creative/compose";
 import { compileBrandSystem, DEFAULT_BRAND_SYSTEM, type BrandSystem } from "@/lib/brand/system";
-import { DESIGN_SYSTEMS } from "@/lib/creative/design-systems";
-import { CREATIVE_FORMATS } from "@/lib/creative/formats";
+import { DESIGN_SYSTEMS, SYSTEMS } from "@/lib/creative/design-systems";
+import { CREATIVE_FORMATS, FORMATS, OFFERED_FORMATS, VIDEO_FORMATS, orientationOf } from "@/lib/creative/formats";
+import { inspectMotion, planMotion } from "@/lib/creative/motion";
+import { apparentPx, MIN_APPARENT_PX, opticalInset } from "@/lib/creative/laws";
 import { localBrief } from "@/server/ai/services/art-director";
 import { inspect } from "@/lib/creative/qa";
 
@@ -93,6 +95,72 @@ describe("golden invariants", () => {
       const spec = composeSpec(brief, tokens, { brandVersion: "golden", system, organizationName: "Albert School" });
       const defects = inspect(spec, brief).filter((finding) => finding.severity === "defect");
       expect(defects, system).toEqual([]);
+    }
+  });
+
+  it("composes every shape cleanly, in every design system", () => {
+    /*
+     * A canvas that is wider than it is tall is the case the engine had never met: every type step,
+     * measure and safe area is derived from the canvas, and a rule that quietly assumed portrait
+     * would show up as a headline through a progress bar rather than as a failing test. This runs
+     * the full QA pass over all of them so that the assumption, if there is one, is named here.
+     */
+    for (const format of OFFERED_FORMATS) {
+      for (const system of DESIGN_SYSTEMS) {
+        const brief = localBrief({ format, mode: "STUDIO", organizationName: "Albert School", brand: ALBERT, stories: STORIES });
+        const spec = composeSpec(brief, tokens, { brandVersion: "golden", system, organizationName: "Albert School" });
+        const defects = inspect(spec, brief).filter((finding) => finding.severity === "defect");
+        expect(defects, `${format} / ${system}`).toEqual([]);
+
+        const { safeArea } = FORMATS[format];
+        // Sideways, a system may push out by one gutter step — poster's whole character is type
+        // closer to the edge — but never further. The vertical rule, where the platform's own
+        // furniture actually sits, is stricter and lives in the safe-area test next door.
+        const give = Math.max(0, -SYSTEMS[system].gutter) * tokens.shape.space[3];
+        for (const frame of spec.frames) {
+          for (const text of frame.text.filter((item) => item.layer !== "background")) {
+            // Display type is nudged left so its first character aligns optically rather than
+            // mathematically; adding the nudge back is what the margin actually is.
+            const optical = opticalInset(text.fontSize, text.content[0] ?? "");
+            expect(text.x + optical, `${format}/${system} left`).toBeGreaterThanOrEqual(safeArea.left - give - 1);
+            // The legibility floor is a function of the canvas, so a 1920-wide film needs bigger
+            // type than a 1080-wide one to read the same size in somebody's hand.
+            expect(apparentPx(text.fontSize, frame.width), `${format}/${system} "${text.content.slice(0, 30)}"`).toBeGreaterThanOrEqual(MIN_APPARENT_PX - 0.01);
+          }
+        }
+      }
+    }
+  });
+
+  it("offers video as two shapes, and cuts both within what their platforms take", () => {
+    /*
+     * Not the same film turned on its side. The vertical cut is held in one hand and thumbed past;
+     * the landscape one is played on a screen somebody is already watching. They differ in canvas,
+     * in which way round they are, and in how much of the frame another app's interface owns — and
+     * each has to come in under its own platform's ceiling from the same material.
+     */
+    expect(VIDEO_FORMATS).toEqual(["REEL", "LANDSCAPE_VIDEO"]);
+    const cuts = VIDEO_FORMATS.map((format) => {
+      const brief = localBrief({ format, mode: "STUDIO", organizationName: "Albert School", brand: ALBERT, stories: STORIES });
+      const spec = composeSpec(brief, tokens, { brandVersion: "golden", system: "editorial", organizationName: "Albert School" });
+      return { format, motion: planMotion(spec, "drift"), definition: FORMATS[format] };
+    });
+
+    const [vertical, landscape] = cuts;
+    expect(orientationOf(vertical.format)).toBe("portrait");
+    expect(orientationOf(landscape.format)).toBe("landscape");
+    // TikTok's button column and caption block take far more of a vertical frame than YouTube's
+    // control bar takes of a wide one; a shared safe area would be wrong for both.
+    expect(vertical.definition.safeArea).not.toEqual(landscape.definition.safeArea);
+    // 90 seconds against fifteen minutes: the vertical ceiling is the one that actually binds.
+    expect(vertical.definition.maxSeconds!).toBeLessThan(landscape.definition.maxSeconds!);
+
+    for (const cut of cuts) {
+      const limit = cut.definition.maxSeconds ?? 0;
+      expect(cut.motion.duration, `${cut.format} runs longer than the platform takes`).toBeLessThanOrEqual(limit);
+      expect(inspectMotion(cut.motion, limit).map((finding) => finding.code), cut.format).not.toContain("too_long");
+      expect(cut.motion.width).toBe(cut.definition.width);
+      expect(cut.motion.height).toBe(cut.definition.height);
     }
   });
 

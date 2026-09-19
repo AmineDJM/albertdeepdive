@@ -51,7 +51,10 @@ export async function GET(request: Request, ctx: RouteContext<"/api/creative/[pa
   if (video) {
     const bytes = await storage.get(video.storageKey!);
     if (bytes) {
-      zip.file(`${slug(pack.name)}.mp4`, bytes);
+      // The dimensions in the name, because the two video shapes are made from the same material
+      // and land in the same downloads folder: "october-film.mp4" twice tells nobody which is the
+      // vertical cut and which is the one for YouTube.
+      zip.file(`${slug(pack.name)}-${format.width}x${format.height}.mp4`, bytes);
       rendered += 1;
     }
   }
@@ -66,6 +69,7 @@ export async function GET(request: Request, ctx: RouteContext<"/api/creative/[pa
     [
       `${pack.name}`,
       `${format.name} · ${format.width}×${format.height}${format.moving ? " · video included" : ""}`,
+      `Made for: ${format.platforms.join(", ")}`,
       "",
       "Frames are numbered in posting order. caption.txt holds the post text and hashtags.",
       "Made with Briefly. Every frame was drawn by Briefly's own renderer; nothing here is a picture of text.",

@@ -460,6 +460,92 @@
     ],
     "alt": "The alum turning satellite images into crop forecasts"
   },
+  "LANDSCAPE_VIDEO": {
+    "index": 0,
+    "layout": "statement",
+    "width": 1920,
+    "height": 1080,
+    "background": "#10203A",
+    "shapes": [
+      {
+        "kind": "rect",
+        "x": 100,
+        "y": 100,
+        "width": 232,
+        "height": 116,
+        "radius": 3,
+        "colour": "#2BAFE0"
+      }
+    ],
+    "text": [
+      {
+        "layer": "content",
+        "role": "label",
+        "content": "1",
+        "x": 100,
+        "y": 125,
+        "width": 232,
+        "fontSize": 55,
+        "fontWeight": 600,
+        "letterSpacing": 0,
+        "lineHeight": 1.2,
+        "colour": "#10203A",
+        "transform": "none",
+        "align": "center",
+        "lines": 1,
+        "fontFamily": "\"Inter\", \"Helvetica Neue\", Arial, sans-serif"
+      },
+      {
+        "role": "display",
+        "content": "The alum turning",
+        "x": 98,
+        "y": 453.94944000000004,
+        "width": 1720,
+        "fontSize": 167.04,
+        "fontFamily": "\"Fraunces\", \"Georgia\", \"Times New Roman\", serif",
+        "fontWeight": 700,
+        "letterSpacing": -3.6748799999999995,
+        "lineHeight": 0.938,
+        "colour": "#FFFFFF",
+        "transform": "none",
+        "align": "left",
+        "lines": 1
+      },
+      {
+        "role": "display",
+        "content": "satellite images into",
+        "x": 100,
+        "y": 610.63296,
+        "width": 1720,
+        "fontSize": 167.04,
+        "fontFamily": "\"Fraunces\", \"Georgia\", \"Times New Roman\", serif",
+        "fontWeight": 700,
+        "letterSpacing": -3.6748799999999995,
+        "lineHeight": 0.938,
+        "colour": "#FFFFFF",
+        "transform": "none",
+        "align": "left",
+        "lines": 1
+      },
+      {
+        "role": "display",
+        "content": "crop forecasts",
+        "x": 97,
+        "y": 767.31648,
+        "width": 1720,
+        "fontSize": 167.04,
+        "fontFamily": "\"Fraunces\", \"Georgia\", \"Times New Roman\", serif",
+        "fontWeight": 700,
+        "letterSpacing": -3.6748799999999995,
+        "lineHeight": 0.938,
+        "colour": "#FFFFFF",
+        "transform": "none",
+        "align": "left",
+        "lines": 1
+      }
+    ],
+    "alt": "The alum turning satellite images into crop forecasts"
+  },
   "LINKEDIN_VIDEO": {
     "index": 0,
     "layout": "statement",

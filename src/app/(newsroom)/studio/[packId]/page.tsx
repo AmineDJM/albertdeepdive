@@ -60,7 +60,7 @@ export default async function PackPage({ params }: { params: Promise<{ packId: s
       <PageHeader
         title={pack.name}
         breadcrumbs={[{ label: tr("Studio"), href: "/studio" }, { label: pack.name }]}
-        description={[format.name, SYSTEMS[(pack.designSystem as keyof typeof SYSTEMS) ?? "editorial"]?.name ?? "Editorial", format.moving ? MOTION[(pack.motionSystem as keyof typeof MOTION) ?? "cut"]?.name : null, MODES[pack.mode].name, `${format.width}×${format.height}`].filter(Boolean).join(" · ")}
+        description={[tr(format.name), SYSTEMS[(pack.designSystem as keyof typeof SYSTEMS) ?? "editorial"]?.name ?? "Editorial", format.moving ? MOTION[(pack.motionSystem as keyof typeof MOTION) ?? "cut"]?.name : null, MODES[pack.mode].name, `${format.width}×${format.height}`].filter(Boolean).join(" · ")}
         meta={<Badge variant={pack.status === "READY" ? "success" : pack.status === "FAILED" ? "destructive" : "muted"}>{pack.status.toLowerCase()}</Badge>}
         actions={<PackControls packId={pack.id} status={pack.status} hasBrief={Boolean(pack.brief)} />}
       />

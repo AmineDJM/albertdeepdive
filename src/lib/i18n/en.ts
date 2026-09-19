@@ -83,6 +83,7 @@ export const en = {
     analytics: "Analytics",
     pictures: "Pictures",
     publish: "Publish",
+    revise: "Revise",
     askForNews: "Ask for news",
   },
 

@@ -113,7 +113,7 @@ export default async function StudioPage() {
                         <span className="min-w-0">
                           <span className="block truncate text-[14px] font-medium">{pack.name}</span>
                           <span className="block truncate text-2xs text-muted-foreground">
-                            {format.name} · {SYSTEMS[(pack.designSystem as keyof typeof SYSTEMS) ?? "editorial"]?.name ?? "Editorial"} · {MODES[pack.mode].name}
+                            {tr(format.name)} · {SYSTEMS[(pack.designSystem as keyof typeof SYSTEMS) ?? "editorial"]?.name ?? "Editorial"} · {MODES[pack.mode].name}
                           </span>
                         </span>
                         <StatusBadge status={pack.status} ok={qa.verdict.ok} />

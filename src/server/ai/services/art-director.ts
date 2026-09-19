@@ -1,6 +1,6 @@
 import { runService, type AiServiceContext } from "./common";
 import { creativeBriefSchema, FRAME_LAYOUTS, parseBrief, type CreativeBrief } from "@/lib/creative/brief";
-import { FORMATS, MODES, type CreativeFormat, type CreativeMode } from "@/lib/creative/formats";
+import { FORMATS, MODES, orientationOf, type CreativeFormat, type CreativeMode } from "@/lib/creative/formats";
 import { brandMenu, type BrandSystem } from "@/lib/brand/system";
 
 /**
@@ -62,6 +62,25 @@ function describeStories(stories: SourceStory[]): string {
     .join("\n\n");
 }
 
+/**
+ * How the shape changes what is worth writing.
+ *
+ * Not decoration for the prompt: a vertical cut and a landscape cut made from the same material are
+ * two different pieces of writing. One is held in a hand, thumbed past in a second and read muted,
+ * so a frame carries one idea in few words. The other is played on a screen somebody is already
+ * looking at, so a frame can hold a sentence and the figure that proves it, and the set can take
+ * its time. Handing the art director the numbers and not this is how you get a landscape film made
+ * of nine words a scene.
+ */
+const SHAPE_NOTES: Record<"portrait" | "landscape" | "square", string> = {
+  portrait:
+    "Tall, held in one hand, read without sound and past in a second. One idea per frame, headlines that land at a glance, nothing that needs a second look.",
+  landscape:
+    "Wide, played on a screen the viewer is already watching, often with sound. A frame can carry a sentence and the figure that proves it; the set can take a beat longer and build an argument rather than land one line.",
+  square:
+    "Square, in a feed that plays it muted. Between the two: a short claim per frame, but there is room beneath it for the evidence.",
+};
+
 export async function directCreative(input: DirectInput, ctx: AiServiceContext = {}) {
   const format = FORMATS[input.format];
   const mode = MODES[input.mode];
@@ -81,6 +100,8 @@ export async function directCreative(input: DirectInput, ctx: AiServiceContext =
       minFrames: format.minFrames,
       maxFrames: format.maxFrames,
       moving: format.moving,
+      orientation: orientationOf(input.format),
+      shapeNote: SHAPE_NOTES[orientationOf(input.format)],
       mode: input.mode,
       modeDescription: mode.description,
       mayUseOwnPhotographs: mode.usesOwnMedia && (input.media?.length ?? 0) > 0,

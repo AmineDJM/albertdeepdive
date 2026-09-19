@@ -114,17 +114,27 @@ export function namesFrom(snapshot: StudioSnapshot): OperationNames {
   return { articles, stories, pages };
 }
 
-/** The open basket for this issue, created on first use. */
+/**
+ * The open basket for this issue, created on first use.
+ *
+ * Two people talking to the same issue at once would both find no basket and both make one; the
+ * index that allows a single open basket per issue is what stops that, and this is the other half
+ * of it — the loser of the race takes the basket the winner made rather than failing.
+ */
 export async function openDraft(editionId: string, userId: string | null): Promise<RevisionRow> {
-  const existing = await db.query.editionRevisions.findFirst({
-    where: and(eq(s.editionRevisions.editionId, editionId), eq(s.editionRevisions.status, "DRAFT")),
-  });
+  const find = () =>
+    db.query.editionRevisions.findFirst({ where: and(eq(s.editionRevisions.editionId, editionId), eq(s.editionRevisions.status, "DRAFT")) });
+  const existing = await find();
   if (existing) return existing;
   const [row] = await db
     .insert(s.editionRevisions)
     .values({ editionId, organizationId: await organizationOf(editionId), status: "DRAFT", createdById: userId })
+    .onConflictDoNothing()
     .returning();
-  return row;
+  if (row) return row;
+  const raced = await find();
+  if (!raced) throw new ValidationError("The list could not be opened");
+  return raced;
 }
 
 /**

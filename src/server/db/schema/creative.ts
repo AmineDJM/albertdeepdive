@@ -29,7 +29,7 @@ import type { CreativeBrief, RenderSpec } from "@/lib/creative/brief";
  *   a finished post should not.
  */
 
-export const creativeFormatEnum = pgEnum("creative_format", ["CAROUSEL", "STORY", "SQUARE_POST", "REEL", "LINKEDIN_VIDEO"]);
+export const creativeFormatEnum = pgEnum("creative_format", ["CAROUSEL", "STORY", "SQUARE_POST", "REEL", "LANDSCAPE_VIDEO", "LINKEDIN_VIDEO"]);
 export const creativeModeEnum = pgEnum("creative_mode", ["AUTHENTIC", "STUDIO", "CINEMATIC"]);
 
 /**

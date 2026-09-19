@@ -1,0 +1,1 @@
+ALTER TYPE "public"."creative_format" ADD VALUE 'LANDSCAPE_VIDEO' BEFORE 'LINKEDIN_VIDEO';

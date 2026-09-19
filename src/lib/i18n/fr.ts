@@ -86,6 +86,7 @@ export const fr: Dictionary = {
     analytics: "Statistiques",
     pictures: "Images",
     publish: "Publier",
+    revise: "Réviser",
     askForNews: "Demander des nouvelles",
   },
 

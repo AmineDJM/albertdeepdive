@@ -4,6 +4,7 @@ import * as s from "@/server/db/schema";
 import { mediaUrls } from "@/server/media/urls";
 import { editionDashboard, getCurrentEdition } from "@/server/editions/service";
 import { PHASES, phaseForStatus, type EditionPhase, type EditionStatus } from "@/lib/editorial/edition-state";
+import { FORMATS, type CreativeFormat } from "@/lib/creative/formats";
 
 /**
  * What Home says.
@@ -58,7 +59,7 @@ export type HomeData = {
 const IN_PRODUCTION: EditionStatus[] = ["OPEN", "REMINDER_1", "REMINDER_2", "GRACE_PERIOD", "CLOSED", "PROCESSING", "EDITORIAL_REVIEW", "LAYOUT", "FINAL_REVIEW"];
 
 function packKind(format: string): OutputKind {
-  return format === "REEL" || format === "LINKEDIN_VIDEO" ? "VIDEO" : "SOCIAL";
+  return FORMATS[format as CreativeFormat]?.moving ? "VIDEO" : "SOCIAL";
 }
 
 /** Every shape an edition takes: the formats switched on, plus the studio's films and posts. */

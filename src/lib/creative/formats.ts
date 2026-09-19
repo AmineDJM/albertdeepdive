@@ -12,7 +12,7 @@
  * survives that.
  */
 
-export const CREATIVE_FORMATS = ["CAROUSEL", "STORY", "SQUARE_POST", "REEL", "LINKEDIN_VIDEO"] as const;
+export const CREATIVE_FORMATS = ["CAROUSEL", "STORY", "SQUARE_POST", "REEL", "LANDSCAPE_VIDEO", "LINKEDIN_VIDEO"] as const;
 export type CreativeFormat = (typeof CREATIVE_FORMATS)[number];
 
 export type SafeArea = { top: number; right: number; bottom: number; left: number };
@@ -42,14 +42,25 @@ export type FormatDefinition = {
   maxSeconds?: number;
   /** Where it is meant to be posted, for the labels and the export names. */
   platforms: string[];
+  /**
+   * A shape that can still be rendered but is no longer offered.
+   *
+   * Square video was how LinkedIn wanted video in 2019. It now plays vertical and landscape
+   * natively, so the square is a worse crop of both — and a third video choice beside "vertical"
+   * and "landscape" is a question with no good answer. Packs already made in it keep working; the
+   * shape is simply not on the menu any more.
+   */
+  legacy?: boolean;
 };
 
 /**
- * 1080 wide throughout.
+ * 1080 on the short edge throughout.
  *
- * Every platform downsizes from something, and 1080 is the width at which Instagram, LinkedIn and
- * TikTok all stop re-encoding. Rendering larger costs time and gains nothing a phone can see;
- * rendering smaller is visible immediately on text.
+ * Every platform downsizes from something, and 1080 is where Instagram, LinkedIn, TikTok and
+ * YouTube all stop re-encoding. Rendering larger costs time and gains nothing a phone can see;
+ * rendering smaller is visible immediately on text. The still and vertical shapes are 1080 wide;
+ * landscape video is 1920 x 1080, which is the same 1080 turned on its side — the delivery size
+ * YouTube has wanted since it stopped being the size of a postage stamp.
  */
 export const FORMATS: Record<CreativeFormat, FormatDefinition> = {
   CAROUSEL: {
@@ -66,7 +77,9 @@ export const FORMATS: Record<CreativeFormat, FormatDefinition> = {
   },
   STORY: {
     key: "STORY",
-    name: "Story",
+    // Not "Story": the interface's dictionary is keyed by the English, and a story is also what
+    // this newsroom calls a piece of journalism. One word, two meanings, one French translation.
+    name: "Full-screen story",
     description: "One full-screen frame, seen for about three seconds. One idea, large.",
     width: 1080,
     height: 1920,
@@ -75,7 +88,8 @@ export const FORMATS: Record<CreativeFormat, FormatDefinition> = {
     minFrames: 1,
     maxFrames: 5,
     moving: false,
-    platforms: ["Instagram", "LinkedIn"],
+    // LinkedIn stopped carrying stories in 2021; the same file is what Facebook and WhatsApp want.
+    platforms: ["Instagram", "Facebook"],
   },
   SQUARE_POST: {
     key: "SQUARE_POST",
@@ -91,8 +105,8 @@ export const FORMATS: Record<CreativeFormat, FormatDefinition> = {
   },
   REEL: {
     key: "REEL",
-    name: "Reel",
-    description: "Vertical video. Read in silence, so everything that matters is on screen.",
+    name: "Vertical video",
+    description: "Reels, Shorts, TikTok. Held in one hand, watched in silence — everything that matters is on the screen.",
     width: 1080,
     height: 1920,
     // TikTok's caption block and button column take more room than Instagram's, so the stricter wins.
@@ -101,8 +115,35 @@ export const FORMATS: Record<CreativeFormat, FormatDefinition> = {
     maxFrames: 8,
     moving: true,
     secondsPerFrame: 3,
+    // 90s is Instagram's Reel ceiling. Shorts and TikTok both take longer now, but a cut that runs
+    // everywhere is worth more than ninety extra seconds on two of the three.
     maxSeconds: 90,
-    platforms: ["Instagram", "TikTok"],
+    platforms: ["Instagram", "TikTok", "YouTube Shorts"],
+  },
+  LANDSCAPE_VIDEO: {
+    key: "LANDSCAPE_VIDEO",
+    name: "Landscape video",
+    description: "YouTube, and anywhere played wide. Room for a longer argument, and sound is likelier — but it still has to read muted.",
+    width: 1920,
+    height: 1080,
+    /*
+     * The player's own furniture, at 1080p.
+     *
+     * The control bar and its progress line own the bottom of the frame whenever somebody moves the
+     * mouse or taps, which on a phone is constantly; the title overlay comes back across the top at
+     * the same moment. Top right carries the channel chip on an embed, and the end-screen cards
+     * land on the right in the last twenty seconds. Type outside this box is type the player sits
+     * on, and no amount of good design survives a progress bar through a headline.
+     */
+    safeArea: { top: 100, right: 100, bottom: 140, left: 100 },
+    minFrames: 3,
+    maxFrames: 12,
+    moving: true,
+    // A wide frame is read from further away and carries more per scene, so it earns a longer beat.
+    secondsPerFrame: 4,
+    // What an unverified YouTube account may upload. Nothing this engine makes comes near it.
+    maxSeconds: 900,
+    platforms: ["YouTube", "LinkedIn"],
   },
   LINKEDIN_VIDEO: {
     key: "LINKEDIN_VIDEO",
@@ -117,6 +158,7 @@ export const FORMATS: Record<CreativeFormat, FormatDefinition> = {
     secondsPerFrame: 3.5,
     maxSeconds: 600,
     platforms: ["LinkedIn"],
+    legacy: true,
   },
 };
 
@@ -174,9 +216,34 @@ export const MODES: Record<CreativeMode, ModeDefinition> = {
   },
 };
 
+/** The shapes on the menu today. A legacy shape still renders; it is simply not offered any more. */
+export const OFFERED_FORMATS: CreativeFormat[] = CREATIVE_FORMATS.filter((key) => !FORMATS[key].legacy);
+
+/** Stills: swiped, scrolled past, screenshotted. */
+export const STILL_FORMATS: CreativeFormat[] = OFFERED_FORMATS.filter((key) => !FORMATS[key].moving);
+
+/**
+ * Video is two shapes, and choosing between them is the first decision, not a detail.
+ *
+ * They are not crops of each other. A vertical cut is held in one hand, thumbed past in a second
+ * and watched muted, so it is short, large and captioned to the edge. A landscape cut is played on
+ * a screen somebody is already looking at, often with sound, and can carry an argument that takes a
+ * minute. The same words set for the wrong one of those is the commonest way a good film reads
+ * badly, which is why the choice is offered as two shapes rather than as one "video" with a
+ * dimension box.
+ */
+export const VIDEO_FORMATS: CreativeFormat[] = OFFERED_FORMATS.filter((key) => FORMATS[key].moving);
+
+/** Which way round it is. The renderer needs the numbers; everything else needs this word. */
+export function orientationOf(format: CreativeFormat): "portrait" | "landscape" | "square" {
+  const { width, height } = FORMATS[format];
+  if (width === height) return "square";
+  return width > height ? "landscape" : "portrait";
+}
+
 /** The formats a mode can produce. Motion needs a provider; a still does not. */
 export function formatsForMode(mode: CreativeMode): CreativeFormat[] {
-  return CREATIVE_FORMATS.filter((format) => !FORMATS[format].moving || MODES[mode].usesGeneratedImagery || mode === "STUDIO");
+  return OFFERED_FORMATS.filter((format) => !FORMATS[format].moving || MODES[mode].usesGeneratedImagery || mode === "STUDIO");
 }
 
 /** Seconds a moving format runs for, given its scene count. Zero for a still. */

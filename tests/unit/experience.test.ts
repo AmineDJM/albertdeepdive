@@ -60,12 +60,14 @@ describe("the experience mode", () => {
   it("opens four doors on an edition in Standard and keeps the room the reader is in", () => {
     const doors = doorsFor("standard", EDITION_DOORS, "");
     expect(doors.map((door) => door.key)).toEqual(["overview", "stories", "design", "distribution"]);
-    expect(doors.find((door) => door.key === "design")!.rooms.map((room) => room.slug)).toEqual(["media"]);
+    // Revise is in Standard beside the pictures: "make it shorter" needs no vocabulary and is the
+    // simplest way there is to change an issue. The flatplan stays behind Advanced.
+    expect(doors.find((door) => door.key === "design")!.rooms.map((room) => room.slug)).toEqual(["revise", "media"]);
     // Every room Standard shows is one the brief names: stories, pictures, publish.
     for (const door of doors) for (const room of door.rooms) expect(STANDARD_ROOMS.has(room.slug)).toBe(true);
     // Sent to the flatplan by a link, the reader sees the Design door with Layout in it.
     const onLayout = doorsFor("standard", EDITION_DOORS, "layout");
-    expect(onLayout.find((door) => door.key === "design")!.rooms.map((room) => room.slug)).toEqual(["layout", "media"]);
+    expect(onLayout.find((door) => door.key === "design")!.rooms.map((room) => room.slug)).toEqual(["revise", "layout", "media"]);
     // And Advanced is the whole house.
     expect(doorsFor("advanced", EDITION_DOORS, "")).toHaveLength(EDITION_DOORS.length);
   });

@@ -51,7 +51,9 @@ export const STANDARD_SETTINGS = new Set<string>(["/settings/profile", "/setting
  * them, the pictures, and the door out. The flatplan, the exports, the audio and the edition's own
  * settings wait in Advanced.
  */
-export const STANDARD_ROOMS = new Set<string>(["", "stories", "articles", "inbox", "campaign", "media", "qa"]);
+// "revise" is in Standard on purpose: saying "make it shorter" is the simplest way there is to
+// change an issue, and the one that needs no vocabulary at all.
+export const STANDARD_ROOMS = new Set<string>(["", "stories", "articles", "inbox", "campaign", "revise", "media", "qa"]);
 
 /** Whether a path is on Standard's way, by its first segment. */
 export function onStandardPath(href: string): boolean {

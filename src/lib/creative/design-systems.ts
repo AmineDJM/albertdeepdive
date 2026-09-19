@@ -134,7 +134,9 @@ const poster: DesignSystem = {
   stepBias: 1,
   chrome: ({ box, canvas, tokens, surface, index, total, format }) => {
     if (format === "SQUARE_POST" || total < 2) return empty();
-    const size = Math.round(canvas.width * 0.26);
+    // A quarter of the short edge. Off the width it would be a quarter of 1920 on a landscape frame
+    // — a numeral half the height of the picture, reserving more room than the words have.
+    const size = Math.round(Math.min(canvas.width, canvas.height) * 0.26);
     return {
       shapes: [],
       text: [

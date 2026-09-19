@@ -27,6 +27,8 @@ chief approves every issue.
 - [Object storage, in one press](#object-storage-in-one-press)
 - [Running the newsroom](#running-the-newsroom)
 - [Exports](#exports)
+- [Changing an issue that is already made](#changing-an-issue-that-is-already-made)
+- [Social, and the two video shapes](#social-and-the-two-video-shapes)
 - [Pictures](#pictures)
 - [Tests](#tests)
 - [Deployment](#deployment)
@@ -273,6 +275,64 @@ validation and layout reports and its PDF/DOCX assets. Published versions are im
 
 PDF rendering needs Chromium. Playwright installs one with `pnpm exec playwright install chromium`,
 or set `PLAYWRIGHT_CHROMIUM_EXECUTABLE`.
+
+## Changing an issue that is already made
+
+Every edition has a **Revise** tab: a conversation beside the issue itself, rendered live from the
+same address the printer's proof comes from. "Elle est beaucoup trop dense, ça donne pas envie de
+lire", "l'interview de la une mérite plus de place", or photographs dropped straight into the box
+with "mets-les dans le portrait". It reads the issue first — every page with the share of it the
+composition actually fills, every article with its word count, the photographs that arrived and
+were never placed — so the answer names the page rather than guessing.
+
+Nothing is applied as you talk. Each request becomes a line on a list, in words: *Shorten "The quiet
+year at Volvo" to about 400 words*. Take out whatever you did not mean, then press once. That press
+is a **revision**, and it is the moment the work happens: one restore point for the lot, the changes
+in the order you asked for them, one re-fit of the whole issue rather than one per sentence, then
+the formats. The count is shown plainly — "revision 2 of 3 on this issue" — because a plan includes
+a number of them per issue, which is where the cost of re-laying out and re-rendering actually sits.
+Ask for something twice and the list replaces the first line instead of keeping both. Undo puts the
+issue back; the revision stays spent, because the work was done.
+
+The assistant never writes a page. It answers in a closed vocabulary of operations — set the
+extent, shorten this article, attach these photographs, move that page — which the same services
+the flatplan and the article desk use then carry out, and the measured layout engine redraws. That
+division is also the security boundary: an issue is full of words strangers sent in, and the worst
+a steered model can do is name an operation from that list against an id the executor then checks
+belongs to this very issue.
+
+Understanding the request needs a language model. Without one connected, the studio says what it
+measured and that it cannot read the request, and points at the console — it does not guess from
+keywords and then act on the guess. Every manual control (flatplan, article desk, extent) keeps
+working regardless.
+
+## Social, and the two video shapes
+
+**Studio**, in the sidebar, turns a published edition into things to post. Briefly reads what you
+published, an art director decides what each frame says, and a deterministic renderer draws every
+one of them in the organisation's own colours and type — the model never draws, and no picture here
+is a picture of text.
+
+Shapes are offered in two groups, because the decision that matters is which one:
+
+| Stills | | Video | |
+| --- | --- | --- | --- |
+| Carousel | 1080×1350 | **Vertical** — Reels, Shorts, TikTok | 1080×1920 |
+| Full-screen story | 1080×1920 | **Landscape** — YouTube, LinkedIn | 1920×1080 |
+| Post | 1080×1080 | | |
+
+The two cuts are not each other turned sideways. A vertical one is held in one hand, thumbed past
+in a second and watched muted, so a scene carries one idea, large, and everything that matters sits
+inside TikTok's caption block and button column. A landscape one is played on a screen somebody is
+already looking at, often with sound, so a scene can carry a sentence and the figure that proves it,
+and the set can take a beat longer — clear of YouTube's control bar, its title overlay and its end
+cards. The art director is told which it is writing for; the composer anchors its type scale on the
+canvas's short edge and keeps every line inside the platform's furniture; the export names the file
+by its dimensions so the two do not land in the same folder as `october-film.mp4` twice.
+
+Square video for LinkedIn is still rendered for packs already made in it, but is no longer offered:
+LinkedIn takes both of the above natively, and a third video choice is a question with no good
+answer.
 
 ## Spoken editions
 

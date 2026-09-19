@@ -227,9 +227,20 @@ type Ctx = {
  * So the scale keeps the brand's ratio, which is the part that carries personality, and re-anchors
  * its base to the canvas: a 1080-wide frame gets a ~41px body and a ~165px display. The proportions
  * are the organisation's; the size is the medium's.
+ *
+ * Anchored on the SHORT edge, not the width. Every shape here was taller than it was wide until
+ * landscape video arrived, so the two were the same number and the distinction never came up; on a
+ * 1920x1080 frame, anchoring on the width asks for a scale sized for a 1920px-tall canvas and gets
+ * a headline that runs off the bottom of one 1080px tall. The short edge is the dimension the type
+ * has to live within, whichever way round the frame is.
  */
-function posterScale(width: number, ratio: number): number[] {
-  const base = Math.round((width / 26) * 100) / 100;
+function posterScale(shortEdge: number, floor: number, ratio: number): number[] {
+  // Never below the floor, or the whole scale sits on it: a 1920x1080 frame anchored on its 1080
+  // short edge asks for a 41px body, which on that canvas is under the legible minimum and gets
+  // clamped up to it — leaving the body at exactly the smallest readable size and the headline
+  // only four steps above. Anchoring the base at the floor instead keeps the brand's own ratio
+  // between them, which is the part that reads as designed rather than as fitted.
+  const base = Math.max(Math.round((shortEdge / 26) * 100) / 100, floor);
   return Array.from({ length: 7 }, (_, i) => Math.round(base * ratio ** (i - 1) * 100) / 100);
 }
 
@@ -556,17 +567,28 @@ export function composeSpec(brief: CreativeBrief, tokens: BrandTokens, options: 
     format: brief.format,
     mode: brief.mode,
     tokens,
-    // A system may pull in or push out from the platform's safe area, but never past it in the
-    // direction that matters: `Math.max(0, …)` keeps a bold system from bleeding type under
-    // somebody else's interface.
+    /*
+     * A system may bleed sideways, never up or down.
+     *
+     * The platform's furniture is horizontal: Instagram's header and reply bar, TikTok's caption
+     * block, YouTube's control bar. They own bands at the top and the bottom, so a system that
+     * pushes out vertically puts type under somebody else's interface — and poster's whole
+     * character, type closer to the edge, is a horizontal idea anyway.
+     *
+     * Every shape was taller than it was wide until landscape video, and a baseline-anchored
+     * poster frame never reached the top of a 1350px box, so the bleed was invisible. On a 1080px
+     * frame the content fills the box and the bleed puts the opening line 11px inside YouTube's
+     * title overlay. A positive gutter still insets on both axes; only the outward direction is
+     * refused, and only vertically.
+     */
     box: {
       x: Math.max(0, base.x + gutter),
-      y: Math.max(0, base.y + gutter),
+      y: base.y + Math.max(0, gutter),
       width: base.width - gutter * 2,
-      height: base.height - gutter * 2,
+      height: base.height - Math.max(0, gutter) * 2,
     },
     canvas: { width: definition.width, height: definition.height },
-    scale: posterScale(definition.width, ratioOf(tokens)),
+    scale: posterScale(Math.min(definition.width, definition.height), minFontSize(definition.width), ratioOf(tokens)),
     system,
     organizationName: options.organizationName ?? "",
     total: Math.min(brief.frames.length, definition.maxFrames),
