@@ -60,10 +60,11 @@ export const ASSET_DECODES = m({
 export const IMAGE_EFFECTIVE_PPI = m({
   id: "image.effective.ppi",
   title: "Effective resolution at the size it is printed",
-  method: "sourcePixels ÷ printed size in inches, using the placed box from the layout rather than the file's own dimensions.",
+  method: "sourcePixels ÷ printed size in inches, using the placed box from the layout rather than the file's own dimensions, compared with the minimum the active output profile asks for.",
   unit: "ppi",
   // The numbers come from the output profile; what is fixed here is that falling short of the
   // profile's floor is a failure and coming within its warning band is a warning.
+  target: "at least the profile's minimum resolution",
   severity: "FAIL",
   repair: "swap-to-valid-asset",
   origin: "OUTPUT_PROVIDER_REQUIREMENT",
@@ -282,13 +283,14 @@ export const PRINT_BLEED = m({
 
 export const PRINT_SAFE_MARGIN = m({
   id: "print.safe.margin",
-  title: "Nothing important sits inside the trim edge",
-  method: "The smallest distance from any text frame to the trim edge, compared with the profile's safe margin.",
+  title: "Nothing important is set inside the printer's safe margin",
+  method: "The page insets the renderer declares in the stylesheet it embeds are read out of the artefact and compared with the safe margin the active output profile asks for. The threshold is the profile's, not this file's: a printer who asks for 8mm is not wrong.",
   unit: "mm",
-  failureThreshold: 0,
+  target: "at least the profile's safe margin",
   severity: "FAIL",
   repair: null,
   origin: "OUTPUT_PROVIDER_REQUIREMENT",
+  reference: "Trim tolerance on a commercial press is typically 1–2mm either way, so type set to the trim can come back cut.",
 });
 
 /* ── Email ────────────────────────────────────────────────────────────────────────────────── */

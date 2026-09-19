@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ALL_METRICS, IMAGE_ASPECT_DISTORTION, IMAGE_ELIGIBLE, PAGE_FIT_RATIO, QC_SPEC_VERSION, RIGHTS_CLEARED, TEXT_OVERFLOW, metricById } from "@/server/qc/spec";
+import { ALL_METRICS, IMAGE_ASPECT_DISTORTION, IMAGE_EFFECTIVE_PPI, IMAGE_ELIGIBLE, PAGE_FIT_RATIO, PRINT_SAFE_MARGIN, QC_SPEC_VERSION, RIGHTS_CLEARED, TEXT_OVERFLOW, metricById } from "@/server/qc/spec";
 import { DEFAULT_PROFILE, PROFILES, documentSizeMm, effectivePpi, mmToPt, profile, ptToMm } from "@/server/qc/profiles";
 import { BLOCKING, HARD_BLOCKING, SEVERITY_ORDER, assertThat, compare, merge, worst } from "@/server/qc/types";
 import { articleTeaser, extractFacts } from "@/server/qc/checks/integrity";
@@ -36,6 +36,19 @@ describe("the rule catalogue", () => {
     // deleting the thing being measured would turn a block into a green light nobody granted.
     expect(RIGHTS_CLEARED.repair).toBeNull();
     expect(IMAGE_ELIGIBLE.repair).toBe("drop-ineligible-asset");
+  });
+
+  it("leaves the rules whose number belongs to the destination without one of their own", () => {
+    // Resolution and the safe margin differ by where the thing is going, so the catalogue states
+    // the rule and the profile states the number. A literal threshold here would be worse than
+    // none: `print.safe.margin` carried `0` with an at-least comparison for a while, which is a
+    // rule that passes whatever it measures — the exact shape of a check nobody can rely on.
+    expect(IMAGE_EFFECTIVE_PPI.failureThreshold).toBeUndefined();
+    expect(PRINT_SAFE_MARGIN.failureThreshold).toBeUndefined();
+    for (const metric of [IMAGE_EFFECTIVE_PPI, PRINT_SAFE_MARGIN]) {
+      expect(metric.target, `${metric.id} must say where its number comes from`).toBeTruthy();
+      expect(metric.method).toMatch(/profile/i);
+    }
   });
 
   it("gives clipped text no tolerance band at all", () => {

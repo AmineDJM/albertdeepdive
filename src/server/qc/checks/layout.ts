@@ -365,7 +365,9 @@ export const printCheck: Check = {
         const narrowest = Math.min(...insets);
         results.push(
           compare({
-            spec: PRINT_SAFE_MARGIN,
+            // The floor is the profile's, spread in the way the resolution rule does it: the
+            // catalogue states the rule, the destination states the number.
+            spec: { ...PRINT_SAFE_MARGIN, failureThreshold: safe },
             actual: narrowest,
             direction: "at-least",
             location: { entityType: "output", entityId: ctx.editionId, output: ctx.profile.id },

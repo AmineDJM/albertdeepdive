@@ -123,15 +123,17 @@ export async function runAutomationTick(opts: TickOptions = {}): Promise<TickRes
   try {
     const { enqueueJob } = await import("@/server/jobs/queue");
     const { JOB_TYPES } = await import("@/server/jobs/registry");
-    await enqueueJob({
-      type: JOB_TYPES.QC_SWEEP,
-      payload: {},
-      // Once a day, whatever the tick's cadence.
-      idempotencyKey: `qc.sweep:${now.toISOString().slice(0, 10)}`,
-      maxAttempts: 1,
-    });
-    result.ran.push("QUALITY_SWEEP: queued");
+    // Once a day, whatever the tick's cadence: the key is the date, so the second tick of the day
+    // finds the job already there and adds nothing.
+    const key = `qc.sweep:${now.toISOString().slice(0, 10)}`;
+    const job = await enqueueJob({ type: JOB_TYPES.QC_SWEEP, payload: {}, idempotencyKey: key, maxAttempts: 1 });
+    log.info("quality sweep", { key, jobId: job.id });
   } catch (err) {
+    // Deliberately not in `ran`. That list is what a newsroom is shown about *its* automations, and
+    // a platform-wide quality sweep is not one of them — putting it there would make every tick
+    // read as though something happened to their campaign. A failure is another matter: a sweep
+    // that cannot be scheduled is an operational fact, and those belong in `errors` where somebody
+    // looks.
     result.errors.push(`QUALITY_SWEEP: ${errorMessage(err)}`);
   }
 
