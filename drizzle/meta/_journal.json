@@ -183,6 +183,13 @@
       "when": 1789832634048,
       "tag": "0025_military_leopardon",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1789834616156,
+      "tag": "0026_clammy_silhouette",
+      "breakpoints": true
     }
   ]
 }

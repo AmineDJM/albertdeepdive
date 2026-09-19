@@ -19,6 +19,7 @@ import { ContactLine, PublicShell, StatusScreen } from "./state-screens";
 import { StoryTypeGrid } from "./story-type-grid";
 import { SuccessScreen } from "./success-screen";
 import { UploadZone, type UploadLimits } from "./upload-zone";
+import { WhatWeAsked } from "./what-we-asked";
 
 export type ContributeFormProps = { token: string; invitation: InvitationDTO; limits: UploadLimits };
 
@@ -307,6 +308,8 @@ export function ContributeForm({ token, invitation: initialInvitation, limits }:
         saveStatus={saveStatus}
         compact={step !== 0}
       />
+
+      {step === 0 ? <WhatWeAsked asks={invitation.asks} openContributions={invitation.openContributions} /> : null}
 
       <Stepper current={step} onSelect={(s) => s < step && goTo(s)} />
 

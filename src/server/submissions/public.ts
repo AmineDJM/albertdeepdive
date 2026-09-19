@@ -35,6 +35,7 @@ import type { AttachmentDTO, DraftDTO, InvitationDTO } from "@/lib/submissions/d
 import { ACTIVE_CAMPAIGN_STATUSES } from "@/server/campaigns/service";
 import { getContactSettings } from "@/server/campaigns/settings";
 import { looksLikeToken } from "@/server/campaigns/tokens";
+import { asksFor, normaliseBrief } from "@/lib/campaigns/brief";
 
 const log = createLogger("submissions:public");
 
@@ -228,6 +229,8 @@ export async function toInvitationDTO(resolved: ResolvedInvitation, opts: { incl
       graceEndsAt: resolved.campaign.graceEndsAt.toISOString(),
       status: resolved.campaign.status,
     },
+    asks: asksFor(normaliseBrief(resolved.campaign.brief), resolved.contributor.id),
+    openContributions: normaliseBrief(resolved.campaign.brief).openContributions,
     campuses: campusList,
     labels: {
       opensLong: formatZonedLong(resolved.campaign.opensAt),

@@ -22,6 +22,7 @@ import { PHASE_LABELS, formatZoned, formatZonedLong, calendarDaysUntil } from "@
 import { enumLabel, formatDateTime } from "@/lib/utils";
 import { getUi } from "@/server/i18n/locale";
 import { isSelectionMode, type SelectionMode } from "@/lib/campaigns/selection";
+import { normaliseBrief } from "@/lib/campaigns/brief";
 
 export const dynamic = "force-dynamic";
 
@@ -91,6 +92,7 @@ export default async function CampaignPage({ params }: { params: Promise<{ editi
     selectionMode: (isSelectionMode(campaign.selectionMode) ? campaign.selectionMode : "DRAW") as SelectionMode,
     drawCount: campaign.drawCount ?? 0,
     selectedContributorIds: [...(campaign.selectedContributorIds ?? [])],
+    brief: normaliseBrief(campaign.brief),
   };
 
   return (

@@ -16,6 +16,8 @@ import { CAMPAIGN_TIMEZONE, zonedParts, zonedTimeToUtc } from "@/lib/campaigns/s
 import { cn } from "@/lib/utils";
 import { useUi } from "@/components/i18n/provider";
 import type { SelectionMode } from "@/lib/campaigns/selection";
+import type { EditionBrief } from "@/lib/campaigns/brief";
+import { BriefEditor } from "./brief-editor";
 
 /** The campaign as the server holds it: instants as ISO strings. */
 export type CampaignFormInitial = {
@@ -36,6 +38,8 @@ export type CampaignFormInitial = {
   drawCount: number;
   /** PEOPLE: exactly who. */
   selectedContributorIds: string[];
+  /** What this edition is asking for: questions, assigned topics, and the open door. */
+  brief: EditionBrief;
 };
 
 /** The same campaign as the form edits it: dates as "YYYY-MM-DDTHH:mm" in the school's timezone. */
@@ -92,12 +96,15 @@ export function CampaignConfigForm({
   canManage,
   openingLocked,
   closed,
+  askableContributors = [],
 }: {
   editionId: string;
   initial: CampaignFormInitial;
   campuses: CampusOption[];
   groups: GroupOption[];
   canManage: boolean;
+  /** Who a topic can be handed to. Empty is fine: a topic is then asked of everybody. */
+  askableContributors?: { id: string; name: string }[];
   /** The campaign is already open: the service refuses a new opening date. */
   openingLocked: boolean;
   closed: boolean;
@@ -336,6 +343,8 @@ export function CampaignConfigForm({
           </p>
         ) : null}
       </SettingsCard>
+
+      <BriefEditor brief={values.brief} onChange={(brief) => setValues((v) => ({ ...v, brief }))} readOnly={readOnly} contributors={askableContributors} />
 
       <SettingsCard title={tr("Invitation message")} description={tr("Added at the top of every invitation and reminder email.")}>
         <Textarea

@@ -1,6 +1,7 @@
 /** Wire types shared by the public contribution API and the form (no server imports). */
 import type { StoryTypeValue } from "@/lib/constants";
 import type { CampaignPhase } from "@/lib/campaigns/schedule";
+import type { Ask } from "@/lib/campaigns/brief";
 
 export type RequestStatusValue = "PENDING" | "SENT" | "OPENED" | "SUBMITTED" | "DECLINED" | "EXPIRED" | "BOUNCED";
 
@@ -62,6 +63,16 @@ export type InvitationDTO = {
     graceEndsAt: string;
     status: string;
   };
+  /**
+   * What this contributor was asked for: the questions, the topics assigned to them, and whether
+   * they may also propose something nobody asked about.
+   *
+   * Sent to the form so that somebody opening the link sees the questions put to them rather than
+   * an empty page. Topics assigned to other people are filtered out on the server — showing them
+   * would invite two contributors to write the same piece.
+   */
+  asks: Ask[];
+  openContributions: boolean;
   campuses: CampusDTO[];
   /** Dates pre-formatted on the server (Paris time) so the client never formats during hydration. */
   labels: { opensLong: string; deadline: string; deadlineLong: string; graceEnds: string; graceEndsLong: string };

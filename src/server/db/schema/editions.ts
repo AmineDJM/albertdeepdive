@@ -1,6 +1,7 @@
 import { boolean, index, integer, jsonb, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 import { campaignStatusEnum, editionStatusEnum, requestStatusEnum } from "./enums";
 import { campuses, contributors, organizations, publications, users } from "./identity";
+import type { EditionBrief } from "@/lib/campaigns/brief";
 
 export type EditionTheme = {
   coverTemplate?: string;
@@ -105,6 +106,15 @@ export const submissionCampaigns = pgTable(
     drawCount: integer("draw_count"),
     /** PEOPLE: exactly who to ask. Ignored in the other modes. */
     selectedContributorIds: uuid("selected_contributor_ids").array().notNull().default([]),
+    /**
+     * What this edition is asking for: questions, assigned topics, and whether contributors may
+     * also propose something nobody asked about.
+     *
+     * On the campaign rather than the edition because it is what you ask *this month*; the next
+     * edition inherits it as a starting point and the editor changes the questions that have
+     * stopped being interesting.
+     */
+    brief: jsonb("brief").$type<EditionBrief>().notNull().default({ asks: [], openContributions: true }),
     introMessage: text("intro_message"),
     autoProcess: boolean("auto_process").notNull().default(true),
     // When false (the default) a campaign does not re-invite the people invited to the previous

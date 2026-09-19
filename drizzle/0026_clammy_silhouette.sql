@@ -1,0 +1,1 @@
+ALTER TABLE "submission_campaigns" ADD COLUMN "brief" jsonb DEFAULT '{"asks":[],"openContributions":true}'::jsonb NOT NULL;

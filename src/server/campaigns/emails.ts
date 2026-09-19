@@ -4,6 +4,7 @@
  */
 import type { EmailLayoutInput } from "@/server/email";
 import { calendarDaysUntil, formatZoned, formatZonedLong } from "@/lib/campaigns/schedule";
+import type { Ask } from "@/lib/campaigns/brief";
 
 export const CAMPAIGN_TEMPLATES = {
   invitation: "campaign_invitation",
@@ -20,7 +21,7 @@ export type EmailMessage = { subject: string; layout: EmailLayoutInput; template
 
 export type ContributorContext = { firstName: string; lastName: string; campusName?: string | null };
 export type EditionContext = { label: string; issueNumber: number; publicationTargetAt?: Date | null };
-export type CampaignContext = { introMessage?: string | null; deadlineAt: Date; graceEndsAt: Date };
+export type CampaignContext = { introMessage?: string | null; deadlineAt: Date; graceEndsAt: Date; asks?: readonly Ask[]; openContributions?: boolean };
 
 const WHAT_TO_SEND = [
   "Business Deep Dive results: the company, the data, the methods, the winning team",
@@ -47,6 +48,33 @@ function deadlineRows(campaign: CampaignContext) {
   ];
 }
 
+/**
+ * What this edition is asking for, in the email rather than only behind the link.
+ *
+ * A contributor who has to click through to find out what is wanted is deciding whether to bother
+ * without the information that would persuade them. When the editor has asked for something in
+ * particular, the ask travels with the invitation; when they have not, the old general list is the
+ * honest thing to send, because "anything" is genuinely what is wanted.
+ */
+function whatWeAskedBlocks(campaign: CampaignContext): EmailMessage["layout"]["blocks"] {
+  const asks = campaign.asks ?? [];
+  if (!asks.length) {
+    return [
+      { type: "callout", title: "What to send", text: "Pick a story type, answer a few questions, add photos. No account needed — this link is yours." },
+      { type: "list", items: WHAT_TO_SEND },
+    ];
+  }
+  const topics = asks.filter((ask) => ask.kind === "TOPIC");
+  const questions = asks.filter((ask) => ask.kind === "QUESTION");
+  const blocks: EmailMessage["layout"]["blocks"] = [];
+  if (topics.length) blocks.push({ type: "callout", title: topics.length === 1 ? "Your topic" : "Your topics", text: topics.map((ask) => ask.text).join(" · ") });
+  if (questions.length) blocks.push({ type: "list", items: questions.map((ask) => (ask.hint ? `${ask.text} — ${ask.hint}` : ask.text)) });
+  if (campaign.openContributions !== false) {
+    blocks.push({ type: "paragraph", text: "And anything else worth telling — the best thing in most issues is the thing nobody thought to ask about." });
+  }
+  return blocks;
+}
+
 export function invitationEmail(input: { contributor: ContributorContext; edition: EditionContext; campaign: CampaignContext; link: string; contactEmail: string | null }): EmailMessage {
   const { contributor, edition, campaign } = input;
   const intro = campaign.introMessage?.trim() || "A new issue is in the making and the newsroom needs your eyes and ears.";
@@ -62,8 +90,7 @@ export function invitationEmail(input: { contributor: ContributorContext; editio
         { type: "paragraph", text: intro },
         { type: "paragraph", text: `Anything from ${contributor.campusName ? `the ${contributor.campusName} campus` : "your corner of the school"} is welcome: the more precise the names, dates and numbers, the better the article.` },
         { type: "kv", rows: deadlineRows(campaign) },
-        { type: "callout", title: "What to send", text: "Pick a story type, answer a few questions, add photos. No account needed — this link is yours." },
-        { type: "list", items: WHAT_TO_SEND },
+        ...whatWeAskedBlocks(campaign),
       ],
       cta: { label: "Contribute in 5 minutes", url: input.link },
       footer: footer(input.contactEmail),

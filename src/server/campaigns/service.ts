@@ -25,6 +25,7 @@ import { kickJobRunner } from "@/server/jobs/runner";
 import { createLogger } from "@/server/logger";
 import { AppError, NotFoundError, ValidationError } from "@/lib/action-result";
 import { assertTransition, canTransition, type EditionStatus } from "@/lib/editorial/edition-state";
+import { ASK_KINDS, ASK_WANTS, asksFor, normaliseBrief } from "@/lib/campaigns/brief";
 import { drawFromPool, isSelectionMode, SCHOOL_TARGET_KEY, SELECTION_MODES, selectContributors, targetKeyFor, type SelectableContributor, type SelectionMode, type SelectionResult } from "@/lib/campaigns/selection";
 import { addDays, campaignPhaseAt, computeCampaignSchedule, type CampaignPhase } from "@/lib/campaigns/schedule";
 import { closedEmail, invitationEmail, reminderEmail, type ReminderKind } from "./emails";
@@ -93,6 +94,25 @@ export const campaignInputSchema = z
     selectionMode: z.enum(SELECTION_MODES).default("DRAW"),
     drawCount: z.coerce.number().int().min(0).max(1000).default(0),
     selectedContributorIds: z.array(z.uuid()).max(2000).default([]),
+    brief: z
+      .object({
+        asks: z
+          .array(
+            z.object({
+              id: z.string().trim().max(64).optional(),
+              kind: z.enum(ASK_KINDS),
+              text: z.string().trim().min(1).max(400),
+              hint: z.string().trim().max(400).optional(),
+              required: z.boolean().default(false),
+              wants: z.array(z.enum(ASK_WANTS)).default(["TEXT"]),
+              contributorId: z.uuid().nullable().optional(),
+            }),
+          )
+          .max(40)
+          .default([]),
+        openContributions: z.boolean().default(true),
+      })
+      .default({ asks: [], openContributions: true }),
   })
   .superRefine((v, ctx) => {
     const order: [keyof typeof v, keyof typeof v, string][] = [
@@ -147,6 +167,7 @@ export async function createOrUpdateCampaign(editionId: string, input: CampaignI
     selectionMode: data.selectionMode,
     drawCount: data.drawCount,
     selectedContributorIds: data.selectedContributorIds,
+    brief: normaliseBrief(data.brief),
   };
 
   let campaign: Campaign;
@@ -197,6 +218,7 @@ export async function scheduleFromDefaults(editionId: string, user: Actor): Prom
             reinvitePrevious: submissionCampaigns.reinvitePrevious,
             selectionMode: submissionCampaigns.selectionMode,
             drawCount: submissionCampaigns.drawCount,
+            brief: submissionCampaigns.brief,
           })
           .from(submissionCampaigns)
           .innerJoin(editions, eq(editions.id, submissionCampaigns.editionId))
@@ -240,6 +262,9 @@ export async function scheduleFromDefaults(editionId: string, user: Actor): Prom
       selectionMode: (existing?.selectionMode ?? previous?.selectionMode ?? "DRAW") as SelectionMode,
       drawCount: existing?.drawCount ?? previous?.drawCount ?? 0,
       selectedContributorIds: existing?.selectedContributorIds ?? [],
+      // What was asked last month is the starting point for this one. Questions that have stopped
+      // being interesting are the editor's to remove; being asked to invent them again is not help.
+      brief: normaliseBrief(existing?.brief ?? previous?.brief ?? null),
     },
     user,
   );
@@ -484,7 +509,15 @@ async function sendInvitations(campaign: Campaign, edition: Edition, requests: S
     const message = invitationEmail({
       contributor: { firstName: person.firstName, lastName: person.lastName, campusName: person.campusName },
       edition: { label: edition.label, issueNumber: edition.issueNumber, publicationTargetAt: edition.publicationTargetAt },
-      campaign: { introMessage: campaign.introMessage, deadlineAt: campaign.deadlineAt, graceEndsAt: campaign.graceEndsAt },
+      // The asks this person was given, which is what makes the invitation worth opening. Topics
+      // handed to somebody else are filtered out here for the same reason they are on the form.
+      campaign: {
+        introMessage: campaign.introMessage,
+        deadlineAt: campaign.deadlineAt,
+        graceEndsAt: campaign.graceEndsAt,
+        asks: asksFor(normaliseBrief(campaign.brief), person.id),
+        openContributions: normaliseBrief(campaign.brief).openContributions,
+      },
       link,
       contactEmail: contact.email,
     });
