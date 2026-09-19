@@ -92,6 +92,27 @@ Campaign dates are per edition (`opensAt`, `reminder1At`, `reminder2At`, `graceE
 each automation step records an `automation_runs` row keyed by `(edition_id, step)` so a
 re-run never re-sends emails.
 
+### The topics step
+
+Between what arrived and what gets written there is one screen
+(`src/app/(newsroom)/editions/[editionId]/topics/`) where the editor answers one question about
+each thing on the list: are we running this? Keep is a story `SELECTED`, leave is `REJECTED`, and
+everything undecided is a `CANDIDATE` — the vocabulary is thinner on top, the model underneath is
+unchanged, so the flatplan, the analytics and the pipeline all keep working.
+
+Merging two topics moves the cluster members rather than copying them, so a contribution belongs
+to exactly one topic and the funnel never counts it twice. **Ask for more** is the third answer,
+and it decides nothing: it opens an `information_requests` row against the topic, emails the
+primary contribution's author their own link, and shows a quiet *More info requested* on the card
+while the answer is outstanding. That state is read from the request's status rather than copied
+onto the story, so it clears itself the moment the answer lands and there is no second place for
+the truth to live.
+
+The answer arrives as a follow-up submission attached to **that topic's existing cluster** — no
+second topic, no duplicated contribution, one more source. `clusterEdition` holds every cluster
+that already has a story, alongside the confirmed and merged ones, so a later clustering pass
+cannot re-shuffle a grouping an editor is already looking at.
+
 ## 5. AI pipeline
 
 Every step is a named service in `src/server/ai/services/*` with a zod output schema and a

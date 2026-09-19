@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Check, GitMerge, Pencil, PenLine, RotateCcw, X } from "lucide-react";
+import { Check, GitMerge, MessageCircleQuestion, Pencil, PenLine, RotateCcw, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -13,7 +13,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { useUi } from "@/components/i18n/provider";
 import { cn } from "@/lib/utils";
 import type { Topic, TopicsBoard as Board } from "@/server/editorial/topics";
-import { buildDraftAction, keepTopicAction, leaveTopicAction, mergeTopicsAction, moveTopicAction, renameTopicAction, undecideTopicAction } from "./actions";
+import { askForMoreAction, buildDraftAction, keepTopicAction, leaveTopicAction, mergeTopicsAction, moveTopicAction, renameTopicAction, undecideTopicAction } from "./actions";
 
 const KEPT = ["SELECTED", "DRAFTING", "IN_REVIEW", "APPROVED", "PUBLISHED"];
 const LEFT = ["REJECTED", "DROPPED"];
@@ -33,6 +33,8 @@ export function TopicsBoard({ board, canEdit }: { board: Board; canEdit: boolean
   const [selected, setSelected] = useState<string[]>([]);
   const [renaming, setRenaming] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
+  const [asking, setAsking] = useState<string | null>(null);
+  const [question, setQuestion] = useState("");
 
   const run = (fn: () => Promise<{ ok: boolean; error?: string; message?: string }>) =>
     start(async () => {
@@ -87,6 +89,40 @@ export function TopicsBoard({ board, canEdit }: { board: Board; canEdit: boolean
             {topic.pictures ? <span>· {topic.pictures} {topic.pictures === 1 ? tr("picture") : tr("pictures")}</span> : null}
             {topic.hasDraft ? <span>· {topic.wordCount} {tr("words written")}</span> : null}
           </p>
+          {topic.moreRequested ? (
+            <p className="mt-1.5 inline-flex items-center gap-1 rounded bg-muted px-1.5 py-0.5 text-2xs text-muted-foreground">
+              <MessageCircleQuestion className="size-3" />
+              {tr("More info requested")}
+              {topic.moreAskedAt ? ` · ${new Intl.DateTimeFormat(undefined, { day: "numeric", month: "short" }).format(new Date(topic.moreAskedAt))}` : ""}
+            </p>
+          ) : null}
+          {asking === topic.id ? (
+            <form
+              className="mt-2 flex gap-1.5"
+              onSubmit={(event) => {
+                event.preventDefault();
+                run(() => askForMoreAction(board.editionId, topic.id, question));
+                setAsking(null);
+                setQuestion("");
+              }}
+            >
+              <Input
+                value={question}
+                onChange={(event) => setQuestion(event.target.value)}
+                autoFocus
+                className="h-7"
+                maxLength={400}
+                placeholder={tr("Which teams took part, and on what date?")}
+                aria-label={tr("What would you like to know?")}
+              />
+              <Button type="submit" size="sm" disabled={pending || !question.trim()}>
+                {tr("Send")}
+              </Button>
+              <Button type="button" size="sm" variant="ghost" onClick={() => setAsking(null)}>
+                {tr("Cancel")}
+              </Button>
+            </form>
+          ) : null}
         </div>
         <div className="flex shrink-0 items-center gap-1">
           {canEdit && topic.status === "CANDIDATE" ? (
@@ -94,6 +130,21 @@ export function TopicsBoard({ board, canEdit }: { board: Board; canEdit: boolean
               <Button size="sm" variant="outline" disabled={pending} onClick={() => run(() => keepTopicAction(board.editionId, topic.id))}>
                 <Check /> {tr("Keep")}
               </Button>
+              {topic.sources > 0 && !topic.moreRequested ? (
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  disabled={pending}
+                  onClick={() => {
+                    setAsking(topic.id);
+                    setQuestion("");
+                  }}
+                  aria-label={tr("Ask for more")}
+                  title={tr("Ask for more")}
+                >
+                  <MessageCircleQuestion />
+                </Button>
+              ) : null}
               <Button size="icon" variant="ghost" disabled={pending} onClick={() => run(() => leaveTopicAction(board.editionId, topic.id))} aria-label={tr("Leave this one out")} title={tr("Leave this one out")}>
                 <X />
               </Button>

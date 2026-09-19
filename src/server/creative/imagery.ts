@@ -40,7 +40,7 @@ export type ImageryRequest = {
   key: string;
 };
 
-export type ImageryProviderName = "higgsfield" | "openai" | "briefly";
+export type ImageryProviderName = "higgsfield" | "google" | "openai" | "briefly";
 
 export type GeneratedImagery = {
   bytes: Buffer;
@@ -190,6 +190,50 @@ export const higgsfieldImagery: ImageryProvider = {
 /** What one gpt-image-1 picture costs us at the sizes we ask for. */
 export const OPENAI_IMAGE_CENTS = 4;
 
+/** What a Nano Banana picture costs, in whole cents, at the model's published rate. */
+export const GOOGLE_IMAGE_CENTS = 13;
+
+/**
+ * Google's Nano Banana, for the grounds the studio draws its frames on.
+ *
+ * The image engine next door already routes this model first for a realistic scene. The studio's
+ * own chain did not have it at all, so a workspace with a Gemini key connected was getting GPT
+ * Image — or a drawn field — behind its carousels while the rest of the product used Nano Banana
+ * for exactly the same kind of picture. Same key, same model id, same aspect the studio asks for;
+ * the only reason this is a separate adapter is that the two chains were written for different
+ * jobs and neither should grow a dependency on the other.
+ */
+export const googleImagery: ImageryProvider = {
+  name: "google",
+  available: async () => {
+    const { integrationConfig } = await import("@/server/integrations/service");
+    const config = await integrationConfig("google");
+    return Boolean(config.apiKey);
+  },
+  generate: async (request, deps) => {
+    const { integrationConfig } = await import("@/server/integrations/service");
+    const { GoogleImageProvider, GOOGLE_IMAGE_MODEL } = await import("@/server/images/providers/google");
+    const config = await integrationConfig("google");
+    const apiKey = config.apiKey ?? "";
+    if (!apiKey) throw new Error("No Gemini API key is configured.");
+
+    const provider = new GoogleImageProvider({ apiKey, baseUrl: config.baseUrl, fetch: deps.fetch });
+    const result = await provider.generate({
+      prompt: promptFor(request),
+      // A ground is invented rather than derived: there is nothing of the workspace's to hold steady.
+      references: [],
+      width: request.width,
+      height: request.height,
+      n: 1,
+      model: config.imageModel?.trim() || GOOGLE_IMAGE_MODEL,
+      output: "raster",
+    });
+    const first = result.images[0];
+    if (!first) throw new Error("Google returned no picture.");
+    return { bytes: first.bytes, mimeType: first.mimeType || "image/png", provider: "google", model: result.model, costCents: result.costCents || GOOGLE_IMAGE_CENTS, credits: 1 };
+  },
+};
+
 export const openAiImagery: ImageryProvider = {
   name: "openai",
   available: async () => {
@@ -231,7 +275,7 @@ export const openAiImagery: ImageryProvider = {
  * should get Higgsfield, a customer who has only an OpenAI key should get something rather than
  * nothing, and everybody gets a designed ground in the worst case.
  */
-export const IMAGERY_PROVIDERS: ImageryProvider[] = [higgsfieldImagery, openAiImagery, brieflyImagery];
+export const IMAGERY_PROVIDERS: ImageryProvider[] = [higgsfieldImagery, googleImagery, openAiImagery, brieflyImagery];
 
 export type ImageryOptions = {
   deps: ImageryDeps;

@@ -68,13 +68,19 @@ export async function clusterEdition(editionId: string, options: { jobCtx?: Pick
     with: { campuses: true, contributor: { columns: { firstName: true, lastName: true } } },
     orderBy: [asc(submissions.createdAt)],
   })) as SubmissionRow[];
-  const clusters = await db.query.storyClusters.findMany({ where: eq(storyClusters.editionId, editionId), with: { members: true } });
+  const clusters = await db.query.storyClusters.findMany({ where: eq(storyClusters.editionId, editionId), with: { members: true, story: { columns: { id: true } } } });
   const locked = new Set<string>();
   const clusterOfSubmission = new Map<string, string>();
   for (const c of clusters) {
+    // A grouping somebody is already looking at on the topics board is not re-shuffled behind
+    // them. Confirmed and merged clusters were always held; a cluster that has become a *topic*
+    // was not, so a later pass could pull its contributions apart and produce a second topic for
+    // a story an editor had already decided about — including the follow-up a contributor sends
+    // when the newsroom asks them for more.
+    const held = c.status === "CONFIRMED" || c.status === "MERGED" || Boolean(c.story);
     for (const m of c.members) {
       clusterOfSubmission.set(m.submissionId, c.id);
-      if (c.status === "CONFIRMED" || c.status === "MERGED") locked.add(m.submissionId);
+      if (held) locked.add(m.submissionId);
     }
   }
 

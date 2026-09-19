@@ -3,7 +3,9 @@ import sharp from "sharp";
 import {
   brieflyImagery,
   generateImagery,
+  googleImagery,
   higgsfieldImagery,
+  IMAGERY_PROVIDERS,
   nearestSize,
   promptFor,
   seedFrom,
@@ -128,6 +130,55 @@ describe("the route", () => {
   it("still returns a picture when the allow-list excludes everything", async () => {
     const result = await generateImagery(REQUEST, { deps: deps(), allow: [], providers: [provider("higgsfield", {})] });
     expect(result.provider).toBe("briefly");
+  });
+
+  it("offers Nano Banana before the general-purpose image model", () => {
+    // The image engine next door has routed Google first for a realistic scene since it was built.
+    // The studio's own chain did not have it at all, so a workspace with a Gemini key connected was
+    // getting GPT Image behind its carousels and Nano Banana everywhere else — the same picture,
+    // from two different models, depending on which screen asked for it.
+    const order = IMAGERY_PROVIDERS.map((each) => each.name);
+    expect(order).toContain("google");
+    expect(order.indexOf("google")).toBeLessThan(order.indexOf("openai"));
+    // And ours stays last, because a frame always gets a ground.
+    expect(order[order.length - 1]).toBe("briefly");
+  });
+});
+
+describe("Nano Banana", () => {
+  const png = () => sharp({ create: { width: 8, height: 8, channels: 3, background: "#2BAFE0" } }).png().toBuffer();
+
+  it("asks Gemini for the frame's own aspect and keeps the bytes it answers with", async () => {
+    const calls: { url: string; body: Record<string, unknown> }[] = [];
+    const bytes = await png();
+    const fetchImpl = (async (url: string | URL, init?: RequestInit) => {
+      calls.push({ url: String(url), body: JSON.parse(String(init?.body)) as Record<string, unknown> });
+      return new Response(
+        JSON.stringify({ candidates: [{ content: { parts: [{ inlineData: { mimeType: "image/png", data: bytes.toString("base64") } }] } }] }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      );
+    }) as unknown as typeof globalThis.fetch;
+
+    vi.doMock("@/server/integrations/service", () => ({ integrationConfig: async () => ({ apiKey: "AIza-test", imageModel: null, baseUrl: null }) }));
+    const result = await googleImagery.generate(REQUEST, { ...deps(), fetch: fetchImpl });
+    vi.doUnmock("@/server/integrations/service");
+
+    expect(result.provider).toBe("google");
+    expect(result.bytes.length).toBeGreaterThan(0);
+    expect(calls).toHaveLength(1);
+    expect(calls[0].url).toContain("gemini-3-pro-image-preview:generateContent");
+    // A carousel is 4:5, so the nearest shape Gemini offers is the portrait one.
+    const config = calls[0].body.generationConfig as { imageConfig?: { aspectRatio?: string } };
+    expect(config.imageConfig?.aspectRatio).toBe("3:4");
+    // The prompt is the studio's, with its ban on lettering intact.
+    const contents = calls[0].body.contents as { parts: { text?: string }[] }[];
+    expect(contents[0].parts.at(-1)?.text).toBe(promptFor(REQUEST));
+  });
+
+  it("declines rather than pretending when no key is connected", async () => {
+    vi.doMock("@/server/integrations/service", () => ({ integrationConfig: async () => ({ apiKey: null, imageModel: null, baseUrl: null }) }));
+    await expect(googleImagery.available()).resolves.toBe(false);
+    vi.doUnmock("@/server/integrations/service");
   });
 });
 

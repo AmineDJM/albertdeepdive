@@ -2,7 +2,8 @@ import { and, asc, eq, inArray, ne } from "drizzle-orm";
 import { db } from "@/server/db/client";
 import * as s from "@/server/db/schema";
 import { audit } from "@/server/audit";
-import { NotFoundError } from "@/lib/action-result";
+import { NotFoundError, ValidationError } from "@/lib/action-result";
+import { createInformationRequest } from "./information-requests";
 import { createLogger } from "@/server/logger";
 
 const log = createLogger("editorial:topics");
@@ -34,6 +35,16 @@ export type Topic = {
   contributors: string[];
   /** Whether it has been drafted yet, so "Build draft" knows what is left to do. */
   hasDraft: boolean;
+  /**
+   * The newsroom has asked whoever raised this for more and is waiting.
+   *
+   * A state, not a decision: the topic stays exactly where it is on the board and the badge is
+   * there so nobody asks the same person the same thing again on Thursday. It clears itself when
+   * the answer arrives.
+   */
+  moreRequested: boolean;
+  /** When that question went out, when one is outstanding. */
+  moreAskedAt: Date | null;
   wordCount: number;
   pictures: number;
   createdAt: Date;
@@ -92,6 +103,28 @@ export async function topicsBoard(editionId: string): Promise<TopicsBoard> {
     byCluster.set(row.clusterId, entry);
   }
 
+  /*
+   * Which topics are waiting on an answer.
+   *
+   * Read from the information requests themselves rather than from a flag on the story, so the
+   * state cannot drift from the thing it describes: the moment the contributor answers, the
+   * request becomes ANSWERED and the topic is simply ready to decide again. Nothing has to
+   * remember to clear anything.
+   */
+  const open = rows.length
+    ? await db
+        .select({ storyId: s.informationRequests.storyId, sentAt: s.informationRequests.sentAt, createdAt: s.informationRequests.createdAt })
+        .from(s.informationRequests)
+        .where(and(eq(s.informationRequests.editionId, editionId), inArray(s.informationRequests.status, ["PENDING", "SENT"])))
+    : [];
+  const waitingOn = new Map<string, Date>();
+  for (const request of open) {
+    if (!request.storyId) continue;
+    const at = request.sentAt ?? request.createdAt;
+    const known = waitingOn.get(request.storyId);
+    if (!known || at > known) waitingOn.set(request.storyId, at);
+  }
+
   const topics: Topic[] = rows.map((row) => {
     const from = row.clusterId ? byCluster.get(row.clusterId) : undefined;
     return {
@@ -105,6 +138,8 @@ export async function topicsBoard(editionId: string): Promise<TopicsBoard> {
       sources: from?.submissions.size ?? 0,
       contributors: [...(from?.people ?? [])],
       hasDraft: Boolean(row.article && row.article.status !== "EMPTY"),
+      moreRequested: waitingOn.has(row.id),
+      moreAskedAt: waitingOn.get(row.id) ?? null,
       wordCount: row.article?.wordCount ?? 0,
       pictures: row.media.length,
       createdAt: row.createdAt,
@@ -218,4 +253,79 @@ export async function undecidedCount(editionId: string): Promise<number> {
     .from(s.stories)
     .where(and(eq(s.stories.editionId, editionId), eq(s.stories.status, "CANDIDATE"), ne(s.stories.title, "")));
   return rows.length;
+}
+
+/** What happened when the newsroom asked for more. */
+export type AskedForMore = {
+  /** The contributor the question went to, when it went to somebody. */
+  contributor: { id: string; name: string } | null;
+  /** True when the request was already outstanding and a second one was not sent. */
+  alreadyWaiting: boolean;
+};
+
+/**
+ * Ask the contributor behind a topic for a little more, in the editor's own words.
+ *
+ * The third answer an editor can give a topic, beside keeping it and leaving it out, and the one
+ * that was missing: a topic can be the right story told in two sentences with no names and no
+ * date, and the honest response is neither yes nor no but "tell me more".
+ *
+ * It decides nothing. The topic stays on the undecided pile with a quiet note that an answer is
+ * outstanding, and that note clears itself the moment the answer lands — because it is read from
+ * the request's own status rather than copied onto the story, so there is no second place for the
+ * truth to live.
+ *
+ * Underneath it is the information-request machinery the newsroom already had, which matters for
+ * one specific reason: a contributor answering through their personal link produces a follow-up
+ * submission that is attached to *this topic's existing cluster*. No second topic is created and
+ * no contribution is duplicated — the topic simply gains a source and gets better.
+ */
+export async function askForMore(editionId: string, storyId: string, message: string, userId: string): Promise<AskedForMore> {
+  const asked = message.trim();
+  if (!asked) throw new ValidationError("Say what you would like to know", { message: ["Write your question."] });
+
+  const story = await db.query.stories.findFirst({
+    where: and(eq(s.stories.id, storyId), eq(s.stories.editionId, editionId)),
+    with: { cluster: { with: { members: true } } },
+  });
+  if (!story) throw new NotFoundError("Topic");
+
+  // Asking twice while the first is still out is not a second question, it is a duplicate email.
+  const outstanding = await db.query.informationRequests.findFirst({
+    where: and(eq(s.informationRequests.storyId, storyId), inArray(s.informationRequests.status, ["PENDING", "SENT"])),
+  });
+  if (outstanding) return { contributor: null, alreadyWaiting: true };
+
+  /*
+   * Who to write to.
+   *
+   * The primary contribution's author — the same person `suggestInformationRequest` picks for this
+   * operation everywhere else in the product. A topic can come from three people, and mailing all
+   * three from one click is a surprise; the board already names the others, and the editor can ask
+   * again once this answer is in.
+   */
+  const members = story.cluster?.members ?? [];
+  const primaryId = members.find((member) => member.isPrimary)?.submissionId ?? members[0]?.submissionId ?? null;
+  const primary = primaryId
+    ? await db.query.submissions.findFirst({
+        where: eq(s.submissions.id, primaryId),
+        with: { contributor: { columns: { id: true, firstName: true, lastName: true } } },
+      })
+    : null;
+  const contributor = primary?.contributor ?? null;
+  if (!contributor) return { contributor: null, alreadyWaiting: false };
+
+  await createInformationRequest({
+    storyId,
+    submissionId: primary?.id ?? null,
+    contributorId: contributor.id,
+    // One free-text question rather than a checklist: the editor wrote a sentence, the contributor
+    // answers it in a box. The covering message and the question are the same words on purpose.
+    items: [{ key: "more", label: asked }],
+    message: asked,
+    userId,
+  });
+
+  log.info("asked for more on a topic", { editionId, storyId, contributorId: contributor.id });
+  return { contributor: { id: contributor.id, name: [contributor.firstName, contributor.lastName].filter(Boolean).join(" ") }, alreadyWaiting: false };
 }

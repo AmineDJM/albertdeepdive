@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { requirePermission } from "@/server/auth/session";
-import { buildDraft, mergeTopics } from "@/server/editorial/topics";
+import { askForMore, buildDraft, mergeTopics } from "@/server/editorial/topics";
 import { assignSection, rejectStory, selectStory, undecideStory, updateStory } from "@/server/editorial/stories";
 import { ok, toActionFailure, type ActionResult } from "@/lib/action-result";
 
@@ -31,6 +31,25 @@ export async function leaveTopicAction(editionId: string, storyId: string, reaso
     await rejectStory(storyId, user.id, reason ?? null);
     refresh(editionId);
     return ok(null, "Left out");
+  } catch (err) {
+    return toActionFailure(err);
+  }
+}
+
+/**
+ * Ask the contributor behind a topic for a little more.
+ *
+ * Needs `campaign:manage` rather than `story:edit`: deciding about a topic is an editor's job,
+ * writing to the person who sent it in is the campaign's.
+ */
+export async function askForMoreAction(editionId: string, storyId: string, message: string): Promise<ActionResult<{ asked: boolean }>> {
+  try {
+    const user = await requirePermission("campaign:manage");
+    const result = await askForMore(editionId, storyId, message, user.id);
+    refresh(editionId);
+    if (result.alreadyWaiting) return ok({ asked: false }, "Already waiting on an answer for this one");
+    if (!result.contributor) return ok({ asked: false }, "This topic did not come from anybody there is a way to write to");
+    return ok({ asked: true }, `Asked ${result.contributor.name}`);
   } catch (err) {
     return toActionFailure(err);
   }
