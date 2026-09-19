@@ -30,7 +30,7 @@ async function currentEditionId(): Promise<string> {
  * The text of the newest toast. Toasts linger, so a step that follows another one waits for a
  * message that is not the previous step's — otherwise it reads the last action's confirmation.
  */
-async function toast(page: Page, differentFrom?: string): Promise<string> {
+async function toast(page: Page, differentFrom?: string, timeout = 30_000): Promise<string> {
   const el = page.locator("[data-sonner-toast]").last();
   let text = "";
   await expect
@@ -40,7 +40,7 @@ async function toast(page: Page, differentFrom?: string): Promise<string> {
         text = (await el.innerText()).replace(/\s+/g, " ").trim();
         return text === differentFrom ? "" : text;
       },
-      { timeout: 30_000 },
+      { timeout },
     )
     .not.toBe("");
   return text;
@@ -468,7 +468,10 @@ test.describe("the critical journey", () => {
     const validate = page.getByRole("button", { name: /Validate the plan/i });
     if (await validate.count()) {
       await validate.click();
-      expect(await toast(page)).toMatch(/validated/i);
+      // Signing the plan off measures every page of the issue in a real browser and searches for a
+      // better composition, under the engine's own time budget — the one click in the workflow that
+      // is allowed to take the best part of a minute.
+      expect(await toast(page, undefined, 90_000)).toMatch(/validated/i);
       await clearToasts(page);
     }
 

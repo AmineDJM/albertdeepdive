@@ -245,11 +245,30 @@ export type PaginateOptions = {
   maxRounds?: number;
   /** How many times the density pass may adjust page levers and re-flow. 0 disables it. */
   densityPasses?: number;
+  /**
+   * Wall clock the density stages may spend, in milliseconds.
+   *
+   * Every candidate composition costs a full re-flow in a real browser, so the search is bounded by
+   * time as well as by pass count: somebody who clicked "Validate the plan" is waiting, and an
+   * issue twice as long must not make them wait twice as long. The stages are ordered by what they
+   * are worth, so what a spent budget gives up is the polish at the end, never the composition.
+   */
+  timeBudgetMs?: number;
   log?: (message: string, meta?: Record<string, unknown>) => void;
   engine?: string;
 };
 
 export const CONTINUATION_TEMPLATE = "CONTINUATION";
+
+/**
+ * How long the density search may run before it settles for the best it has found.
+ *
+ * Measured on the sample issue, which takes about 1.8 seconds per candidate because each one is a
+ * full re-flow in a real browser: 20 s reaches 28 pages, 45 s reaches 27 with the same composition
+ * an unbounded 64 s finds. So this is where the curve flattens, and a slower host or a longer issue
+ * gives up the polish at the end rather than making somebody wait for it.
+ */
+export const DEFAULT_TIME_BUDGET_MS = 45_000;
 
 function clone<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
@@ -850,6 +869,17 @@ export async function paginateDocument(input: EditionDocument, options: Paginate
    * bought is rejected out of hand. Nothing here can add a sheet the copy does not need, so an
    * issue planned to its extent stays at its extent.
    */
+  /** The clock the density search runs against; `spent()` is checked before each pass is started. */
+  const startedAt = Date.now();
+  const budgetMs = options.timeBudgetMs ?? DEFAULT_TIME_BUDGET_MS;
+  let timedOut = false;
+  const spent = () => {
+    if (Date.now() - startedAt < budgetMs) return false;
+    if (!timedOut) log("layout budget spent", { ms: Date.now() - startedAt, passes });
+    timedOut = true;
+    return true;
+  };
+
   const extent = input.meta.extent;
   const floorPages = extent?.mode === "fixed" && extent.pages ? Math.min(extent.pages, plannedPages) : 0;
   const keepsExtent = (doc: EditionDocument) => doc.pages.length >= floorPages;
@@ -886,7 +916,7 @@ export async function paginateDocument(input: EditionDocument, options: Paginate
   const swaps: TemplateSwap[] = [];
   let stage = 0;
   for (;;) {
-    if (stage >= perStage) break;
+    if (stage >= perStage || spent()) break;
     const attempt = planTemplateSwap(best.document, best.measures, triedTemplates);
     if (!attempt) break;
     passes += 1;
@@ -917,7 +947,7 @@ export async function paginateDocument(input: EditionDocument, options: Paginate
     tried.clear();
     let used = 0;
     for (;;) {
-      if (used >= perStage) break;
+      if (used >= perStage || spent()) break;
       const attempt = planContinuationAbsorption(best.document, best.measures, tried);
       if (!attempt) break;
       tried.add(attempt.targetPageId);
@@ -941,7 +971,7 @@ export async function paginateDocument(input: EditionDocument, options: Paginate
   const tailFillStage = async (label: string) => {
     let used = 0;
     for (;;) {
-      if (used >= perStage) break;
+      if (used >= perStage || spent()) break;
       const attempt = planTailFill(best.document, best.measures, triedFills);
       if (!attempt) break;
       passes += 1;
@@ -975,7 +1005,7 @@ export async function paginateDocument(input: EditionDocument, options: Paginate
   const unsplitStage = async (label: string) => {
     let used = 0;
     for (;;) {
-      if (used >= perStage) break;
+      if (used >= perStage || spent()) break;
       const attempt = planUnsplitJump(best.document, best.measures, triedUnsplit);
       if (!attempt) break;
       passes += 1;
@@ -996,7 +1026,7 @@ export async function paginateDocument(input: EditionDocument, options: Paginate
   const spreadStage = async (label: string) => {
     let used = 0;
     for (;;) {
-      if (used >= perStage) break;
+      if (used >= perStage || spent()) break;
       const attempt = planSpreadJump(best.document, best.measures, triedSpread);
       if (!attempt) break;
       triedSpread.add(attempt.targetPageId);
@@ -1024,7 +1054,7 @@ export async function paginateDocument(input: EditionDocument, options: Paginate
    * two fifths and a shorts page at a third, both of them made by the pass that ran last. So the
    * three repeat until a round buys nothing, which on a normal issue is the second or the third.
    */
-  for (let round = 0; round < 3; round += 1) {
+  for (let round = 0; round < 3 && !spent(); round += 1) {
     const before = best.cost;
     triedUnsplit.clear();
     triedSpread.clear();
@@ -1038,7 +1068,7 @@ export async function paginateDocument(input: EditionDocument, options: Paginate
 
   // ── stage 2 · grow the pages that are merely loose ──
   stage = 0;
-  while (stage < perStage) {
+  while (stage < perStage && !spent()) {
     const plan = planLooseGrowth(best.document, best.measures);
     if (!plan.changes.length) break;
     passes += 1;
