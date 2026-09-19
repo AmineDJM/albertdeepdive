@@ -88,3 +88,29 @@ describe("scrubbing a model's answer", () => {
     expect(creativeBriefSchema.safeParse(scrubEmpties(creativeBriefSchema, answer)).success).toBe(true);
   });
 });
+
+describe("a union of operations", () => {
+  /*
+   * Only a real call finds this one.
+   *
+   * A discriminated union is the natural way to say "one of these operations", and the JSON Schema
+   * conversion renders it as `oneOf` — which strict structured outputs refuses outright, before the
+   * model sees a word: "In context=('properties','operations','items'), 'oneOf' is not permitted".
+   * Every local test passed while every real request came back 400.
+   */
+  it("offers a discriminated union as anyOf, which strict mode accepts", () => {
+    const union = z.object({
+      operations: z.array(
+        z.discriminatedUnion("kind", [
+          z.object({ kind: z.literal("set_extent"), pages: z.number() }),
+          z.object({ kind: z.literal("remove_page"), pageId: z.string() }),
+        ]),
+      ),
+    });
+    const schema = toStrictJsonSchema(union);
+    const items = ((schema.properties as Record<string, { items?: Record<string, unknown> }>).operations.items ?? {}) as Record<string, unknown>;
+    const branches = (items.anyOf ?? (items.$ref ? (schema.$defs as Record<string, Record<string, unknown>>)?.[String(items.$ref).split("/").pop()!]?.anyOf : undefined)) as unknown[] | undefined;
+    expect(JSON.stringify(schema)).not.toContain("oneOf");
+    expect(branches?.length ?? 0).toBeGreaterThan(0);
+  });
+});

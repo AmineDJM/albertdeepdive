@@ -44,6 +44,20 @@ function strictify(node: unknown): unknown {
   for (const combinator of ["anyOf", "oneOf", "allOf"]) {
     if (Array.isArray(obj[combinator])) obj[combinator] = (obj[combinator] as unknown[]).map(strictify);
   }
+  /*
+   * Strict structured outputs know `anyOf` and refuse `oneOf`.
+   *
+   * A zod discriminated union — the natural way to say "one of these sixteen operations" — comes
+   * out of the JSON Schema conversion as `oneOf`, and the request is rejected before the model ever
+   * sees it: "In context=('properties','operations','items'), 'oneOf' is not permitted". The two
+   * mean different things in JSON Schema at large (exactly one branch against at least one), but a
+   * discriminated union satisfies both, because the discriminator makes the branches disjoint. So
+   * the rename is safe for what this converter is ever handed, and only a real call finds it.
+   */
+  if (Array.isArray(obj.oneOf) && !obj.anyOf) {
+    obj.anyOf = obj.oneOf;
+    delete obj.oneOf;
+  }
   if (obj.$defs && typeof obj.$defs === "object") {
     obj.$defs = Object.fromEntries(Object.entries(obj.$defs as Record<string, unknown>).map(([k, v]) => [k, strictify(v)]));
   }
