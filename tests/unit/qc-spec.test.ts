@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { ALL_METRICS, IMAGE_ASPECT_DISTORTION, IMAGE_ELIGIBLE, PAGE_FIT_RATIO, QC_SPEC_VERSION, RIGHTS_CLEARED, TEXT_OVERFLOW, metricById } from "@/server/qc/spec";
 import { DEFAULT_PROFILE, PROFILES, documentSizeMm, effectivePpi, mmToPt, profile, ptToMm } from "@/server/qc/profiles";
 import { BLOCKING, HARD_BLOCKING, SEVERITY_ORDER, assertThat, compare, merge, worst } from "@/server/qc/types";
-import { extractFacts } from "@/server/qc/checks/integrity";
+import { articleTeaser, extractFacts } from "@/server/qc/checks/integrity";
 
 /**
  * The arithmetic the whole engine rests on, checked without a database.
@@ -161,6 +161,24 @@ describe("facts, normalised hard enough to compare", () => {
     expect(extractFacts("le 12 octobre")[0]).toMatchObject({ kind: "date", value: "12-10" });
     // 12 October and 21 October are different facts, which is the failure the rule exists for.
     expect(extractFacts("21 October")[0].value).toBe("21-10");
+  });
+
+  it("reads one article's teaser and not a word of the next one's", () => {
+    // The failure this guards against shipped for an afternoon: a fixed-length window ran past the
+    // end of a short teaser into the following item, and every neighbouring date came back as a
+    // contradiction. Three false alarms on a correct issue is how a gate stops being read.
+    const email = [
+      "- School prize list: who can beat us?: A comparison of Albert School with HEC and Harvard.",
+      "- 1 km for €1: the Jonquille Run: On 22 March, We Run Albert brought students to the stadium.",
+      "- When Albert students compete: A rescue mission for the table football.",
+    ].join("\n");
+    const teaser = articleTeaser(email, "School prize list: who can beat us?");
+    expect(teaser).toContain("Harvard");
+    expect(teaser).not.toContain("22 March");
+    expect(extractFacts(teaser)).toEqual([]);
+    // The last item has no following boundary and still reads to the end.
+    expect(articleTeaser(email, "When Albert students compete")).toContain("table football");
+    expect(articleTeaser(email, "An article that is not in this email")).toBe("");
   });
 
   it("finds nothing in prose that carries no facts", () => {

@@ -238,11 +238,12 @@ function unembeddedFonts(pdf: PDFDocument): string[] {
     for (const page of pdf.getPages()) {
       const fonts = page.node.Resources()?.lookupMaybe(PDFName.of("Font"), PDFDict);
       if (!fonts) continue;
-      for (const [, value] of fonts.entries()) {
+      for (const [key, value] of fonts.entries()) {
         const font = pdf.context.lookupMaybe(value, PDFDict);
         if (!font) continue;
         const base = font.lookupMaybe(PDFName.of("BaseFont"), PDFName);
-        const name = base ? base.asString().replace(/^\//, "") : "unknown";
+        const subtype = font.lookupMaybe(PDFName.of("Subtype"), PDFName)?.asString().replace(/^\//, "");
+        const name = base ? base.asString().replace(/^\//, "") : `${subtype ?? "font"} ${String(key).replace(/^\//, "")}`;
         if (!embedded(pdf, font)) missing.add(name);
       }
     }
@@ -254,6 +255,12 @@ function unembeddedFonts(pdf: PDFDocument): string[] {
 
 /** A descriptor with font bytes, following the descendant a Type0 font hides its descriptor behind. */
 function embedded(pdf: PDFDocument, font: PDFDict): boolean {
+  // A Type3 font has no font file and needs none: its glyphs *are* the document, drawn by the
+  // procedures in CharProcs. Chromium emits one for anything it draws as shapes rather than type,
+  // and reporting that as a missing font is a false alarm on every single export.
+  if (font.lookupMaybe(PDFName.of("Subtype"), PDFName)?.asString() === "/Type3") {
+    return Boolean(font.lookupMaybe(PDFName.of("CharProcs"), PDFDict));
+  }
   const direct = font.lookupMaybe(PDFName.of("FontDescriptor"), PDFDict);
   if (direct) return hasFontFile(direct);
   const descendants = font.lookupMaybe(PDFName.of("DescendantFonts"), PDFArray);

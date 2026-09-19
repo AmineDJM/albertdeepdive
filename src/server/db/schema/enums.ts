@@ -234,7 +234,15 @@ export const pagePlanStatusEnum = pgEnum("page_plan_status", ["DRAFT", "VALIDATE
 
 export const publicationKindEnum = pgEnum("publication_kind", ["DRAFT", "EDITORIAL_REVIEW", "FINAL_REVIEW", "PUBLISHED"]);
 
-export const renderStatusEnum = pgEnum("render_status", ["PENDING", "RENDERING", "READY", "FAILED"]);
+/**
+ * What is happening to an artefact, including the part that decides whether it may exist.
+ *
+ * PENDING → RENDERING → PREFLIGHT → (REPAIRING → PREFLIGHT) → READY, or FAILED at any point. The
+ * two middle states are not decoration: a render that finishes is not a file anybody may have yet,
+ * and an operator watching a long export is entitled to know the difference between "still drawing
+ * it" and "measuring what was drawn".
+ */
+export const renderStatusEnum = pgEnum("render_status", ["PENDING", "RENDERING", "PREFLIGHT", "REPAIRING", "READY", "FAILED"]);
 
 export const publicationAssetKindEnum = pgEnum("publication_asset_kind", ["PDF", "DOCX", "PREVIEW", "HTML"]);
 

@@ -81,6 +81,9 @@ export type Check = {
 
 export type RepairFn = (finding: Finding, ctx: QcContext) => Promise<RepairOutcome>;
 
+/** Where the loop is, so a caller can show it rather than a spinner that means four different things. */
+export type QcPhase = "MEASURING" | "REPAIRING" | "REMEASURING";
+
 export type RunOptions = {
   profile?: string;
   /** Attempt deterministic repairs and measure again. On by default: measuring without fixing is a report, not a pipeline. */
@@ -90,6 +93,17 @@ export type RunOptions = {
   persist?: boolean;
   triggeredById?: string | null;
   release?: string | null;
+  /** The artefact this run is judging, when it is judging one. */
+  versionId?: string | null;
+  /**
+   * An artefact that has just been rendered, measured instead of rendering a second one.
+   *
+   * Not an optimisation. Preflight must measure the file that will actually ship; rendering again
+   * would measure a different file that happens to have been made the same way, and on the day
+   * those two differ this is precisely the check that should notice.
+   */
+  rendered?: RenderedArtefact;
+  onPhase?: (phase: QcPhase) => void | Promise<void>;
 };
 
 /** The registry is filled by `registerChecks` so the engine has no import cycle with its checks. */
@@ -150,8 +164,16 @@ export async function runQc(editionId: string, options: RunOptions = {}): Promis
 
   let ctx: QcContext;
   try {
-    const document = await buildEditionDocument(editionId, { versionLabel: `qc-${QC_SPEC_VERSION}`, includeUnapproved: true });
-    ctx = { editionId, organizationId: edition.organizationId, document, profile: resolved, storage: await getStorage(), pass: 1, render: renderer(document) };
+    const document = options.rendered?.finalDocument ?? (await buildEditionDocument(editionId, { versionLabel: `qc-${QC_SPEC_VERSION}`, includeUnapproved: true }));
+    ctx = {
+      editionId,
+      organizationId: edition.organizationId,
+      document,
+      profile: resolved,
+      storage: await getStorage(),
+      pass: 1,
+      render: options.rendered ? async () => options.rendered! : renderer(document),
+    };
   } catch (err) {
     // The document could not even be assembled. That is a critical failure of the issue, reported
     // as one rather than as a crash, so the pipeline records why nothing could be measured.
@@ -209,6 +231,7 @@ export async function runQc(editionId: string, options: RunOptions = {}): Promis
     }
   };
 
+  await options.onPhase?.("MEASURING");
   for (const check of applicable) {
     const result = await runOne(check, ctx);
     findings = findings.concat(result.findings);
@@ -219,6 +242,7 @@ export async function runQc(editionId: string, options: RunOptions = {}): Promis
   if (options.repair !== false) {
     const repairable = findings.filter((finding) => finding.repairStrategy && repairs.has(finding.repairStrategy));
     const touched = new Set<CheckId>();
+    if (repairable.length) await options.onPhase?.("REPAIRING");
     for (const finding of repairable) {
       const fn = repairs.get(finding.repairStrategy!)!;
       try {
@@ -245,6 +269,7 @@ export async function runQc(editionId: string, options: RunOptions = {}): Promis
     if (repairLog.some((outcome) => outcome.succeeded)) {
       // Rebuild the document: a repair that changed an article or an asset changed the thing every
       // other measurement was taken against.
+      await options.onPhase?.("REMEASURING");
       const fresh = await buildEditionDocument(editionId, { versionLabel: `qc-${QC_SPEC_VERSION}`, includeUnapproved: true });
       const second: QcContext = { ...ctx, pass: 2, document: fresh, render: renderer(fresh) };
       const rerun = applicable.filter((check) => touched.size === 0 || touched.has(check.id));
@@ -355,6 +380,7 @@ async function persist(report: QcReport, options: RunOptions): Promise<string | 
       .values({
         organizationId: report.organizationId,
         editionId: report.editionId,
+        versionId: options.versionId ?? null,
         profile: report.profile,
         specVersion: report.specVersion,
         status: report.status,

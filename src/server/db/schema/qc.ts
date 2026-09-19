@@ -1,6 +1,7 @@
 import { index, integer, jsonb, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 import { organizations, users } from "./identity";
 import { editions } from "./editions";
+import { publicationVersions } from "./publication";
 
 /**
  * What was measured, when, against which version of the standard, and what came of it.
@@ -20,6 +21,8 @@ export const qcRuns = pgTable(
     id: uuid("id").primaryKey().defaultRandom(),
     organizationId: uuid("organization_id").references(() => organizations.id, { onDelete: "cascade" }),
     editionId: uuid("edition_id").references(() => editions.id, { onDelete: "cascade" }),
+    /** The artefact this run judged, when it judged one rather than the issue behind it. */
+    versionId: uuid("version_id").references(() => publicationVersions.id, { onDelete: "set null" }),
     /** The output profile this run judged against: PDF_SCREEN, PRINT, EMAIL, WEB… */
     profile: text("profile").notNull(),
     /** The version of the rule catalogue, so a verdict can be read back in its own terms. */
@@ -42,6 +45,7 @@ export const qcRuns = pgTable(
   },
   (t) => [
     index("qc_runs_edition_idx").on(t.editionId, t.profile),
+    index("qc_runs_version_idx").on(t.versionId),
     index("qc_runs_org_idx").on(t.organizationId),
     index("qc_runs_started_idx").on(t.startedAt),
   ],

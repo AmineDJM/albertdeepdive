@@ -101,7 +101,7 @@ export const factsCheck: Check = {
       if (!source.length) continue;
 
       // A fact that appears in the email for this article must appear identically in the article.
-      const teaser = emailText.includes(article.headline) ? extractFacts(nearby(emailText, article.headline)) : [];
+      const teaser = emailText.includes(article.headline) ? extractFacts(articleTeaser(emailText, article.headline)) : [];
       for (const fact of teaser) {
         const sameKind = source.filter((each) => each.kind === fact.kind);
         if (!sameKind.length) continue;
@@ -127,11 +127,22 @@ export const factsCheck: Check = {
   },
 };
 
-/** The sentence or two around a headline in the plain-text email, where its teaser lives. */
-function nearby(text: string, headline: string): string {
+/**
+ * One article's teaser in the plain-text email — and not one word of the next one's.
+ *
+ * The window has to stop at the following item, because the failure this check exists to catch is
+ * a date belonging to one article being read as another's. A fixed-length window does precisely
+ * that: it runs past the end of a short teaser into the next, and then reports every neighbouring
+ * date as a contradiction. Three such reports on a perfectly correct issue is how a gate stops
+ * being read.
+ */
+export function articleTeaser(text: string, headline: string): string {
   const at = text.indexOf(headline);
   if (at < 0) return "";
-  return text.slice(at, at + headline.length + 400);
+  const after = at + headline.length;
+  const next = text.indexOf("\n- ", after);
+  const end = next >= 0 ? next : Math.min(text.length, after + 400);
+  return text.slice(at, end);
 }
 
 /* ── Revision invariants ──────────────────────────────────────────────────────────────────── */

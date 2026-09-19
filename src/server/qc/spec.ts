@@ -353,10 +353,13 @@ export const WEB_NOINDEX_UNPUBLISHED = m({
 export const FACT_CONSISTENCY = m({
   id: "facts.consistent",
   title: "A number means the same thing in every output",
-  method: "Money, percentages and dates are extracted from each output's text and compared per article.",
+  method: "Money, percentages and dates are extracted from each article and from that article's own teaser in the email, normalised, and compared. Only an article's own teaser is compared with it, never the message as a whole.",
   unit: "count",
   failureThreshold: 0,
-  severity: "HARD_FAIL",
+  // FAIL rather than HARD_FAIL: a contradiction between outputs is a defect of the issue, not of
+  // the file. It must stop a final or published version, and it must not stop the newsroom seeing
+  // the proof in which it is visible.
+  severity: "FAIL",
   repair: null,
   origin: "BRIEFLY_HOUSE_STANDARD",
   reference: "Copy may shorten between outputs. Facts may not move.",

@@ -17,6 +17,7 @@ import { fileSlug } from "@/lib/publication/text";
 import { buildEditionDocument, documentHash } from "./document-builder";
 import { renderDocx, verifyDocx } from "./docx";
 import { renderPdf } from "./pdf";
+import { runPreflight } from "./preflight";
 import { QUALITY_GATE_KEYS, canPublish, exportBlockers, layoutReportAsValidation, validateEditionDocument } from "./validate";
 
 const log = createLogger("publication:versions");
@@ -140,6 +141,51 @@ export async function renderVersion(versionId: string, options: RenderVersionOpt
     const docx = await renderDocx(document, { log: (message, level, meta) => logLine(message, level, meta) });
     const verified = verifyDocx(docx, document.meta.cover.headline ?? undefined);
     if (!verified.ok) throw new Error(`DOCX verification failed: ${verified.error}`);
+
+    /*
+     * Preflight, on the file that was just made rather than on one made the same way.
+     *
+     * This is where the state machine earns its two extra states. A render that finishes is not an
+     * artefact anybody may have yet: it is measured, what can be repaired is repaired locally, and
+     * the same code measures again. Only then can it be READY — and if something blocking survived
+     * that loop, it is FAILED with the measurement that failed it, not READY with a warning
+     * somebody has to notice.
+     *
+     * A draft is held to the artefact's own standard: a proof with unresolved rights is exactly how
+     * a newsroom finds out what to clear, so only failures that make the file unusable stop it. A
+     * final or published artefact is held to all of it.
+     */
+    await progress(9, 10, "Preflight");
+    const preflight = await runPreflight({
+      editionId: edition.id,
+      versionId,
+      kind,
+      rendered: { buffer: pdf.buffer, pageCount: pdf.pageCount, layoutReport: pdf.layoutReport, finalDocument: pdf.finalDocument, html: pdf.html },
+      userId: version.createdById,
+      onPhase: async (phase) => {
+        await db.update(publicationVersions).set({ status: phase === "REPAIRING" ? "REPAIRING" : "PREFLIGHT" }).where(eq(publicationVersions.id, versionId));
+        logLine(phase === "REPAIRING" ? "Repairing what can be repaired" : phase === "REMEASURING" ? "Measuring again after repair" : "Measuring the artefact");
+      },
+      log: logLine,
+    });
+    if (preflight.blocking.length) {
+      const [failed] = await db
+        .update(publicationVersions)
+        .set({ status: "FAILED", document: pdf.finalDocument as unknown as Record<string, unknown>, documentHash: hash, validationReport: validation, renderLog: entries, completedAt: new Date() })
+        .where(eq(publicationVersions.id, versionId))
+        .returning();
+      const first = preflight.blocking[0];
+      await notify(
+        version.createdById,
+        "EXPORT_FAILED",
+        `Export ${version.label} failed preflight`,
+        `${first.message} (expected ${first.expected}, measured ${first.actual})${preflight.blocking.length > 1 ? ` — and ${preflight.blocking.length - 1} more` : ""}`,
+        edition.id,
+        versionId,
+      );
+      await audit({ action: "publication.version.preflight.failed", userId: version.createdById, entityType: "PUBLICATION_VERSION", entityId: versionId, editionId: edition.id, metadata: { runId: preflight.runId, blocking: preflight.blocking.map((f) => f.metricId) } });
+      return failed;
+    }
 
     await progress(9, 10, "Storing files");
     const storage = await getStorage();
