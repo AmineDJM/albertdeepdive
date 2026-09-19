@@ -23,9 +23,11 @@ test.describe("standard and advanced", () => {
     await expect(page.locator("main").getByText("What should I do now?")).toBeVisible();
     await expect(page.getByTestId("home-now")).toBeVisible();
     await expect(page.locator("main").getByText("Organization pulse", { exact: true })).toHaveCount(0);
-    // The sidebar: Home, Editions, Library — Audience, Analytics, Settings. No Content, no Brand.
+    // The sidebar: Home, Newsletters, Library — Audience, Analytics, Settings. No Content, no Brand.
+    // "Newsletters" rather than "Editions" because that section holds the titles, and an edition
+    // lives inside one of them.
     const nav = page.getByRole("navigation", { name: "Main" });
-    for (const name of ["Home", "Editions", "Library", "Audience", "Analytics", "Settings"]) await expect(nav.getByRole("link", { name, exact: true })).toBeVisible();
+    for (const name of ["Home", "Newsletters", "Library", "Audience", "Analytics", "Settings"]) await expect(nav.getByRole("link", { name, exact: true })).toBeVisible();
     await expect(nav.getByRole("link", { name: "Content", exact: true })).toHaveCount(0);
     await expect(nav.getByRole("link", { name: "Brand", exact: true })).toHaveCount(0);
 
