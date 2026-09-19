@@ -5,6 +5,10 @@ import { roleHasPermission } from "@/lib/auth/permissions";
 import { EDITION_DOORS, type EditionDoor } from "@/components/newsroom/nav";
 import { EditionTabs } from "@/components/newsroom/edition-tabs";
 import { EditionStatusBadge } from "@/components/newsroom/status-badge";
+import { EditionTimeline } from "@/components/newsroom/edition-timeline";
+import type { EditionStatus } from "@/lib/editorial/edition-state";
+import { standingOf, timelineFor } from "@/lib/editorial/edition-steps";
+import { getUi } from "@/server/i18n/locale";
 
 /**
  * An edition, as a focused workspace.
@@ -14,6 +18,7 @@ import { EditionStatusBadge } from "@/components/newsroom/status-badge";
  */
 export default async function EditionLayout({ children, params }: { children: React.ReactNode; params: Promise<{ editionId: string }> }) {
   const { editionId } = await params;
+  const tr = await getUi();
   const user = await getCurrentUser();
   const edition = await getEdition(editionId).catch(() => null);
   if (!edition || !user) notFound();
@@ -25,11 +30,22 @@ export default async function EditionLayout({ children, params }: { children: Re
         <div className="flex items-start gap-4 px-5">
           <div className="flex h-11 min-w-0 shrink-0 items-center gap-2">
             <span className="truncate text-[13px] font-semibold">
-              {edition.label} <span className="font-normal text-muted-foreground">· {edition.isSpecialIssue ? "Special issue" : "Issue"} N°{edition.issueNumber}</span>
+              {tr("Edition")} #{edition.issueNumber} <span className="font-normal text-muted-foreground">· {edition.label}</span>
             </span>
             <EditionStatusBadge status={edition.status} />
+            <span className="hidden text-2xs text-muted-foreground sm:inline">{tr(standingOf(edition.status as EditionStatus))}</span>
           </div>
           <EditionTabs editionId={edition.id} doors={doors} analyticsHref={analyticsHref} />
+        </div>
+        {/*
+          * Where the edition is, across the top of every one of its screens.
+          *
+          * The tab row says where you can go; this says where the work has got to, which is the
+          * question somebody opening an edition actually has. They are different things and the
+          * interface is clearer for showing both.
+          */}
+        <div className="px-5 pb-2">
+          <EditionTimeline editionId={edition.id} steps={timelineFor(edition.status as EditionStatus)} compact />
         </div>
       </div>
       {children}

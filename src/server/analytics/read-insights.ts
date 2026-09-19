@@ -476,3 +476,79 @@ export async function readerDeliveryByEdition(scope: TenantScope, limit = 12): P
     ...ratesFrom({ sent: n(r.sent), delivered: n(r.delivered), bounced: n(r.bounced), opened: n(r.opened), clicked: n(r.clicked), opens: n(r.opens), clicks: n(r.clicks) }),
   }));
 }
+
+/**
+ * The pipeline from the invitation, which is the half a newsroom can actually act on.
+ *
+ * `conversionFunnel` above starts at submissions, and by then the interesting decisions have all
+ * been taken: how many people were asked, and how many of them answered, is what tells an editor
+ * whether to ask more people, ask different people, or ask differently. A funnel that starts after
+ * the asking measures the newsroom's editing and calls it the pipeline.
+ *
+ * 18 invited → 13 answered → 27 topics → 9 kept → 1 published, per edition and across a title.
+ */
+export type PipelineFunnel = {
+  invited: number;
+  opened: number;
+  answered: number;
+  contributions: number;
+  topics: number;
+  kept: number;
+  written: number;
+  published: number;
+  /** Of the people asked, how many sent something. The number an editor changes things because of. */
+  responseRate: number;
+  /** Of the topics that came in, how many made the issue. */
+  keepRate: number;
+};
+
+export async function pipelineFunnel(scope: TenantScope): Promise<PipelineFunnel> {
+  const [requests] = await db
+    .select({
+      invited: sql<number>`count(*)`,
+      opened: sql<number>`count(*) filter (where ${s.submissionRequests.openedAt} is not null)`,
+      answered: sql<number>`count(*) filter (where ${s.submissionRequests.submittedAt} is not null)`,
+    })
+    .from(s.submissionRequests)
+    .where(and(inOwnEditions(s.submissionRequests.editionId, scope), ...windowOn(s.submissionRequests.createdAt, scope)));
+
+  const [contributions] = await db
+    .select({ total: sql<number>`count(*)` })
+    .from(s.submissions)
+    .where(and(inOwnEditions(s.submissions.editionId, scope), ne(s.submissions.status, "DRAFT"), ...windowOn(s.submissions.submittedAt, scope)));
+
+  const [topics] = await db
+    .select({
+      total: sql<number>`count(*)`,
+      kept: sql<number>`count(*) filter (where ${s.stories.status} in ('SELECTED','DRAFTING','IN_REVIEW','APPROVED','PUBLISHED'))`,
+    })
+    .from(s.stories)
+    .where(and(inOwnEditions(s.stories.editionId, scope), ...windowOn(s.stories.createdAt, scope)));
+
+  const [written] = await db
+    .select({ total: sql<number>`count(*) filter (where ${s.articles.status} <> 'EMPTY')` })
+    .from(s.articles)
+    .where(and(inOwnEditions(s.articles.editionId, scope), ...windowOn(s.articles.createdAt, scope)));
+
+  const [published] = await db
+    .select({ total: sql<number>`count(*)` })
+    .from(s.editions)
+    .where(and(ownedBy(s.editions.organizationId, scope), pickedEdition(s.editions.id, scope) ?? sql`true`, eq(s.editions.status, "PUBLISHED")));
+
+  const invited = n(requests?.invited);
+  const answered = n(requests?.answered);
+  const all = n(topics?.total);
+  const kept = n(topics?.kept);
+  return {
+    invited,
+    opened: n(requests?.opened),
+    answered,
+    contributions: n(contributions?.total),
+    topics: all,
+    kept,
+    written: n(written?.total),
+    published: n(published?.total),
+    responseRate: safeRatio(answered, invited),
+    keepRate: safeRatio(kept, all),
+  };
+}

@@ -10,6 +10,7 @@ import {
   approvalLatency,
   contributionsByCampus,
   conversionFunnel,
+  pipelineFunnel,
   mostActiveContributors,
   resolveWindow,
   responseRateByPool,
@@ -58,12 +59,13 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
   const editions = await listEditionOptions(scope);
   const editionId = scope.editionId;
 
-  const [analytics, comparison, trend, pools, funnel, coverage, latency, delivery, deliveryByEdition, rights, campuses, top] = await Promise.all([
+  const [analytics, comparison, trend, pools, funnel, pipeline, coverage, latency, delivery, deliveryByEdition, rights, campuses, top] = await Promise.all([
     editionAnalytics(scope),
     editionComparison(scope),
     submissionTrend(scope),
     responseRateByPool(scope),
     conversionFunnel(scope),
+    pipelineFunnel(scope),
     sectionCoverage(scope),
     approvalLatency(scope),
     readerDelivery(scope),
@@ -94,6 +96,35 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
             <DateRangeFilter preset={activity.preset} />
           </FilterBar>
         </Suspense>
+
+        {/*
+          * The pipeline, from the invitation rather than from the send.
+          *
+          * The row below measures the newsroom's editing; this measures the whole thing, which is
+          * where the decisions an editor can change actually live. If thirteen of eighteen people
+          * answered, the question is what to do about the five — and no amount of open-rate tells
+          * you that.
+          */}
+        <section className="rounded-lg border border-border bg-card px-4 py-3">
+          <ol className="flex flex-wrap items-center gap-x-1.5 gap-y-2 text-[13px]">
+            {[
+              { label: tr("invited"), value: pipeline.invited },
+              { label: tr("answered"), value: pipeline.answered, hint: pipeline.invited ? percentLabel(pipeline.responseRate) : null },
+              { label: tr("contributions"), value: pipeline.contributions },
+              { label: tr("topics"), value: pipeline.topics },
+              { label: tr("kept"), value: pipeline.kept, hint: pipeline.topics ? percentLabel(pipeline.keepRate) : null },
+              { label: tr("written"), value: pipeline.written },
+              { label: tr("published"), value: pipeline.published },
+            ].map((step, index, all) => (
+              <li key={step.label} className="flex items-center gap-1.5">
+                <span className="tabular font-semibold">{formatNumber(step.value)}</span>
+                <span className="text-muted-foreground">{step.label}</span>
+                {step.hint ? <span className="tabular text-2xs text-muted-foreground">({step.hint})</span> : null}
+                {index < all.length - 1 ? <span aria-hidden className="px-1 text-muted-foreground">→</span> : null}
+              </li>
+            ))}
+          </ol>
+        </section>
 
         <StatGrid columns={6}>
           <Stat label={tr("Submissions")} value={submissions} hint={`${funnel.steps[1]?.value ?? 0} accepted · ${percentLabel(funnel.acceptedRate)} of the intake`} />

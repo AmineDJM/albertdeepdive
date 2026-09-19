@@ -173,6 +173,7 @@ export const EDITION_DOORS: readonly EditionDoor[] = [
     key: "stories",
     label: "nav.stories",
     rooms: [
+      { slug: "topics", label: "editionTabs.topics" },
       { slug: "stories", label: "nav.stories" },
       { slug: "articles", label: "nav.articles" },
       { slug: "inbox", label: "nav.contributions", permission: "submission:view" },

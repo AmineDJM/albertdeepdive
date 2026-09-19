@@ -74,6 +74,7 @@ export const fr: Dictionary = {
   },
 
   editionTabs: {
+    topics: "Sujets",
     controlRoom: "Salle de contrôle",
     campaign: "Campagne",
     qa: "Contrôle & publication",

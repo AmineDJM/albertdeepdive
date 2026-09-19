@@ -65,8 +65,14 @@ describe("an edition's doors", () => {
     expect(EDITION_DOORS.length).toBeLessThanOrEqual(6);
   });
 
-  it("open Stories on the stories themselves, not on the inbox", () => {
-    expect(editionDoorFor("inbox")?.rooms[0].slug).toBe("stories");
+  it("opens Stories on the decision, and never on the pile of contributions", () => {
+    // It used to open on the stories themselves, which was already better than landing somebody in
+    // the inbox. Topics comes first now because that is the order the work actually happens in:
+    // what arrived is grouped into topics, the topics are decided, and only then is anything
+    // written. The guard that matters is unchanged — the door must not open on the inbox.
+    const first = editionDoorFor("inbox")?.rooms[0].slug;
+    expect(first).toBe("topics");
+    expect(first).not.toBe("inbox");
   });
 });
 

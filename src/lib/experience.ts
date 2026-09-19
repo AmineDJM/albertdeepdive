@@ -57,7 +57,7 @@ export const STANDARD_SETTINGS = new Set<string>(["/settings/profile", "/setting
  */
 // "revise" is in Standard on purpose: saying "make it shorter" is the simplest way there is to
 // change an issue, and the one that needs no vocabulary at all.
-export const STANDARD_ROOMS = new Set<string>(["", "stories", "articles", "inbox", "campaign", "revise", "media", "qa"]);
+export const STANDARD_ROOMS = new Set<string>(["", "topics", "stories", "articles", "inbox", "campaign", "revise", "media", "qa"]);
 
 /** Whether a path is on Standard's way, by its first segment. */
 export function onStandardPath(href: string): boolean {

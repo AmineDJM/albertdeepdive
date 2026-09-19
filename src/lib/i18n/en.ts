@@ -71,6 +71,7 @@ export const en = {
   },
 
   editionTabs: {
+    topics: "Topics",
     controlRoom: "Control room",
     campaign: "Campaign",
     qa: "QA & publish",

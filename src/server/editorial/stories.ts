@@ -516,6 +516,8 @@ async function transitionStory(storyId: string, status: StoryStatus, userId: str
 export const selectStory = (storyId: string, userId: string) => transitionStory(storyId, "SELECTED", userId, "STORY_SELECT");
 export const rejectStory = (storyId: string, userId: string, reason?: string | null) => transitionStory(storyId, "REJECTED", userId, "STORY_REJECT", reason);
 export const dropStory = (storyId: string, userId: string, reason?: string | null) => transitionStory(storyId, "DROPPED", userId, "STORY_DROP", reason);
+/** Back onto the undecided pile — a decision taken can be untaken until the writing starts. */
+export const undecideStory = (storyId: string, userId: string) => transitionStory(storyId, "CANDIDATE", userId, "STORY_UNDECIDE");
 
 export async function assignSection(storyId: string, sectionId: string | null, userId: string) {
   const story = await loadStory(storyId);
