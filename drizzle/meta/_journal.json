@@ -127,6 +127,13 @@
       "when": 1789768485171,
       "tag": "0017_real_chamber",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1789802025715,
+      "tag": "0018_peaceful_baron_strucker",
+      "breakpoints": true
     }
   ]
 }

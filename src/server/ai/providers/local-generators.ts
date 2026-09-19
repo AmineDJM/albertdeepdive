@@ -117,6 +117,8 @@ export function generateLocal(request: ProviderRequest): unknown {
       return localVoiceDirector(input);
     case "image_planner":
       return localImagePlanner(input);
+    case "edition_studio":
+      return localEditionStudio(input);
     default:
       throw new Error(`Local generator not implemented for ${service}`);
   }
@@ -1254,4 +1256,83 @@ function localImagePlanner(input: Input): unknown {
     output: "raster",
     prompt: "",
   };
+}
+
+/**
+ * The studio without a model behind it.
+ *
+ * Development and the end-to-end suite have to be able to hold a whole conversation with an issue —
+ * ask for it shorter, drop photographs in, undo — on a machine with no API key. So this reads the
+ * sentence for the handful of things people actually say, picks real ids out of the snapshot it was
+ * given, and answers in the same shape the real planner does. It is deliberately literal: it is a
+ * fixture, not a small model, and a test that passes because of something clever here would be
+ * testing the fixture.
+ */
+function localEditionStudio(input: Input): unknown {
+  const message = str(input, "message");
+  const snapshot = str(input, "snapshot");
+  const attached = str(input, "attachedMedia");
+  const said = message.toLowerCase();
+  const has = (...words: string[]) => words.some((w) => said.includes(w));
+
+  // The snapshot is a table; the ids are its first column.
+  const pageLines = snapshot.split("\n").filter((l) => /^[0-9a-f-]{36} · p\d+/.test(l));
+  const currentPages = pageLines.length;
+  const extentMatch = snapshot.match(/currently (\d+) pages/);
+  const pages = extentMatch ? Number(extentMatch[1]) : currentPages;
+  const articleLines = snapshot.split("\n").filter((l) => /^[0-9a-f-]{36} · .+ · \d+w · /.test(l));
+  const longest = articleLines
+    .map((l) => ({ id: l.slice(0, 36), words: Number(l.match(/ · (\d+)w · /)?.[1] ?? 0) }))
+    .sort((a, b) => b.words - a.words)[0];
+  // The emptiest page worth doing anything about: not the cover, not the contents, not locked, and
+  // one that actually carries a story — a blank page with nothing on it is a different problem.
+  const emptiest = pageLines
+    .filter((l) => !l.includes("FURNITURE") && !l.includes("LOCKED") && l.includes("[story "))
+    .map((l) => ({ id: l.slice(0, 36), fill: Number(l.match(/ · (\d+)% · /)?.[1] ?? 100) }))
+    .sort((a, b) => a.fill - b.fill)[0];
+  const firstStory = snapshot.split("\n").find((l) => l.includes("[story ") && !l.includes("FURNITURE"))?.match(/\[story ([0-9a-f-]{36})/)?.[1] ?? null;
+  const attachedIds = attached.split("\n").map((l) => l.slice(0, 36)).filter((id) => /^[0-9a-f-]{36}$/.test(id));
+
+  const operations: unknown[] = [];
+  let reply = "";
+  let askFirst = false;
+
+  if (attachedIds.length && firstStory) {
+    operations.push({ kind: "attach_photos", storyId: firstStory, mediaIds: attachedIds, role: "gallery" });
+    reply = `Adding ${attachedIds.length} photograph(s) to the issue.`;
+  } else if (has("longer", "plus long", "plus longue", "more pages", "plus de pages")) {
+    if (has("word", "mot", "texte", "text") && longest) {
+      operations.push({ kind: "expand_article", articleId: longest.id, targetWords: Math.round(longest.words * 1.3) });
+      reply = "Developing the longest piece, using only what its sources already support.";
+    } else {
+      operations.push({ kind: "set_extent", mode: "fixed", pages: Math.min(96, pages + 4) });
+      reply = `Setting the issue to ${Math.min(96, pages + 4)} pages and spending the room on pictures and air.`;
+    }
+  } else if (has("shorter", "plus court", "plus courte", "fewer pages", "moins de pages")) {
+    if (has("word", "mot", "texte", "text") && longest) {
+      operations.push({ kind: "shorten_article", articleId: longest.id, targetWords: Math.max(80, Math.round(longest.words * 0.75)) });
+      reply = "Tightening the longest piece without losing a fact.";
+    } else {
+      operations.push({ kind: "set_extent", mode: "auto", pages: Math.max(4, pages - 4) });
+      reply = "Letting the issue find its own length, which will be shorter than it is now.";
+    }
+  } else if (has("photo", "picture", "image")) {
+    if (emptiest) {
+      operations.push({ kind: "add_picture_page", afterPageId: emptiest.id, storyId: firstStory });
+      reply = "Adding a picture page beside the emptiest page in the issue.";
+    } else {
+      reply = "There is no page I can put a picture beside yet.";
+    }
+  } else if (has("regenerate", "re-plan", "replan", "refais", "recompose")) {
+    operations.push({ kind: "regenerate_layout" });
+    reply = "Re-planning the issue from the copy. Pages you arranged by hand will be rebuilt.";
+    askFirst = true;
+  } else if (has("tidy", "measure", "copyfit", "remesure", "ajuste")) {
+    operations.push({ kind: "copyfit" });
+    reply = "Re-measuring and re-fitting the issue.";
+  } else {
+    reply = `The issue is ${pages} pages.${emptiest ? ` The emptiest page is ${emptiest.fill}% full.` : ""} Tell me what to change — longer, shorter, more photographs — or drop photographs in.`;
+  }
+
+  return { reply, operations, askFirst };
 }

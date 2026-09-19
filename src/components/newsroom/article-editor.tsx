@@ -22,6 +22,7 @@ import { useUi } from "@/components/i18n/provider";
 
 const AI_ACTIONS: { action: ArticleAction; label: string; icon: React.ComponentType<{ className?: string }>; hint: string }[] = [
   { action: "shorten", label: "Shorten", icon: Scissors, hint: "Tighten the text without losing a fact" },
+  { action: "expand", label: "Develop", icon: Wand2, hint: "Draw out what the sources already support, inventing nothing" },
   { action: "generate_headlines", label: "Generate 5 headlines", icon: Type, hint: "Alternative headlines in the house voice" },
   { action: "rewrite_headline", label: "Rewrite headline", icon: Type, hint: "One sharper headline" },
   { action: "improve_structure", label: "Improve structure", icon: Wand2, hint: "Reorder and add crossheads" },
@@ -188,7 +189,7 @@ export function ArticleEditor({
   function runAi(action: ArticleAction) {
     setBusyAction(action);
     startAi(async () => {
-      const res = await runArticleActionAction(article.id, action, action === "shorten" ? { targetWords: Math.max(120, Math.round(words * 0.75)) } : {});
+      const res = await runArticleActionAction(article.id, action, action === "shorten" ? { targetWords: Math.max(120, Math.round(words * 0.75)) } : action === "expand" ? { targetWords: Math.round(words * 1.3) } : {});
       setBusyAction(null);
       if (!res.ok) {
         toast.error(res.error);

@@ -325,7 +325,7 @@ export async function restoreRevision(articleId: string, version: number, userId
   return result;
 }
 
-export const ARTICLE_ACTIONS = ["shorten", "rewrite_headline", "generate_headlines", "improve_structure", "improve_english", "translate", "suggest_pull_quote", "check_consistency", "check_house_style"] as const;
+export const ARTICLE_ACTIONS = ["shorten", "expand", "rewrite_headline", "generate_headlines", "improve_structure", "improve_english", "translate", "suggest_pull_quote", "check_consistency", "check_house_style"] as const;
 export type ArticleAction = (typeof ARTICLE_ACTIONS)[number];
 
 export type ArticleProposal = {
@@ -359,6 +359,21 @@ export async function runArticleAction(articleId: string, action: ArticleAction,
     case "shorten": {
       const targetWords = options.targetWords ?? Math.round(article.wordCount * 0.8);
       const r = await copyEditArticle({ blocks, instruction: `Shorten the article to about ${targetWords} words. ${options.instruction ?? ""}`.trim(), targetWords }, aiCtx);
+      proposal = { action, kind: "blocks", aiJobId: r.aiJobId, blocks: fromAiBlocks(r.output.blocks, blocks), changes: r.output.changes, costCents: r.usage.costCents };
+      break;
+    }
+    case "expand": {
+      /*
+       * Developing a piece is not writing a longer one.
+       *
+       * The instruction names the only material the copy editor may use — the facts, the quotes and
+       * the sources already attached to this story — and tells it to stop short rather than pad. A
+       * magazine that invents a paragraph to fill a page is worse than one with a page to spare, and
+       * the provenance panel would have nothing to show for the new sentences.
+       */
+      const targetWords = options.targetWords ?? Math.round(article.wordCount * 1.3);
+      const instruction = `Develop the article to about ${targetWords} words. Use only the facts, quotes and sources already attached to this story: draw out what is already there — context a reader is missing, a quote used in part, a result stated without its method. Invent nothing, attribute nothing to anyone who did not say it, and if there is not enough material to reach the length, stop short and say so in the changes. ${options.instruction ?? ""}`;
+      const r = await copyEditArticle({ blocks, instruction: instruction.trim(), targetWords }, aiCtx);
       proposal = { action, kind: "blocks", aiJobId: r.aiJobId, blocks: fromAiBlocks(r.output.blocks, blocks), changes: r.output.changes, costCents: r.usage.costCents };
       break;
     }
