@@ -37,11 +37,25 @@ test.describe("standard and advanced", () => {
     await expect(page.locator("main").getByText("What Briefly decided", { exact: true })).toBeVisible();
     for (const label of ["Language", "Audience", "Publish date", "Outputs", "Stories", "Pictures", "Tone"]) await expect(page.locator("main").getByText(label, { exact: true }).first()).toBeVisible();
     await expect(page.getByRole("link", { name: "Preview" })).toBeVisible();
-    // Four doors, in plain words.
-    const doors = page.getByRole("navigation", { name: "Sections" }).first();
-    await expect(doors.getByRole("link", { name: "Pictures", exact: true })).toBeVisible();
-    await expect(doors.getByRole("link", { name: "Publish", exact: true })).toBeVisible();
-    await expect(doors.getByRole("link", { name: "Design", exact: true })).toHaveCount(0);
+    /*
+     * One navigation, and it is the five steps.
+     *
+     * There used to be two rows here — the doors, and the timeline under them — and they
+     * contradicted each other: "Topics" appeared in both and went to two different pages, while
+     * Validate and Distribute went to the same one. Standard now navigates by the steps alone,
+     * because for this person "where can I go" and "what do I do next" are one question.
+     */
+    const steps = page.getByRole("list", { name: "Where this edition is" });
+    await expect(steps).toBeVisible();
+    for (const name of ["Contributors", "Topics", "Draft", "Validate", "Distribute"]) {
+      await expect(steps.getByRole("link", { name, exact: false })).toBeVisible();
+    }
+    // And the doors are not drawn beside them.
+    await expect(page.getByRole("navigation", { name: "Sections" })).toHaveCount(0);
+    // Topics opens the topics board, not the stories board it used to point at.
+    await expect(steps.getByRole("link", { name: "Topics", exact: false })).toHaveAttribute("href", `/editions/${edition!.id}/topics`);
+    // Distribute has somewhere of its own, rather than sharing Validate's gate.
+    await expect(steps.getByRole("link", { name: "Distribute", exact: false })).toHaveAttribute("href", `/editions/${edition!.id}/exports`);
     // The control room is one link away, not gone.
     await page.getByRole("link", { name: "See the full control room" }).click();
     await expect(page.locator("main").getByText("Control room", { exact: true }).first()).toBeVisible();
