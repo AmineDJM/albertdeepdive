@@ -94,9 +94,18 @@ export function PublicationEditor({ publication, trigger, paymentsConnected = fa
         toast.error(result.error);
         return;
       }
-      toast.success(publication ? "Title updated" : "Title created");
       setOpen(false);
-      router.refresh();
+      if (publication) {
+        toast.success(tr("Newsletter updated"));
+        router.refresh();
+        return;
+      }
+      // A new newsletter already has its first edition. Land in it rather than on an empty shelf
+      // with another button to press — the next thing to do is the first step of Edition #1.
+      const editionId = result.data?.editionId ?? null;
+      toast.success(editionId ? tr("Newsletter created, with its first edition") : tr("Newsletter created"));
+      if (editionId) router.push(`/editions/${editionId}`);
+      else router.refresh();
     });
   }
 

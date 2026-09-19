@@ -28,6 +28,16 @@ export type StepDefinition = {
   room: string;
 };
 
+/**
+ * No two steps open the same room.
+ *
+ * They did, for a while: Topics pointed at the stories board while the tab above it pointed at the
+ * topics board, and Validate and Distribute both opened the publication checklist. Two names for
+ * one place, and one name for two places, on the same screen. Now that the steps *are* the
+ * navigation rather than a decoration above it, a collision is a broken menu, so the test asserts
+ * this rather than trusting it.
+ */
+
 export const STEPS: Record<EditionStep, StepDefinition> = {
   CONTRIBUTORS: {
     key: "CONTRIBUTORS",
@@ -41,7 +51,7 @@ export const STEPS: Record<EditionStep, StepDefinition> = {
     label: "Topics",
     active: "Choosing topics",
     purpose: "What came in, grouped and deduplicated. Keep the topics you want, merge the ones that are the same story, and leave the rest.",
-    room: "stories",
+    room: "topics",
   },
   DRAFT: {
     key: "DRAFT",
@@ -62,7 +72,7 @@ export const STEPS: Record<EditionStep, StepDefinition> = {
     label: "Distribute",
     active: "Published",
     purpose: "Send it, publish it, print it, download it. One edition, each way out chosen separately.",
-    room: "qa",
+    room: "exports",
   },
 };
 

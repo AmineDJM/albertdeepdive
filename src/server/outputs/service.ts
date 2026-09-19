@@ -203,6 +203,64 @@ export async function listPublications(organizationId: string) {
 }
 
 /**
+ * Every newsletter with the edition currently being made, for the shelf on Home.
+ *
+ * Home used to lead with editions, which is the wrong noun to lead with: a person does not have
+ * "editions", they have a newsletter that produces one every month. So the shelf is the titles,
+ * each showing where its current edition has got to — and a title with nothing in progress says
+ * so, which is itself the prompt to start the next one.
+ *
+ * One query for the titles and one for their editions, rather than one per title: a workspace with
+ * six newsletters should cost the same as a workspace with one.
+ */
+export async function newsletterShelf(organizationId: string) {
+  const titles = await db.query.publications.findMany({
+    where: eq(s.publications.organizationId, organizationId),
+    orderBy: [asc(s.publications.sortOrder), asc(s.publications.name)],
+    columns: { id: true, name: true, cadence: true, defaultFormats: true },
+  });
+  if (!titles.length) return [];
+
+  const editions = await db
+    .select({
+      id: s.editions.id,
+      publicationId: s.editions.publicationId,
+      issueNumber: s.editions.issueNumber,
+      label: s.editions.label,
+      status: s.editions.status,
+      publicationTargetAt: s.editions.publicationTargetAt,
+    })
+    .from(s.editions)
+    .where(
+      and(
+        eq(s.editions.organizationId, organizationId),
+        isNull(s.editions.hiddenAt),
+        inArray(
+          s.editions.publicationId,
+          titles.map((title) => title.id),
+        ),
+      ),
+    )
+    .orderBy(desc(s.editions.year), desc(s.editions.month), desc(s.editions.issueNumber));
+
+  return titles.map((title) => {
+    const mine = editions.filter((edition) => edition.publicationId === title.id);
+    // The one being worked on, or the newest there is. Same rule as the title's own page, so the
+    // two screens never disagree about which edition is "the" edition.
+    const live = mine.find((edition) => edition.status !== "PUBLISHED" && edition.status !== "ARCHIVED") ?? mine[0] ?? null;
+    return {
+      id: title.id,
+      name: title.name,
+      cadence: title.cadence,
+      formats: title.defaultFormats,
+      editions: mine.length,
+      published: mine.filter((edition) => edition.status === "PUBLISHED" || edition.status === "ARCHIVED").length,
+      live,
+    };
+  });
+}
+
+/**
  * One title, with its editions — the newsletter as a durable thing rather than a row in a list.
  *
  * A newsletter is set up once and then runs for years; an edition is the thing you make every

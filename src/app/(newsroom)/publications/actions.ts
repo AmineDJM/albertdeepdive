@@ -10,13 +10,31 @@ import { logger } from "@/server/logger";
 
 export type { PublicationInput };
 
-export async function createPublicationAction(raw: PublicationInput): Promise<ActionResult<{ id: string }>> {
+/**
+ * A new newsletter, and the first edition of it.
+ *
+ * A title with nothing in it is not a thing anybody wanted; it is a step on the way to the thing
+ * they wanted. Naming a newsletter and then being shown an empty shelf, with a second button to
+ * press before anything can happen, is a question Briefly can answer for itself — so it does, and
+ * the person lands in Edition #1 with its campaign already scheduled.
+ *
+ * The edition comes back separately from the title, because the title is the thing that was
+ * created and the edition is where to go next, and a caller that only wanted the first should not
+ * have to know about the second.
+ */
+export async function createPublicationAction(raw: PublicationInput): Promise<ActionResult<{ id: string; editionId: string | null }>> {
   try {
     const user = await requirePermission("edition:create");
     const organizationId = await currentOrganizationId();
     const row = await createPublication(organizationId, raw, user.id);
+    // A title without an edition is a shelf without a book on it.
+    const first = await openNextEdition(row.id, user.id).catch((err) => {
+      logger.warn("created a title without its first edition", { publicationId: row.id, err });
+      return null;
+    });
     revalidatePath("/publications");
-    return ok({ id: row.id });
+    revalidatePath("/overview");
+    return ok({ id: row.id, editionId: first?.id ?? null });
   } catch (err) {
     return toActionFailure(err);
   }
@@ -79,16 +97,7 @@ export async function setShowcaseConsentAction(publicationId: string, on: boolea
 export async function startNextEditionAction(publicationId: string): Promise<ActionResult<{ id: string }>> {
   try {
     const user = await requirePermission("edition:create");
-    const { nextEditionMonth, createEdition } = await import("@/server/editions/service");
-    const when = await nextEditionMonth();
-    const edition = await createEdition({ month: when.month, year: when.year, publicationId }, user.id);
-    try {
-      const { scheduleFromDefaults } = await import("@/server/campaigns/service");
-      await scheduleFromDefaults(edition.id, { id: user.id });
-    } catch (err) {
-      // The edition stands without its campaign; its first step offers to open one.
-      logger.warn("started an edition without a campaign", { editionId: edition.id, err });
-    }
+    const edition = await openNextEdition(publicationId, user.id);
     revalidatePath(`/publications/${publicationId}`);
     revalidatePath("/editions");
     revalidatePath("/overview");
@@ -96,4 +105,26 @@ export async function startNextEditionAction(publicationId: string): Promise<Act
   } catch (err) {
     return toActionFailure(err);
   }
+}
+
+/**
+ * The next edition of a title, named and scheduled from what the title already did.
+ *
+ * Shared by "New edition" and by the birth of the title itself, so the first edition of a
+ * newsletter is made exactly the way the sixth will be — same month arithmetic, same inherited
+ * configuration, same campaign. A first edition that is special is a first edition nobody can
+ * learn from.
+ */
+async function openNextEdition(publicationId: string, userId: string): Promise<{ id: string; label: string }> {
+  const { nextEditionMonth, createEdition } = await import("@/server/editions/service");
+  const when = await nextEditionMonth();
+  const edition = await createEdition({ month: when.month, year: when.year, publicationId }, userId);
+  try {
+    const { scheduleFromDefaults } = await import("@/server/campaigns/service");
+    await scheduleFromDefaults(edition.id, { id: userId });
+  } catch (err) {
+    // The edition stands without its campaign; its first step offers to open one.
+    logger.warn("started an edition without a campaign", { editionId: edition.id, err });
+  }
+  return { id: edition.id, label: edition.label };
 }

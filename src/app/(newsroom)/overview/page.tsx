@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, Inbox, Layers, Mail, Newspaper, Sparkles } from "lucide-react";
+import { ArrowRight, Inbox, Layers, Mail, Newspaper, Plus, Sparkles } from "lucide-react";
 import { getCurrentUser, hasPermission } from "@/server/auth/session";
 import { requireTenant } from "@/server/tenancy/context";
 import { homeData, OUTPUT_KIND_LABELS, type HomeEditionCard, type OutputKind } from "@/server/home/service";
@@ -13,6 +13,9 @@ import { PHASES, STATUS_LABELS } from "@/lib/editorial/edition-state";
 import { getUi } from "@/server/i18n/locale";
 import { experienceOf } from "@/lib/experience";
 import { NewEditionButton } from "@/components/newsroom/new-edition-button";
+import { NewsletterShelf, NoNewsletters, type Shelf } from "@/components/newsroom/newsletter-shelf";
+import { PublicationEditor } from "@/app/(newsroom)/publications/publication-editor";
+import { newsletterShelf } from "@/server/outputs/service";
 
 export const dynamic = "force-dynamic";
 
@@ -69,7 +72,7 @@ function EditionCard({ edition, tr }: { edition: HomeEditionCard; tr: (text: str
 export default async function HomePage() {
   const tr = await getUi();
   const [user, tenant] = await Promise.all([getCurrentUser(), requireTenant()]);
-  const data = await homeData(tenant.organizationId);
+  const [data, shelf] = await Promise.all([homeData(tenant.organizationId), newsletterShelf(tenant.organizationId)]);
   const first = user?.name.split(" ")[0] ?? tr("there");
   // Literal so the dictionary test sees every sentence a person can be shown.
   const nextLabels: Record<string, string> = { collect: tr("Collect contributions"), review: tr("Review what came in"), triage: tr("Sort the submissions"), select: tr("Choose the stories"), draft: tr("Draft the articles"), approve: tr("Approve the articles"), layout: tr("Lay out the pages"), publish: tr("Check and publish"), published: tr("Open the edition") };
@@ -79,8 +82,11 @@ export default async function HomePage() {
   const collectHref = next ? `/editions/${next.id}/campaign` : "/editions?new=1";
   const canCreate = hasPermission(user, "edition:create");
 
+  // The dialog is a client component; Home passes it down rather than knowing how it works.
+  const newNewsletter = canCreate ? <PublicationEditor trigger={<Button size="sm"><Plus /> {tr("New newsletter")}</Button>} /> : null;
+
   if (experienceOf(user?.preferences) === "standard") {
-    return <StandardHome first={first} next={next} recent={data.recent} contributions={data.pulse.contributions30} canCreate={canCreate} nextLabels={nextLabels} tr={tr} />;
+    return <StandardHome first={first} next={next} shelf={shelf} contributions={data.pulse.contributions30} canCreate={canCreate} nextLabels={nextLabels} newNewsletter={newNewsletter} tr={tr} />;
   }
 
   return (
@@ -100,7 +106,22 @@ export default async function HomePage() {
               </Link>
             </Button>
             {canCreate ? <NewEditionButton /> : null}
+            {newNewsletter}
           </div>
+        </section>
+
+        {/* ── The shelf: the titles, each with the edition being made ── */}
+        <section>
+          <SectionTitle action={shelf.length ? <Link href="/publications" className="text-xs text-muted-foreground transition-colors duration-150 hover:text-foreground">{tr("All newsletters")}</Link> : undefined}>
+            {tr("Your newsletters")}
+          </SectionTitle>
+          {shelf.length ? (
+            <NewsletterShelf shelf={shelf} canCreate={canCreate} newNewsletter={newNewsletter} tr={tr} />
+          ) : canCreate ? (
+            <NoNewsletters newNewsletter={newNewsletter} tr={tr} />
+          ) : (
+            <EmptyState compact title={tr("No newsletters yet")} description={tr("Somebody who can create one will start the first.")} />
+          )}
         </section>
 
         {/* ── Pulse ── */}
@@ -246,7 +267,7 @@ function Shortcut({ href, icon: Icon, title, body }: { href: string; icon: React
  * has come in and the button that turns it into the next edition. Below it the last few editions,
  * for the person who wants to look back. No pulse, no shortcuts: the sidebar is the map.
  */
-function StandardHome({ first, next, recent, contributions, canCreate, nextLabels, tr }: { first: string; next: Awaited<ReturnType<typeof homeData>>["next"]; recent: HomeEditionCard[]; contributions: number; canCreate: boolean; nextLabels: Record<string, string>; tr: (text: string, values?: Record<string, string | number>) => string }) {
+function StandardHome({ first, next, shelf, contributions, canCreate, nextLabels, newNewsletter, tr }: { first: string; next: Awaited<ReturnType<typeof homeData>>["next"]; shelf: Shelf; contributions: number; canCreate: boolean; nextLabels: Record<string, string>; newNewsletter: React.ReactNode; tr: (text: string, values?: Record<string, string | number>) => string }) {
   const sentence = next
     ? next.stories
       ? next.stories === 1
@@ -261,9 +282,9 @@ function StandardHome({ first, next, recent, contributions, canCreate, nextLabel
       ? contributions === 1
         ? tr("1 new update received")
         : tr("{count} new updates received", { count: contributions })
-      : recent.length
+      : shelf.length
         ? tr("Nothing in progress")
-        : tr("Let’s make your first edition.");
+        : tr("Let’s make your first newsletter.");
   const body = next
     ? tr("Briefly keeps it up to date with everything that comes in. Open it to see what it chose, change what you like, and publish when you are happy.")
     : contributions
@@ -291,8 +312,10 @@ function StandardHome({ first, next, recent, contributions, canCreate, nextLabel
                   <Link href={next.next.href}>{nextLabels[next.next.label] ?? tr("Open the edition")}</Link>
                 </Button>
               </>
+            ) : canCreate && shelf.length ? (
+              <NewEditionButton size="lg" label={tr("Prepare my next edition")} />
             ) : canCreate ? (
-              <NewEditionButton size="lg" label={recent.length ? tr("Prepare my next edition") : tr("Prepare my first edition")} />
+              newNewsletter
             ) : (
               <Button asChild variant="outline">
                 <Link href="/editions">{tr("See the editions")}</Link>
@@ -312,16 +335,25 @@ function StandardHome({ first, next, recent, contributions, canCreate, nextLabel
           ) : null}
         </section>
 
-        {recent.length ? (
-          <section>
-            <SectionTitle action={<Link href="/editions" className="text-xs text-muted-foreground transition-colors duration-150 hover:text-foreground">{tr("All editions")}</Link>}>{tr("Recent editions")}</SectionTitle>
-            <div className="grid gap-3 md:grid-cols-2">
-              {recent.filter((edition) => edition.id !== next?.id).slice(0, 4).map((edition) => (
-                <EditionCard key={edition.id} edition={edition} tr={tr} />
-              ))}
-            </div>
-          </section>
-        ) : null}
+        {/*
+          * The shelf.
+          *
+          * Not "recent editions": a person has newsletters, and each one is a shelf its editions
+          * sit on. Leading with the titles is what makes "start the next one" the obvious move
+          * rather than a button somebody has to go looking for.
+          */}
+        <section>
+          <SectionTitle action={shelf.length ? <Link href="/publications" className="text-xs text-muted-foreground transition-colors duration-150 hover:text-foreground">{tr("All newsletters")}</Link> : undefined}>
+            {tr("Your newsletters")}
+          </SectionTitle>
+          {shelf.length ? (
+            <NewsletterShelf shelf={shelf} canCreate={canCreate} newNewsletter={newNewsletter} tr={tr} />
+          ) : canCreate ? (
+            <NoNewsletters newNewsletter={newNewsletter} tr={tr} />
+          ) : (
+            <EmptyState compact title={tr("No newsletters yet")} description={tr("Somebody who can create one will start the first.")} />
+          )}
+        </section>
       </PageBody>
     </>
   );

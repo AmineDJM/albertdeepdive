@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { EDITION_STEPS, STEPS, standingOf, stepForStatus, timelineFor } from "@/lib/editorial/edition-steps";
 import { EDITION_STATUSES, type EditionStatus } from "@/lib/editorial/edition-state";
+import { STANDARD_ROOMS } from "@/lib/experience";
 
 /**
  * Two vocabularies for one edition, and the translation between them.
@@ -18,6 +19,31 @@ describe("the five steps of an edition", () => {
       expect(EDITION_STEPS, `${status} must land on a step`).toContain(step);
       expect(STEPS[step].room, `${step} must open somewhere`).toBeTruthy();
       expect(standingOf(status as EditionStatus).length, `${status} must read as something`).toBeGreaterThan(3);
+    }
+  });
+
+  it("sends no two steps to the same place, and none of them somewhere else's name", () => {
+    /*
+     * The bug this exists for was visible on screen and nobody saw it: the tab row said "Topics"
+     * and opened the topics board, the timeline said "Topics" and opened the *stories* board, and
+     * Validate and Distribute both opened the publication checklist. One word, two destinations;
+     * two words, one destination. Now that the steps are the navigation in Standard mode, that is
+     * not untidiness, it is a menu that lies.
+     */
+    const rooms = EDITION_STEPS.map((step) => STEPS[step].room);
+    expect(new Set(rooms).size, `two steps share a room: ${rooms.join(", ")}`).toBe(rooms.length);
+
+    // And each one opens the room its name promises.
+    expect(STEPS.TOPICS.room).toBe("topics");
+    expect(STEPS.VALIDATE.room).toBe("qa");
+    expect(STEPS.DISTRIBUTE.room, "distributing is not the same act as approving").toBe("exports");
+  });
+
+  it("opens only rooms Standard can actually reach", () => {
+    // A step whose room is hidden in Standard is a step that dead-ends for the people the steps
+    // were written for.
+    for (const step of EDITION_STEPS) {
+      expect(STANDARD_ROOMS.has(STEPS[step].room), `${step} opens ${STEPS[step].room}, which Standard hides`).toBe(true);
     }
   });
 
