@@ -42,7 +42,10 @@ export const geometryCheck: Check = {
         assertThat({
           spec: TEXT_OVERFLOW,
           holds: false,
-          location: { entityType: "page", page: overflow.page, entityId: overflow.pageId, field: "flow" },
+          // The article, not the word "flow": a page can carry two articles, and two findings that
+          // differ only in which one overflowed must not collapse into one when the loop asks
+          // whether a repair worked.
+          location: { entityType: "page", page: overflow.page, entityId: overflow.pageId, field: overflow.articleId },
           message: `Text still runs past its frame on page ${overflow.page} after copyfitting. ${overflow.blocks.length} block(s) do not fit.`,
           expected: "0 overflowing blocks",
           actual: `${overflow.blocks.length}`,
@@ -98,14 +101,16 @@ export const geometryCheck: Check = {
       }),
     );
 
-    // Per-page fit, which is where a 2px overflow actually lives before it becomes a clipped word.
+    // Fit, measured per flow rather than per page: a page carrying two articles has two frames to
+    // fill, and an overflow lives in one of them. This is where a 2px overflow can be seen as a
+    // ratio just over 1 before it becomes a clipped word.
     for (const fit of report.fit) {
       results.push(
         compare({
           spec: PAGE_FIT_RATIO,
           actual: fit.ratio,
-          location: { entityType: "page", page: fit.page, entityId: fit.pageId, field: fit.template },
-          message: `Page ${fit.page} fills ${(fit.ratio * 100).toFixed(1)}% of its usable height.`,
+          location: { entityType: "page", page: fit.page, entityId: fit.pageId, field: fit.articleId },
+          message: `Page ${fit.page} fills ${(fit.ratio * 100).toFixed(1)}% of the height its ${fit.template} frame gives it.`,
           evidence: { template: fit.template, articleId: fit.articleId },
         }),
       );

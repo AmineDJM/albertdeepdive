@@ -1,8 +1,8 @@
 import { createHash } from "node:crypto";
-import { and, desc, eq, gte, sql } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, isNotNull, sql } from "drizzle-orm";
 import { db } from "@/server/db/client";
 import * as s from "@/server/db/schema";
-import { blockText, type ArticleBlock } from "@/lib/publication/document";
+import { blockText, editionDocumentSchema, type ArticleBlock } from "@/lib/publication/document";
 import { renderEditionEmail } from "@/server/outputs/email-edition";
 import { ANALYTICS_RECONCILES, ANALYTICS_TENANCY, FACT_CONSISTENCY, OUTPUT_STALE, PROVIDER_OUTPUT_CHECKED, REVISION_SCOPE } from "../spec";
 import { assertThat, compare, merge, nothing, type CheckResult } from "../types";
@@ -67,61 +67,140 @@ function normaliseMonth(name: string): number {
   return table[name.toLowerCase()] ?? 0;
 }
 
+/** The text of one article, in one output, flattened for measurement. */
+function articleText(article: { headline: string; standfirst?: string | null; body: unknown }): string {
+  const body = (article.body as ArticleBlock[]).map(blockText).join(" ");
+  return `${article.headline} ${article.standfirst ?? ""} ${body}`;
+}
+
+type Source = { label: string; facts: Map<string, Fact[]> };
+
+/**
+ * Every independently stored text of this issue, so there is something to compare with.
+ *
+ * This is the part that decides whether the check can fail at all. Print and web are both drawn
+ * from the same document *now*, so comparing them with each other would compare a thing with
+ * itself and pass forever. What can genuinely disagree is a **frozen** output — the version an
+ * output was published from, whose document was stored at the moment it was published — against
+ * another frozen output, or against the issue as it stands today. That is exactly the failure the
+ * rule is for: the web edition went out in March saying €2.4M, the magazine was re-exported in
+ * April after somebody corrected it to €24M, and both are live.
+ */
+async function factSources(ctx: QcContext): Promise<Source[]> {
+  const sources: Source[] = [];
+
+  const current = new Map<string, Fact[]>();
+  for (const article of ctx.document.articles) current.set(article.id, extractFacts(articleText(article)));
+  sources.push({ label: "the issue as it stands", facts: current });
+
+  const outputs = await db
+    .select({ format: s.editionOutputs.format, versionId: s.editionOutputs.versionId, publishedAt: s.editionOutputs.publishedAt })
+    .from(s.editionOutputs)
+    .where(and(eq(s.editionOutputs.editionId, ctx.editionId), isNotNull(s.editionOutputs.versionId)));
+  if (!outputs.length) return sources;
+
+  const versions = await db
+    .select({ id: s.publicationVersions.id, label: s.publicationVersions.label, document: s.publicationVersions.document })
+    .from(s.publicationVersions)
+    .where(inArray(s.publicationVersions.id, outputs.map((output) => output.versionId!)));
+  const byId = new Map(versions.map((version) => [version.id, version]));
+
+  for (const output of outputs) {
+    const version = output.versionId ? byId.get(output.versionId) : undefined;
+    const parsed = version?.document ? editionDocumentSchema.safeParse(version.document) : null;
+    if (!parsed?.success) continue;
+    const facts = new Map<string, Fact[]>();
+    for (const article of parsed.data.articles) facts.set(article.id, extractFacts(articleText(article)));
+    sources.push({ label: `the ${output.format.toLowerCase()} output (${version!.label})`, facts });
+  }
+  return sources;
+}
+
 export const factsCheck: Check = {
   id: "facts",
   title: "A number means the same thing in every output",
   async run(ctx: QcContext): Promise<CheckResult> {
-    // The email is the other rendering of the same issue, so it is the comparison that costs
-    // nothing extra. Print and web are both built from this document, so a difference between
-    // them and the document would be a renderer bug rather than an editorial one.
-    let emailText = "";
-    try {
-      const rendered = renderEditionEmail(ctx.document, {
-        organizationName: "QC",
-        unsubscribeUrl: "https://example.test/s/unsubscribe/qc",
-        imageUrls: {},
-      });
-      emailText = rendered.text;
-    } catch {
-      return nothing();
-    }
-
-    const emailFacts = new Map<string, Fact[]>();
-    for (const fact of extractFacts(emailText)) {
-      const list = emailFacts.get(fact.kind) ?? [];
-      list.push(fact);
-      emailFacts.set(fact.kind, list);
-    }
-
+    const sources = await factSources(ctx);
     const results: CheckResult[] = [];
     let mismatches = 0;
-    for (const article of ctx.document.articles) {
-      const body = (article.body as ArticleBlock[]).map(blockText).join(" ");
-      const source = extractFacts(`${article.headline} ${article.standfirst ?? ""} ${body}`);
-      if (!source.length) continue;
 
-      // A fact that appears in the email for this article must appear identically in the article.
-      const teaser = emailText.includes(article.headline) ? extractFacts(articleTeaser(emailText, article.headline)) : [];
-      for (const fact of teaser) {
-        const sameKind = source.filter((each) => each.kind === fact.kind);
-        if (!sameKind.length) continue;
-        if (sameKind.some((each) => each.value === fact.value)) continue;
-        mismatches += 1;
-        results.push(
-          assertThat({
-            spec: FACT_CONSISTENCY,
-            holds: false,
-            location: { entityType: "article", entityId: article.id, entityLabel: article.headline, field: fact.kind },
-            message: `"${article.headline}" says ${sameKind.map((each) => each.raw).join(" / ")} and the email says ${fact.raw}. Copy may change between outputs; a ${fact.kind} may not.`,
-            expected: sameKind.map((each) => each.raw).join(" or "),
-            actual: fact.raw,
-            evidence: { kind: fact.kind, article: sameKind.map((each) => each.value), email: fact.value },
-          }),
-        );
+    // ── Frozen outputs against each other, and against the issue as it stands ──
+    if (sources.length > 1) {
+      for (const article of ctx.document.articles) {
+        for (const kind of ["money", "percent", "date"] as const) {
+          const stated = sources
+            .map((source) => ({ label: source.label, facts: (source.facts.get(article.id) ?? []).filter((fact) => fact.kind === kind) }))
+            .filter((each) => each.facts.length > 0);
+          if (stated.length < 2) continue;
+          // Two outputs agree when the set of values each states is the same set. A shortened
+          // version that drops a number entirely is a different matter — that is copy, and copy
+          // is allowed to change. What may not happen is the same article stating 2,400,000 in one
+          // output and 24,000,000 in another.
+          const sets = stated.map((each) => [...new Set(each.facts.map((fact) => fact.value))].sort().join("|"));
+          const first = sets[0];
+          const differing = sets.findIndex((set) => set !== first);
+          if (differing < 0) continue;
+          mismatches += 1;
+          const a = stated[0];
+          const b = stated[differing];
+          results.push(
+            assertThat({
+              spec: FACT_CONSISTENCY,
+              holds: false,
+              location: { entityType: "article", entityId: article.id, entityLabel: article.headline, field: kind },
+              message: `"${article.headline}" says ${a.facts.map((fact) => fact.raw).join(" / ")} in ${a.label} and ${b.facts.map((fact) => fact.raw).join(" / ")} in ${b.label}. Copy may change between outputs; a ${kind} may not.`,
+              expected: `${a.facts.map((fact) => fact.raw).join(" / ")} (${a.label})`,
+              actual: `${b.facts.map((fact) => fact.raw).join(" / ")} (${b.label})`,
+              evidence: { kind, sources: stated.map((each) => ({ output: each.label, values: each.facts.map((fact) => fact.value) })) },
+            }),
+          );
+        }
       }
     }
+
+    // ── The email teaser against the article it teases ──
+    // Worth its own pass because the teaser is *derived*: it is cut to 180 characters at a word
+    // boundary, and a cut in the wrong place turns "€2.4 million" into "€2.4" — a hundredth of the
+    // real figure, in the one line most readers will ever see.
+    let emailText = "";
+    try {
+      emailText = renderEditionEmail(ctx.document, { organizationName: "QC", unsubscribeUrl: "https://example.test/s/unsubscribe/qc", imageUrls: {} }).text;
+    } catch {
+      emailText = "";
+    }
+    if (emailText) {
+      for (const article of ctx.document.articles) {
+        const source = extractFacts(articleText(article));
+        if (!source.length || !emailText.includes(article.headline)) continue;
+        for (const fact of extractFacts(articleTeaser(emailText, article.headline))) {
+          const sameKind = source.filter((each) => each.kind === fact.kind);
+          if (!sameKind.length || sameKind.some((each) => each.value === fact.value)) continue;
+          mismatches += 1;
+          results.push(
+            assertThat({
+              spec: FACT_CONSISTENCY,
+              holds: false,
+              location: { entityType: "article", entityId: article.id, entityLabel: article.headline, field: fact.kind, output: "EMAIL" },
+              message: `"${article.headline}" says ${sameKind.map((each) => each.raw).join(" / ")} and its email teaser says ${fact.raw}. Copy may shorten between outputs; a ${fact.kind} may not.`,
+              expected: sameKind.map((each) => each.raw).join(" or "),
+              actual: fact.raw,
+              evidence: { kind: fact.kind, article: sameKind.map((each) => each.value), email: fact.value },
+            }),
+          );
+        }
+      }
+    }
+
     if (!mismatches) {
-      results.push(compare({ spec: FACT_CONSISTENCY, actual: 0, location: { entityType: "edition", entityId: ctx.editionId }, message: "Every number agrees across outputs." }));
+      results.push(
+        compare({
+          spec: FACT_CONSISTENCY,
+          actual: 0,
+          location: { entityType: "edition", entityId: ctx.editionId },
+          message: sources.length > 1 ? `Every number agrees across ${sources.length} rendering(s) of this issue.` : "Every number in the email teasers agrees with the article it teases.",
+          evidence: { sources: sources.map((source) => source.label) },
+        }),
+      );
     }
     return merge(...results);
   },
