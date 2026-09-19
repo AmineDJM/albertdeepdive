@@ -3066,4 +3066,8 @@ export const UI_FR: Record<string, string> = {
   "Copied": "Copiés",
   "Already there": "Déjà présents",
   "Gone from the disk too": "Disparus du disque aussi",
+  "Uploads are being refused: no durable storage": "Les envois sont refusés : aucun stockage durable",
+  "Customer files are on a disk that will not survive a deploy": "Les fichiers des clients sont sur un disque qui ne survivra pas à un déploiement",
+  "Connect a bucket": "Connecter un bucket",
+  "Check the storage": "Vérifier le stockage",
 };

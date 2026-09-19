@@ -1,6 +1,7 @@
 import { LocalStorageAdapter } from "./local";
 import { S3StorageAdapter } from "./s3";
 import { storageConfig, type ResolvedStorage } from "./config";
+import { FailClosedLocalAdapter, failsClosed } from "./guard";
 import type { StorageAdapter } from "./types";
 
 /**
@@ -16,7 +17,13 @@ import type { StorageAdapter } from "./types";
 let cached: { fingerprint: string; adapter: StorageAdapter } | null = null;
 
 function build(config: ResolvedStorage): StorageAdapter {
-  return config.provider === "s3" ? new S3StorageAdapter(config) : new LocalStorageAdapter(config.localDir);
+  if (config.provider === "s3") return new S3StorageAdapter(config);
+  const local = new LocalStorageAdapter(config.localDir);
+  // In production, a disk is scratch space. It may still be read and served — losing that would
+  // break a working install rather than protect the next one — but nothing durable may be added
+  // to it, because an upload that succeeds into a filesystem that will be replaced is a data loss
+  // that reports itself as a success.
+  return failsClosed(config.provider) ? new FailClosedLocalAdapter(local) : local;
 }
 
 export async function getStorage(): Promise<StorageAdapter> {
@@ -33,5 +40,6 @@ export function resetStorage() {
 }
 
 export { storageKeys, extensionForMime } from "./keys";
+export { DurableStorageUnavailableError, failsClosed, isScratchKey } from "./guard";
 export { storageConfig, resetStorageConfig, normaliseEndpoint, DEFAULT_BUCKET } from "./config";
 export type { StorageAdapter, PutOptions, SignedUrlOptions } from "./types";

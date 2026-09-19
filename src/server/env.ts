@@ -37,6 +37,15 @@ const schema = z.object({
   STORAGE_S3_SECRET_ACCESS_KEY: z.string().optional(),
   STORAGE_S3_PUBLIC_BASE_URL: z.string().optional(),
   STORAGE_SIGNED_URL_TTL_SECONDS: z.coerce.number().default(900),
+  /*
+   * Let production write durable customer files to the local disk.
+   *
+   * Off by default, because the default is the trap: an install with no bucket connected accepts
+   * every upload and loses them on the next container replacement. Set this only where the disk is
+   * a volume you trust — and the end-to-end suite sets it, because it runs a production build
+   * against a scratch directory on purpose.
+   */
+  STORAGE_ALLOW_LOCAL_DURABLE: z.coerce.boolean().default(false),
   UPLOAD_MAX_FILE_MB: z.coerce.number().default(25),
   UPLOAD_MAX_FILES_PER_SUBMISSION: z.coerce.number().default(20),
   JOBS_RUNNER: z.enum(["inprocess", "cli", "none"]).default("inprocess"),

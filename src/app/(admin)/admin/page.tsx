@@ -2,6 +2,7 @@ import Link from "next/link";
 import { AlertTriangle, ArrowRight, Check, CircleDollarSign, Cpu, Mail, Plug, Sparkles, Users, Zap } from "lucide-react";
 import { getCurrentUser, hasPermission } from "@/server/auth/session";
 import { dormantWorkspaces, platformHealth, recentFailures } from "@/server/platform/dashboard";
+import { durableStatus } from "@/server/storage/audit";
 import { PageBody, PageHeader, SectionTitle } from "@/components/newsroom/page-header";
 import { Stat, StatGrid } from "@/components/newsroom/stat";
 import { DataTable } from "@/components/newsroom/data-table";
@@ -38,7 +39,7 @@ export default async function PlatformHealthPage() {
     );
   }
 
-  const [health, failures, dormant] = await Promise.all([platformHealth(), recentFailures(12), dormantWorkspaces()]);
+  const [health, failures, dormant, storage] = await Promise.all([platformHealth(), recentFailures(12), dormantWorkspaces(), durableStatus()]);
   const missing = health.integrations.filter((integration) => !integration.configured);
   const problems = health.reliability.jobsFailed24 + health.reliability.emailsFailed24 + health.reliability.aiErrors24;
 
@@ -46,6 +47,29 @@ export default async function PlatformHealthPage() {
     <>
       <PageHeader title={tr("Overview")} description={tr("Every customer on this Briefly, and how it is holding up.")} />
       <PageBody className="space-y-6">
+        {!storage.durable ? (
+          /*
+           * The one condition that loses customer data without saying so, which is why it sits
+           * above every figure on this page rather than in a card further down.
+           */
+          <div className="flex items-start gap-3 rounded-lg border border-destructive/40 bg-destructive/5 p-3">
+            <AlertTriangle className="mt-0.5 size-4 shrink-0 text-destructive" />
+            <div className="space-y-1">
+              <p className="text-[13px] font-medium text-destructive">
+                {storage.refusing ? tr("Uploads are being refused: no durable storage") : tr("Customer files are on a disk that will not survive a deploy")}
+              </p>
+              <p className="text-2xs text-muted-foreground">{storage.reason}</p>
+              <div className="flex gap-3 pt-0.5 text-2xs">
+                <Link href="/admin/providers" className="underline">
+                  {tr("Connect a bucket")}
+                </Link>
+                <Link href="/admin/storage" className="underline">
+                  {tr("Check the storage")}
+                </Link>
+              </div>
+            </div>
+          </div>
+        ) : null}
         <StatGrid columns={6}>
           <Stat label={tr("Monthly recurring")} value={money(health.revenue.mrrCents)} hint={`${health.revenue.payingWorkspaces} ${tr("paying")} · ${health.revenue.freeWorkspaces} ${tr("free")}`} icon={CircleDollarSign} hue="amber" href="/admin/billing" />
           <Stat label={tr("Annual run rate")} value={money(health.revenue.mrrCents * 12)} hint={health.revenue.trialing ? `${health.revenue.trialing} ${tr("on trial")}` : tr("no trials running")} hue="amber" href="/admin/plans" />

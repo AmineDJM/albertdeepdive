@@ -5,6 +5,7 @@ import * as s from "@/server/db/schema";
 import { createLogger } from "@/server/logger";
 import { getStorage } from "./index";
 import { storageConfig } from "./config";
+import { failsClosed } from "./guard";
 
 const log = createLogger("storage:audit");
 
@@ -38,6 +39,36 @@ export type StorageHealth = {
   checkedAt: Date;
   error: string | null;
 };
+
+export type DurableStatus = {
+  provider: "local" | "s3";
+  /** Whether durable customer files are going somewhere that survives a deploy. */
+  durable: boolean;
+  /** Whether a durable write would be refused outright right now. */
+  refusing: boolean;
+  reason: string | null;
+};
+
+/**
+ * Is canonical storage in place — answered from configuration alone, with no round trip.
+ *
+ * Cheap on purpose: the console shows this at the top of every page it matters on, and a banner
+ * that costs a request to a bucket is a banner somebody removes. The expensive question — does the
+ * bucket actually work — is `storageHealth`, behind a button.
+ */
+export async function durableStatus(): Promise<DurableStatus> {
+  const config = await storageConfig();
+  if (config.provider === "s3") return { provider: "s3", durable: true, refusing: false, reason: null };
+  const refusing = failsClosed(config.provider);
+  return {
+    provider: "local",
+    durable: false,
+    refusing,
+    reason: refusing
+      ? "Uploads are being refused: durable files need object storage, and none is connected."
+      : "Customer files are going to this machine's disk, which a container replacement would take.",
+  };
+}
 
 /** A key a health check may write. Its own prefix, so it is never mistaken for a customer's file. */
 const HEALTH_KEY = () => `health/check-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.txt`;
