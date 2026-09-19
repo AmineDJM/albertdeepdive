@@ -218,6 +218,7 @@ describe("layoutReportAsValidation", () => {
       paragraphsSplit: 1,
       copyfitFlows: 2,
       rounds: 3,
+      typography: [],
       remainingOverflow: [{ page: 2, pageId: "p2", articleId: "a1", blocks: ["b1"] }],
       blankPages: [4],
       underfilled: [],

@@ -11,7 +11,10 @@ import {
   PDF_PAGE_SIZE,
   PDF_PARSES,
   PRINT_BLEED,
+  PRINT_SAFE_MARGIN,
   TEXT_OVERFLOW,
+  TYPE_ORPHANS,
+  TYPE_WIDOWS,
 } from "../spec";
 import { assertThat, compare, merge, nothing, type CheckResult } from "../types";
 import type { Check, QcContext } from "../engine";
@@ -114,6 +117,44 @@ export const geometryCheck: Check = {
           evidence: { template: fit.template, articleId: fit.articleId },
         }),
       );
+    }
+
+    /*
+     * Orphans and widows, from the measurement the paginator has always taken.
+     *
+     * A warning rather than a failure, and deliberately with a band: one stranded line in a
+     * twenty-six-article issue is a fact of setting text in columns, and a rule that fails on it
+     * would be a rule somebody turns off. Three in one flow is a page that was never looked at.
+     */
+    for (const flow of report.typography ?? []) {
+      if (flow.orphans) {
+        results.push(
+          compare({
+            spec: TYPE_ORPHANS,
+            actual: flow.orphans,
+            location: { entityType: "page", page: flow.page, entityId: flow.pageId, field: flow.articleId },
+            message: `Page ${flow.page} strands ${flow.orphans} first line(s) at the foot of a column.`,
+            evidence: { articleId: flow.articleId },
+          }),
+        );
+      }
+      if (flow.widows) {
+        results.push(
+          compare({
+            spec: TYPE_WIDOWS,
+            actual: flow.widows,
+            location: { entityType: "page", page: flow.page, entityId: flow.pageId, field: flow.articleId },
+            message: `Page ${flow.page} strands ${flow.widows} last line(s) at the head of a column.`,
+            evidence: { articleId: flow.articleId },
+          }),
+        );
+      }
+    }
+    if (!(report.typography ?? []).some((flow) => flow.orphans)) {
+      results.push(compare({ spec: TYPE_ORPHANS, actual: 0, location: { entityType: "edition", entityId: ctx.editionId }, message: "No first line stands alone at a column foot." }));
+    }
+    if (!(report.typography ?? []).some((flow) => flow.widows)) {
+      results.push(compare({ spec: TYPE_WIDOWS, actual: 0, location: { entityType: "edition", entityId: ctx.editionId }, message: "No last line stands alone at a column head." }));
     }
 
     for (const page of report.underfilled ?? []) {
@@ -303,7 +344,43 @@ export const printCheck: Check = {
     const actualBleedY = (ptToMm(height) - trim.height) / 2;
     const delta = Math.max(Math.abs(actualBleedX - bleed), Math.abs(actualBleedY - bleed));
 
-    return compare({
+    /*
+     * The safe margin, read off the artefact rather than assumed.
+     *
+     * Bleed is about what runs off the edge; the safe margin is about what must not come near it.
+     * A press trims within a millimetre or two of where it means to, so type set closer to the
+     * edge than the profile's safe margin is type that can come back cut. The renderer declares
+     * its own page insets in the stylesheet it embeds, and this reads them out of the file that
+     * was produced — so shrinking a margin to fit more copy is caught by the same measurement that
+     * would catch a template changing it.
+     */
+    const safe = ctx.profile.safeMarginMm ?? 0;
+    const results: CheckResult[] = [];
+    if (safe) {
+      const insets = ["--margin-x", "--margin-top", "--margin-bottom"]
+        .map((name) => new RegExp(`${name}\\s*:\\s*([\\d.]+)mm`).exec(artefact.html)?.[1])
+        .filter((value): value is string => Boolean(value))
+        .map(Number);
+      if (insets.length) {
+        const narrowest = Math.min(...insets);
+        results.push(
+          compare({
+            spec: PRINT_SAFE_MARGIN,
+            actual: narrowest,
+            direction: "at-least",
+            location: { entityType: "output", entityId: ctx.editionId, output: ctx.profile.id },
+            message:
+              narrowest < safe
+                ? `Type is set ${narrowest}mm from the trim where ${ctx.profile.title} asks for ${safe}mm. A press trimming within its tolerance would cut into it.`
+                : `Nothing is set closer than ${narrowest}mm to the trim; the profile asks for ${safe}mm.`,
+            expectedText: `≥ ${safe} mm`,
+            evidence: { insetsMm: insets, requiredMm: safe },
+          }),
+        );
+      }
+    }
+
+    results.push(compare({
       spec: PRINT_BLEED,
       actual: delta,
       location: { entityType: "output", entityId: ctx.editionId, output: ctx.profile.id },
@@ -313,6 +390,8 @@ export const printCheck: Check = {
           : `Bleed is ${bleed}mm on every edge, as the profile asks.`,
       expectedText: `${bleed} mm ± 0.5`,
       evidence: { trimMm: trim, expectedDocumentMm: documentSizeMm(ctx.profile), actualBleedMm: { x: Number(actualBleedX.toFixed(2)), y: Number(actualBleedY.toFixed(2)) } },
-    });
+    }));
+
+    return merge(...results);
   },
 };

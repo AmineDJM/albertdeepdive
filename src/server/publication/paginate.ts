@@ -216,6 +216,15 @@ export type LayoutReport = {
   blankPages: number[];
   imagesFailed: { page: number; mediaId: string }[];
   fit: { page: number; pageId: string; template: string; articleId: string; ratio: number }[];
+  /**
+   * Orphans and widows per flow, which the in-page measurement has always counted.
+   *
+   * A first line stranded at the foot of a column, or a last line stranded at the head of the next,
+   * is the oldest typographic fault there is and the one a reader notices without knowing why. The
+   * numbers were being computed on every pass and thrown away; now they leave the browser, so
+   * preflight can compare them with a threshold instead of nobody ever seeing them.
+   */
+  typography: { page: number; pageId: string; articleId: string; orphans: number; widows: number }[];
   pageCountMismatch?: { expected: number; actual: number };
   engine: string;
   /** Density passes that re-flowed the issue after moving a page's image/type levers. */
@@ -1123,6 +1132,9 @@ export function buildLayoutReport(
   const extentTarget = doc.meta.extent?.mode === "fixed" ? (doc.meta.extent.pages ?? 0) : 0;
   const extentMissed = extentTarget && doc.pages.length !== extentTarget ? ({ mode: "fixed", target: extentTarget, actual: doc.pages.length } as const) : undefined;
   const fit = measures.flatMap((m) => m.flows.map((f) => ({ page: m.number, pageId: m.pageId, template: m.template, articleId: f.articleId, ratio: f.fillRatio })));
+  const typography = measures.flatMap((m) =>
+    m.flows.filter((f) => (f.orphans ?? 0) > 0 || (f.widows ?? 0) > 0).map((f) => ({ page: m.number, pageId: m.pageId, articleId: f.articleId, orphans: f.orphans ?? 0, widows: f.widows ?? 0 })),
+  );
   return {
     ok: remainingOverflow.length === 0 && blankPages.length === 0 && imagesFailed.length === 0 && underfilled.length === 0 && mediaMissing.length === 0 && !extra.pageCountMismatch && !extentMissed,
     pages: doc.pages.length,
@@ -1132,6 +1144,7 @@ export function buildLayoutReport(
     paragraphsSplit: extra.stats.split,
     copyfitFlows: extra.stats.copyfit,
     rounds: extra.rounds,
+    typography,
     remainingOverflow,
     blankPages,
     underfilled,

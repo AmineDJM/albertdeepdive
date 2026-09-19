@@ -184,6 +184,32 @@ export const PAGE_UNDERFILLED = m({
   reference: "A warning, not a failure: an art director decides whether air is a mistake. Measured so the decision is informed.",
 });
 
+export const TYPE_ORPHANS = m({
+  id: "layout.type.orphans",
+  title: "No first line is left alone at the foot of a column",
+  method: "The in-page measurement counts, per flow, paragraphs whose first fragment across a column break is less than 1.6 line-heights tall.",
+  unit: "count",
+  failureThreshold: 3,
+  warningThreshold: 0,
+  severity: "WARNING",
+  repair: null,
+  origin: "INDUSTRY_STANDARD",
+  reference: "Standard composition practice: a paragraph's first line does not stand alone at a column foot.",
+});
+
+export const TYPE_WIDOWS = m({
+  id: "layout.type.widows",
+  title: "No last line is left alone at the head of a column",
+  method: "The in-page measurement counts, per flow, paragraphs whose last fragment across a column break is less than 1.6 line-heights tall.",
+  unit: "count",
+  failureThreshold: 3,
+  warningThreshold: 0,
+  severity: "WARNING",
+  repair: null,
+  origin: "INDUSTRY_STANDARD",
+  reference: "Standard composition practice: a paragraph's last line does not stand alone at a column head.",
+});
+
 export const IMAGE_RENDER_FAILED = m({
   id: "layout.image.failed",
   title: "Every image on a page actually rendered",
@@ -440,6 +466,8 @@ export const ALL_METRICS: readonly MetricSpec[] = [
   PAGE_COUNT_MATCHES,
   PAGE_FIT_RATIO,
   PAGE_UNDERFILLED,
+  TYPE_ORPHANS,
+  TYPE_WIDOWS,
   IMAGE_RENDER_FAILED,
   PDF_PARSES,
   PDF_PAGE_SIZE,

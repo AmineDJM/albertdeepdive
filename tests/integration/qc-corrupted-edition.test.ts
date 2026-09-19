@@ -83,6 +83,14 @@ describe("a deliberately broken issue, end to end", () => {
       .filter((each) => each.metricId === "layout.page.fit")
       .map((each) => `${each.location?.page}|${each.location?.field}`);
     expect(new Set(keys).size, "no two fit measurements share an address").toBe(keys.length);
+
+    // Typography: the paginator has counted stranded lines on every pass since it was written and
+    // thrown the numbers away. They are measured now, with a band — one orphan in a twenty-six
+    // article issue is setting text in columns; three in one flow is a page nobody looked at.
+    for (const metric of ["layout.type.orphans", "layout.type.widows"]) {
+      const measured = [...report.passed, ...report.findings].filter((each) => each.metricId === metric);
+      expect(measured.length, `${metric} must be measured, not merely catalogued`).toBeGreaterThan(0);
+    }
   }, 180_000);
 
   it("judges the same file for a press and says how many millimetres out it is", async () => {
@@ -107,6 +115,16 @@ describe("a deliberately broken issue, end to end", () => {
     const measured = (bleed!.evidence as { actualBleedMm: { x: number; y: number } }).actualBleedMm;
     expect(Math.abs(measured.x)).toBeLessThan(0.5);
     expect(Math.abs(measured.y)).toBeLessThan(0.5);
+
+    // The other half of the printer's geometry: what must not come near the edge. Read out of the
+    // stylesheet the artefact carries, so shrinking a margin to fit more copy is caught here.
+    const margin = find(report, "print.safe.margin") ?? passed(report, "print.safe.margin");
+    expect(margin, "the safe margin is measured off the file, not assumed").toBeTruthy();
+    const insets = (margin as { evidence?: { insetsMm: number[]; requiredMm: number } }).evidence;
+    if (insets) {
+      expect(insets.requiredMm).toBe(PROFILES.PRINT.safeMarginMm);
+      expect(Math.min(...insets.insetsMm), "the design system sets type 14mm from the trim").toBeGreaterThanOrEqual(PROFILES.PRINT.safeMarginMm!);
+    }
   }, 180_000);
 
   it("catches a number that two renderings of the same issue disagree about", async () => {
