@@ -1,7 +1,46 @@
 # The publication quality-control engine
 
-Status: **specified, not built.** This document is the agreed target. The tasks that implement it
-are tracked separately; nothing here should be read as describing code that exists today.
+Status: **built, in part.** The specification below is the agreed target and is kept whole; what
+follows immediately is what exists today, so nobody has to read 240 lines to find out which half is
+real. Anything in the spec and not in this list is not built.
+
+### What exists
+
+| Where | What |
+| --- | --- |
+| `src/server/qc/spec.ts` | The rule catalogue: 35 metrics, each with a method, a unit, thresholds, a severity, a repair strategy and a threshold origin, under one version (`QC_SPEC_VERSION`). In TypeScript rather than the JSON files the spec imagines — see the deviations below. |
+| `src/server/qc/profiles.ts` | Output profiles (PDF_SCREEN, PRINT, EMAIL, WEB, CAROUSEL, STORY, SOCIAL_POST, VIDEO_*) carrying the numbers that differ by destination: trim, bleed, minimum PPI, safe margin, viewport. |
+| `src/server/qc/engine.ts` | The loop: measure → compare → fail → repair → **remeasure with the same code**. Checks and repairs register rather than importing each other. A check that throws is recorded as skipped, never as passed. |
+| `src/server/qc/checks/` | Nine checks: storage, imagery, rights, geometry, pdf, print, email, web, and the integrity group (facts across outputs, revision scope, staleness, analytics reconciliation, provider output). |
+| `src/server/qc/repair.ts` | Six repairs, each local to the entity its finding named: regenerate a variant, drop an ineligible picture, swap to a valid one, reflow by shrinking a page's figures, re-sign a URL, re-render the artefact. |
+| `src/server/db/schema/qc.ts` | `qc_runs` and `qc_findings`: what was measured, against which catalogue version, what it was expected to be, what it measured, where, what repair was tried and what the second measurement said. |
+| `src/server/publication/preflight.ts` | The gate between a rendered file and a file anybody may have, with the draft/release policy. |
+| `src/server/publication/versions.ts` | The state machine: PENDING → RENDERING → PREFLIGHT → (REPAIRING → PREFLIGHT) → READY, or FAILED. `publishEdition` runs the gate before an issue can become PUBLISHED. |
+| `src/server/qc/jobs.ts` | Preflight off the request path, and a nightly sweep that re-measures published issues without repairing them. |
+| `src/app/(admin)/admin/quality/` | The console: every rule beside what it caught, per customer, per output, per release, with regression alerts — and a run screen showing each finding's evidence and before/after. |
+| `tests/unit/qc-spec.test.ts`, `tests/unit/qc-gate.test.ts` | The arithmetic, and the guards that keep the gate from acquiring a bypass. |
+| `tests/integration/qc-engine.test.ts`, `tests/integration/qc-corrupted-edition.test.ts` | Two deliberately broken issues, measured, repaired and blocked. |
+
+### Deliberate deviations from the specification below
+
+- **Rules are TypeScript, not JSON.** §1 asks for `qc/*.json`. They are one typed module instead, so
+  a threshold that does not exist is a compile error rather than a run-time surprise, and so a
+  metric's severity can be referenced by the check that measures it. Everything else §1 asks for —
+  metric id, method, unit, target, thresholds, severity, repair, origin, version — is there.
+- **Refused rights have no automatic repair.** The spec's repair table would let software take the
+  picture out. It may not: that would clear the gate because the evidence disappeared rather than
+  because anybody cleared the rights.
+- **Object keys stay flat and id-based** rather than `workspaces/{id}/…`: ownership is resolved from
+  the database, which is stronger than a path, and re-keying would invalidate every stored object
+  and published link.
+
+### Not built
+
+Brand colour ΔE00, video QA, Core Web Vitals and accessibility beyond page metadata, Resend
+delivery reconciliation against the provider, image-selection evaluation, the golden corpus and
+release-over-release layout snapshotting. The catalogue does not pretend otherwise: a rule with no
+check behind it would show on the Quality page as a rule that found nothing, which is why there are
+none.
 
 ## The rule
 

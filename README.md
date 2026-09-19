@@ -27,6 +27,7 @@ chief approves every issue.
 - [Object storage, in one press](#object-storage-in-one-press)
 - [Running the newsroom](#running-the-newsroom)
 - [Exports](#exports)
+- [Preflight](#preflight)
 - [Changing an issue that is already made](#changing-an-issue-that-is-already-made)
 - [After it has gone out](#after-it-has-gone-out)
 - [Social, and the two video shapes](#social-and-the-two-video-shapes)
@@ -277,6 +278,28 @@ validation and layout reports and its PDF/DOCX assets. Published versions are im
 
 PDF rendering needs Chromium. Playwright installs one with `pnpm exec playwright install chromium`,
 or set `PLAYWRIGHT_CHROMIUM_EXECUTABLE`.
+
+### Preflight
+
+A render that finishes is not yet a file anybody may have. Every version goes
+`PENDING → RENDERING → PREFLIGHT → (REPAIRING → PREFLIGHT) → READY`, and preflight measures **the
+file that was just made** rather than rendering a second one: the PDF is opened and every page read,
+every picture the issue depends on is looked for in storage, resolution is measured at the size each
+picture is actually placed, rights are checked, and the layout report is compared with its
+thresholds. What can be repaired locally is repaired — a logo unlinked from a story, a missing
+variant rebuilt from its original, a page's figures shrunk to free text area — and then measured
+again by the same code, so "fixed" is a second measurement rather than a claim.
+
+A draft is held to the artefact's own standard: a proof with rights nobody has cleared still reaches
+the newsroom that has to clear them, because that is how they find out. A final or published version
+is held to all of it. Nothing here is advisory and there is no override: the editorial gates can be
+overruled by an editor in chief, because whether an issue is *finished* is a judgement, but a
+clipped word is not a judgement and neither is a PDF page a press will reject.
+
+Every run is filed with its findings — metric, expected, measured, unit, threshold, place, repair,
+before, after — and **Admin → Quality** lists every rule beside what it caught, per customer, per
+output and per release, with an alert when a rule starts failing more often than it did before the
+last release. See [docs/QC-ENGINE.md](docs/QC-ENGINE.md).
 
 ## Changing an issue that is already made
 
@@ -580,5 +603,6 @@ lacking publication consent until an editor confirms it.
 - [docs/UI_CONVENTIONS.md](docs/UI_CONVENTIONS.md)
 - [docs/STORAGE.md](docs/STORAGE.md) — where an uploaded file actually goes, which storage is in
   use and why, and how to find out whether the bytes are still there
-- [docs/QC-ENGINE.md](docs/QC-ENGINE.md) — the measure/compare/fail/repair/remeasure quality system.
-  Specified, not built: it describes the target, not the code
+- [docs/QC-ENGINE.md](docs/QC-ENGINE.md) — the measure/compare/fail/repair/remeasure quality
+  system: what is built, what is deliberately different from the specification, and what is not
+  built yet
