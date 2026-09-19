@@ -115,44 +115,21 @@ export async function ingestMedia(input: IngestMediaInput): Promise<IngestedMedi
   const originalKey = storageKeys.mediaOriginal(assetId, ext);
   await storage.put(originalKey, input.buffer, { contentType: mimeType });
 
-  const keepPng = format === "png" || format === "gif";
-  const variantSpecs = [
-    { kind: "THUMBNAIL" as const, width: 480, format: "webp" as const, quality: 78 },
-    { kind: "WEB" as const, width: 1600, format: "webp" as const, quality: 82 },
-    {
-      kind: "PRINT" as const,
-      width: 2600,
-      format: keepPng ? ("png" as const) : ("jpeg" as const),
-      quality: 92,
-    },
-  ];
   const variantRows: (typeof mediaVariants.$inferInsert)[] = [];
-  for (const spec of variantSpecs) {
-    let pipeline = sharp(input.buffer, { failOn: "none" })
-      .rotate()
-      .resize({ width: spec.width, withoutEnlargement: true });
-    if (spec.format === "webp") pipeline = pipeline.webp({ quality: spec.quality });
-    else if (spec.format === "png") pipeline = pipeline.png({ compressionLevel: 9 });
-    else
-      pipeline = pipeline.jpeg({
-        quality: spec.quality,
-        mozjpeg: true,
-        chromaSubsampling: "4:4:4",
-      });
-    const { data, info } = await pipeline.toBuffer({ resolveWithObject: true });
-    const key = storageKeys.mediaVariant(assetId, spec.kind, spec.format);
-    await storage.put(key, data, {
-      contentType: `image/${spec.format}`,
+  for (const variant of await buildVariants(input.buffer, mimeType)) {
+    const key = storageKeys.mediaVariant(assetId, variant.kind, variant.format);
+    await storage.put(key, variant.data, {
+      contentType: variant.contentType,
       cacheControl: "public, max-age=31536000, immutable",
     });
     variantRows.push({
       assetId,
-      kind: spec.kind,
+      kind: variant.kind,
       storageKey: key,
-      width: info.width,
-      height: info.height,
-      sizeBytes: data.byteLength,
-      format: spec.format,
+      width: variant.width,
+      height: variant.height,
+      sizeBytes: variant.data.byteLength,
+      format: variant.format,
       cropSpec: null,
     });
   }
@@ -260,4 +237,40 @@ export async function ingestMedia(input: IngestMediaInput): Promise<IngestedMedi
   const variants = await db.insert(mediaVariants).values(variantRows).returning();
   log.info("ingested", { assetId, width, height, kind, quality: quality.score, flags });
   return { asset, variants };
+}
+
+export type BuiltVariant = {
+  kind: "THUMBNAIL" | "WEB" | "PRINT";
+  format: "webp" | "png" | "jpeg";
+  contentType: string;
+  data: Buffer;
+  width: number;
+  height: number;
+};
+
+/**
+ * The three sizes every picture is kept in, derived from the original.
+ *
+ * Extracted from the ingest so that a preflight repair can rebuild a variant whose file has gone
+ * missing without duplicating the recipe — a thumbnail regenerated at different settings from the
+ * one beside it is a subtler defect than the missing file it replaced.
+ */
+export async function buildVariants(original: Buffer, mimeType: string): Promise<BuiltVariant[]> {
+  const format = mimeType.split("/")[1]?.toLowerCase() ?? "";
+  const keepPng = format === "png" || format === "gif";
+  const specs = [
+    { kind: "THUMBNAIL" as const, width: 480, format: "webp" as const, quality: 78 },
+    { kind: "WEB" as const, width: 1600, format: "webp" as const, quality: 82 },
+    { kind: "PRINT" as const, width: 2600, format: keepPng ? ("png" as const) : ("jpeg" as const), quality: 92 },
+  ];
+  const out: BuiltVariant[] = [];
+  for (const spec of specs) {
+    let pipeline = sharp(original, { failOn: "none" }).rotate().resize({ width: spec.width, withoutEnlargement: true });
+    if (spec.format === "webp") pipeline = pipeline.webp({ quality: spec.quality });
+    else if (spec.format === "png") pipeline = pipeline.png({ compressionLevel: 9 });
+    else pipeline = pipeline.jpeg({ quality: spec.quality, mozjpeg: true, chromaSubsampling: "4:4:4" });
+    const { data, info } = await pipeline.toBuffer({ resolveWithObject: true });
+    out.push({ kind: spec.kind, format: spec.format, contentType: `image/${spec.format}`, data, width: info.width, height: info.height });
+  }
+  return out;
 }

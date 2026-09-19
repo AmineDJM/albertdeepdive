@@ -385,6 +385,7 @@ export async function buildEditionDocument(editionId: string, options: BuildDocu
       sectionId: p.sectionId && sectionById.has(p.sectionId) ? p.sectionId : null,
       articleIds: articleIdsOnPage,
       mediaIds: p.mediaAssetIds.filter((id) => mediaById.has(id)),
+      imageScale: p.imageScale,
       continuationOf: p.continuationOfPageId ? (pageNumberById.get(p.continuationOfPageId) ?? null) : null,
       isLocked: p.isLocked,
       notes: p.notes,

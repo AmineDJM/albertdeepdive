@@ -46,6 +46,15 @@ export const pagePlanPages = pgTable(
     isImageLocked: boolean("is_image_locked").notNull().default(false),
     fitEstimate: jsonb("fit_estimate").$type<PageFitEstimate | null>(),
     warnings: jsonb("warnings").$type<WarningItem[]>().notNull().default([]),
+    /**
+     * How much this page's figures are scaled inside their template's height band.
+     *
+     * Negative grows the pictures to fill a loose page; positive shrinks them to free text area,
+     * which is how a page absorbs what would otherwise be a continuation. The paginator has always
+     * used this lever during its density pass; persisting it is what lets a preflight repair make
+     * the same move and have the next render honour it.
+     */
+    imageScale: integer("image_scale").notNull().default(0),
     notes: text("notes"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),

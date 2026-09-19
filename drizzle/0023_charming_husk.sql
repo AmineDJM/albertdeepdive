@@ -1,0 +1,1 @@
+ALTER TABLE "page_plan_pages" ADD COLUMN "image_scale" integer DEFAULT 0 NOT NULL;

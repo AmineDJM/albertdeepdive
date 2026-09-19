@@ -15,4 +15,5 @@ export * from "./speech";
 export * from "./images";
 export * from "./showcase";
 export * from "./studio";
+export * from "./qc";
 export * from "./relations";

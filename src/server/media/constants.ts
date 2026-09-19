@@ -72,13 +72,30 @@ export type IllustrationCandidate = {
 /** Flags that make a picture unusable as a story's photograph, whatever else is true of it. */
 export const UNUSABLE_QUALITY_FLAGS = ["VERY_LOW_RESOLUTION", "EXTREME_ASPECT_RATIO"] as const;
 
-export function whyNotIllustration(asset: IllustrationCandidate): string | null {
+/**
+ * The same question with rights left out: is this the *kind* of thing that may carry a story.
+ *
+ * Split out because two callers want different halves of one rule. A picker wants the whole
+ * question — it must no more reach for a refused photograph than for a logo. Preflight wants only
+ * this half, because it measures rights under their own metric with their own severity: folding
+ * them in here would report one defect twice, and this half carries a repair ("take it off the
+ * story") that must never be how a rights gate gets cleared.
+ */
+export function whyNotPictureKind(asset: IllustrationCandidate): string | null {
   if (asset.isArchived) return "It has been archived.";
   if (asset.kind === "logo") return "A logo is a mark, not a picture of anything.";
-  if (asset.rightsStatus === "RED") return "Its rights are refused.";
   const flag = (asset.qualityFlags ?? []).find((each) => (UNUSABLE_QUALITY_FLAGS as readonly string[]).includes(each));
   if (flag) return QUALITY_FLAG_EXPLANATIONS[flag] ?? "It is not usable at the size a page needs.";
   return null;
+}
+
+export function whyNotIllustration(asset: IllustrationCandidate): string | null {
+  // The two facts about the thing itself are repeated rather than delegated, so that an archived
+  // logo still reads "archived" and a refused one still reads "refused" in that order.
+  if (asset.isArchived) return "It has been archived.";
+  if (asset.kind === "logo") return "A logo is a mark, not a picture of anything.";
+  if (asset.rightsStatus === "RED") return "Its rights are refused.";
+  return whyNotPictureKind(asset);
 }
 
 /** The same question, answered yes or no. */

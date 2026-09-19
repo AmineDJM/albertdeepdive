@@ -155,6 +155,20 @@
       "when": 1789812599276,
       "tag": "0021_eminent_yellow_claw",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1789824202492,
+      "tag": "0022_kind_shaman",
+      "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1789824685257,
+      "tag": "0023_charming_husk",
+      "breakpoints": true
     }
   ]
 }
