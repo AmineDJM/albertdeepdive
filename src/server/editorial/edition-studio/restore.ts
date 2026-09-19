@@ -29,6 +29,7 @@ function touches(ops: EditionOperation[]): { plan: boolean; extent: boolean; art
         extent = true;
         plan = true; // the extent decides how the next plan is built
         break;
+      case "remove_passage":
       case "shorten_article":
       case "expand_article":
       case "rewrite_headline":

@@ -46,9 +46,12 @@ describe("the sidebar", () => {
   });
 
   it("lights up for any of its tabs", () => {
-    const workbench = NAV_ITEMS.find((item) => item.href === "/editions")!;
+    const workbench = NAV_ITEMS.find((item) => item.href === "/publications")!;
     expect(resolveNavItem("EDITOR", workbench, "/archive")?.active).toBe(true);
+    // An edition's workspace is not one of its tabs any more — the list left the sidebar — but it
+    // still belongs to this part of the product, so the sidebar says so.
     expect(resolveNavItem("EDITOR", workbench, "/editions/abc/layout")?.active).toBe(true);
+    expect(resolveNavItem("EDITOR", workbench, "/publications")?.href).toBe("/publications");
     expect(resolveNavItem("EDITOR", workbench, "/subscribers")?.active).toBe(false);
   });
 });

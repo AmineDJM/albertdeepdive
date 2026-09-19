@@ -3,11 +3,10 @@ import Link from "next/link";
 import { Users } from "lucide-react";
 import { getCurrentUser, hasPermission } from "@/server/auth/session";
 import { editionAnalytics, editionComparison, listEditionOptions } from "@/server/analytics/service";
-import { centsToEur, formatHours, percentLabel } from "@/server/analytics/compute";
+import { formatHours, percentLabel } from "@/server/analytics/compute";
 import {
-  aiSpendByEdition,
-  aiSpendByModel,
-  aiSpendByService,
+  readerDelivery,
+  readerDeliveryByEdition,
   approvalLatency,
   contributionsByCampus,
   conversionFunnel,
@@ -29,7 +28,6 @@ import { Stat, StatGrid } from "@/components/newsroom/stat";
 import { CampusChip } from "@/components/newsroom/campus-chip";
 import { EditionStatusBadge } from "@/components/newsroom/status-badge";
 import { NoAccess } from "@/components/settings/no-access";
-import { Badge } from "@/components/ui/badge";
 import { ChartTheme } from "@/components/analytics/chart-theme";
 import { AreaChartCard, BarChartCard, GroupedBarCard } from "@/components/analytics/charts";
 import { FormattedBarCard } from "@/components/charts/formatted-bar-card";
@@ -37,13 +35,11 @@ import { FunnelCard } from "@/components/charts/funnel-card";
 import { HeatmapCard } from "@/components/charts/heatmap-card";
 import { StatusStackCard } from "@/components/charts/status-stack-card";
 import type { EditionStatus } from "@/lib/editorial/edition-state";
-import { enumLabel, formatCurrency, formatDate, formatNumber } from "@/lib/utils";
+import { formatDate, formatNumber } from "@/lib/utils";
 import { getUi } from "@/server/i18n/locale";
 
 export const dynamic = "force-dynamic";
 
-const euros = (cents: number) => formatCurrency(centsToEur(cents));
-const ms = (value: number | null) => (value === null ? "—" : value >= 1000 ? `${(value / 1000).toFixed(1)} s` : `${value} ms`);
 
 export default async function AnalyticsPage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
   const tr = await getUi();
@@ -56,7 +52,7 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
   const activity = resolveWindow(sp);
   const scope: AnalyticsScope = { editionId, from: activity.from, to: activity.to };
 
-  const [analytics, comparison, trend, pools, funnel, coverage, latency, aiEditions, aiServices, aiModels, rights, campuses, top] = await Promise.all([
+  const [analytics, comparison, trend, pools, funnel, coverage, latency, delivery, deliveryByEdition, rights, campuses, top] = await Promise.all([
     editionAnalytics(editionId),
     editionComparison(),
     submissionTrend(scope),
@@ -64,17 +60,14 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
     conversionFunnel(scope),
     sectionCoverage(scope),
     approvalLatency(scope),
-    aiSpendByEdition(scope),
-    aiSpendByService(scope),
-    aiSpendByModel(scope),
+    readerDelivery(scope),
+    readerDeliveryByEdition(scope),
     rightsByEdition(scope),
     contributionsByCampus(scope),
     mostActiveContributors(scope),
   ]);
 
   const windowLabel = activity.from || activity.to ? `${activity.from ? formatDate(activity.from) : "the beginning"} → ${activity.to ? formatDate(activity.to) : "today"}` : "all time";
-  const aiTotals = aiEditions.reduce((acc, r) => ({ calls: acc.calls + r.calls, tokens: acc.tokens + r.tokens, costCents: acc.costCents + r.costCents, cached: acc.cached + r.cached, failed: acc.failed + r.failed }), { calls: 0, tokens: 0, costCents: 0, cached: 0, failed: 0 });
-  const avgAiLatency = aiEditions.length ? Math.round(aiEditions.reduce((a, r) => a + (r.avgLatencyMs ?? 0) * r.calls, 0) / Math.max(1, aiEditions.reduce((a, r) => a + (r.avgLatencyMs === null ? 0 : r.calls), 0))) : null;
   const submissions = funnel.steps[0]?.value ?? 0;
   const storiesSelected = funnel.steps[3]?.value ?? 0;
   const articlesApproved = funnel.steps[5]?.value ?? 0;
@@ -101,7 +94,7 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
           <Stat label={tr("Response rate")} value={percentLabel(analytics.contributors.responseRate)} hint={`${analytics.contributors.responded} of ${analytics.contributors.invited} invited${editionId ? "" : " (all editions)"}`} tone={analytics.contributors.responseRate >= 0.5 ? "success" : "warning"} />
           <Stat label={tr("Stories selected")} value={storiesSelected} hint={`${percentLabel(funnel.storyRate)} of accepted submissions`} />
           <Stat label={tr("Articles approved")} value={articlesApproved} hint={`${percentLabel(funnel.approvalRate)} of the articles written`} />
-          <Stat label={tr("AI cost")} value={euros(aiTotals.costCents)} hint={`${formatNumber(aiTotals.tokens)} tokens · ${aiTotals.calls} calls`} />
+          <Stat label={tr("Opened")} value={percentLabel(delivery.openRate)} hint={delivery.delivered ? `${formatNumber(delivery.opened)} of ${formatNumber(delivery.delivered)} delivered` : tr("nothing sent in this window")} tone={delivery.openRate >= 0.3 ? "success" : delivery.delivered ? "default" : "muted"} />
           <Stat label={tr("Submission → decision")} value={formatHours(latency.avgSubmissionToDecisionHours)} hint={latency.reviewed ? `median ${formatHours(latency.medianSubmissionToDecisionHours)} over ${latency.reviewed} decisions` : "no decision recorded yet"} tone={latency.avgSubmissionToDecisionHours !== null && latency.avgSubmissionToDecisionHours > 168 ? "warning" : "default"} />
         </StatGrid>
 
@@ -170,68 +163,57 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
           </div>
         </section>
 
+        {/*
+          * What happened to the issues that went out.
+          *
+          * This section used to be the AI bill — cost per service, tokens per model, cost per
+          * edition. Those are the operator's numbers: a newsroom cannot act on them, they are not
+          * theirs to act on, and showing somebody the cost of running their own subscription is a
+          * strange thing to do. They live in the Platform console now. What a newsroom came here
+          * for is whether anybody read the thing.
+          *
+          * Rates are against what was delivered rather than what was sent, because an address that
+          * bounced never had the chance to open it.
+          */}
         <section>
-          <SectionTitle>{tr("AI usage —")}{" "}{windowLabel}</SectionTitle>
+          <SectionTitle>{tr("Readers —")}{" "}{windowLabel}</SectionTitle>
           <StatGrid columns={4} className="mb-4">
-            <Stat label={tr("Estimated cost")} value={euros(aiTotals.costCents)} hint={`${aiEditions.length} edition${aiEditions.length === 1 ? "" : "s"} with AI activity`} />
-            <Stat label={tr("Tokens")} value={formatNumber(aiTotals.tokens)} hint={tr("input + output")} />
-            <Stat label={tr("Calls")} value={aiTotals.calls} hint={`${aiTotals.cached} served from cache · ${aiTotals.failed} failed`} tone={aiTotals.failed ? "warning" : "default"} />
-            <Stat label={tr("Average latency")} value={ms(avgAiLatency)} hint={tr("uncached calls only")} />
+            <Stat label={tr("Delivered")} value={formatNumber(delivery.delivered)} hint={delivery.sent ? `${percentLabel(delivery.deliveryRate)} of ${formatNumber(delivery.sent)} sent · ${formatNumber(delivery.bounced)} bounced` : tr("nothing sent in this window")} tone={delivery.bounced ? "warning" : "default"} />
+            <Stat label={tr("Opened")} value={percentLabel(delivery.openRate)} hint={`${formatNumber(delivery.opened)} reader(s) · ${formatNumber(delivery.opens)} opens in total`} tone={delivery.openRate >= 0.3 ? "success" : "default"} />
+            <Stat label={tr("Clicked")} value={percentLabel(delivery.clickRate)} hint={`${formatNumber(delivery.clicked)} reader(s) · ${formatNumber(delivery.clicks)} clicks in total`} tone={delivery.clickRate >= 0.05 ? "success" : "default"} />
+            <Stat label={tr("Opened, then clicked")} value={percentLabel(delivery.clickThroughRate)} hint={tr("of the people who opened it")} />
           </StatGrid>
           <div className="grid gap-4 xl:grid-cols-2">
-            <FormattedBarCard
-              title={tr("Cost per pipeline service")}
-              description={tr("Which step of the pipeline spends the budget.")}
-              data={aiServices.map((r) => ({ label: enumLabel(r.service), value: Math.round(r.costCents * 100) / 100, calls: r.calls }))}
-              valueLabel="Cost"
-              horizontal
-              format="currencyFromCents"
-              emptyText="No AI call in this window."
+            <BarChartCard
+              title={tr("Open rate per issue")}
+              description={tr("Share of the readers it reached who opened it.")}
+              data={[...deliveryByEdition].reverse().map((r) => ({ label: r.label, value: Math.round(r.openRate * 1000) / 10 }))}
+              valueLabel="Open rate"
+              emptyText="No issue has been emailed in this window."
             />
             <BarChartCard
-              title={tr("Tokens per pipeline service")}
-              description={tr("Input and output tokens combined.")}
-              data={aiServices.map((r) => ({ label: enumLabel(r.service), value: r.tokens }))}
-              valueLabel="Tokens"
-              horizontal
-              emptyText="No AI call in this window."
+              title={tr("Click rate per issue")}
+              description={tr("Share of the readers it reached who followed a link.")}
+              data={[...deliveryByEdition].reverse().map((r) => ({ label: r.label, value: Math.round(r.clickRate * 1000) / 10 }))}
+              valueLabel="Click rate"
+              emptyText="No issue has been emailed in this window."
             />
           </div>
-          <div className="mt-4 grid gap-4 xl:grid-cols-2">
-            <div>
-              <SectionTitle>{tr("Per edition")}</SectionTitle>
-              <DataTable
-                rows={aiEditions}
-                rowKey={(r) => r.editionId ?? "unassigned"}
-                dense
-                empty={{ title: tr("No AI activity"), description: tr("No AI call was recorded in this window.") }}
-                columns={[
-                  { key: "edition", header: tr("Edition"), cell: (r) => (r.editionId ? <Link href={`/analytics?editionId=${r.editionId}`} className="font-medium hover:underline">{r.label}</Link> : <span className="text-muted-foreground">{r.label}</span>) },
-                  { key: "calls", header: tr("Calls"), cell: (r) => <span className="tabular text-xs">{r.calls}</span>, align: "right" },
-                  { key: "tokens", header: tr("Tokens"), cell: (r) => <span className="tabular text-xs">{formatNumber(r.tokens)}</span>, align: "right" },
-                  { key: "cost", header: tr("Cost"), cell: (r) => <span className="tabular text-xs">{euros(r.costCents)}</span>, align: "right" },
-                  { key: "cached", header: tr("Cached"), cell: (r) => <span className="tabular text-xs text-muted-foreground">{r.cached}</span>, align: "right" },
-                  { key: "latency", header: tr("Latency"), cell: (r) => <span className="tabular text-xs text-muted-foreground">{ms(r.avgLatencyMs)}</span>, align: "right" },
-                ]}
-              />
-            </div>
-            <div>
-              <SectionTitle>{tr("Per model")}</SectionTitle>
-              <DataTable
-                rows={aiModels}
-                rowKey={(r) => `${r.provider}:${r.model}`}
-                dense
-                empty={{ title: tr("No model used"), description: tr("No AI call was recorded in this window.") }}
-                columns={[
-                  { key: "model", header: tr("Model"), cell: (r) => <span className="font-mono text-xs">{r.model}</span> },
-                  { key: "provider", header: tr("Provider"), cell: (r) => <Badge variant="outline">{r.provider}</Badge> },
-                  { key: "calls", header: tr("Calls"), cell: (r) => <span className="tabular text-xs">{r.calls}</span>, align: "right" },
-                  { key: "tokens", header: tr("Tokens"), cell: (r) => <span className="tabular text-xs">{formatNumber(r.tokens)}</span>, align: "right" },
-                  { key: "cost", header: tr("Cost"), cell: (r) => <span className="tabular text-xs">{euros(r.costCents)}</span>, align: "right" },
-                  { key: "latency", header: tr("Latency"), cell: (r) => <span className="tabular text-xs text-muted-foreground">{ms(r.avgLatencyMs)}</span>, align: "right" },
-                ]}
-              />
-            </div>
+          <div className="mt-4">
+            <DataTable
+              rows={deliveryByEdition}
+              rowKey={(r) => r.editionId}
+              dense
+              empty={{ title: tr("Nothing has been emailed yet"), description: tr("Once an issue goes out, who received it, opened it and clicked is counted here.") }}
+              columns={[
+                { key: "edition", header: tr("Edition"), cell: (r) => <Link href={`/analytics?editionId=${r.editionId}`} className="font-medium hover:underline">{r.label}</Link> },
+                { key: "sent", header: tr("Sent"), cell: (r) => <span className="tabular text-xs">{formatNumber(r.sent)}</span>, align: "right" },
+                { key: "delivered", header: tr("Delivered"), cell: (r) => <span className="tabular text-xs">{formatNumber(r.delivered)}</span>, align: "right" },
+                { key: "bounced", header: tr("Bounced"), cell: (r) => <span className={`tabular text-xs ${r.bounced ? "text-warning" : "text-muted-foreground"}`}>{formatNumber(r.bounced)}</span>, align: "right" },
+                { key: "opened", header: tr("Opened"), cell: (r) => <span className="tabular text-xs">{percentLabel(r.openRate)}</span>, align: "right" },
+                { key: "clicked", header: tr("Clicked"), cell: (r) => <span className="tabular text-xs">{percentLabel(r.clickRate)}</span>, align: "right" },
+              ]}
+            />
           </div>
         </section>
 
@@ -269,13 +251,12 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
               valueLabel="Submissions"
               emptyText="No edition has received a contribution yet."
             />
-            <FormattedBarCard
-              title={tr("AI cost per edition")}
-              description={tr("Estimated from the tokens each call actually used.")}
-              data={[...comparison].reverse().map((e) => ({ label: e.label, value: Math.round(e.aiCostCents * 100) / 100 }))}
-              valueLabel="Cost"
-              format="currencyFromCents"
-              emptyText="No AI call has been recorded yet."
+            <BarChartCard
+              title={tr("Stories per edition")}
+              description={tr("Chosen from what arrived, issue by issue.")}
+              data={[...comparison].reverse().map((e) => ({ label: e.label, value: e.stories }))}
+              valueLabel="Stories"
+              emptyText="No edition has selected a story yet."
             />
           </div>
           <div className="mt-4">
@@ -298,7 +279,6 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
                 { key: "stories", header: tr("Stories"), cell: (r) => <span className="tabular text-xs">{r.stories}</span>, align: "right" },
                 { key: "articles", header: tr("Approved"), cell: (r) => <span className="tabular text-xs">{r.articlesApproved}</span>, align: "right" },
                 { key: "pages", header: tr("Pages"), cell: (r) => <span className="tabular text-xs text-muted-foreground">{r.pages ?? "—"} / {r.targetPageCount}</span>, align: "right" },
-                { key: "ai", header: tr("AI cost"), cell: (r) => <span className="tabular text-xs">{euros(r.aiCostCents)}</span>, align: "right" },
               ]}
             />
           </div>

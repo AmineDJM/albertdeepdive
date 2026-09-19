@@ -6,7 +6,7 @@ import { ensureSeeded } from "../helpers/db";
 import { runAsOrganization } from "@/server/tenancy/context";
 import { confirmSubscription, subscribe } from "@/server/subscribers/service";
 import { enableOutput } from "@/server/outputs/service";
-import { publishWebEdition, sendEditionEmail } from "@/server/outputs/publish";
+import { publishWebEdition, republishEdition, sendEditionEmail } from "@/server/outputs/publish";
 import { ValidationError } from "@/lib/action-result";
 
 /**
@@ -94,5 +94,53 @@ describe("sending an edition", () => {
     expect(output?.recipientCount).toBe(2);
     expect(output?.deliveredCount).toBe(2);
     expect(output?.publishedAt).toBeTruthy();
+  });
+
+  /*
+   * An issue that was published and then corrected had nowhere to go: the send refused a second
+   * time, and the PDF stayed the one from before. Two ways forward now, and the whole point is
+   * that they are not the same button.
+   */
+  it("sends it again when asked, and records that this was a second send", async () => {
+    const before = await db.query.emailLog.findMany({ where: and(eq(s.emailLog.editionId, editionId), eq(s.emailLog.template, "edition_email")) });
+    const result = await sendEditionEmail(editionId, null, { resend: true });
+    expect(result.sent).toBe(2);
+    const after = await db.query.emailLog.findMany({ where: and(eq(s.emailLog.editionId, editionId), eq(s.emailLog.template, "edition_email")) });
+    expect(after.length).toBe(before.length + 2);
+    const audit = await db.query.auditLog.findFirst({
+      where: and(eq(s.auditLog.editionId, editionId), eq(s.auditLog.action, "output.email.send")),
+      orderBy: [desc(s.auditLog.createdAt)],
+    });
+    expect((audit?.metadata as { resend?: boolean } | null)?.resend).toBe(true);
+  });
+
+  it("republishes the frozen formats and emails nobody", async () => {
+    await runAsOrganization(organizationId, async () => {
+      await enableOutput(editionId, "MAGAZINE");
+    });
+    const before = await db.query.emailLog.findMany({ where: and(eq(s.emailLog.editionId, editionId), eq(s.emailLog.template, "edition_email")) });
+
+    const lines = await republishEdition(editionId);
+    const byFormat = Object.fromEntries(lines.map((line) => [line.format, line]));
+
+    // The PDF is a frozen artefact, so it is made again from the issue as it reads now.
+    expect(byFormat.MAGAZINE.done).toBe(true);
+    const magazine = await db.query.editionOutputs.findFirst({ where: and(eq(s.editionOutputs.editionId, editionId), eq(s.editionOutputs.format, "MAGAZINE")) });
+    expect(magazine?.status).toBe("PENDING");
+    expect(magazine?.versionId).toBeTruthy();
+    const version = await db.query.publicationVersions.findFirst({ where: eq(s.publicationVersions.id, magazine!.versionId!) });
+    expect(version?.kind).toBe("DRAFT");
+    expect(version?.notes).toBe("Republished");
+
+    // The web page is built when it is read, so there is nothing to remake.
+    expect(byFormat.WEB.done).toBe(true);
+    expect(byFormat.WEB.detail).toContain("built when it is read");
+
+    // And the thing that must not happen: a republish does not put a second message in an inbox.
+    expect(byFormat.EMAIL.done).toBe(false);
+    const after = await db.query.emailLog.findMany({ where: and(eq(s.emailLog.editionId, editionId), eq(s.emailLog.template, "edition_email")) });
+    expect(after.length).toBe(before.length);
+    const email = await db.query.editionOutputs.findFirst({ where: and(eq(s.editionOutputs.editionId, editionId), eq(s.editionOutputs.format, "EMAIL")) });
+    expect(email?.status).toBe("PUBLISHED");
   });
 });

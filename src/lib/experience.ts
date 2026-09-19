@@ -34,6 +34,10 @@ export function isExperienceMode(value: unknown): value is ExperienceMode {
  */
 export const STANDARD_PATHS = new Set<string>([
   "/overview",
+  "/publications",
+  // The list is no longer a destination in the sidebar, but an edition's own workspace is where
+  // most of the work happens and it is opened from Home. It is on Standard's way, and a path that
+  // is not counts as somewhere Standard does not go.
   "/editions",
   "/archive",
   "/library",

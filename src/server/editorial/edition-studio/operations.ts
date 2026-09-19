@@ -28,6 +28,14 @@ export const editionOperationSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("copyfit") }),
 
   z.object({ kind: z.literal("shorten_article"), articleId: z.string().uuid(), targetWords: z.number().int().min(60).max(2000) }),
+  /**
+   * Take out exactly these words.
+   *
+   * Distinct from shortening on purpose: a word count says how much goes, never which words. When
+   * somebody quotes the passage they want gone, obeying is arithmetic, and passing it to a copy
+   * editor with "lose forty words" is how the quoted paragraph survives and something else dies.
+   */
+  z.object({ kind: z.literal("remove_passage"), articleId: z.string().uuid(), passage: z.string().min(8).max(2000) }),
   z.object({ kind: z.literal("expand_article"), articleId: z.string().uuid(), targetWords: z.number().int().min(60).max(2000) }),
   z.object({ kind: z.literal("rewrite_headline"), articleId: z.string().uuid(), instruction: z.string().max(400).nullable() }),
   /** The person dictated the words; this is manual editing arriving through the conversation. */
@@ -74,6 +82,8 @@ export function summarise(op: EditionOperation): string {
       return "Issue re-measured and re-fitted";
     case "shorten_article":
       return `Article shortened to about ${op.targetWords} words`;
+    case "remove_passage":
+      return "Passage removed";
     case "expand_article":
       return `Article developed to about ${op.targetWords} words`;
     case "rewrite_headline":
@@ -145,6 +155,13 @@ export function describe(op: EditionOperation, names: OperationNames = {}): Phra
       return headline
         ? { text: "Shorten “{headline}” to about {words} words", values: { headline, words: op.targetWords } }
         : { text: "Shorten an article to about {words} words", values: { words: op.targetWords } };
+    }
+    case "remove_passage": {
+      const headline = article(op.articleId);
+      const quoted = op.passage.length > 60 ? `${op.passage.slice(0, 60).trim()}…` : op.passage;
+      return headline
+        ? { text: "Take “{passage}” out of “{headline}”", values: { passage: quoted, headline } }
+        : { text: "Take “{passage}” out of an article", values: { passage: quoted } };
     }
     case "expand_article": {
       const headline = article(op.articleId);
@@ -223,6 +240,9 @@ export function supersedes(a: EditionOperation, b: EditionOperation): boolean {
     case "set_headline":
     case "set_standfirst":
       return "articleId" in b && a.articleId === b.articleId;
+    // Two passages are two cuts. Only the identical one replaces itself, which `stage` handles.
+    case "remove_passage":
+      return false;
     case "set_page_template":
     case "set_page_story":
     case "set_page_notes":

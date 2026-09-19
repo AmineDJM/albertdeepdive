@@ -20,7 +20,9 @@ describe("the experience mode", () => {
 
   it("puts six places on the Standard sidebar, three to work and three to look after", () => {
     const nav = navItemsFor("standard");
-    expect(nav.primary.map((item) => item.href)).toEqual(["/overview", "/editions", "/library"]);
+    // The editions list left the sidebar: Home already opens on the issue being made and the
+    // recent ones, so a second list a click away was the same answer twice.
+    expect(nav.primary.map((item) => item.href)).toEqual(["/overview", "/publications", "/library"]);
     expect(nav.secondary.map((item) => item.href)).toEqual(["/subscribers", "/analytics", "/settings"]);
     // Content folds into the editions; Brand becomes a line under Settings.
     expect([...nav.primary, ...nav.secondary].some((item) => item.href === "/content" || item.href === "/settings/brand")).toBe(false);
@@ -40,12 +42,12 @@ describe("the experience mode", () => {
   });
 
   it("keeps a hidden tab on the row while the reader is on it", () => {
-    expect(tabsFor("standard", WORKBENCH_TABS, "/editions").map((t) => t.href)).toEqual(["/editions", "/archive"]);
+    expect(tabsFor("standard", WORKBENCH_TABS, "/publications").map((t) => t.href)).toEqual(["/publications", "/archive"]);
     // Opened from a link, the studio still shows where it is.
-    expect(tabsFor("standard", WORKBENCH_TABS, "/studio/abc").map((t) => t.href)).toEqual(["/editions", "/studio", "/archive"]);
+    expect(tabsFor("standard", WORKBENCH_TABS, "/studio/abc").map((t) => t.href)).toEqual(["/publications", "/studio", "/archive"]);
     expect(tabsFor("standard", AUDIENCE_TABS, "/subscribers").map((t) => t.href)).toEqual(["/subscribers", "/contributors"]);
     expect(tabsFor("standard", INSIGHTS_TABS, "/analytics").map((t) => t.href)).toEqual(["/analytics"]);
-    expect(tabsFor("advanced", WORKBENCH_TABS, "/editions")).toHaveLength(WORKBENCH_TABS.length);
+    expect(tabsFor("advanced", WORKBENCH_TABS, "/publications")).toHaveLength(WORKBENCH_TABS.length);
   });
 
   it("lists seven settings pages in Standard and every page in Advanced", () => {

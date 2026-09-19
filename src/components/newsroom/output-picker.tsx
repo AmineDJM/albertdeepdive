@@ -2,12 +2,23 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { AlertCircle, BookOpen, Check, ExternalLink, Globe, Mail, Printer, Send } from "lucide-react";
+import { AlertCircle, BookOpen, Check, ExternalLink, Globe, Mail, Printer, RefreshCw, Send } from "lucide-react";
 import { toast } from "sonner";
-import { publishWebEditionAction, sendEditionEmailAction, toggleOutputAction } from "@/app/(newsroom)/editions/[editionId]/output-actions";
+import { publishWebEditionAction, republishEditionAction, resendEditionEmailAction, sendEditionEmailAction, toggleOutputAction } from "@/app/(newsroom)/editions/[editionId]/output-actions";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { useTranslations } from "@/components/i18n/provider";
+import { useTranslations, useUi } from "@/components/i18n/provider";
 import type { OutputFormat } from "@/server/outputs/service";
 
 export type OutputRow = {
@@ -34,6 +45,7 @@ const ICONS: Record<OutputFormat, typeof Mail> = { EMAIL: Mail, WEB: Globe, MAGA
 export function OutputPicker({ editionId, rows, canEdit, canPublish }: { editionId: string; rows: OutputRow[]; canEdit: boolean; canPublish: boolean }) {
   const router = useRouter();
   const t = useTranslations();
+  const tr = useUi();
   const [pending, startTransition] = useTransition();
   const [busy, setBusy] = useState<OutputFormat | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -96,8 +108,73 @@ export function OutputPicker({ editionId, rows, canEdit, canPublish }: { edition
     return null;
   }
 
+  /*
+   * What is left to do once something has gone out.
+   *
+   * An issue that has been published and then corrected had nowhere to go: the send refused a
+   * second time and the PDF stayed the one from before. So there are two controls, and they are
+   * deliberately not the same button. Republish remakes the frozen files and touches nobody's
+   * inbox; sending again is a second message to every reader, so it says how many and asks.
+   */
+  function afterPublishing(row: OutputRow) {
+    if (!canPublish || !row.enabled || row.status !== "PUBLISHED") return null;
+    if (row.format !== "EMAIL") return null;
+    return (
+      <AlertDialog>
+        <AlertDialogTrigger asChild>
+          <Button size="xs" variant="ghost" loading={pending && busy === "EMAIL"}>
+            <Send /> {tr("Send again")}</Button>
+        </AlertDialogTrigger>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{tr("Send this issue again?")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {tr("Everybody who received it will get a second message, with the issue as it reads now. There is no way to take an email back.")}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{tr("Cancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() =>
+                run("EMAIL", async () => {
+                  const result = await resendEditionEmailAction(editionId);
+                  if (result.ok) toast.success(tr("Sent again to {n} reader(s)", { n: result.data.sent }));
+                  return result;
+                })
+              }
+            >
+              {tr("Send again")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    );
+  }
+
+  const published = rows.some((row) => row.enabled && row.status === "PUBLISHED");
+
   return (
     <div className="space-y-2">
+      {published && canPublish ? (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-dashed border-border px-3 py-2">
+          <p className="text-2xs text-muted-foreground">
+            {tr("Corrected this issue after it went out? Republish remakes the PDF and the print files from the issue as it reads now. It emails nobody.")}
+          </p>
+          <Button
+            size="xs"
+            variant="outline"
+            loading={pending && busy === "MAGAZINE"}
+            onClick={() =>
+              run("MAGAZINE", async () => {
+                const result = await republishEditionAction(editionId);
+                if (result.ok) toast.success(result.data.filter((line) => line.done).map((line) => `${rows.find((row) => row.format === line.format)?.label ?? line.format}: ${line.detail}`).join(" ") || tr("Nothing needed remaking."));
+                return result;
+              })
+            }
+          >
+            <RefreshCw /> {tr("Republish")}</Button>
+        </div>
+      ) : null}
       <div className="grid gap-2 sm:grid-cols-2">
         {rows.map((row) => {
           const Icon = ICONS[row.format];
@@ -134,6 +211,7 @@ export function OutputPicker({ editionId, rows, canEdit, canPublish }: { edition
               </button>
               <span className="flex shrink-0 flex-col items-end gap-1">
                 {action(row)}
+                {afterPublishing(row)}
                 {row.publicUrl && row.status === "PUBLISHED" ? (
                   <a href={row.publicUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-2xs text-muted-foreground underline-offset-4 hover:underline">
                     {t("outputs.open")} <ExternalLink className="size-2.5" />

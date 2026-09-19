@@ -8,6 +8,7 @@
  */
 import { and, asc, desc, eq, gte, inArray, lte, ne, sql, type SQL } from "drizzle-orm";
 import { db } from "@/server/db/client";
+import { scoped } from "@/server/tenancy/scope";
 import * as s from "@/server/db/schema";
 import { averageOf, bucketByDay, hoursBetween, responseRate, safeRatio, type DayBucket } from "./compute";
 import { SELECTED_STORY_STATUSES } from "./service";
@@ -302,43 +303,7 @@ export async function approvalLatency(scope: AnalyticsScope): Promise<Latency> {
   };
 }
 
-// ── AI spend and media rights per edition ──────────────────────────────────
-
-export type AiSpendRow = { editionId: string | null; label: string; calls: number; tokens: number; costCents: number; failed: number; cached: number; avgLatencyMs: number | null };
-
-/** AI calls, tokens and cost grouped by edition (calls with no edition land under "Unassigned"). */
-export async function aiSpendByEdition(scope: AnalyticsScope): Promise<AiSpendRow[]> {
-  const where: SQL[] = [...windowOn(s.aiJobs.createdAt, scope)];
-  if (scope.editionId) where.push(eq(s.aiJobs.editionId, scope.editionId));
-  const rows = await db
-    .select({
-      editionId: s.aiJobs.editionId,
-      label: s.editions.label,
-      year: s.editions.year,
-      month: s.editions.month,
-      calls: sql<number>`count(*)`,
-      tokens: sql<number>`coalesce(sum(coalesce(${s.aiJobs.inputTokens}, 0) + coalesce(${s.aiJobs.outputTokens}, 0)), 0)`,
-      costCents: sql<number>`coalesce(sum(${s.aiJobs.costCents}), 0)`,
-      failed: sql<number>`count(*) filter (where ${s.aiJobs.status} = 'FAILED')`,
-      cached: sql<number>`count(*) filter (where ${s.aiJobs.cached})`,
-      avgLatencyMs: sql<number | null>`avg(${s.aiJobs.latencyMs}) filter (where ${s.aiJobs.cached} = false)`,
-    })
-    .from(s.aiJobs)
-    .leftJoin(s.editions, eq(s.editions.id, s.aiJobs.editionId))
-    .where(where.length ? and(...where) : undefined)
-    .groupBy(s.aiJobs.editionId, s.editions.label, s.editions.year, s.editions.month)
-    .orderBy(asc(s.editions.year), asc(s.editions.month));
-  return rows.map((r) => ({
-    editionId: r.editionId,
-    label: r.label ?? "Unassigned",
-    calls: n(r.calls),
-    tokens: n(r.tokens),
-    costCents: n(r.costCents),
-    failed: n(r.failed),
-    cached: n(r.cached),
-    avgLatencyMs: r.avgLatencyMs === null ? null : Math.round(Number(r.avgLatencyMs)),
-  }));
-}
+// ── Media rights per edition ───────────────────────────────────────────────
 
 export type RightsRow = { editionId: string | null; label: string; green: number; yellow: number; red: number; total: number };
 
@@ -432,46 +397,85 @@ export async function mostActiveContributors(scope: AnalyticsScope, limit = 10):
   return rows.map((r) => ({ ...r, submissions: n(r.submissions), accepted: n(r.accepted), stories: n(r.stories), lastAt: r.lastAt ? new Date(r.lastAt) : null }));
 }
 
-export type AiServiceRow = { service: string; calls: number; tokens: number; costCents: number; avgLatencyMs: number | null };
+/* ── Who read it ──────────────────────────────────────────────────────────────────────────── */
 
-/** AI calls, tokens and cost grouped by pipeline service, inside the window. */
-export async function aiSpendByService(scope: AnalyticsScope): Promise<AiServiceRow[]> {
-  const where: SQL[] = [...windowOn(s.aiJobs.createdAt, scope)];
-  if (scope.editionId) where.push(eq(s.aiJobs.editionId, scope.editionId));
-  const rows = await db
-    .select({
-      service: s.aiJobs.service,
-      calls: sql<number>`count(*)`,
-      tokens: sql<number>`coalesce(sum(coalesce(${s.aiJobs.inputTokens}, 0) + coalesce(${s.aiJobs.outputTokens}, 0)), 0)`,
-      costCents: sql<number>`coalesce(sum(${s.aiJobs.costCents}), 0)`,
-      avgLatencyMs: sql<number | null>`avg(${s.aiJobs.latencyMs}) filter (where ${s.aiJobs.cached} = false)`,
-    })
-    .from(s.aiJobs)
-    .where(where.length ? and(...where) : undefined)
-    .groupBy(s.aiJobs.service)
-    .orderBy(desc(sql`coalesce(sum(${s.aiJobs.costCents}), 0)`));
-  return rows.map((r) => ({ service: r.service, calls: n(r.calls), tokens: n(r.tokens), costCents: n(r.costCents), avgLatencyMs: r.avgLatencyMs === null ? null : Math.round(Number(r.avgLatencyMs)) }));
+/**
+ * What happened to the emails this newsroom sent.
+ *
+ * The customer's own numbers, and the ones they actually came for: an issue is written to be read,
+ * and until now this page could tell them how many submissions arrived and what the AI had cost —
+ * a figure that is the operator's business, not theirs — while saying nothing about whether
+ * anybody opened the thing.
+ *
+ * Counted from the delivery log rather than from a provider dashboard, so an open is an open this
+ * workspace recorded. Rates are against what was delivered, not against what was sent: an address
+ * that bounced never had the chance to open, and counting it as a miss makes every rate a lie
+ * about the people who did receive it.
+ *
+ * Scoped by workspace, unlike its neighbours in this file — the delivery log is one table for every
+ * customer, so a missing `organization_id` here would put one newsroom's readers in another's
+ * figures. The rest of this module still reads unscoped, which is a separate thing to fix.
+ */
+export type DeliveryTotals = {
+  sent: number;
+  delivered: number;
+  bounced: number;
+  opened: number;
+  clicked: number;
+  opens: number;
+  clicks: number;
+  deliveryRate: number;
+  openRate: number;
+  clickRate: number;
+  /** Of the people who opened it, how many went on to click. */
+  clickThroughRate: number;
+};
+
+function ratesFrom(row: { sent: number; delivered: number; bounced: number; opened: number; clicked: number; opens: number; clicks: number }): DeliveryTotals {
+  return {
+    ...row,
+    deliveryRate: safeRatio(row.delivered, row.sent),
+    openRate: safeRatio(row.opened, row.delivered),
+    clickRate: safeRatio(row.clicked, row.delivered),
+    clickThroughRate: safeRatio(row.clicked, row.opened),
+  };
 }
 
-export type AiModelRow = { model: string; provider: string; calls: number; tokens: number; costCents: number; avgLatencyMs: number | null; cached: number };
+const DELIVERY_COLUMNS = {
+  sent: sql<number>`count(*) filter (where ${s.emailLog.sentAt} is not null)`,
+  delivered: sql<number>`count(*) filter (where ${s.emailLog.deliveredAt} is not null)`,
+  bounced: sql<number>`count(*) filter (where ${s.emailLog.bouncedAt} is not null)`,
+  opened: sql<number>`count(*) filter (where ${s.emailLog.openedAt} is not null)`,
+  clicked: sql<number>`count(*) filter (where ${s.emailLog.clickedAt} is not null)`,
+  opens: sql<number>`coalesce(sum(${s.emailLog.opens}), 0)`,
+  clicks: sql<number>`coalesce(sum(${s.emailLog.clicks}), 0)`,
+};
 
-/** AI calls grouped by model, inside the window — what the newsroom actually paid for. */
-export async function aiSpendByModel(scope: AnalyticsScope): Promise<AiModelRow[]> {
-  const where: SQL[] = [...windowOn(s.aiJobs.createdAt, scope)];
-  if (scope.editionId) where.push(eq(s.aiJobs.editionId, scope.editionId));
+export async function readerDelivery(scope: AnalyticsScope): Promise<DeliveryTotals> {
+  const where: SQL[] = [...windowOn(s.emailLog.createdAt, scope)];
+  if (scope.editionId) where.push(eq(s.emailLog.editionId, scope.editionId));
+  const [row] = await db.select(DELIVERY_COLUMNS).from(s.emailLog).where(await scoped(s.emailLog.organizationId, ...where));
+  return ratesFrom({ sent: n(row?.sent), delivered: n(row?.delivered), bounced: n(row?.bounced), opened: n(row?.opened), clicked: n(row?.clicked), opens: n(row?.opens), clicks: n(row?.clicks) });
+}
+
+export type DeliveryByEdition = DeliveryTotals & { editionId: string; label: string; issueNumber: number };
+
+/** The same, issue by issue, so a newsroom can see whether what it changed made a difference. */
+export async function readerDeliveryByEdition(scope: AnalyticsScope, limit = 12): Promise<DeliveryByEdition[]> {
+  const where: SQL[] = [...windowOn(s.emailLog.createdAt, scope)];
+  if (scope.editionId) where.push(eq(s.emailLog.editionId, scope.editionId));
   const rows = await db
-    .select({
-      model: s.aiJobs.model,
-      provider: s.aiJobs.provider,
-      calls: sql<number>`count(*)`,
-      tokens: sql<number>`coalesce(sum(coalesce(${s.aiJobs.inputTokens}, 0) + coalesce(${s.aiJobs.outputTokens}, 0)), 0)`,
-      costCents: sql<number>`coalesce(sum(${s.aiJobs.costCents}), 0)`,
-      avgLatencyMs: sql<number | null>`avg(${s.aiJobs.latencyMs}) filter (where ${s.aiJobs.cached} = false)`,
-      cached: sql<number>`count(*) filter (where ${s.aiJobs.cached})`,
-    })
-    .from(s.aiJobs)
-    .where(where.length ? and(...where) : undefined)
-    .groupBy(s.aiJobs.model, s.aiJobs.provider)
-    .orderBy(desc(sql`coalesce(sum(${s.aiJobs.costCents}), 0)`));
-  return rows.map((r) => ({ model: r.model, provider: r.provider, calls: n(r.calls), tokens: n(r.tokens), costCents: n(r.costCents), avgLatencyMs: r.avgLatencyMs === null ? null : Math.round(Number(r.avgLatencyMs)), cached: n(r.cached) }));
+    .select({ editionId: s.editions.id, label: s.editions.label, issueNumber: s.editions.issueNumber, ...DELIVERY_COLUMNS })
+    .from(s.emailLog)
+    .innerJoin(s.editions, eq(s.editions.id, s.emailLog.editionId))
+    .where(await scoped(s.emailLog.organizationId, ...where))
+    .groupBy(s.editions.id, s.editions.label, s.editions.issueNumber)
+    .orderBy(desc(s.editions.issueNumber))
+    .limit(limit);
+  return rows.map((r) => ({
+    editionId: r.editionId,
+    label: r.label,
+    issueNumber: r.issueNumber,
+    ...ratesFrom({ sent: n(r.sent), delivered: n(r.delivered), bounced: n(r.bounced), opened: n(r.opened), clicked: n(r.clicked), opens: n(r.opens), clicks: n(r.clicks) }),
+  }));
 }

@@ -44,6 +44,65 @@ export const LOW_QUALITY_THRESHOLD = 60;
 /** Minimum width (px) for an asset to count as print-ready (together with GREEN rights). */
 export const PRINT_READY_MIN_WIDTH = 1400;
 
+/**
+ * Whether a picture may be chosen, by the software, to carry a story.
+ *
+ * A logo went on a page as the lead picture of an interview: 465x128, eleven kilobytes, no print
+ * variant, so it rendered as a broken image with the headline's alt text beside it. Nothing had
+ * refused it — the library knew it was a logo, and the page builder's last-resort rule was "any
+ * picture linked to this story that is not the cover".
+ *
+ * So this is the rule, in one place, for every path that picks a picture rather than being handed
+ * one, and it is two questions rather than one. May this go on a page at all — no logo, nothing
+ * archived, no refused rights, nothing too small or too odd a shape to print — which still lets a
+ * chart illustrate a story about a number. And, stricter, is this a photograph, which is what the
+ * studio asks before it attaches pictures to a story.
+ *
+ * A person may still place a diagram in an article or a logo in a box: that is a decision, and
+ * decisions are theirs. What may not happen is Briefly reaching for something that was never a
+ * photograph and putting it where a photograph goes.
+ */
+export type IllustrationCandidate = {
+  kind?: string | null;
+  rightsStatus?: string | null;
+  qualityFlags?: readonly string[] | null;
+  isArchived?: boolean | null;
+};
+
+/** Flags that make a picture unusable as a story's photograph, whatever else is true of it. */
+export const UNUSABLE_QUALITY_FLAGS = ["VERY_LOW_RESOLUTION", "EXTREME_ASPECT_RATIO"] as const;
+
+export function whyNotIllustration(asset: IllustrationCandidate): string | null {
+  if (asset.isArchived) return "It has been archived.";
+  if (asset.kind === "logo") return "A logo is a mark, not a picture of anything.";
+  if (asset.rightsStatus === "RED") return "Its rights are refused.";
+  const flag = (asset.qualityFlags ?? []).find((each) => (UNUSABLE_QUALITY_FLAGS as readonly string[]).includes(each));
+  if (flag) return QUALITY_FLAG_EXPLANATIONS[flag] ?? "It is not usable at the size a page needs.";
+  return null;
+}
+
+/** The same question, answered yes or no. */
+export function canIllustrate(asset: IllustrationCandidate): boolean {
+  return whyNotIllustration(asset) === null;
+}
+
+/**
+ * The stricter question, and the one the studio asks.
+ *
+ * A chart can illustrate a story about a number; it cannot be offered as a photograph of anybody.
+ * `attach_photos` means photographs, so a screenshot refused here is refused with its reason rather
+ * than quietly placed as the lead picture of an interview.
+ */
+export function whyNotPhotograph(asset: IllustrationCandidate): string | null {
+  const refusal = whyNotIllustration(asset);
+  if (refusal) return refusal;
+  if (asset.kind && asset.kind !== "photo") return `A ${asset.kind} is not a photograph.`;
+  return null;
+}
+export function isPhotograph(asset: IllustrationCandidate): boolean {
+  return whyNotPhotograph(asset) === null;
+}
+
 export const MEDIA_SORTS = ["newest", "oldest", "quality", "size", "name"] as const;
 export type MediaSort = (typeof MEDIA_SORTS)[number];
 

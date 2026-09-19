@@ -36,13 +36,19 @@ async function loadOutput(editionId: string, format: (typeof s.outputFormatEnum.
  * unsubscribe link — a shared link would let any reader unsubscribe every other reader. Delivery
  * failures are counted, not thrown: one bad address must not stop the send.
  */
-export async function sendEditionEmail(editionId: string, userId?: string | null): Promise<SendResult> {
+export async function sendEditionEmail(editionId: string, userId?: string | null, options: { resend?: boolean } = {}): Promise<SendResult> {
   const edition = await db.query.editions.findFirst({ where: eq(s.editions.id, editionId) });
   if (!edition) throw new NotFoundError("Edition");
   if (!edition.publicationId) throw new ValidationError("This edition does not belong to a publication, so it has no subscribers to send to.");
 
   const output = await loadOutput(editionId, "EMAIL");
-  if (output.status === "PUBLISHED") throw new ValidationError("This edition has already been emailed.");
+  // A second send is possible and deliberate: a corrected issue is worth the inbox, and refusing
+  // outright left a newsroom that had just fixed a mistake with nothing to do about it. It never
+  // happens by accident — `resend` comes from a control that says how many people will get it
+  // twice, and the audit records which send this was.
+  if (output.status === "PUBLISHED" && !options.resend) {
+    throw new ValidationError("This edition has already been emailed. Use “Send again” if the readers should get the corrected issue.");
+  }
 
   const [organization, publication, recipients, showBrieflyMark] = await Promise.all([
     edition.organizationId ? db.query.organizations.findFirst({ where: eq(s.organizations.id, edition.organizationId) }) : Promise.resolve(undefined),
@@ -121,7 +127,7 @@ export async function sendEditionEmail(editionId: string, userId?: string | null
     entityType: "EDITION",
     entityId: editionId,
     editionId,
-    metadata: { sent, failed, recipients: recipients.length },
+    metadata: { sent, failed, recipients: recipients.length, resend: options.resend === true },
   });
   log.info("edition emailed", { editionId, sent, failed });
   return { sent, failed, skipped: 0, outputId: output.id };
@@ -147,6 +153,63 @@ export async function unpublishWebEdition(editionId: string, userId?: string | n
   const row = await setOutputStatus(output.id, "READY", { publishedAt: null });
   await audit({ action: "output.web.unpublish", organizationId: output.organizationId, userId, entityType: "EDITION", entityId: editionId, editionId });
   return row;
+}
+
+/**
+ * Make the issue go out again, as it stands now.
+ *
+ * What "republish" means is different for every format, and pretending otherwise would be the
+ * dishonest part. The web page is built when it is read, so it is already showing the corrected
+ * issue and there is nothing to re-render. The PDF and the print files are frozen artefacts, so
+ * they are made again from the issue as it is today, and the version that went out before stays in
+ * the history where it belongs. The email is not touched at all: sending again puts a second
+ * message in somebody's inbox, which is a decision a person makes, not a side effect of a button
+ * called republish.
+ */
+export type RepublishLine = { format: (typeof s.outputFormatEnum.enumValues)[number]; done: boolean; detail: string };
+
+export async function republishEdition(editionId: string, userId?: string | null): Promise<RepublishLine[]> {
+  const outputs = await db.select().from(s.editionOutputs).where(eq(s.editionOutputs.editionId, editionId));
+  if (!outputs.length) throw new ValidationError("This edition has no formats switched on yet.");
+  const lines: RepublishLine[] = [];
+
+  const frozen = outputs.filter((output) => output.format === "MAGAZINE" || output.format === "PRINT");
+  if (frozen.length) {
+    const { requestExport } = await import("@/server/publication/versions");
+    try {
+      const { version } = await requestExport(editionId, { kind: "DRAFT", userId, notes: "Republished" });
+      for (const output of frozen) {
+        await setOutputStatus(output.id, "PENDING", { versionId: version.id, lastError: null });
+        lines.push({ format: output.format, done: true, detail: `Being made again as ${version.label}. The version that went out before stays in the history.` });
+      }
+    } catch (err) {
+      const error = err instanceof Error ? err.message : String(err);
+      for (const output of frozen) lines.push({ format: output.format, done: false, detail: error });
+    }
+  }
+
+  for (const output of outputs.filter((each) => each.format === "WEB")) {
+    if (output.status === "PUBLISHED") {
+      await setOutputStatus(output.id, "PUBLISHED", { generatedAt: new Date() });
+      lines.push({ format: "WEB", done: true, detail: "The page is built when it is read, so it is already showing the corrected issue." });
+    } else {
+      lines.push({ format: "WEB", done: false, detail: "Not published yet — publish it and it will carry the corrected issue." });
+    }
+  }
+
+  for (const output of outputs.filter((each) => each.format === "EMAIL")) {
+    lines.push({
+      format: "EMAIL",
+      done: false,
+      detail:
+        output.status === "PUBLISHED"
+          ? "Already sent. Republishing does not email anybody again — use “Send again” for that, and every reader gets a second message."
+          : "Not sent yet. It will be built from the corrected issue when you send it.",
+    });
+  }
+
+  await audit({ action: "output.republish", organizationId: outputs[0]?.organizationId, userId, entityType: "EDITION", entityId: editionId, editionId, metadata: { formats: lines.map((line) => line.format) } });
+  return lines;
 }
 
 /** Attach the rendered PDF to the magazine output once a version is published. */

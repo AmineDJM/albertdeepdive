@@ -1,6 +1,7 @@
 import { and, desc, eq, gte, inArray, sql } from "drizzle-orm";
 import { db } from "@/server/db/client";
 import * as s from "@/server/db/schema";
+import { canIllustrate } from "@/server/media/constants";
 import { audit } from "@/server/audit";
 import { getStorage, type StorageAdapter } from "@/server/storage";
 import { createLogger } from "@/server/logger";
@@ -594,7 +595,10 @@ async function sourceMedia(pack: CreativePack, storyIds: string[]): Promise<{ id
   const seen = new Set<string>();
   const offered: { id: string; description: string; orientation: string | null }[] = [];
   for (const asset of [...linked, ...fromEdition]) {
-    if (seen.has(asset.id) || asset.isArchived || asset.rightsStatus !== "GREEN") continue;
+    // The shared rule first — no logo, nothing archived, nothing refused or too small to use.
+    // Then this pass's own stricter one: a public post carries only settled rights, and only the
+    // shapes that read at a glance on a phone.
+    if (seen.has(asset.id) || !canIllustrate(asset) || asset.rightsStatus !== "GREEN") continue;
     if (asset.kind && !["photo", "diagram", "chart"].includes(asset.kind)) continue;
     const description = (asset.altText || asset.caption || asset.aiDescription || "").trim();
     if (!description) continue;

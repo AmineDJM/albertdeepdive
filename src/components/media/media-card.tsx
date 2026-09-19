@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { ImageOff, Link2 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
@@ -31,6 +31,7 @@ export function MediaCard({
 }) {
   const tr = useUi();
   const shiftRef = useRef(false);
+  const [broken, setBroken] = useState(false);
   const title = row.caption || row.fileName;
   const low = row.qualityScore !== null && row.qualityScore < LOW_QUALITY_THRESHOLD;
   const isDup = !!row.duplicateOfId;
@@ -61,21 +62,26 @@ export function MediaCard({
           }
         }}
       >
-        {row.thumbUrl ? (
+        {row.thumbUrl && !broken ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={row.thumbUrl}
             alt={row.altText ?? title}
             loading="lazy"
             decoding="async"
+            // A thumbnail that does not load leaves the browser's own broken-image glyph and the
+            // alt text spilling across the card, which reads as a bug in the library rather than as
+            // what it is: the file is not in storage. Say that instead.
+            onError={() => setBroken(true)}
             className={cn(
               "size-full object-cover transition-transform duration-300 group-hover:scale-[1.03]",
               row.isArchived && "opacity-60 grayscale",
             )}
           />
         ) : (
-          <div className="text-muted-foreground flex size-full items-center justify-center">
+          <div className="text-muted-foreground flex size-full flex-col items-center justify-center gap-1 px-2 text-center">
             <ImageOff className="size-5" />
+            {row.thumbUrl ? <span className="text-2xs leading-tight">{tr("The file is missing from storage")}</span> : null}
           </div>
         )}
         <span

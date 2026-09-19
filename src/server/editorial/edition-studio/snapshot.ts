@@ -3,6 +3,7 @@ import { db } from "@/server/db/client";
 import * as s from "@/server/db/schema";
 import { getFlatplan } from "@/server/publication/flatplan";
 import { NotFoundError } from "@/lib/action-result";
+import { isPhotograph } from "@/server/media/constants";
 
 /**
  * What the studio knows about an issue before it is asked anything.
@@ -82,8 +83,17 @@ export async function buildSnapshot(editionId: string): Promise<StudioSnapshot> 
   const articleByStory = new Map(articleRows.map((a) => [a.storyId, a]));
   const storyRef = new Map(flatplan.stories.map((st) => [st.id, st]));
 
-  const spare = await db
-    .select({ id: s.mediaAssets.id, fileName: s.mediaAssets.fileName, caption: s.mediaAssets.caption })
+  // Only photographs are offered. A logo in this list is a logo the assistant will try to place.
+  const spareRows = await db
+    .select({
+      id: s.mediaAssets.id,
+      fileName: s.mediaAssets.fileName,
+      caption: s.mediaAssets.caption,
+      kind: s.mediaAssets.kind,
+      rightsStatus: s.mediaAssets.rightsStatus,
+      qualityFlags: s.mediaAssets.qualityFlags,
+      isArchived: s.mediaAssets.isArchived,
+    })
     .from(s.mediaAssets)
     .where(
       and(
@@ -93,6 +103,7 @@ export async function buildSnapshot(editionId: string): Promise<StudioSnapshot> 
       ),
     )
     .limit(60);
+  const spare = spareRows.filter((asset) => isPhotograph(asset)).map((asset) => ({ id: asset.id, fileName: asset.fileName, caption: asset.caption }));
 
   const pages: StudioPage[] = flatplan.pages.map((p) => ({
     id: p.id,

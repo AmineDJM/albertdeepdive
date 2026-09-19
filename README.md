@@ -28,6 +28,7 @@ chief approves every issue.
 - [Running the newsroom](#running-the-newsroom)
 - [Exports](#exports)
 - [Changing an issue that is already made](#changing-an-issue-that-is-already-made)
+- [After it has gone out](#after-it-has-gone-out)
 - [Social, and the two video shapes](#social-and-the-two-video-shapes)
 - [Pictures](#pictures)
 - [Tests](#tests)
@@ -303,16 +304,45 @@ the first line instead of keeping both. Undo puts the issue back; the revision s
 the work was done.
 
 The assistant never writes a page. It answers in a closed vocabulary of operations — set the
-extent, shorten this article, attach these photographs, move that page — which the same services
-the flatplan and the article desk use then carry out, and the measured layout engine redraws. That
-division is also the security boundary: an issue is full of words strangers sent in, and the worst
-a steered model can do is name an operation from that list against an id the executor then checks
-belongs to this very issue.
+extent, shorten this article, take out these exact words, attach these photographs, move that page
+— which the same services the flatplan and the article desk use then carry out, and the measured
+layout engine redraws. That division is also the security boundary: an issue is full of words
+strangers sent in, and the worst a steered model can do is name an operation from that list against
+an id the executor then checks belongs to this very issue.
+
+Quoting the words you want gone is its own operation, and deliberately not "shorten this by forty
+words": a word count says how much goes, never which words, so a copy editor asked to lose forty
+may perfectly well keep the paragraph you pointed at. **Remove this passage** finds exactly the
+words you quoted — forgiving the case, the shape of the quotes and the line breaks that change
+between a page and a paste — and removes those, or finds nothing and says so. It never removes
+something approximately similar.
 
 Understanding the request needs a language model. Without one connected, the studio says what it
 measured and that it cannot read the request, and points at the console — it does not guess from
 keywords and then act on the guess. Every manual control (flatplan, article desk, extent) keeps
 working regardless.
+
+## After it has gone out
+
+An issue that was published and then corrected has two ways forward, and they are deliberately not
+the same button. **Republish** makes the frozen artefacts again — the PDF, the print files — from
+the issue as it reads now, leaving the version that went out in the history; it emails nobody. The
+web page needs neither, because it is built when it is read. **Send again** puts a second message
+in every reader's inbox, so it says how many people that is and asks first; an email cannot be
+taken back.
+
+Nothing is ever *chosen* to carry a story without first being asked what it is. A logo — 465×128,
+eleven kilobytes — became the lead picture of an interview and rendered as a broken box, because a
+logo has no print variant and nothing had refused it: the library knew what it was, and the page
+builder's last-resort rule was "any picture linked to this story". Two questions now stand
+everywhere a picture is picked rather than handed over — the page builder, the studio, the art
+director — and both ask what the asset is, not what role it was filed under. *May this go on a page
+at all*, which refuses a logo, an archived file, rights that were refused, and anything too small
+or too odd a shape to print, while letting a chart of yields illustrate a story about yields. And,
+stricter, *is this a photograph*, which is what the studio asks before attaching pictures to a
+story, because a screenshot offered as a photograph is the same mistake in a smaller hat. A person
+may still place a diagram by hand; what may not happen is Briefly reaching for something that was
+never a photograph. A story with nothing but a logo attached has no picture, which is the truth.
 
 ## Social, and the two video shapes
 

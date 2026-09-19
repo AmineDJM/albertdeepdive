@@ -37,6 +37,7 @@ import {
   type EditionDocument,
 } from "@/lib/publication/document";
 import { issueLabelFor } from "@/lib/publication/text";
+import { canIllustrate } from "@/server/media/constants";
 
 const log = createLogger("publication:document");
 
@@ -256,11 +257,20 @@ export async function buildEditionDocument(editionId: string, options: BuildDocu
           a.sortOrder - b.sortOrder ||
           a.mediaAssetId.localeCompare(b.mediaAssetId),
       );
+    /*
+     * The story's picture, and only ever a photograph.
+     *
+     * Every step of this asks the same question of the asset rather than trusting the role it was
+     * linked under: a logo linked as "hero" is still a logo. The last-resort rule used to be "any
+     * picture on this story that is not the cover", which is how an eleven-kilobyte logo became the
+     * lead image of an interview and rendered as a broken box — it had no print variant to render.
+     * A story with nothing but a logo attached now has no picture, which is the truth.
+     */
+    const usable = (l: { mediaAssetId: string; role: string }) => l.role !== "cover" && l.role !== "logo" && canIllustrate(mediaById.get(l.mediaAssetId) ?? {});
     const heroLink =
-      links.find((l) => l.role === "hero") ??
-      links.find((l) => l.role === "portrait") ??
-      links.find((l) => mediaById.get(l.mediaAssetId)?.kind === "photo" && l.role !== "cover") ??
-      links.find((l) => l.role !== "cover") ??
+      links.filter(usable).find((l) => l.role === "hero") ??
+      links.filter(usable).find((l) => l.role === "portrait") ??
+      links.find(usable) ??
       null;
     const pullQuotes: DocumentArticle["pullQuotes"] = [];
     const seenQuotes = new Set<string>();

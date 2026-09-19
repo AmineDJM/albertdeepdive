@@ -174,6 +174,19 @@ describe("rendering (one shared browser)", () => {
     expect(final.toc).toHaveLength(26);
     for (const line of final.toc) expect(final.pages[line.page - 1].articleIds).toContain(line.articleId);
     expect(final.meta.layout?.continuationPages).toBe(continuation.length);
+    /*
+     * No story goes to press with a logo as its picture.
+     *
+     * One did: a 465×128 mark became the lead picture of an interview and printed as a broken box,
+     * because a logo has no print variant and the last-resort rule was "any picture linked to this
+     * story". The sample has one story whose only attachment is a logo — it is now laid out as
+     * text, which is why a NEWS_GRID in the snapshot below became an ARTICLE_TWO_COLUMN.
+     */
+    const kindById = new Map(final.media.map((m) => [m.id, m.kind]));
+    const heroes = final.articles.map((a) => a.heroMediaId).filter((id): id is string => !!id);
+    expect(heroes.length).toBeGreaterThan(0);
+    for (const id of heroes) expect(kindById.get(id), `hero ${id}`).not.toBe("logo");
+    expect(final.articles.some((a) => a.heroMediaId === null)).toBe(true);
     // Same input → same layout.
     expect(final.pages.map((p) => p.template)).toMatchSnapshot();
   });

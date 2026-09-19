@@ -28,11 +28,34 @@ export type SubTab = { href: string; label: TranslationKey; permission?: Permiss
  * where the readers are. That only works if the assignment is fixed and written down, which is what
  * this field is; a palette without assignments becomes confetti within a month.
  */
-export type NavItem = { href: string; label: TranslationKey; icon: LucideIcon; hue: Hue; permission?: Permission; tabs?: readonly SubTab[]; /** Paths under `href` that belong to another entry. */ exclude?: readonly string[] };
+export type NavItem = {
+  href: string;
+  label: TranslationKey;
+  icon: LucideIcon;
+  hue: Hue;
+  permission?: Permission;
+  tabs?: readonly SubTab[];
+  /** Paths under `href` that belong to another entry. */
+  exclude?: readonly string[];
+  /**
+   * Paths that light this entry without being one of its tabs.
+   *
+   * An edition's own workspace is where most of the work happens and it is not a list anybody
+   * navigates to; it is opened from Home. It still belongs to this part of the product, so the
+   * sidebar says so.
+   */
+  match?: readonly string[];
+};
 
-/** Editions in flight, and everything that has already been published. */
+/**
+ * The titles, what is made from them, and what has already gone out.
+ *
+ * No editions tab. Home already opens on the issue being made and the recent ones, so a second
+ * list one click away in the sidebar was the same answer to the same question in two places — and
+ * the one in the sidebar was the one nobody had asked for. The full list is still there, from
+ * Home's "All editions", which is a drill-down rather than a duplicate.
+ */
 export const WORKBENCH_TABS: readonly SubTab[] = [
-  { href: "/editions", label: "nav.editions", permission: "edition:view" },
   { href: "/publications", label: "nav.publications", permission: "edition:view" },
   { href: "/studio", label: "nav.studio", permission: "edition:view" },
   { href: "/archive", label: "nav.archive", permission: "archive:view" },
@@ -69,7 +92,7 @@ export const INSIGHTS_TABS: readonly SubTab[] = [
 export const NAV_ITEMS: readonly NavItem[] = [
   { href: "/overview", label: "nav.home", icon: Home, hue: "cobalt" },
   { href: "/content", label: "nav.content", icon: Layers, hue: "coral", tabs: CONTENT_TABS },
-  { href: "/editions", label: "nav.workbench", icon: Newspaper, hue: "violet", tabs: WORKBENCH_TABS },
+  { href: "/publications", label: "nav.workbench", icon: Newspaper, hue: "violet", tabs: WORKBENCH_TABS, match: ["/editions"] },
   { href: "/library", label: "nav.library", icon: Images, hue: "magenta", permission: "edition:view" },
   { href: "/subscribers", label: "nav.audience", icon: Users, hue: "teal", tabs: AUDIENCE_TABS },
   { href: "/analytics", label: "nav.insights", icon: BarChart3, hue: "green", tabs: INSIGHTS_TABS },
@@ -97,7 +120,7 @@ export function navItemsFor(mode: ExperienceMode): { primary: readonly NavItem[]
   if (mode === "advanced") return { primary: NAV_ITEMS, secondary: SETUP_ITEMS };
   // Brand is not on this list, so Settings lights up for it too: `exclude` only made sense beside it.
   const shown = [...NAV_ITEMS, ...SETUP_ITEMS].filter((item) => STANDARD_PATHS.has(item.href)).map((item) => (item.exclude ? { ...item, exclude: undefined } : item));
-  const work = new Set(["/overview", "/editions", "/library"]);
+  const work = new Set(["/overview", "/publications", "/library"]);
   return { primary: shown.filter((item) => work.has(item.href)), secondary: shown.filter((item) => !work.has(item.href)) };
 }
 
@@ -128,7 +151,8 @@ export function resolveNavItem(role: Role, item: NavItem, pathname: string): { h
   if (item.permission && !roleHasPermission(role, item.permission)) return null;
   const hrefs = tabs.length ? tabs.map((t) => t.href) : [item.href];
   const excluded = item.exclude?.some((href) => pathname === href || pathname.startsWith(`${href}/`)) ?? false;
-  const active = !excluded && hrefs.some((href) => pathname === href || pathname.startsWith(`${href}/`));
+  const under = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
+  const active = !excluded && ([...hrefs, ...(item.match ?? [])].some(under));
   return { href: hrefs[0], active };
 }
 

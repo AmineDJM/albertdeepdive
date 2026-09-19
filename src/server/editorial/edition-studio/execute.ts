@@ -5,7 +5,10 @@ import { scoped } from "@/server/tenancy/scope";
 import { NotFoundError, ValidationError } from "@/lib/action-result";
 import { createLogger } from "@/server/logger";
 import { audit } from "@/server/audit";
+import { isPhotograph } from "@/server/media/constants";
 import { runArticleAction, saveArticle } from "@/server/editorial/articles";
+import { removePassage } from "@/lib/publication/passage";
+import type { ArticleBlock } from "@/lib/publication/document";
 import {
   addPlanPage,
   movePlanPage,
@@ -61,14 +64,24 @@ async function loadScope(editionId: string): Promise<EditionScope> {
   };
 }
 
-/** Photographs have to be this workspace's; the tenant scope decides, not the operation. */
-async function ownedMedia(ids: string[]): Promise<string[]> {
-  if (!ids.length) return [];
+/**
+ * Photographs have to be this workspace's, and have to be photographs.
+ *
+ * The tenant scope decides the first; `isPhotograph` decides the second. A chart may illustrate a
+ * page, but nothing but a photograph may be attached as one. Attaching a logo to a story is how
+ * one ended up as the lead picture of an interview, rendered as a broken box because a logo has no
+ * print variant.
+ */
+async function ownedMedia(ids: string[]): Promise<{ usable: string[]; refused: string[] }> {
+  if (!ids.length) return { usable: [], refused: [] };
   const rows = await db
-    .select({ id: s.mediaAssets.id })
+    .select({ id: s.mediaAssets.id, kind: s.mediaAssets.kind, rightsStatus: s.mediaAssets.rightsStatus, qualityFlags: s.mediaAssets.qualityFlags, isArchived: s.mediaAssets.isArchived })
     .from(s.mediaAssets)
     .where(await scoped(s.mediaAssets.organizationId, inArray(s.mediaAssets.id, ids)));
-  return rows.map((r) => r.id);
+  return {
+    usable: rows.filter((r) => isPhotograph(r)).map((r) => r.id),
+    refused: rows.filter((r) => !isPhotograph(r)).map((r) => r.id),
+  };
 }
 
 function checkScope(op: EditionOperation, scope: EditionScope) {
@@ -82,6 +95,7 @@ function checkScope(op: EditionOperation, scope: EditionScope) {
     if (!scope.storyIds.has(id)) throw new NotFoundError("Story");
   };
   switch (op.kind) {
+    case "remove_passage":
     case "shorten_article":
     case "expand_article":
     case "rewrite_headline":
@@ -135,6 +149,17 @@ async function runOne(editionId: string, op: EditionOperation, userId: string): 
       const saved = await saveArticle(op.articleId, { body: proposal.blocks, changeSummary: summarise(op) }, userId);
       return `"${saved.article.headline}" is now ${saved.article.wordCount} words.${proposal.changes?.length ? ` ${proposal.changes[0]}` : ""}`;
     }
+    case "remove_passage": {
+      const article = await db.query.articles.findFirst({ where: eq(s.articles.id, op.articleId), columns: { body: true, headline: true } });
+      if (!article) throw new NotFoundError("Article");
+      const cut = removePassage((article.body ?? []) as ArticleBlock[], op.passage);
+      if (!cut) {
+        // Never approximate. A passage nobody can find is a passage that stays, said out loud.
+        throw new ValidationError(`Those words are not in "${article.headline}" — nothing was removed. Copy the passage exactly as it reads in the issue.`);
+      }
+      const saved = await saveArticle(op.articleId, { body: cut.blocks, changeSummary: summarise(op) }, userId);
+      return `Removed ${cut.wordsRemoved} word(s) from "${saved.article.headline}"; it is now ${saved.article.wordCount} words.`;
+    }
     case "rewrite_headline": {
       const proposal = await runArticleAction(op.articleId, "rewrite_headline", userId, { instruction: op.instruction });
       if (!proposal.headline) throw new ValidationError("No headline came back");
@@ -150,17 +175,25 @@ async function runOne(editionId: string, op: EditionOperation, userId: string): 
       return op.standfirst ? "Standfirst set." : "Standfirst cleared.";
     }
     case "attach_photos": {
-      const owned = await ownedMedia(op.mediaIds);
-      if (!owned.length) throw new NotFoundError("Photographs");
+      const { usable, refused } = await ownedMedia(op.mediaIds);
+      if (!usable.length) {
+        throw new ValidationError(
+          refused.length ? "Those are not photographs — a logo or a screenshot cannot carry a story." : "Those photographs are not in this workspace",
+        );
+      }
       const existing = await db.select({ id: s.storyMedia.mediaAssetId }).from(s.storyMedia).where(eq(s.storyMedia.storyId, op.storyId));
       const already = new Set(existing.map((r) => r.id));
-      const fresh = owned.filter((id) => !already.has(id));
+      const fresh = usable.filter((id) => !already.has(id));
       if (fresh.length) {
         await db.insert(s.storyMedia).values(
           fresh.map((mediaAssetId, i) => ({ storyId: op.storyId, mediaAssetId, role: op.role ?? "gallery", sortOrder: already.size + i })),
         );
       }
-      return `${fresh.length} photograph(s) added${already.size ? `, ${owned.length - fresh.length} were already there` : ""}.`;
+      const notes = [
+        already.size ? `${usable.length - fresh.length} were already there` : null,
+        refused.length ? `${refused.length} refused as not photographs` : null,
+      ].filter(Boolean);
+      return `${fresh.length} photograph(s) added${notes.length ? `, ${notes.join(", ")}` : ""}.`;
     }
     case "add_picture_page": {
       const created = await addPlanPage(editionId, { afterPageId: op.afterPageId, template: "PHOTO_STORY", userId });
