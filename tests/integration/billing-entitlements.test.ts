@@ -4,7 +4,7 @@ import { db } from "@/server/db/client";
 import * as s from "@/server/db/schema";
 import { ensureSeeded } from "../helpers/db";
 import { createOrganization } from "@/server/tenancy/service";
-import { backfillSubscriptions, ensureDefaultPlans, getPlanByKey, setDefaultPlan, updatePlan } from "@/server/billing/plans";
+import { backfillSubscriptions, DEFAULT_PLANS, ensureDefaultPlans, getPlanByKey, setDefaultPlan, updatePlan } from "@/server/billing/plans";
 import { assignPlan } from "@/server/billing/plans";
 import { canPublishFormat, checkLimit, currentUsage, hasFeature, requireLimit, resolveEntitlements, showsBrieflyBranding, usageReport } from "@/server/billing/entitlements";
 import { createPublication } from "@/server/publications/service";
@@ -63,6 +63,24 @@ describe("entitlements", () => {
     // The rule lives in the service, so every caller is covered, not only the screen.
     await expect(createPublication(freeOrgId, { name: "Second Title", defaultFormats: ["EMAIL"] })).rejects.toBeInstanceOf(ForbiddenError);
     await expect(requireLimit(freeOrgId, "publications")).rejects.toBeInstanceOf(ForbiddenError);
+  });
+
+  it("climbs the revision ladder once and stops: 1, 3, then unlimited", async () => {
+    /*
+     * The allowance shipped as 1 / 3 / 10 / unlimited, and the 10 was a number nobody chose. The
+     * ladder is one on the free plan, three on the first paid one, and unlimited from the tier
+     * above — so this pins the shape rather than the four values, and would fail again on a
+     * plausible-looking number invented in the middle of it.
+     */
+    const ladder = await Promise.all(
+      DEFAULT_PLANS.map(async (plan) => ({ key: plan.key, sortOrder: plan.sortOrder, allowance: (await getPlanByKey(plan.key))!.entitlements.revisionsPerEdition ?? null })),
+    );
+    const climbing = [...ladder].sort((a, b) => a.sortOrder - b.sortOrder);
+    expect(climbing.map((tier) => tier.allowance)).toEqual([1, 3, null, null]);
+    // Whatever the numbers become, a paid tier never gets less than the free one.
+    for (const tier of climbing.slice(1)) {
+      if (tier.allowance !== null) expect(tier.allowance, tier.key).toBeGreaterThanOrEqual(climbing[0].allowance as number);
+    }
   });
 
   it("treats null as unlimited and 0 as none", async () => {

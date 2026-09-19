@@ -1,6 +1,6 @@
 import { runService, type AiServiceContext } from "./common";
 import { creativeBriefSchema, FRAME_LAYOUTS, parseBrief, type CreativeBrief } from "@/lib/creative/brief";
-import { FORMATS, MODES, orientationOf, type CreativeFormat, type CreativeMode } from "@/lib/creative/formats";
+import { FORMATS, MODES, hookWords, orientationOf, type CreativeFormat, type CreativeMode } from "@/lib/creative/formats";
 import { brandMenu, type BrandSystem } from "@/lib/brand/system";
 
 /**
@@ -65,25 +65,39 @@ function describeStories(stories: SourceStory[]): string {
 /**
  * How the shape changes what is worth writing.
  *
- * Not decoration for the prompt: a vertical cut and a landscape cut made from the same material are
- * two different pieces of writing. One is held in a hand, thumbed past in a second and read muted,
- * so a frame carries one idea in few words. The other is played on a screen somebody is already
- * looking at, so a frame can hold a sentence and the figure that proves it, and the set can take
- * its time. Handing the art director the numbers and not this is how you get a landscape film made
- * of nine words a scene.
+ * Not decoration for the prompt: a vertical cut and a landscape cut made from the same material
+ * are two different pieces of writing, and the difference is not length. A feed cut is watched
+ * with a thumb resting on the glass by somebody already leaving; it opens on the sharpest thing
+ * there is, turns over faster and pays off earlier. A landscape cut is played on a screen somebody
+ * chose; it can set something up and be trusted to arrive.
+ *
+ * The moving shapes carry that as data — `attention` on the format — so the brief, the timeline
+ * and the check that reports a film too slow to hold anybody all read the same numbers. The stills
+ * keep an orientation note, because a carousel's "hook" is frame one and the prompt already says
+ * so at length.
  */
-const SHAPE_NOTES: Record<"portrait" | "landscape" | "square", string> = {
-  portrait:
-    "Tall, held in one hand, read without sound and past in a second. One idea per frame, headlines that land at a glance, nothing that needs a second look.",
-  landscape:
-    "Wide, played on a screen the viewer is already watching, often with sound. A frame can carry a sentence and the figure that proves it; the set can take a beat longer and build an argument rather than land one line.",
-  square:
-    "Square, in a feed that plays it muted. Between the two: a short claim per frame, but there is room beneath it for the evidence.",
+const STILL_NOTES: Record<"portrait" | "landscape" | "square", string> = {
+  portrait: "Tall, seen full-screen for about three seconds. One idea per frame, and it has to land at a glance.",
+  landscape: "Wide. A frame can carry a sentence and the figure that proves it.",
+  square: "Square, in a feed that scrolls past it. A short claim per frame, with room beneath it for the evidence.",
 };
+
+/** What the art director is told about the shape it is writing for. */
+export function shapeBrief(format: CreativeFormat): { note: string; beats: string; hook: string } {
+  const definition = FORMATS[format];
+  const attention = definition.attention;
+  if (!attention) return { note: STILL_NOTES[orientationOf(format)], beats: "—", hook: "—" };
+  return {
+    note: attention.note,
+    beats: attention.beats.map((beat, index) => `${index + 1}. ${beat}`).join("\n"),
+    hook: `The first shot has ${attention.hookSeconds}s before somebody decides — about ${hookWords(attention)} words. It is on screen for exactly as long as its own words take to read, so a long opening line is a slow opening shot.`,
+  };
+}
 
 export async function directCreative(input: DirectInput, ctx: AiServiceContext = {}) {
   const format = FORMATS[input.format];
   const mode = MODES[input.mode];
+  const shape = shapeBrief(input.format);
   const menu = brandMenu(input.brand);
 
   return runService({
@@ -101,7 +115,9 @@ export async function directCreative(input: DirectInput, ctx: AiServiceContext =
       maxFrames: format.maxFrames,
       moving: format.moving,
       orientation: orientationOf(input.format),
-      shapeNote: SHAPE_NOTES[orientationOf(input.format)],
+      shapeNote: shape.note,
+      beats: shape.beats,
+      hook: shape.hook,
       mode: input.mode,
       modeDescription: mode.description,
       mayUseOwnPhotographs: mode.usesOwnMedia && (input.media?.length ?? 0) > 0,
@@ -132,6 +148,66 @@ export async function directCreative(input: DirectInput, ctx: AiServiceContext =
  *
  * Deterministic: same stories in, same brief out. No sampling, no clock.
  */
+/** Splits a paragraph into sentences, so a feed cut can give each one its own shot. */
+function sentences(text: string): string[] {
+  return text
+    .split(/(?<=[.!?])\s+/)
+    .map((sentence) => sentence.trim())
+    .filter(Boolean);
+}
+
+/**
+ * The same material, cut for a feed.
+ *
+ * Not the classic pattern with fewer frames: a different order. The number goes first, because a
+ * figure is one word and one word is a hook that can be read inside a second and a half — where
+ * the eight-word headline it belongs to cannot. What follows turns over faster and carries less
+ * per shot: the standfirst becomes a shot per sentence instead of one dense paragraph, the quote
+ * escalates rather than decorates, and the round-up of everything else in the issue is dropped
+ * outright, because a feed cut that lists five other stories has told somebody it has nothing.
+ *
+ * Nothing here is truncated to fit. A headline that takes longer than the hook is left whole and
+ * the motion check reports `slow_hook` — an honest finding for a writer to answer, rather than a
+ * sentence cut in half by arithmetic.
+ */
+function feedFrames(input: DirectInput, lead: DirectInput["stories"][number], photograph: { id: string; description: string } | undefined): CreativeBrief["frames"] {
+  const frames: CreativeBrief["frames"] = [];
+  const figure = lead.figures?.[0];
+  const quote = lead.quotes?.[0];
+
+  /*
+   * The hook. A figure alone is the sharpest thing this generator can be sure of.
+   *
+   * Set as a statement rather than through the `figure` layout, which pairs a number with the line
+   * that explains it — two thoughts, and the explaining line is nine words nobody has time for.
+   * Here the number is the whole shot, at display size, and the line it belongs to is the shot
+   * after it.
+   */
+  if (figure) frames.push({ layout: "statement", headline: figure, surface: "ink", emphasis: "loud", alt: `${figure} — ${lead.headline}` });
+  else if (photograph) frames.push({ layout: "image_full", headline: lead.headline, surface: "ink", emphasis: "loud", mediaId: photograph.id, alt: photograph.description });
+  else frames.push({ layout: "statement", headline: lead.headline, surface: "brand", emphasis: "loud", alt: lead.headline });
+
+  // What it was about, once they have stayed for it.
+  if (figure) {
+    frames.push(
+      photograph
+        ? { layout: "image_full", headline: lead.headline, surface: "ink", emphasis: "loud", mediaId: photograph.id, alt: photograph.description }
+        : { layout: "statement", headline: lead.headline, surface: "brand", emphasis: "loud", alt: lead.headline },
+    );
+  }
+
+  // One sentence a shot: shorter shots, more of them, and the turnover is the point.
+  for (const sentence of sentences(lead.standfirst ?? "").slice(0, 3)) {
+    frames.push({ layout: "statement", headline: sentence, surface: "paper", emphasis: "normal" });
+  }
+
+  if (quote) frames.push({ layout: "quote", headline: quote.text.slice(0, 180), attribution: quote.attribution, surface: "paper", emphasis: "loud" });
+
+  // Tight, not a fade: three words and the name of who is publishing.
+  frames.push({ layout: "cta", headline: "Read it", body: input.organizationName, surface: "accent", emphasis: "normal" });
+  return frames;
+}
+
 export function localBrief(input: DirectInput): CreativeBrief {
   const format = FORMATS[input.format];
   const [lead, ...rest] = input.stories;
@@ -153,6 +229,23 @@ export function localBrief(input: DirectInput): CreativeBrief {
    * was not offered; that is the whole safety property, kept by construction.
    */
   const photograph = MODES[input.mode].usesOwnMedia ? input.media?.[0] : undefined;
+
+  // A feed cut is a different film from the same material, not a shorter one, so it is built by
+  // its own pattern rather than by trimming this one.
+  if (format.attention && format.attention.driftScale > 1) {
+    const cut = feedFrames(input, lead, photograph);
+    const fitted = cut.length > format.maxFrames ? [...cut.slice(0, format.maxFrames - 1), cut[cut.length - 1]] : [...cut];
+    while (fitted.length < format.minFrames) fitted.splice(fitted.length - 1, 0, { layout: "statement", headline: lead.headline, surface: "ink", emphasis: "normal" });
+    return {
+      format: input.format,
+      mode: input.mode,
+      intent: lead.standfirst ?? lead.headline,
+      frames: fitted,
+      caption: [lead.headline, lead.standfirst, `— ${input.organizationName}`].filter(Boolean).join("\n\n").slice(0, 2200),
+      hashtags: [],
+    };
+  }
+
   const frames: CreativeBrief["frames"] = [
     photograph
       ? { layout: "image_full", headline: lead.headline, surface: "ink", emphasis: "loud", mediaId: photograph.id, alt: photograph.description }
@@ -220,12 +313,13 @@ export function localBrief(input: DirectInput): CreativeBrief {
  */
 export async function briefFor(input: DirectInput, ctx: AiServiceContext = {}): Promise<{ brief: CreativeBrief; source: "model" | "local"; costCents: number }> {
   try {
+    const asked = { format: input.format, mode: input.mode };
     const result = await directCreative(input, ctx);
-    const parsed = parseBrief(result.output);
+    const parsed = parseBrief(result.output, asked);
     if (parsed.ok) return { brief: parsed.brief, source: "model", costCents: result.usage.costCents };
 
     const retry = await directCreative({ ...input, angle: `${input.angle ?? ""}\nYour previous answer could not be rendered: ${parsed.problems.join(" ")}`.trim() }, ctx);
-    const second = parseBrief(retry.output);
+    const second = parseBrief(retry.output, asked);
     if (second.ok) return { brief: second.brief, source: "model", costCents: result.usage.costCents + retry.usage.costCents };
     return { brief: localBrief(input), source: "local", costCents: result.usage.costCents + retry.usage.costCents };
   } catch {

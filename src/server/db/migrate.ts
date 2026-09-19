@@ -16,12 +16,14 @@ export async function runMigrations() {
   // The plans Briefly sells are defined in code and seeded here rather than written into a
   // migration, so that there is one source of truth and editing a price in the console is not
   // undone by the next deploy. Both steps only create what is missing.
-  const { ensureDefaultPlans, backfillSubscriptions, backfillPlanEntitlements } = await import("@/server/billing/plans");
+  const { ensureDefaultPlans, backfillSubscriptions, backfillPlanEntitlements, correctRevisionAllowances } = await import("@/server/billing/plans");
   const created = await ensureDefaultPlans();
   const attached = await backfillSubscriptions();
   const taught = await backfillPlanEntitlements();
+  const corrected = await correctRevisionAllowances();
   if (created.length) console.log(`[migrate] seeded ${created.length} plan(s)`);
   if (taught.length) console.log(`[migrate] added new entitlements to existing plans: ${taught.join("; ")}`);
+  if (corrected.length) console.log(`[migrate] corrected revision allowances: ${corrected.join("; ")}`);
   if (attached) console.log(`[migrate] put ${attached} workspace(s) on the default plan`);
   console.log("[migrate] done");
 }

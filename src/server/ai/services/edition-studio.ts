@@ -16,6 +16,13 @@ export const studioPlanSchema = z.object({
   operations: z.array(editionOperationSchema).max(12),
   /** Set when what it proposes is heavy enough to want reading twice; the vocabulary marks those too. */
   askFirst: z.boolean(),
+  /**
+   * The person said to apply what is waiting — "vas-y", "applique", "fais-le", "go ahead".
+   *
+   * A confirmation, not a proposal: the server runs the revision on it, exactly as the button
+   * does. Set it only for an explicit instruction to apply, never because a request sounds urgent.
+   */
+  apply: z.boolean(),
 });
 export type StudioPlan = z.infer<typeof studioPlanSchema>;
 
@@ -29,6 +36,8 @@ export type StudioPlanInput = {
   attachedMedia: { id: string; fileName: string; caption: string | null }[];
   /** What is already in the revision and not yet applied, so it can change its mind rather than repeat itself. */
   waiting: unknown[];
+  /** True when the last turn asked about something heavy, so "vas-y" is a yes to that question. */
+  confirming: boolean;
 };
 
 export async function planEditionChange(input: StudioPlanInput, ctx: AiServiceContext = {}) {
@@ -46,6 +55,7 @@ export async function planEditionChange(input: StudioPlanInput, ctx: AiServiceCo
       message: input.message,
       attachedMedia: attached,
       waiting: input.waiting.length ? JSON.stringify(input.waiting) : "nothing yet",
+      confirming: input.confirming ? "yes — you asked, this is the answer" : "no",
     },
     ctx,
     maxOutputTokens: 2500,

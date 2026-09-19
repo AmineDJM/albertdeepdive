@@ -68,6 +68,12 @@ export function ReviseWorkbench({ editionId, initial }: { editionId: string; ini
       setState(result.data);
       setMessage("");
       setAttached([]);
+      // Saying "apply it" spends the revision there and then, so the proof beside the thread is a
+      // picture of the issue as it was a moment ago until this runs.
+      if (result.data.turns.at(-1)?.intent === "apply") {
+        setProofKey((k) => k + 1);
+        router.refresh();
+      }
     });
   }
 
@@ -211,7 +217,7 @@ export function ReviseWorkbench({ editionId, initial }: { editionId: string; ini
                 <p className="text-2xs text-muted-foreground">
                   {spent
                     ? (allowance.message ?? tr("This issue has used every revision your plan includes."))
-                    : tr("Applying runs all of it at once, re-measures the issue and remakes the formats. That is one revision.")}
+                    : `${tr("Applying runs all of it at once, re-measures the issue and remakes the formats. That is one revision.")} ${tr("Say “apply” when you are ready, or press the button.")}`}
                 </p>
               </>
             )}
@@ -230,11 +236,22 @@ export function ReviseWorkbench({ editionId, initial }: { editionId: string; ini
                 </p>
               ) : (
                 state.turns.map((turn) => (
-                  <div key={turn.id} className={cn("rounded-lg px-2.5 py-2 text-xs", turn.role === "user" ? "bg-muted/60" : "border border-border")}>
+                  <div
+                    key={turn.id}
+                    className={cn(
+                      "rounded-lg px-2.5 py-2 text-xs",
+                      turn.role === "user" ? "bg-muted/60" : "border border-border",
+                      // A turn that spent a revision is not a remark, and reads as its own event.
+                      turn.intent === "apply" ? "border-brand bg-brand-soft/30" : null,
+                      turn.intent === "confirm" ? "border-warning" : null,
+                    )}
+                  >
                     <p className="whitespace-pre-wrap">{turn.content}</p>
                     {turn.operations.length ? (
                       <p className="mt-1 text-2xs text-muted-foreground">{tr("{n} added to the list", { n: turn.operations.length })}</p>
                     ) : null}
+                    {turn.intent === "apply" ? <p className="mt-1 text-2xs text-brand">{tr("Applied from here")}</p> : null}
+                    {turn.intent === "confirm" ? <p className="mt-1 text-2xs text-warning">{tr("Waiting on your yes")}</p> : null}
                   </div>
                 ))
               )}

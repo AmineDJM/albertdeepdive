@@ -2960,4 +2960,7 @@ export const UI_FR: Record<string, string> = {
   "or": "ou",
   " — neither costs a revision.": " — ni l'un ni l'autre ne coûte une révision.",
   "edit the words": "modifier le texte",
+  "Applied from here": "Appliqué depuis ici",
+  "Waiting on your yes": "En attente de votre accord",
+  "Say “apply” when you are ready, or press the button.": "Dites « applique » quand vous êtes prêt, ou appuyez sur le bouton.",
 };

@@ -1292,8 +1292,11 @@ function localEditionStudio(input: Input): unknown {
   ].filter(Boolean);
 
   return {
-    reply: `${facts.join(" ")} I can't read what you asked for: no language model is connected to this workspace, and I won't guess at your words and then act on the guess. Connect one under Platform → Integrations and ask me again. Until then the layout, flatplan and article controls all still work by hand.`,
+    reply: `${facts.join(" ")} I can't read what you asked for: no language model is connected to this workspace, and I won't guess at your words and then act on the guess. Connect one under Platform → Integrations and ask me again. Nothing else is blocked: anything already on the list applies from the button beside it, and the flatplan and the article desk still edit the issue by hand.`,
     operations: [],
     askFirst: false,
+    // Never from here. Reading "applique" out of a sentence is the same guess as reading "shorter"
+    // out of one, and this one would spend somebody's revision.
+    apply: false,
   };
 }

@@ -1,0 +1,1 @@
+ALTER TABLE "edition_studio_messages" ADD COLUMN "intent" text;

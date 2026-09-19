@@ -116,7 +116,7 @@ export const DEFAULT_PLANS: {
       users: 20,
       subscribers: 25_000,
       editionsPerMonth: null,
-      revisionsPerEdition: 10,
+      revisionsPerEdition: null,
       outputs: ["EMAIL", "WEB", "MAGAZINE", "PRINT"],
       customDomain: true,
       removeBrieflyBranding: true,
@@ -233,6 +233,39 @@ export async function backfillPlanEntitlements(): Promise<string[]> {
     touched.push(`${row.key}: ${missing.map(([key]) => key).join(", ")}`);
   }
   return touched;
+}
+
+/**
+ * The revision ladder, corrected.
+ *
+ * The allowance shipped as 1 / 3 / 10 / unlimited. The ladder it was meant to be is 1 on the free
+ * plan, 3 on the first paid one, and unlimited from the tier above that — a 10 nobody chose was a
+ * number invented in the middle of it. (The tiers here are named free / pro / business /
+ * enterprise, so "the first paid one" is `pro` and "unlimited from there" starts at `business`.)
+ *
+ * `backfillPlanEntitlements` cannot do this: it only fills in keys a plan does not have, and every
+ * plan already has this one. So this corrects the value — and only where it is still exactly what
+ * the superseded default wrote. A plan whose allowance somebody has since set in the console holds
+ * a different number, and a different number is a decision; it is left alone.
+ */
+const SUPERSEDED_REVISION_DEFAULTS: Record<string, number> = { business: 10 };
+
+export async function correctRevisionAllowances(): Promise<string[]> {
+  const rows = await db.select({ id: s.plans.id, key: s.plans.key, entitlements: s.plans.entitlements }).from(s.plans);
+  const fixed: string[] = [];
+  for (const row of rows) {
+    const superseded = SUPERSEDED_REVISION_DEFAULTS[row.key];
+    if (superseded === undefined) continue;
+    const current = (row.entitlements ?? {}) as Record<string, unknown>;
+    if (current.revisionsPerEdition !== superseded) continue;
+    const wanted = DEFAULT_PLANS.find((plan) => plan.key === row.key)?.entitlements.revisionsPerEdition ?? null;
+    await db
+      .update(s.plans)
+      .set({ entitlements: { ...current, revisionsPerEdition: wanted } as Entitlements, updatedAt: new Date() })
+      .where(eq(s.plans.id, row.id));
+    fixed.push(`${row.key}: ${superseded} → ${wanted === null ? "unlimited" : wanted}`);
+  }
+  return fixed;
 }
 
 export async function listPlans(includePrivate = false) {

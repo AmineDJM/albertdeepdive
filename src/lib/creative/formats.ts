@@ -43,6 +43,12 @@ export type FormatDefinition = {
   /** Where it is meant to be posted, for the labels and the export names. */
   platforms: string[];
   /**
+   * How attention behaves in this shape. Only the moving ones have it.
+   *
+   * This is the part that makes a vertical cut a different film rather than a shorter one.
+   */
+  attention?: AttentionModel;
+  /**
    * A shape that can still be rendered but is no longer offered.
    *
    * Square video was how LinkedIn wanted video in 2019. It now plays vertical and landscape
@@ -51,6 +57,92 @@ export type FormatDefinition = {
    * shape is simply not on the menu any more.
    */
   legacy?: boolean;
+};
+
+/**
+ * What holds attention, which is not the same question in a feed and on a screen somebody chose.
+ *
+ * A vertical cut is not a landscape one with the sides taken off. It is watched with a thumb
+ * resting on the glass, in a feed the viewer is already leaving, and the decision to stay is made
+ * in the first second and a half — before any context can be established. So it opens on the
+ * sharpest thing there is, turns over faster, pays off earlier, and resets attention on every
+ * shot. A landscape cut is played on a screen somebody has already chosen to look at, often with
+ * sound; it can take a beat to set something up and be trusted to arrive.
+ *
+ * These are the numbers that difference reduces to, kept as data because they have to reach three
+ * separate places that must not disagree: the brief the art director writes, the timeline the
+ * motion planner lays out, and the check that reports a film too slow to hold anybody.
+ */
+export type AttentionModel = {
+  /** Seconds the opening shot has to earn the second one. */
+  hookSeconds: number;
+  /** The pause after a cut before reading starts. A feed viewer is already scanning. */
+  fixation: number;
+  /** The shortest and longest a shot may be held, whatever is on it. */
+  minHold: number;
+  maxHold: number;
+  /** Words a minute the viewer is assumed to read at, in this context. */
+  readingWpm: number;
+  /** Multiplier on the motion system's drift: how hard the picture resets attention per shot. */
+  driftScale: number;
+  /** The beats a set of this shape runs through, in order, for the art director to fill. */
+  beats: string[];
+  /** What this shape rewards, in one paragraph, for the art director. */
+  note: string;
+};
+
+/** The most words the opening shot may carry and still be read inside the hook. */
+export function hookWords(attention: AttentionModel): number {
+  return Math.max(1, Math.floor(((attention.hookSeconds - attention.fixation) * attention.readingWpm) / 60));
+}
+
+/**
+ * Vertical: attention engineering for a feed.
+ *
+ * 240 words a minute sits between subtitle practice (160–180, where the reader is also watching a
+ * scene) and silent reading on a page (~250). A Reel's type is four or five very large words with
+ * nothing else moving, which is read closer to the page rate than the subtitle rate — and the
+ * fixation is shorter because the type is full-screen, so the eye has nowhere else to land.
+ */
+const FEED_ATTENTION: AttentionModel = {
+  hookSeconds: 1.5,
+  fixation: 0.2,
+  minHold: 1,
+  maxHold: 4,
+  readingWpm: 240,
+  // A bigger push per shot than a classic film would take, because the reset is the point: a
+  // vertical frame that sits still for two seconds has already been scrolled past.
+  driftScale: 1.6,
+  beats: [
+    "hook — the sharpest thing you have, in about five words",
+    "the curiosity or the problem it opens",
+    "escalation: the number, the quote, the turn that makes it matter",
+    "the payoff, earlier than feels comfortable",
+    "one line of what to do next, if it earns its shot",
+  ],
+  note:
+    "Vertical, held in one hand, in a feed somebody is already leaving. The first second and a half decides everything: open on curiosity, tension, surprise or a number nobody expects — never on a label, a logo, a greeting or a slow set-up. Every shot after it has to earn its place, so cut anything that is only there to get to the next thing. Higher information density than a classic film, shorter lines, shorter pauses, the payoff earlier than feels comfortable, and a tight ending rather than a fade. Fast is not chaotic: each shot still says one whole thing, and the set still reads as this organisation's work.",
+};
+
+/** Landscape: a screen somebody chose to look at, and usually with the sound on. */
+const SCREEN_ATTENTION: AttentionModel = {
+  // Five seconds, not a Reel's second and a half. Somebody who pressed play on a wide video has
+  // already decided to watch something; the opening shot has to reward that, not fight for it.
+  hookSeconds: 5,
+  fixation: 0.35,
+  minHold: 1.6,
+  maxHold: 7,
+  readingWpm: 180,
+  driftScale: 1,
+  beats: [
+    "the claim, stated plainly",
+    "what it rests on",
+    "the evidence: the figure, the quote, the comparison",
+    "what follows from it",
+    "the close, and where to read the whole thing",
+  ],
+  note:
+    "Wide, played on a screen the viewer is already watching, often with sound. A shot can carry a sentence and the figure that proves it, and the set can take a beat to set something up and be trusted to arrive. It still has to read muted, and it still opens on a claim rather than a title card — but it is an argument with room, not a scramble.",
 };
 
 /**
@@ -111,14 +203,18 @@ export const FORMATS: Record<CreativeFormat, FormatDefinition> = {
     height: 1920,
     // TikTok's caption block and button column take more room than Instagram's, so the stricter wins.
     safeArea: { top: 220, right: 200, bottom: 420, left: 40 },
-    minFrames: 3,
-    maxFrames: 8,
+    minFrames: 4,
+    // More shots, each shorter: at this pace twelve of them still come in under a minute, and
+    // eight long ones is the shape of a film rather than of a Short.
+    maxFrames: 12,
     moving: true,
-    secondsPerFrame: 3,
+    // Two seconds a shot, not three: the turnover is part of what makes it a Short.
+    secondsPerFrame: 2,
     // 90s is Instagram's Reel ceiling. Shorts and TikTok both take longer now, but a cut that runs
     // everywhere is worth more than ninety extra seconds on two of the three.
     maxSeconds: 90,
     platforms: ["Instagram", "TikTok", "YouTube Shorts"],
+    attention: FEED_ATTENTION,
   },
   LANDSCAPE_VIDEO: {
     key: "LANDSCAPE_VIDEO",
@@ -144,6 +240,7 @@ export const FORMATS: Record<CreativeFormat, FormatDefinition> = {
     // What an unverified YouTube account may upload. Nothing this engine makes comes near it.
     maxSeconds: 900,
     platforms: ["YouTube", "LinkedIn"],
+    attention: SCREEN_ATTENTION,
   },
   LINKEDIN_VIDEO: {
     key: "LINKEDIN_VIDEO",
@@ -158,6 +255,7 @@ export const FORMATS: Record<CreativeFormat, FormatDefinition> = {
     secondsPerFrame: 3.5,
     maxSeconds: 600,
     platforms: ["LinkedIn"],
+    attention: SCREEN_ATTENTION,
     legacy: true,
   },
 };

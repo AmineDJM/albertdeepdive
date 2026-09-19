@@ -1,4 +1,5 @@
 import type { FrameSpec, RenderSpec } from "./brief";
+import { FORMATS, hookWords, type AttentionModel, type CreativeFormat } from "./formats";
 
 /**
  * How a set of composed frames becomes a video.
@@ -60,9 +61,32 @@ export function wordsOn(frame: FrameSpec): number {
  * sits there. A flat `secondsPerFrame` is what the format offers as a default; this is what the
  * content actually needs.
  */
-export function holdFor(frame: FrameSpec): number {
-  const needed = FIXATION_SECONDS + wordsOn(frame) / (READING_WPM / 60);
-  return Math.round(Math.min(MAX_HOLD_SECONDS, Math.max(MIN_HOLD_SECONDS, needed)) * 100) / 100;
+export function holdFor(frame: FrameSpec, attention: AttentionModel = CLASSIC_PACE): number {
+  const needed = attention.fixation + wordsOn(frame) / (attention.readingWpm / 60);
+  return Math.round(Math.min(attention.maxHold, Math.max(attention.minHold, needed)) * 100) / 100;
+}
+
+/**
+ * The pace used when nothing says otherwise.
+ *
+ * The constants above, in the shape the format table now carries. A still being timed, or a spec
+ * from before the shapes had their own attention models, gets the classic film's pace — which is
+ * what it had before, so nothing changes under it.
+ */
+export const CLASSIC_PACE: AttentionModel = {
+  hookSeconds: 3,
+  fixation: FIXATION_SECONDS,
+  minHold: MIN_HOLD_SECONDS,
+  maxHold: MAX_HOLD_SECONDS,
+  readingWpm: READING_WPM,
+  driftScale: 1,
+  beats: [],
+  note: "",
+};
+
+/** How this shape wants to be cut. Vertical is a different film, not a shorter one. */
+export function paceFor(format: string | null | undefined): AttentionModel {
+  return FORMATS[format as CreativeFormat]?.attention ?? CLASSIC_PACE;
 }
 
 /**
@@ -150,6 +174,14 @@ export type MotionSpec = {
   transitionSeconds: number;
   /** Total running time, transitions included. */
   duration: number;
+  /**
+   * The attention model this timeline was cut to, so the checks below know what to expect of it.
+   *
+   * Optional because a timeline can be handed here from somewhere that only cares about the
+   * seconds — the narration mixer builds one to line a voice up against — and those get the
+   * classic film's pace rather than a required field they have no opinion about.
+   */
+  pace?: AttentionModel;
 };
 
 /**
@@ -173,19 +205,24 @@ export const FPS = 25;
  */
 export function planMotion(spec: RenderSpec, systemKey: string | null | undefined, options: { fps?: number } = {}): MotionSpec {
   const system = motionSystem(systemKey);
+  const pace = paceFor(spec.format);
   const fps = options.fps ?? FPS;
-  const transitionSeconds = Math.min(TRANSITION.max, Math.max(0, system.transitionSeconds));
+  // A feed cut wants its transitions at the short end too: a dissolve that takes a third of the
+  // shot is a shot spent dissolving.
+  const transitionSeconds = Math.min(TRANSITION.max, Math.max(0, system.transitionSeconds)) * (pace.driftScale > 1 ? 0.6 : 1);
+  const drift = system.drift * pace.driftScale;
 
   let cursor = 0;
   const scenes: Scene[] = spec.frames.map((frame, index) => {
-    const hold = Math.max(holdFor(frame), transitionSeconds * 2);
+    const hold = Math.max(holdFor(frame, pace), transitionSeconds * 2);
     const scene: Scene = {
       index,
       hold,
       startsAt: Math.round(cursor * 1000) / 1000,
-      // Alternating direction, so a set of pushes does not read as one continuous zoom.
-      zoomFrom: system.drift === 0 ? 1 : index % 2 === 0 ? 1 : 1 + system.drift,
-      zoomTo: system.drift === 0 ? 1 : index % 2 === 0 ? 1 + system.drift : 1,
+      // Alternating direction, so a set of pushes does not read as one continuous zoom. In a feed
+      // the alternation is the attention reset: every cut changes which way the frame is moving.
+      zoomFrom: drift === 0 ? 1 : index % 2 === 0 ? 1 : 1 + drift,
+      zoomTo: drift === 0 ? 1 : index % 2 === 0 ? 1 + drift : 1,
     };
     cursor += hold - (index < spec.frames.length - 1 ? transitionSeconds : 0);
     return scene;
@@ -198,8 +235,9 @@ export function planMotion(spec: RenderSpec, systemKey: string | null | undefine
     fps,
     scenes,
     transition: system.transition,
-    transitionSeconds,
+    transitionSeconds: Math.round(transitionSeconds * 1000) / 1000,
     duration: Math.round(cursor * 1000) / 1000,
+    pace,
   };
 }
 
@@ -218,15 +256,46 @@ export function inspectMotion(motion: MotionSpec, limitSeconds: number): { code:
       message: `${motion.duration.toFixed(1)}s of reading, and the format allows ${limitSeconds}s. Fewer scenes or shorter lines.`,
     });
   }
-  const rushed = motion.scenes.filter((scene) => scene.hold <= MIN_HOLD_SECONDS + 0.001);
-  if (rushed.length && motion.scenes.length > 1) {
-    findings.push({
-      code: "rushed",
-      message: `${rushed.length} scene${rushed.length === 1 ? "" : "s"} at the ${MIN_HOLD_SECONDS}s floor. Below that a shot is seen rather than read.`,
-    });
+  const pace = motion.pace ?? CLASSIC_PACE;
+  /*
+   * A shot at the floor is a shot with almost nothing on it — fine for the opener, which is
+   * supposed to be two enormous words, and a sign of an empty shot anywhere else. The opener is
+   * therefore exempt in every shape; a feed cut, where every shot has to earn its place, gets the
+   * finding worded for what it actually costs there.
+   */
+  const idle = motion.scenes.filter((scene, index) => index > 0 && scene.hold <= pace.minHold + 0.001);
+  if (idle.length && motion.scenes.length > 1) {
+    findings.push(
+      pace.driftScale > 1
+        ? {
+            code: "dead_shot",
+            message: `${idle.length} shot${idle.length === 1 ? "" : "s"} carrying almost nothing. In a feed a shot that says nothing is the one somebody scrolls on.`,
+          }
+        : {
+            code: "rushed",
+            message: `${idle.length} scene${idle.length === 1 ? "" : "s"} at the ${pace.minHold}s floor. Below that a shot is seen rather than read.`,
+          },
+    );
   }
   if (motion.scenes.length === 1) {
     findings.push({ code: "single_scene", message: "One scene is a still, not a video. A second gives it somewhere to go." });
   }
+
+  /*
+   * The hook, as arithmetic.
+   *
+   * The opening shot is held for as long as its own words take to read, so an opener that runs
+   * past the hook window is an opener with too many words in it — and in a feed that is not a
+   * stylistic preference, it is the shot during which the thumb moves. Reported rather than
+   * repaired, because the fix is five better words and nobody but the writer has those.
+   */
+  const opener = motion.scenes[0];
+  if (opener && opener.hold > pace.hookSeconds + 0.001) {
+    findings.push({
+      code: "slow_hook",
+      message: `The opening shot takes ${opener.hold.toFixed(1)}s to read and the hook is ${pace.hookSeconds}s. About ${hookWords(pace)} words, and they have to be the sharpest ones you have.`,
+    });
+  }
+
   return findings;
 }

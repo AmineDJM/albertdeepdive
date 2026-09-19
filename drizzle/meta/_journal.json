@@ -148,6 +148,13 @@
       "when": 1789805441854,
       "tag": "0020_fat_shen",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1789812599276,
+      "tag": "0021_eminent_yellow_claw",
+      "breakpoints": true
     }
   ]
 }

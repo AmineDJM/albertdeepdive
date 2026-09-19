@@ -155,7 +155,14 @@ export async function stage(
   const added: StagedChange[] = [];
   let replaced = 0;
 
+  /** The same operation, in the same terms. Key order is the schema's, so this is stable. */
+  const identity = (op: EditionOperation) => JSON.stringify(Object.entries(op).sort(([a], [b]) => a.localeCompare(b)));
+
   for (const op of ops) {
+    // Asked for twice in identical terms is one ask. Found on a real call: told to go ahead with a
+    // page removal already on the list, the planner helpfully repeated the operation, which would
+    // have put the same line on the list twice and failed the second time round.
+    if (kept.some((change) => identity(change.op) === identity(op))) continue;
     const phrase = describe(op, options.names ?? {});
     const change: StagedChange = {
       id: randomUUID(),

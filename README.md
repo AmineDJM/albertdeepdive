@@ -286,13 +286,21 @@ composition actually fills, every article with its word count, the photographs t
 were never placed — so the answer names the page rather than guessing.
 
 Nothing is applied as you talk. Each request becomes a line on a list, in words: *Shorten "The quiet
-year at Volvo" to about 400 words*. Take out whatever you did not mean, then press once. That press
-is a **revision**, and it is the moment the work happens: one restore point for the lot, the changes
-in the order you asked for them, one re-fit of the whole issue rather than one per sentence, then
-the formats. The count is shown plainly — "revision 2 of 3 on this issue" — because a plan includes
-a number of them per issue, which is where the cost of re-laying out and re-rendering actually sits.
-Ask for something twice and the list replaces the first line instead of keeping both. Undo puts the
-issue back; the revision stays spent, because the work was done.
+year at Volvo" to about 400 words*. Take out whatever you did not mean, then apply it — by pressing
+the button, or by saying so. "Applique", "vas-y", "go ahead" runs the same service the button runs,
+with the same allowance check; an interface that answers a go-ahead by pointing at a button is one
+pretending it did not hear. The only thing that asks twice is a list carrying something the
+vocabulary marks as heavy — re-planning the issue, taking a page out — which is named in a sentence
+and applied on the next yes.
+
+Applying is the moment the work happens: one restore point for the lot, the changes in the order you
+asked for them, one re-fit of the whole issue rather than one per sentence, then the formats. That
+is a **revision**, and the count is shown plainly — "revision 2 of 3 on this issue" — because a plan
+includes a number of them per issue, which is where the cost of re-laying out and re-rendering
+actually sits: **one** on Free, **three** on the first paid tier, **unlimited** above that, and
+whatever a super admin sets in the console instead. Ask for something twice and the list replaces
+the first line instead of keeping both. Undo puts the issue back; the revision stays spent, because
+the work was done.
 
 The assistant never writes a page. It answers in a closed vocabulary of operations — set the
 extent, shorten this article, attach these photographs, move that page — which the same services
@@ -321,14 +329,35 @@ Shapes are offered in two groups, because the decision that matters is which one
 | Full-screen story | 1080×1920 | **Landscape** — YouTube, LinkedIn | 1920×1080 |
 | Post | 1080×1080 | | |
 
-The two cuts are not each other turned sideways. A vertical one is held in one hand, thumbed past
-in a second and watched muted, so a scene carries one idea, large, and everything that matters sits
-inside TikTok's caption block and button column. A landscape one is played on a screen somebody is
-already looking at, often with sound, so a scene can carry a sentence and the figure that proves it,
-and the set can take a beat longer — clear of YouTube's control bar, its title overlay and its end
-cards. The art director is told which it is writing for; the composer anchors its type scale on the
-canvas's short edge and keeps every line inside the platform's furniture; the export names the file
-by its dimensions so the two do not land in the same folder as `october-film.mp4` twice.
+The two cuts are not each other turned sideways, and not the same film at two lengths. Each moving
+shape carries an **attention model** — how long the hook has, how long a shot may be held, how fast
+the viewer is assumed to read, how hard the picture resets between shots, and the beats the set runs
+through. One table, read by all three places that must not disagree: the brief the art director
+writes, the timeline the motion planner lays out, and the checks that report a film too slow to hold
+anybody.
+
+A vertical cut is watched with a thumb resting on the glass, in a feed the viewer is already
+leaving, so the decision is made in the first **1.5 seconds** — before any context can be
+established. It opens on the sharpest thing there is (a figure alone, at display size, not the
+nine-word headline it belongs to), turns over every 1–4 seconds, resets attention harder on every
+cut, drops the round-up of everything else in the issue, and closes tight. A landscape cut is played
+on a screen somebody chose: five seconds of hook, shots up to seven, room for a sentence and the
+figure that proves it, and the argument can take its time. From the same material the vertical one
+runs about **14 seconds** and the landscape one about **30**.
+
+The rules are checks, not advice. An opening shot is on screen for exactly as long as its own words
+take to read, so `slow_hook` reports an opener too wordy for its shape's window and names how many
+words it has; `dead_shot` reports a shot after the first carrying almost nothing, because in a feed
+that is the one somebody scrolls on; and an opener that announces instead of saying — "This month",
+"What happened" — is a note on a carousel and a **defect** on a cut that has to stop a thumb.
+Nothing is truncated to make a number work: a headline too long for the hook is left whole and
+reported, because the fix is five better words and only a writer has those.
+
+Underneath, both are still premium art direction: the same composer, the same design systems, the
+same brand. The composer anchors its type scale on the canvas's short edge and keeps every line
+inside the platform's furniture — TikTok's caption block and button column, YouTube's control bar,
+title overlay and end cards — and the export names the file by its dimensions so the two do not land
+in the same folder as `october-film.mp4` twice.
 
 Square video for LinkedIn is still rendered for packs already made in it, but is no longer offered:
 LinkedIn takes both of the above natively, and a third video choice is a question with no good

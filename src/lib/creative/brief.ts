@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { CREATIVE_FORMATS, CREATIVE_MODES } from "./formats";
+import { CREATIVE_FORMATS, CREATIVE_MODES, FORMATS, type CreativeFormat, type CreativeMode } from "./formats";
 import { MAX_HASHTAGS } from "./laws";
 import { IMAGERY_TREATMENTS, SURFACE_KEYS } from "@/lib/brand/system";
 
@@ -82,7 +82,14 @@ export const creativeBriefSchema = z.object({
   mode: z.enum(CREATIVE_MODES),
   /** The one sentence this pack exists to land. Not rendered; it is the yardstick for the rest. */
   intent: z.string().trim().min(1).max(280),
-  frames: z.array(frameBriefSchema).min(1).max(10),
+  /**
+   * As many as the most generous shape allows, derived rather than typed.
+   *
+   * A hard 10 here silently capped the shape that wants twelve: a feed cut's whole character is
+   * more shots, each shorter, and the model would have been refused the twelfth without anything
+   * saying why.
+   */
+  frames: z.array(frameBriefSchema).min(1).max(Math.max(...CREATIVE_FORMATS.map((format) => FORMATS[format].maxFrames))),
   /** The post's own text, which goes in the caption box rather than on the image. */
   caption: z.string().trim().min(1).max(2200),
   /**
@@ -209,12 +216,33 @@ export type RenderSpec = {
  * path: a missing `body` on a `heading_body` frame is a retry, not a crash. The messages are written
  * to be fed back to the model verbatim.
  */
-export function parseBrief(raw: unknown): { ok: true; brief: CreativeBrief } | { ok: false; problems: string[] } {
+/**
+ * Reads a brief the model wrote, and takes the shape back off it.
+ *
+ * `format` and `mode` are in the schema because strict structured outputs requires every property,
+ * not because the model has a say: the person chose the shape when they pressed Make, and the
+ * canvas, the safe area, the frame count and the pace all hang off it. Left to itself the model
+ * answers "STORY" almost every time, whatever was asked — asking for a landscape film on a real
+ * call came back as a brief claiming STORY.
+ *
+ * `setBrief` has always overruled that on the way into a pack, so no stored pack was ever the
+ * wrong shape. This puts the correction one step earlier, where the brief is read, so the value
+ * `briefFor` hands back is right on its own — anything that composes from it without going through
+ * a pack cannot inherit a shape nobody asked for.
+ */
+export function parseBrief(
+  raw: unknown,
+  asked?: { format: CreativeFormat; mode: CreativeMode },
+): { ok: true; brief: CreativeBrief } | { ok: false; problems: string[] } {
   const parsed = creativeBriefSchema.safeParse(raw);
   if (parsed.success) {
     // Stored without the sign, rendered with it. Keeping both forms in the data is how "##tag" ends
     // up in a caption.
-    const brief: CreativeBrief = { ...parsed.data, hashtags: parsed.data.hashtags.map((tag) => tag.replace(/^#+/, "")) };
+    const brief: CreativeBrief = {
+      ...parsed.data,
+      ...(asked ? { format: asked.format, mode: asked.mode } : {}),
+      hashtags: parsed.data.hashtags.map((tag) => tag.replace(/^#+/, "")),
+    };
     const problems = [...structuralProblems(brief), ...unattributedQuotations(brief)];
     return problems.length ? { ok: false, problems } : { ok: true, brief };
   }

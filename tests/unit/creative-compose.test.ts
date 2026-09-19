@@ -49,9 +49,12 @@ describe("formats", () => {
     expect(clampFrames("CAROUSEL", Number.NaN)).toBe(3);
   });
 
-  it("turns scenes into seconds only for the formats that move", () => {
+  it("turns scenes into seconds only for the formats that move, at each one's own pace", () => {
     expect(durationSeconds("CAROUSEL", 6)).toBe(0);
-    expect(durationSeconds("REEL", 5)).toBe(15);
+    // Two seconds a shot on a feed cut against four on a film: the turnover is the difference
+    // between them, so the same scene count is not the same running time.
+    expect(durationSeconds("REEL", 5)).toBe(10);
+    expect(durationSeconds("LANDSCAPE_VIDEO", 5)).toBe(20);
   });
 
   it("only lets one mode reach for a picture that was never photographed", () => {

@@ -148,10 +148,14 @@ describe("what a timeline is checked for", () => {
     expect(inspectMotion(plan, FORMATS.REEL.maxSeconds ?? 90).map((f) => f.code)).not.toContain("too_long");
   });
 
-  it("reports scenes pinned to the floor, where a shot is seen rather than read", () => {
+  it("reports shots pinned to the floor, in the words that shape's viewer would use", () => {
+    // The opener is allowed to be two enormous words; every shot after it carrying nothing is
+    // dead air, which is what a feed cut cannot afford and a classic film calls merely rushed.
     const spec = reel();
     const terse = { ...spec, frames: spec.frames.map((frame) => ({ ...frame, text: [{ ...frame.text[0], content: "Go" }] })) };
-    expect(inspectMotion(planMotion(terse, "cut"), 90).map((f) => f.code)).toContain("rushed");
+    expect(inspectMotion(planMotion(terse, "cut"), 90).map((f) => f.code)).toContain("dead_shot");
+    const film = { ...terse, format: "LANDSCAPE_VIDEO" as const, width: 1920, height: 1080 };
+    expect(inspectMotion(planMotion(film, "cut"), 900).map((f) => f.code)).toContain("rushed");
   });
 
   it("says a single scene is a still, not a video", () => {

@@ -29,8 +29,17 @@ export const editionStudioMessages = pgTable(
     outcomes: jsonb("outcomes").$type<unknown[]>().notNull().default([]),
     /** Photographs dropped into the composer with this message. */
     mediaAssetIds: jsonb("media_asset_ids").$type<string[]>().notNull().default([]),
-    /** Operations held back for a yes, so the next turn knows what "go on then" means. */
+    /** The ids this turn put on the revision's list, so a line can be traced back to the ask. */
     pendingOperations: jsonb("pending_operations").$type<unknown[]>().notNull().default([]),
+    /**
+     * What this turn did: "stage" put things on the list, "confirm" asked about something heavy
+     * before spending, "apply" spent the revision.
+     *
+     * Kept because the next turn needs it. "Vas-y" means nothing on its own; it means yes to the
+     * question the turn before it asked, and without a record of having asked, a confirmation and
+     * a fresh instruction are the same two words.
+     */
+    intent: text("intent"),
     restorePointId: uuid("restore_point_id"),
     aiJobId: uuid("ai_job_id"),
     pagesBefore: integer("pages_before"),

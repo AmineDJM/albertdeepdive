@@ -145,14 +145,22 @@ export function inspect(spec: RenderSpec, brief: CreativeBrief | null): Finding[
 function inspectSet(spec: RenderSpec, brief: CreativeBrief | null): Finding[] {
   const findings: Finding[] = [];
 
-  // The hook. The first frame is the only one guaranteed to be seen.
+  /*
+   * The hook. The first frame is the only one guaranteed to be seen — and in a feed it is the only
+   * one guaranteed to be seen for a second and a half, which is why the same weak opener is a note
+   * on a carousel somebody chose to tap and a defect on a cut that has to stop a thumb. On paper a
+   * label is a stylistic misstep; in a feed it is the whole video, wasted.
+   */
+  const feed = (FORMATS[spec.format as CreativeFormat]?.attention?.driftScale ?? 1) > 1;
   const opener = brief?.frames[0];
   if (opener && isWeakOpener(opener.headline)) {
     findings.push({
-      severity: "note",
+      severity: feed ? "defect" : "note",
       frame: 0,
       code: "weak_opener",
-      message: `"${opener.headline}" announces that something is coming instead of saying it. The first frame is the only one guaranteed to be seen.`,
+      message: feed
+        ? `"${opener.headline}" announces that something is coming instead of saying it. In a feed that is the shot somebody scrolls on — open on the sharpest thing you have.`
+        : `"${opener.headline}" announces that something is coming instead of saying it. The first frame is the only one guaranteed to be seen.`,
       repairable: false,
     });
   }
