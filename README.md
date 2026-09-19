@@ -31,6 +31,7 @@ chief approves every issue.
 - [After it has gone out](#after-it-has-gone-out)
 - [Social, and the two video shapes](#social-and-the-two-video-shapes)
 - [Pictures](#pictures)
+- [Whose figures are whose](#whose-figures-are-whose)
 - [Tests](#tests)
 - [Deployment](#deployment)
 - [Documentation](#documentation)
@@ -461,6 +462,25 @@ image model, OpenAI's, Recraft, Ideogram and Higgsfield. Admin → Providers hol
 **Picture routing** holds the order per kind of job, the check thresholds, the retries and whether
 customers may see the routing. Pictures spend the plan's creative credits.
 
+## Whose figures are whose
+
+A customer's Analytics page counts one workspace. Not because the page filters — because the
+queries behind it take a scope that cannot be built without a workspace, resolved from the session
+and never from the URL. An edition id *is* read from the URL, so it is checked against that
+workspace first: somebody else's is a 404, not a page of their numbers. This matters more than it
+sounds, because the way it used to leak was not a guessable id but the default view: "all editions"
+meant every edition on the platform, so picking no edition added every other customer's
+submissions, stories, rights and contributors to your own.
+
+The people who run Briefly need the opposite, and get it from a different module with its own
+authorization: platform totals, one row per customer, and a drill-down that runs the customer's own
+readers against one named workspace. Never by calling a customer's reader with the workspace left
+out — there is no value that means that.
+
+What a newsroom sees is what happened to its issues: delivered, opened, clicked, opened-then-clicked,
+per issue and in total, plus every submission and collection figure. What it never sees is what its
+month cost to run; those are the operator's numbers and they live in the console.
+
 ## Tests
 
 ```bash
@@ -558,3 +578,7 @@ lacking publication consent until an editor confirms it.
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 - [docs/EDITORIAL_DNA.md](docs/EDITORIAL_DNA.md)
 - [docs/UI_CONVENTIONS.md](docs/UI_CONVENTIONS.md)
+- [docs/STORAGE.md](docs/STORAGE.md) — where an uploaded file actually goes, which storage is in
+  use and why, and how to find out whether the bytes are still there
+- [docs/QC-ENGINE.md](docs/QC-ENGINE.md) — the measure/compare/fail/repair/remeasure quality system.
+  Specified, not built: it describes the target, not the code

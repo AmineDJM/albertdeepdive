@@ -31,6 +31,14 @@ services:
     preDeployCommand: pnpm predeploy
     healthCheckPath: /api/health
     autoDeploy: true
+    # Scratch space, and the fallback while no bucket is connected — not where customer files
+    # belong. A Render disk is attached to one service on a paid instance type; a free instance
+    # has none, and a container replacement takes whatever was on it. The rows survive in Postgres
+    # either way, so what you get is a library of broken pictures. Connect object storage in
+    # Admin → Providers → Object storage, check it under Admin → Storage, and copy the disk into
+    # it from the same screen.
+    # The name is load-bearing: Render matches an existing disk by it, and changing it detaches
+    # the live one and attaches a new empty disk on the next sync.
     disk:
       name: media
       mountPath: /var/data
@@ -84,8 +92,9 @@ services:
       - key: EMAIL_PROVIDER
         value: log
 
-      # Photographs, variants and exports go on the attached disk until a bucket is connected in
-      # Admin → Providers → Object storage, which overrides this without a redeploy.
+      # The starting point only. Saved bucket credentials win over this without a redeploy, which
+      # is the intended production setup: durable customer media belongs in object storage, and the
+      # disk below is for temporary processing and for a first run before anything is connected.
       - key: STORAGE_PROVIDER
         value: local
       - key: STORAGE_LOCAL_DIR
