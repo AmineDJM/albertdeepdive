@@ -313,16 +313,21 @@ export async function publishEdition(editionId: string, versionId: string, userI
     throw new AppError(`Quality gates block publication: ${gates.blocking.map((g) => g.label).join(", ")}`, "QUALITY_GATES_BLOCKING", 409);
   }
   /*
-   * Preflight, and it is not advisory.
+   * Preflight again, on what can have changed since the file was made.
    *
    * The editorial gates above answer "is the issue finished" — approved, sourced, no unresolved
-   * conflicts. This answers the other half: does the artefact actually work. A clipped word, a
-   * refused photograph, a page box the printer will reject and a PDF page that will not render are
-   * measurements, and nobody gets to approve one. It runs with repair on, so what blocks here is
-   * what survived a repair and a second measurement.
+   * conflicts. The artefact's own quality was answered when it was rendered, which is what made it
+   * READY; re-rendering thirty pages inside this click would cost a minute to re-answer it. So what
+   * runs here is the other question: has anything changed since. Rights withdrawn, bytes gone from
+   * the bucket, a number corrected in one output and not another, an artefact that no longer
+   * matches the issue behind it. Nobody gets to approve one of those either.
+   *
+   * No repair: whatever reached this point has already been through the loop once, and quietly
+   * changing an issue as somebody presses Publish is not a repair, it is a surprise.
    */
   const { requireQcPass } = await import("@/server/qc");
-  await requireQcPass(editionId, { profile: "PDF_SCREEN", triggeredById: userId });
+  const { PUBLISH_CHECKS } = await import("./preflight");
+  await requireQcPass(editionId, { profile: "PDF_SCREEN", only: [...PUBLISH_CHECKS], repair: false, versionId, triggeredById: userId });
   assertTransition(edition.status as EditionStatus, "PUBLISHED");
   const now = new Date();
   const [updated] = await db

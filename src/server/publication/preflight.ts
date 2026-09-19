@@ -29,6 +29,22 @@ const log = createLogger("publication:preflight");
 const ARTEFACT_CHECKS = ["storage", "imagery", "rights", "geometry", "pdf", "print", "facts"] as const;
 
 /**
+ * What a publish re-checks, which is everything that can have changed since the file was made.
+ *
+ * Deliberately not the artefact checks. The version being published was measured when it was
+ * rendered — every page opened, every box compared with the profile — and that verdict is why it
+ * is READY. Measuring the geometry again at publish time would mean launching a browser and
+ * re-rendering thirty pages inside the click, which costs a minute, blocks the request, and
+ * re-answers a question already answered.
+ *
+ * What is worth asking again is what the world can have done in the meantime: a picture whose
+ * rights were withdrawn, bytes that left the bucket, a number somebody corrected in one output and
+ * not another, and whether the frozen artefact still matches the issue it was made from. None of
+ * those needs a render, and all of them are reasons not to publish.
+ */
+export const PUBLISH_CHECKS = ["storage", "imagery", "rights", "facts", "staleness"] as const;
+
+/**
  * The profile an exported version is judged against.
  *
  * PDF_SCREEN for every kind, because that is genuinely what the renderer produces: A4 trim, no

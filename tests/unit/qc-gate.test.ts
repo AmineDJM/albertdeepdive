@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { BLOCKING, HARD_BLOCKING } from "@/server/qc/types";
 import { ALL_METRICS } from "@/server/qc/spec";
+import { PUBLISH_CHECKS } from "@/server/publication/preflight";
 
 /**
  * The one rule the whole engine is worth nothing without: nobody gets to approve a measurement.
@@ -58,6 +59,28 @@ describe("the gate cannot be talked round", () => {
     const source = read("src", "server", "qc", "index.ts");
     expect(source).toMatch(/export async function requireQcPass[\s\S]*throw new QcBlockedError/);
     expect(source).toMatch(/export async function requireRenderable[\s\S]*throw new QcBlockedError/);
+  });
+
+  it("does not re-render the issue to publish it", () => {
+    // Pressing Publish used to launch a browser and re-render thirty pages inside the click: about
+    // a minute of work to re-answer a question the render had already answered, which is why the
+    // artefact is READY at all. Worse, it held the request open long enough for the next page load
+    // to time out behind it.
+    //
+    // What a publish re-checks is what can have changed since: rights withdrawn, bytes gone from
+    // the bucket, a number corrected in one output and not another, an artefact that no longer
+    // matches the issue. None of those needs a render.
+    const needsRender = ["geometry", "pdf", "print"];
+    for (const check of needsRender) {
+      expect(PUBLISH_CHECKS, `${check} opens a browser and must not run on the publish path`).not.toContain(check);
+    }
+    expect(PUBLISH_CHECKS).toContain("rights");
+    expect(PUBLISH_CHECKS).toContain("storage");
+    expect(PUBLISH_CHECKS, "the whole point of freezing an artefact is knowing when it has gone stale").toContain("staleness");
+
+    // And the checks that do need one are exactly the ones the render itself runs.
+    const source = read("src", "server", "publication", "preflight.ts");
+    for (const check of needsRender) expect(source).toMatch(new RegExp(`ARTEFACT_CHECKS[\\s\\S]*"${check}"`));
   });
 
   it("keeps the two blocking sets honest: what stops a draft is a subset of what stops a release", () => {
