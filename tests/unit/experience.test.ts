@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { DEFAULT_EXPERIENCE, STANDARD_ROOMS, experienceOf, isExperienceMode, onStandardPath } from "@/lib/experience";
 import { AUDIENCE_TABS, EDITION_DOORS, INSIGHTS_TABS, NAV_ITEMS, SETUP_ITEMS, WORKBENCH_TABS, doorsFor, navItemsFor, resolveNavItem, settingsShown, tabsFor } from "@/components/newsroom/nav";
 import { SETTINGS_NAV } from "@/components/settings/settings-nav";
+import { EDITION_STEPS, STEPS } from "@/lib/editorial/edition-steps";
 
 describe("the experience mode", () => {
   it("is Standard until a person chooses otherwise", () => {
@@ -59,9 +60,15 @@ describe("the experience mode", () => {
     expect(settingsShown("standard", "/settings/prompts", "/settings/prompts")).toBe(true);
   });
 
-  it("opens four doors on an edition in Standard and keeps the room the reader is in", () => {
+  it("opens the doors Standard's five steps need, and keeps the room the reader is in", () => {
+    /*
+     * Outputs joined the list when Distribute stopped sharing a room with Validate. The two steps
+     * pointed at the same publication checklist, which made one of them a lie; Distribute now
+     * opens the exports, so the exports have to be somewhere Standard can reach. The count is not
+     * the point — every room the five steps open being on this side of the line is.
+     */
     const doors = doorsFor("standard", EDITION_DOORS, "");
-    expect(doors.map((door) => door.key)).toEqual(["overview", "stories", "design", "distribution"]);
+    expect(doors.map((door) => door.key)).toEqual(["overview", "stories", "design", "outputs", "distribution"]);
     // Revise is in Standard beside the pictures: "make it shorter" needs no vocabulary and is the
     // simplest way there is to change an issue. The flatplan stays behind Advanced.
     expect(doors.find((door) => door.key === "design")!.rooms.map((room) => room.slug)).toEqual(["revise", "media"]);
@@ -72,6 +79,11 @@ describe("the experience mode", () => {
     expect(onLayout.find((door) => door.key === "design")!.rooms.map((room) => room.slug)).toEqual(["revise", "layout", "media"]);
     // And Advanced is the whole house.
     expect(doorsFor("advanced", EDITION_DOORS, "")).toHaveLength(EDITION_DOORS.length);
+
+    // Every step of the timeline — which *is* the navigation in Standard — lands in a room these
+    // doors contain. A step that opens a room Standard hides is a step that dead-ends.
+    const reachable = new Set(doors.flatMap((door) => door.rooms.map((room) => room.slug)));
+    for (const step of EDITION_STEPS) expect(reachable.has(STEPS[step].room), `${step} opens ${STEPS[step].room}`).toBe(true);
   });
 
   it("judges a path by its first segment", () => {

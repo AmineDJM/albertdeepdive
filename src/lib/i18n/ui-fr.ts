@@ -859,6 +859,8 @@ export const UI_FR: Record<string, string> = {
   "campuses represented": "campus représentés",
   "can see every customer": "voit tous les clients",
   "Cancel": "Annuler",
+  "1 edition": "1 édition",
+  "{count} editions": "{count} éditions",
   "New newsletter": "Nouvelle newsletter",
   "All newsletters": "Toutes les newsletters",
   "Your newsletters": "Vos newsletters",
