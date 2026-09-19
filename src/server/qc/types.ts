@@ -46,7 +46,7 @@ export function worst(severities: Severity[]): Severity | null {
 export type ThresholdOrigin = "INDUSTRY_STANDARD" | "OUTPUT_PROVIDER_REQUIREMENT" | "BRIEFLY_HOUSE_STANDARD";
 
 /** What a check measures, and what it is measured in. */
-export type MetricUnit = "px" | "mm" | "ppi" | "count" | "ratio" | "bytes" | "words" | "deltaE" | "boolean" | "hash" | "";
+export type MetricUnit = "px" | "mm" | "ppi" | "count" | "ratio" | "bytes" | "words" | "seconds" | "deltaE" | "boolean" | "hash" | "";
 
 /**
  * One rule, versioned with the rest of the catalogue.
@@ -84,6 +84,7 @@ export type RepairStrategy =
   | "drop-ineligible-asset"
   | "rerender-output"
   | "resign-asset-url"
+  | "apply-provider-state"
   | "remeasure-only";
 
 export type FindingLocation = {

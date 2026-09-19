@@ -4,6 +4,8 @@ import * as s from "@/server/db/schema";
 import { renderEditionEmail } from "@/server/outputs/email-edition";
 import { mediaUrls } from "@/server/media/urls";
 import {
+  DELIVERY_RECONCILES,
+  DELIVERY_UNCONFIRMED,
   EMAIL_ALT_TEXT,
   EMAIL_IMAGES_RESOLVE,
   EMAIL_LINKS_VALID,
@@ -12,7 +14,7 @@ import {
   WEB_METADATA,
   WEB_NOINDEX_UNPUBLISHED,
 } from "../spec";
-import { assertThat, compare, merge, type CheckResult } from "../types";
+import { assertThat, compare, merge, nothing, type CheckResult } from "../types";
 import type { Check, QcContext } from "../engine";
 
 /**
@@ -212,6 +214,41 @@ export const webCheck: Check = {
         message: "An edition that is ready but not published must not be reachable by a crawler.",
         expected: published ? "indexable" : "noindex",
         actual: output?.status ?? "no web output",
+      }),
+    );
+  },
+};
+
+/* ── Delivery reconciliation ──────────────────────────────────────────────────────────────── */
+
+export const reconciliationCheck: Check = {
+  id: "reconciliation",
+  title: "The delivery log and the provider tell the same story",
+  async run(ctx: QcContext): Promise<CheckResult> {
+    if (!ctx.organizationId) return nothing();
+    const { deliveryDrift } = await import("@/server/email/reconcile");
+    const report = await deliveryDrift(ctx.organizationId);
+    if (!report.checked) return nothing();
+
+    const sample = report.drifted.slice(0, 8).map((drift) => ({ to: drift.to, logged: drift.logged, reported: drift.reported, events: drift.events }));
+    return merge(
+      compare({
+        spec: DELIVERY_RECONCILES,
+        actual: report.drifted.length,
+        location: { entityType: "workspace", entityId: ctx.organizationId, field: "delivery" },
+        message: report.drifted.length
+          ? `${report.drifted.length} of ${report.checked} messages are recorded as something other than what the provider reported — the first says ${report.drifted[0].logged.toLowerCase()} where the provider said ${report.drifted[0].reported.toLowerCase()}.`
+          : `All ${report.checked} messages agree with what the provider reported.`,
+        evidence: { checked: report.checked, sample },
+      }),
+      compare({
+        spec: DELIVERY_UNCONFIRMED,
+        actual: report.unconfirmed,
+        location: { entityType: "workspace", entityId: ctx.organizationId, field: "delivery" },
+        message: report.unconfirmed
+          ? `${report.unconfirmed} message(s) went out through the provider over a day ago and it has never reported anything about them. Delivery reporting is probably not wired up.`
+          : `The provider has reported on everything it was asked to send.`,
+        evidence: { checked: report.checked, addresses: report.unconfirmedSample },
       }),
     );
   },

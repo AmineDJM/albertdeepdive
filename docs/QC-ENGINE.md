@@ -8,18 +8,20 @@ real. Anything in the spec and not in this list is not built.
 
 | Where | What |
 | --- | --- |
-| `src/server/qc/spec.ts` | The rule catalogue: 35 metrics, each with a method, a unit, thresholds, a severity, a repair strategy and a threshold origin, under one version (`QC_SPEC_VERSION`). In TypeScript rather than the JSON files the spec imagines — see the deviations below. |
+| `src/server/qc/spec.ts` | The rule catalogue: 44 metrics, each with a method, a unit, thresholds, a severity, a repair strategy and a threshold origin, under one version (`QC_SPEC_VERSION`). In TypeScript rather than the JSON files the spec imagines — see the deviations below. |
 | `src/server/qc/profiles.ts` | Output profiles (PDF_SCREEN, PRINT, EMAIL, WEB, CAROUSEL, STORY, SOCIAL_POST, VIDEO_*) carrying the numbers that differ by destination: trim, bleed, minimum PPI, safe margin, viewport. |
 | `src/server/qc/engine.ts` | The loop: measure → compare → fail → repair → **remeasure with the same code**. Checks and repairs register rather than importing each other. A check that throws is recorded as skipped, never as passed. |
-| `src/server/qc/checks/` | Nine checks: storage, imagery, rights, geometry, pdf, print, email, web, and the integrity group (facts across outputs, revision scope, staleness, analytics reconciliation, provider output). |
-| `src/server/qc/repair.ts` | Six repairs, each local to the entity its finding named: regenerate a variant, drop an ineligible picture, swap to a valid one, reflow by shrinking a page's figures, re-sign a URL, re-render the artefact. |
+| `src/server/qc/checks/` | Twelve checks: storage, imagery, rights, geometry, pdf, print, email, web, delivery reconciliation, brand colour, creative outputs, and the integrity group (facts across outputs, revision scope, staleness, analytics reconciliation, provider output). |
+| `src/server/qc/repair.ts` | Seven repairs, each local to the entity its finding named: regenerate a variant, drop an ineligible picture, swap to a valid one, reflow by shrinking a page's figures, re-sign a URL, re-render the artefact, re-apply the provider's own delivery events. |
 | `src/server/db/schema/qc.ts` | `qc_runs` and `qc_findings`: what was measured, against which catalogue version, what it was expected to be, what it measured, where, what repair was tried and what the second measurement said. |
 | `src/server/publication/preflight.ts` | The gate between a rendered file and a file anybody may have, with the draft/release policy. |
 | `src/server/publication/versions.ts` | The state machine: PENDING → RENDERING → PREFLIGHT → (REPAIRING → PREFLIGHT) → READY, or FAILED. `publishEdition` runs the gate before an issue can become PUBLISHED. |
 | `src/server/qc/jobs.ts` | Preflight off the request path, and a nightly sweep that re-measures published issues without repairing them. |
 | `src/app/(admin)/admin/quality/` | The console: every rule beside what it caught, per customer, per output, per release, with regression alerts — and a run screen showing each finding's evidence and before/after. |
-| `tests/unit/qc-spec.test.ts`, `tests/unit/qc-gate.test.ts` | The arithmetic, and the guards that keep the gate from acquiring a bypass. |
-| `tests/integration/qc-engine.test.ts`, `tests/integration/qc-corrupted-edition.test.ts` | Two deliberately broken issues, measured, repaired and blocked. |
+| `src/lib/brand/deltae.ts` | CIEDE2000 in full, against which brand colour is measured — verified on all thirty-four published Sharma–Wu–Dalal pairs. |
+| `src/server/email/reconcile.ts` | The log replayed against the provider's own stored events, and the write that puts it right. |
+| `tests/unit/qc-spec.test.ts`, `tests/unit/qc-gate.test.ts`, `tests/unit/deltae.test.ts` | The arithmetic, the colour formula, and the guards that keep the gate from acquiring a bypass. |
+| `tests/integration/qc-engine.test.ts`, `tests/integration/qc-corrupted-edition.test.ts`, `tests/integration/qc-creative-output.test.ts`, `tests/integration/delivery-reconciliation.test.ts` | Deliberately broken issues, packs and delivery logs — measured, repaired and blocked. Each starts by proving the correct case produces no findings at all. |
 
 ### Deliberate deviations from the specification below
 
@@ -36,11 +38,10 @@ real. Anything in the spec and not in this list is not built.
 
 ### Not built
 
-Brand colour ΔE00, video QA, Core Web Vitals and accessibility beyond page metadata, Resend
-delivery reconciliation against the provider, image-selection evaluation, the golden corpus and
-release-over-release layout snapshotting. The catalogue does not pretend otherwise: a rule with no
-check behind it would show on the Quality page as a rule that found nothing, which is why there are
-none.
+Core Web Vitals and accessibility beyond page metadata, image-selection evaluation, the golden
+corpus and release-over-release layout snapshotting. The catalogue does not pretend otherwise: a
+rule with no check behind it would show on the Quality page as a rule that found nothing, which is
+why there are none.
 
 ## The rule
 
@@ -134,6 +135,21 @@ aspect preserved, no unintended crop, no stretch, clear space where the brand pr
 Deterministic brand graphics are compared to the brand profile with ΔE00 (CIEDE2000): ≤2 pass, 2–5
 warning, >5 fail for primary brand elements. Not applied to photography.
 
+Two measurements, because there are two ways a brand colour goes wrong. `brand.colour.declared`
+compares the colour a workspace typed into its settings with the same role in the active brand
+system, which is what every renderer actually compiles from — two stores, and until now nothing
+noticed when they parted company, so a customer could change their blue and go on being drawn in
+the old one. `brand.colour.rendered` compares each flat fill a frame's render spec names with the
+nearest colour actually present in the file, sampled by nearest-neighbour downsample so the
+measurement cannot invent a colour that was never painted. Type is excluded (a glyph's centre pixel
+is a blend of its own edge) and so is any fill a picture covers. Neither has a repair: which of the
+two stores holds the brand is a person's decision, and a deterministic renderer re-run on the same
+spec produces the same bytes, so a repair loop could not move the second number.
+
+CIEDE2000 is implemented in full — the `G` term, the short way round the hue wheel, and `RT` — and
+checked against all thirty-four published Sharma–Wu–Dalal pairs to four decimals, because a
+plausible-looking approximation is wrong exactly where brand colours live: blues and near-greys.
+
 ## 18–22. PDF and print preflight
 
 Every frozen PDF is inspected: page count, size, orientation, embedded and broken fonts, missing
@@ -178,6 +194,17 @@ clicked, unsubscribed, complained. Resend webhooks are signature-verified, idemp
 by provider event id and workspace-scoped — a duplicate delivery must not count twice. Sending
 domains show real SPF/DKIM/DMARC state and are not READY until the provider confirms.
 
+After a send, the log is held up against the provider. A webhook is an at-least-once promise,
+which is another way of saying it is an at-most-never promise: an endpoint down for ten minutes
+leaves a log that is quietly wrong about who received the newsletter, and nothing notices because
+every screen reads the same wrong column. So `delivery.reconciles` replays the provider's own
+stored payloads through `deliveryFrom` — the very function the live webhook applies, not a second
+opinion about what a soft bounce means — and compares where the replay lands with where the row
+sits. Its repair is the narrowest in the engine: re-apply those same events. `delivery.unconfirmed`
+counts messages sent through a reporting provider over a day ago that it has never said anything
+about at all, which is what an unwired webhook looks like from the inside; it has no repair,
+because no amount of measuring will deliver events that were never sent.
+
 Before a send the HTML is validated (structure, image URLs, alt text, links, unsubscribe,
 responsiveness, unsupported constructs), rendered at desktop and mobile widths and measured:
 `documentScrollWidth <= viewportWidth + tolerance`, no clipping, no broken images, no unreadable
@@ -191,6 +218,17 @@ Broken links, missing media, layout overflow, accessibility, Core Web Vitals (LC
 P75, P95, with the measurement version stored), responsive behaviour and SEO metadata. WCAG 2.2 AA
 for public output: contrast, alt text, labels, heading hierarchy, focus, keyboard navigation, ARIA.
 No known critical automated violation ships. Private and unpublished editions are never indexed.
+
+### Video and fixed-image outputs
+
+A provider, or an encoder, reporting success is not the same as a file somebody can post. Stills
+are fully decoded rather than read for their header — a truncated PNG has a perfectly good header —
+and measured against the format's canvas, because a frame at the wrong size is resampled by the
+platform and that is where soft type comes from. Videos are decoded end to end through
+`-f null -`, which throws the pixels away and keeps the complaints: a container that parses and
+then fails at frame 300 is exactly the output an encoder calls a success. Dimensions and duration
+are read from the encoded stream and compared with the format's own canvas and published maximum,
+not with what the database recorded about them.
 
 ## 37–41. Across outputs
 

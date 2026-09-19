@@ -43,7 +43,10 @@ export type CheckId =
   | "revision"
   | "staleness"
   | "analytics"
-  | "providers";
+  | "providers"
+  | "brand"
+  | "creative"
+  | "reconciliation";
 
 export type RenderedArtefact = {
   buffer: Buffer;
@@ -363,6 +366,9 @@ function checkPrefix(id: CheckId): string {
     staleness: "output.",
     analytics: "analytics.",
     providers: "provider.",
+    brand: "brand.",
+    creative: "creative.",
+    reconciliation: "delivery.",
   };
   return map[id];
 }

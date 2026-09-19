@@ -183,3 +183,23 @@ export async function rerenderOutput(finding: Finding, ctx: QcContext): Promise<
     return outcome(finding, false, err instanceof Error ? err.message : String(err));
   }
 }
+
+/**
+ * Write the provider's own account of a message back into the log.
+ *
+ * The narrowest repair here, and the only one that touches no part of an issue: the events are
+ * already stored, the handler's rules are already written, and all this does is fold the one over
+ * the other again for the rows a missed webhook left behind. It recomputes the drift rather than
+ * trusting the finding's evidence, so the repair acts on what is true when it runs.
+ */
+export const applyProviderState = async (finding: Finding, ctx: QcContext): Promise<RepairOutcome> => {
+  const organizationId = finding.location.entityId ?? ctx.organizationId;
+  if (!organizationId) return outcome(finding, false, "No workspace to reconcile.");
+
+  const { applyDrift, deliveryDrift } = await import("@/server/email/reconcile");
+  const report = await deliveryDrift(organizationId);
+  if (!report.drifted.length) return outcome(finding, false, "Nothing is out of step any more.", 0);
+  const applied = await applyDrift(report.drifted);
+  log.info("re-applied provider delivery events", { organizationId, applied, drifted: report.drifted.length });
+  return outcome(finding, applied > 0, `Re-applied the provider's own events to ${applied} message(s).`, report.drifted.length - applied);
+};

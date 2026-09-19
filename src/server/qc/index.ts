@@ -1,9 +1,10 @@
 import { registerCheck, registerRepair, runQc, type RunOptions } from "./engine";
 import { imageryCheck, rightsCheck, storageCheck } from "./checks/assets";
 import { geometryCheck, pdfCheck, printCheck } from "./checks/layout";
-import { emailCheck, webCheck } from "./checks/delivery";
+import { emailCheck, reconciliationCheck, webCheck } from "./checks/delivery";
+import { brandCheck, creativeCheck } from "./checks/creative";
 import { analyticsCheck, factsCheck, providersCheck, revisionCheck, stalenessCheck } from "./checks/integrity";
-import { dropIneligibleAsset, reflowOverflow, regenerateVariant, rerenderOutput, resignAssetUrl, swapToValidAsset } from "./repair";
+import { applyProviderState, dropIneligibleAsset, reflowOverflow, regenerateVariant, rerenderOutput, resignAssetUrl, swapToValidAsset } from "./repair";
 import { editionFingerprint } from "./checks/integrity";
 import { BLOCKING, HARD_BLOCKING, type QcReport } from "./types";
 
@@ -28,6 +29,9 @@ registerCheck(revisionCheck);
 registerCheck(stalenessCheck);
 registerCheck(analyticsCheck);
 registerCheck(providersCheck);
+registerCheck(brandCheck);
+registerCheck(creativeCheck);
+registerCheck(reconciliationCheck);
 
 registerRepair("regenerate-variant", regenerateVariant);
 registerRepair("drop-ineligible-asset", dropIneligibleAsset);
@@ -35,6 +39,7 @@ registerRepair("swap-to-valid-asset", swapToValidAsset);
 registerRepair("reflow-overflow", reflowOverflow);
 registerRepair("resign-asset-url", resignAssetUrl);
 registerRepair("rerender-output", rerenderOutput);
+registerRepair("apply-provider-state", applyProviderState);
 
 export { runQc, editionFingerprint };
 export type { QcReport };

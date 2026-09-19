@@ -22,15 +22,47 @@ type Delivery = (typeof s.emailDeliveryEnum.enumValues)[number];
 /** Once an address has bounced or complained, a late "delivered" must not talk over it. */
 const FINAL: Delivery[] = ["BOUNCED", "COMPLAINED", "SUPPRESSED"];
 
-function patchFor(event: DeliveryEvent, current: Delivery): Partial<typeof s.emailLog.$inferInsert> {
-  const at = event.occurredAt;
+/**
+ * Where a message's delivery state moves when the provider reports this, and nowhere else.
+ *
+ * Kept apart from the patch so the state machine has exactly one implementation. The webhook
+ * applies it as events arrive; reconciliation replays the same function over the events already
+ * stored and compares where it lands with where the row sits. A second opinion about what a soft
+ * bounce means would report drift on every row rather than on the rows that drifted, which is the
+ * one way to make a reconciliation worse than no reconciliation at all.
+ *
+ * Null means the event does not move the state: an open never does, and a "delivered" that arrives
+ * after a bounce must not talk over it.
+ */
+export function deliveryFrom(event: DeliveryEvent, current: Delivery): Delivery | null {
   switch (event.kind) {
     case "delivered":
-      return FINAL.includes(current) ? { deliveredAt: at } : { delivery: "DELIVERED", deliveredAt: at, deliveryDetail: null };
+      return FINAL.includes(current) ? null : "DELIVERED";
     case "delayed":
-      return current === "PENDING" ? { delivery: "DELAYED", deliveryDetail: event.detail } : {};
+      return current === "PENDING" ? "DELAYED" : null;
     case "bounced":
-      return event.permanent ? { delivery: "BOUNCED", bouncedAt: at, deliveryDetail: event.detail } : { delivery: current === "PENDING" ? "DELAYED" : current, deliveryDetail: event.detail };
+      return event.permanent ? "BOUNCED" : current === "PENDING" ? "DELAYED" : null;
+    case "complained":
+      return "COMPLAINED";
+    case "suppressed":
+      return "SUPPRESSED";
+    case "failed":
+      return "FAILED";
+    default:
+      return null;
+  }
+}
+
+function patchFor(event: DeliveryEvent, current: Delivery): Partial<typeof s.emailLog.$inferInsert> {
+  const at = event.occurredAt;
+  const next = deliveryFrom(event, current);
+  switch (event.kind) {
+    case "delivered":
+      return next ? { delivery: next, deliveredAt: at, deliveryDetail: null } : { deliveredAt: at };
+    case "delayed":
+      return next ? { delivery: next, deliveryDetail: event.detail } : {};
+    case "bounced":
+      return next === "BOUNCED" ? { delivery: "BOUNCED", bouncedAt: at, deliveryDetail: event.detail } : { delivery: next ?? current, deliveryDetail: event.detail };
     case "complained":
       return { delivery: "COMPLAINED", bouncedAt: at, deliveryDetail: event.detail ?? "Marked as spam by the recipient" };
     case "suppressed":

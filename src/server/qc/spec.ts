@@ -16,7 +16,7 @@ import type { MetricSpec } from "./types";
  */
 
 /** Bump on any change to a threshold, a severity or the set of rules. */
-export const QC_SPEC_VERSION = "2026.09.1";
+export const QC_SPEC_VERSION = "2026.09.2";
 
 const m = (spec: MetricSpec): MetricSpec => spec;
 
@@ -466,6 +466,136 @@ export const PROVIDER_OUTPUT_CHECKED = m({
   origin: "BRIEFLY_HOUSE_STANDARD",
 });
 
+/* ── Brand colour ─────────────────────────────────────────────────────────────────────────── */
+
+export const BRAND_COLOUR_DECLARED = m({
+  id: "brand.colour.declared",
+  title: "The brand every renderer compiles from is the brand the workspace declared",
+  method:
+    "CIEDE2000 between each colour role the workspace typed into its settings and the same role in the active brand system, which is what the magazine, the email and every creative frame are actually drawn from. The worst role is the measurement.",
+  unit: "deltaE",
+  target: "≤ 2 ΔE00 from the declared colour",
+  warningThreshold: 2,
+  failureThreshold: 5,
+  severity: "FAIL",
+  // No repair. Both numbers were typed by a person on purpose — one in Settings, one in the brand
+  // editor — and software choosing between them would silently rebrand somebody. The finding names
+  // both colours and their distance; which one is the brand is not arithmetic.
+  repair: null,
+  origin: "INDUSTRY_STANDARD",
+  reference: "CIE 142-2001 (CIEDE2000). ΔE00 ≤ 2 is the commercial 'same colour' tolerance; over 5 is a different colour.",
+});
+
+export const BRAND_COLOUR_RENDERED = m({
+  id: "brand.colour.rendered",
+  title: "A brand graphic is painted the colour its spec asked for",
+  method:
+    "For each deterministically drawn frame, CIEDE2000 between the fill its render spec names and the pixel actually in the file at that fill's centre — sampled only where no picture and no type covers it. Photographs are never measured.",
+  unit: "deltaE",
+  target: "≤ 2 ΔE00 from the specified fill",
+  warningThreshold: 2,
+  failureThreshold: 5,
+  severity: "FAIL",
+  // No repair. The renderer is deterministic: the same spec produces the same bytes, so re-running
+  // it would measure the same colour again. A frame that came out the wrong colour is a defect in
+  // the renderer, and a repair loop that cannot change the input cannot fix it.
+  repair: null,
+  origin: "INDUSTRY_STANDARD",
+  reference: "CIE 142-2001 (CIEDE2000).",
+});
+
+/* ── Video and fixed-image outputs ────────────────────────────────────────────────────────── */
+
+export const VIDEO_DECODES = m({
+  id: "creative.video.decodes",
+  title: "A video file that was written is a video file that plays",
+  method: "The encoded file is decoded end to end and every decoder error is counted. A file nothing can read is not an output, whatever the encoder reported.",
+  unit: "count",
+  target: 0,
+  failureThreshold: 0,
+  severity: "CRITICAL_FAIL",
+  repair: null,
+  origin: "BRIEFLY_HOUSE_STANDARD",
+});
+
+export const VIDEO_CANVAS = m({
+  id: "creative.video.canvas",
+  title: "The cut is the size the platform will play",
+  method: "The encoded stream's pixel dimensions are compared with the format's canvas. A Reel that is not 1080×1920 is letterboxed or cropped by the platform, not by anybody who chose it.",
+  unit: "boolean",
+  target: "the format's canvas",
+  severity: "FAIL",
+  repair: null,
+  origin: "OUTPUT_PROVIDER_REQUIREMENT",
+});
+
+export const VIDEO_DURATION = m({
+  id: "creative.video.duration",
+  title: "The cut is inside the length the platform accepts",
+  method: "The encoded duration in seconds against the format's published maximum, measured as seconds over it. Past that length the upload is refused or silently truncated.",
+  unit: "seconds",
+  target: "the format's maximum length",
+  failureThreshold: 0,
+  severity: "FAIL",
+  repair: null,
+  origin: "OUTPUT_PROVIDER_REQUIREMENT",
+});
+
+export const FRAME_DECODES = m({
+  id: "creative.frame.decodes",
+  title: "A frame that was written is a frame that opens",
+  method: "Every still is fully decoded rather than read for its header: truncated files, zero dimensions and unreadable data are caught before somebody posts one.",
+  unit: "count",
+  target: 0,
+  failureThreshold: 0,
+  severity: "CRITICAL_FAIL",
+  repair: null,
+  origin: "BRIEFLY_HOUSE_STANDARD",
+});
+
+export const FRAME_CANVAS = m({
+  id: "creative.frame.canvas",
+  title: "A still is the size its format is posted at",
+  method: "Each still's pixel dimensions against the format's canvas. A frame at the wrong size is resampled by the platform, which is where soft type comes from.",
+  unit: "count",
+  target: 0,
+  failureThreshold: 0,
+  severity: "FAIL",
+  repair: null,
+  origin: "OUTPUT_PROVIDER_REQUIREMENT",
+});
+
+/* ── Delivery reconciliation ──────────────────────────────────────────────────────────────── */
+
+export const DELIVERY_RECONCILES = m({
+  id: "delivery.reconciles",
+  title: "The delivery log says what the provider said",
+  method:
+    "Every event the provider sent about a message is replayed through the same rules the webhook handler applies, and the state that replay arrives at is compared with the state the log holds. Counts the messages the two disagree about.",
+  unit: "count",
+  target: 0,
+  failureThreshold: 0,
+  severity: "FAIL",
+  repair: "apply-provider-state",
+  origin: "BRIEFLY_HOUSE_STANDARD",
+  reference: "The provider is authoritative for what happened to a message; Briefly's column is a cache of it.",
+});
+
+export const DELIVERY_UNCONFIRMED = m({
+  id: "delivery.unconfirmed",
+  title: "A message sent through the provider is a message the provider reported on",
+  method:
+    "Messages sent through the provider more than a day ago for which no event of any kind was ever received. Counted only for providers that report back, so mail sent through a mailbox is never called unconfirmed.",
+  unit: "count",
+  target: 0,
+  warningThreshold: 0,
+  severity: "WARNING",
+  // No repair. Nothing arrived because nothing is wired up or the endpoint is refusing; both are
+  // settings a person changes, and no amount of measuring will deliver the events that were lost.
+  repair: null,
+  origin: "BRIEFLY_HOUSE_STANDARD",
+});
+
 /** Every rule, for the console and for anything that wants to print the standard. */
 export const ALL_METRICS: readonly MetricSpec[] = [
   STORAGE_OBJECT_PRESENT,
@@ -503,6 +633,15 @@ export const ALL_METRICS: readonly MetricSpec[] = [
   ANALYTICS_RECONCILES,
   ANALYTICS_TENANCY,
   PROVIDER_OUTPUT_CHECKED,
+  BRAND_COLOUR_DECLARED,
+  BRAND_COLOUR_RENDERED,
+  VIDEO_DECODES,
+  VIDEO_CANVAS,
+  VIDEO_DURATION,
+  FRAME_DECODES,
+  FRAME_CANVAS,
+  DELIVERY_RECONCILES,
+  DELIVERY_UNCONFIRMED,
 ];
 
 export const metricById = new Map(ALL_METRICS.map((metric) => [metric.id, metric]));
