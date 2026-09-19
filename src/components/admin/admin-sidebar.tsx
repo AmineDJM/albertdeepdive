@@ -4,7 +4,7 @@ import { useTransition } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { LucideIcon } from "lucide-react";
-import { Activity, ArrowLeft, Building2, CircleDollarSign, Coins, Flag, GalleryVerticalEnd, Gauge, LifeBuoy, LogOut, Plug, ScrollText, Server, Users, Wallet } from "lucide-react";
+import { Activity, ArrowLeft, BarChart3, Building2, CircleDollarSign, Coins, Flag, GalleryVerticalEnd, Gauge, LifeBuoy, LogOut, Plug, ScrollText, Server, Users, Wallet } from "lucide-react";
 import { cn, initials } from "@/lib/utils";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { BrieflyMark } from "@/components/brand/briefly-mark";
@@ -45,6 +45,7 @@ export function adminNavigation(tr: (text: string) => string): AdminNavGroup[] {
     {
       label: tr("Operations"),
       items: [
+        { href: "/admin/analytics", label: tr("Platform analytics"), icon: BarChart3 },
         { href: "/admin/costs", label: tr("Usage & costs"), icon: Coins },
         { href: "/admin/providers", label: tr("Providers"), icon: Plug },
         { href: "/admin/jobs", label: tr("Jobs"), icon: Activity },

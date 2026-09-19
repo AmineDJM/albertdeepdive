@@ -16,8 +16,8 @@ import {
   rightsByEdition,
   sectionCoverage,
   submissionTrend,
-  type AnalyticsScope,
 } from "@/server/analytics/read-insights";
+import { tenantScope } from "@/server/analytics/scope";
 import { PageBody, PageHeader, SectionTitle } from "@/components/newsroom/page-header";
 import { HubTabs } from "@/components/newsroom/hub-tabs";
 import { INSIGHTS_TABS } from "@/components/newsroom/nav";
@@ -47,14 +47,20 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
   const user = await getCurrentUser();
   if (!hasPermission(user, "analytics:view")) return <NoAccess title={tr("Analytics")} permission="analytics:view" />;
 
-  const editions = await listEditionOptions();
-  const editionId = sp.editionId && editions.some((e) => e.id === sp.editionId) ? sp.editionId : null;
   const activity = resolveWindow(sp);
-  const scope: AnalyticsScope = { editionId, from: activity.from, to: activity.to };
+  /*
+   * The workspace comes from the session, the edition from the URL — and the edition is checked
+   * against the workspace before it reaches a query, so a link carrying somebody else's edition id
+   * is a 404 rather than a page of their figures. The list below is filtered the same way, which
+   * is why it is read *after* the scope rather than used to validate it.
+   */
+  const scope = await tenantScope(activity, sp.editionId);
+  const editions = await listEditionOptions(scope);
+  const editionId = scope.editionId;
 
   const [analytics, comparison, trend, pools, funnel, coverage, latency, delivery, deliveryByEdition, rights, campuses, top] = await Promise.all([
-    editionAnalytics(editionId),
-    editionComparison(),
+    editionAnalytics(scope),
+    editionComparison(scope),
     submissionTrend(scope),
     responseRateByPool(scope),
     conversionFunnel(scope),

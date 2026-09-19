@@ -1,27 +1,33 @@
 /**
- * Analytics — every figure is a SQL aggregate scoped to one edition or to all editions.
+ * Analytics — every figure is a SQL aggregate scoped to one workspace, and inside it to one
+ * edition or to all of that workspace's editions.
+ *
+ * "All editions" used to mean every edition on the platform. It is now every edition this
+ * workspace owns, which is what the words were always taken to mean by the person reading the
+ * page.
  */
 import { and, asc, desc, eq, inArray, ne, sql, type SQL } from "drizzle-orm";
 import { db } from "@/server/db/client";
 import * as s from "@/server/db/schema";
 import { STORY_TYPES } from "@/lib/constants";
 import { bucketByDay, responseRate, type DayBucket } from "./compute";
+import { inOwnEditions, ownedBy, pickedEdition, type TenantScope } from "./scope";
 
 export const SELECTED_STORY_STATUSES = ["SELECTED", "DRAFTING", "IN_REVIEW", "APPROVED", "PUBLISHED"] as const;
 
 export type EditionOption = { id: string; label: string; issueNumber: number; status: (typeof s.editions)["$inferSelect"]["status"]; isSpecialIssue: boolean };
 
-export async function listEditionOptions(): Promise<EditionOption[]> {
+/** The editions this workspace may filter by — and the only ids the page will accept back. */
+export async function listEditionOptions(scope: TenantScope): Promise<EditionOption[]> {
   return db
     .select({ id: s.editions.id, label: s.editions.label, issueNumber: s.editions.issueNumber, status: s.editions.status, isSpecialIssue: s.editions.isSpecialIssue })
     .from(s.editions)
+    .where(ownedBy(s.editions.organizationId, scope))
     .orderBy(desc(s.editions.year), desc(s.editions.month));
 }
 
 export type CampusBreakdown = { campusId: string; name: string; colour: string | null; submissions: number; stories: number };
 export type TypeBreakdown = { storyType: string; label: string; short: string; submissions: number; stories: number };
-export type ServiceCost = { service: string; calls: number; tokens: number; costCents: number };
-export type ModelCost = { model: string; provider: string; calls: number; tokens: number; costCents: number; avgLatencyMs: number | null; cached: number };
 export type ActiveContributor = { contributorId: string; name: string; email: string; campusName: string | null; campusColour: string | null; submissions: number; accepted: number; lastAt: Date | null };
 
 export type EditionAnalytics = {
@@ -33,7 +39,6 @@ export type EditionAnalytics = {
   stories: { total: number; selected: number; approved: number; byStatus: { status: string; count: number }[] };
   articles: { total: number; drafted: number; approved: number; avgManualEditRatio: number | null; avgSubmissionToDraftHours: number | null };
   media: { total: number; green: number; yellow: number; red: number };
-  ai: { calls: number; tokens: number; costCents: number; failed: number; cached: number; byService: ServiceCost[]; byModel: ModelCost[] };
   publication: { label: string; kind: string; status: string; pageCount: number | null; createdAt: Date } | null;
   byCampus: CampusBreakdown[];
   byStoryType: TypeBreakdown[];
@@ -44,12 +49,20 @@ function n(value: unknown): number {
   return Number(value ?? 0);
 }
 
-export async function editionAnalytics(editionId: string | null): Promise<EditionAnalytics> {
-  const edition = editionId ? await db.query.editions.findFirst({ where: eq(s.editions.id, editionId), with: { campaigns: { orderBy: [desc(s.submissionCampaigns.createdAt)], limit: 1 } } }) : null;
+export async function editionAnalytics(scope: TenantScope): Promise<EditionAnalytics> {
+  const editionId = scope.editionId;
+  // The id was verified against the workspace before the scope was built; the second equality here
+  // is the belt to that braces, so this cannot become a way in if a future caller skips the door.
+  const edition = editionId
+    ? await db.query.editions.findFirst({
+        where: and(eq(s.editions.id, editionId), eq(s.editions.organizationId, scope.organizationId)),
+        with: { campaigns: { orderBy: [desc(s.submissionCampaigns.createdAt)], limit: 1 } },
+      })
+    : null;
   if (editionId && !edition) throw new Error("Edition not found");
   const campaign = edition?.campaigns[0] ?? null;
-  const subScope: SQL = editionId ? and(eq(s.submissions.editionId, editionId), ne(s.submissions.status, "DRAFT"))! : ne(s.submissions.status, "DRAFT");
-  const storyScope = (col: typeof s.stories.editionId) => (editionId ? eq(col, editionId) : undefined);
+  const subScope: SQL = and(inOwnEditions(s.submissions.editionId, scope), ne(s.submissions.status, "DRAFT"))!;
+  const storyScope = (col: typeof s.stories.editionId) => inOwnEditions(col, scope);
 
   const [subs] = await db
     .select({
@@ -70,7 +83,7 @@ export async function editionAnalytics(editionId: string | null): Promise<Editio
       opened: sql<number>`count(*) filter (where ${s.submissionRequests.status} in ('OPENED', 'SUBMITTED'))`,
     })
     .from(s.submissionRequests)
-    .where(editionId ? eq(s.submissionRequests.editionId, editionId) : undefined);
+    .where(inOwnEditions(s.submissionRequests.editionId, scope));
 
   const [distribution] = await db
     .select({
@@ -81,9 +94,12 @@ export async function editionAnalytics(editionId: string | null): Promise<Editio
     })
     .from(s.contributors)
     .where(
-      editionId
-        ? sql`exists (select 1 from ${s.submissionRequests} r where r.contributor_id = ${s.contributors.id} and r.edition_id = ${editionId})`
-        : sql`${s.contributors.invitationsCount} > 0`,
+      and(
+        ownedBy(s.contributors.organizationId, scope),
+        editionId
+          ? sql`exists (select 1 from ${s.submissionRequests} r where r.contributor_id = ${s.contributors.id} and r.edition_id = ${editionId})`
+          : sql`${s.contributors.invitationsCount} > 0`,
+      ),
     );
 
   const mostActiveRows = await db
@@ -128,7 +144,7 @@ export async function editionAnalytics(editionId: string | null): Promise<Editio
       avgManualEditRatio: sql<number | null>`avg(${s.articles.manualEditRatio})`,
     })
     .from(s.articles)
-    .where(editionId ? eq(s.articles.editionId, editionId) : undefined);
+    .where(inOwnEditions(s.articles.editionId, scope));
 
   const [draftLatency] = await db.execute<{ hours: string | null }>(sql`
     select avg(t.hours) as hours from (
@@ -137,6 +153,7 @@ export async function editionAnalytics(editionId: string | null): Promise<Editio
       join ${s.articleSources} src on src.article_id = a.id
       join ${s.submissions} sub on sub.id = src.submission_id
       where a.ai_drafted_at is not null and sub.submitted_at is not null
+        and a.edition_id in (select id from editions where organization_id = ${scope.organizationId})
       ${editionId ? sql`and a.edition_id = ${editionId}` : sql``}
       group by a.id
     ) t
@@ -150,50 +167,24 @@ export async function editionAnalytics(editionId: string | null): Promise<Editio
       red: sql<number>`count(*) filter (where ${s.mediaAssets.rightsStatus} = 'RED')`,
     })
     .from(s.mediaAssets)
-    .where(and(eq(s.mediaAssets.isArchived, false), editionId ? eq(s.mediaAssets.editionId, editionId) : undefined));
+    .where(and(ownedBy(s.mediaAssets.organizationId, scope), eq(s.mediaAssets.isArchived, false), pickedEdition(s.mediaAssets.editionId, scope)));
 
-  const aiScope = editionId ? eq(s.aiJobs.editionId, editionId) : undefined;
-  const [ai] = await db
-    .select({
-      calls: sql<number>`count(*)`,
-      tokens: sql<number>`coalesce(sum(coalesce(${s.aiJobs.inputTokens}, 0) + coalesce(${s.aiJobs.outputTokens}, 0)), 0)`,
-      costCents: sql<number>`coalesce(sum(${s.aiJobs.costCents}), 0)`,
-      failed: sql<number>`count(*) filter (where ${s.aiJobs.status} = 'FAILED')`,
-      cached: sql<number>`count(*) filter (where ${s.aiJobs.cached})`,
-    })
-    .from(s.aiJobs)
-    .where(aiScope);
-  const byService = await db
-    .select({ service: s.aiJobs.service, calls: sql<number>`count(*)`, tokens: sql<number>`coalesce(sum(coalesce(${s.aiJobs.inputTokens}, 0) + coalesce(${s.aiJobs.outputTokens}, 0)), 0)`, costCents: sql<number>`coalesce(sum(${s.aiJobs.costCents}), 0)` })
-    .from(s.aiJobs)
-    .where(aiScope)
-    .groupBy(s.aiJobs.service)
-    .orderBy(desc(sql`coalesce(sum(${s.aiJobs.costCents}), 0)`));
-  const byModel = await db
-    .select({
-      model: s.aiJobs.model,
-      provider: s.aiJobs.provider,
-      calls: sql<number>`count(*)`,
-      tokens: sql<number>`coalesce(sum(coalesce(${s.aiJobs.inputTokens}, 0) + coalesce(${s.aiJobs.outputTokens}, 0)), 0)`,
-      costCents: sql<number>`coalesce(sum(${s.aiJobs.costCents}), 0)`,
-      avgLatencyMs: sql<number | null>`avg(${s.aiJobs.latencyMs}) filter (where ${s.aiJobs.cached} = false)`,
-      cached: sql<number>`count(*) filter (where ${s.aiJobs.cached})`,
-    })
-    .from(s.aiJobs)
-    .where(aiScope)
-    .groupBy(s.aiJobs.model, s.aiJobs.provider)
-    .orderBy(desc(sql`coalesce(sum(${s.aiJobs.costCents}), 0)`));
-
-  const latestVersion = editionId
-    ? await db.query.publicationVersions.findFirst({ where: eq(s.publicationVersions.editionId, editionId), orderBy: [desc(s.publicationVersions.sequence)], with: { assets: true } })
-    : await db.query.publicationVersions.findFirst({ where: eq(s.publicationVersions.status, "READY"), orderBy: [desc(s.publicationVersions.createdAt)], with: { assets: true } });
+  // Without a picked edition this used to take the latest READY version anywhere on the platform,
+  // and print another customer's page count on this customer's page.
+  const latestVersion = await db.query.publicationVersions.findFirst({
+    where: editionId
+      ? and(eq(s.publicationVersions.editionId, editionId), inOwnEditions(s.publicationVersions.editionId, scope))
+      : and(eq(s.publicationVersions.status, "READY"), inOwnEditions(s.publicationVersions.editionId, scope)),
+    orderBy: editionId ? [desc(s.publicationVersions.sequence)] : [desc(s.publicationVersions.createdAt)],
+    with: { assets: true },
+  });
 
   const campusRows = await db
     .select({ campusId: s.campuses.id, name: s.campuses.name, colour: s.campuses.colour, submissions: sql<number>`count(distinct ${s.submissions.id})` })
     .from(s.campuses)
     .leftJoin(s.submissionCampuses, eq(s.submissionCampuses.campusId, s.campuses.id))
     .leftJoin(s.submissions, and(eq(s.submissions.id, s.submissionCampuses.submissionId), subScope))
-    .where(eq(s.campuses.isActive, true))
+    .where(and(ownedBy(s.campuses.organizationId, scope), eq(s.campuses.isActive, true)))
     .groupBy(s.campuses.id)
     .orderBy(asc(s.campuses.sortOrder));
   const storyCampusRows = await db
@@ -229,6 +220,7 @@ export async function editionAnalytics(editionId: string | null): Promise<Editio
       .select({ id: s.editions.id, label: s.editions.label, year: s.editions.year, month: s.editions.month, count: sql<number>`count(${s.submissions.id})` })
       .from(s.editions)
       .leftJoin(s.submissions, and(eq(s.submissions.editionId, s.editions.id), ne(s.submissions.status, "DRAFT")))
+      .where(ownedBy(s.editions.organizationId, scope))
       .groupBy(s.editions.id)
       .orderBy(asc(s.editions.year), asc(s.editions.month));
     let cumulative = 0;
@@ -285,15 +277,6 @@ export async function editionAnalytics(editionId: string | null): Promise<Editio
       avgSubmissionToDraftHours: draftLatency?.hours == null ? null : Number(draftLatency.hours),
     },
     media: { total: n(media?.total), green: n(media?.green), yellow: n(media?.yellow), red: n(media?.red) },
-    ai: {
-      calls: n(ai?.calls),
-      tokens: n(ai?.tokens),
-      costCents: n(ai?.costCents),
-      failed: n(ai?.failed),
-      cached: n(ai?.cached),
-      byService: byService.map((r) => ({ service: r.service, calls: n(r.calls), tokens: n(r.tokens), costCents: n(r.costCents) })),
-      byModel: byModel.map((r) => ({ model: r.model, provider: r.provider, calls: n(r.calls), tokens: n(r.tokens), costCents: n(r.costCents), avgLatencyMs: r.avgLatencyMs == null ? null : Math.round(Number(r.avgLatencyMs)), cached: n(r.cached) })),
-    },
     publication: latestVersion ? { label: latestVersion.label, kind: latestVersion.kind, status: latestVersion.status, pageCount: pdfAsset?.pageCount ?? null, createdAt: latestVersion.createdAt } : null,
     byCampus: campusRows.map((c) => ({ campusId: c.campusId, name: c.name, colour: c.colour, submissions: n(c.submissions), stories: storyCampusMap.get(c.campusId) ?? 0 })),
     byStoryType,
@@ -314,31 +297,28 @@ export type EditionComparisonRow = {
   articlesApproved: number;
   pages: number | null;
   targetPageCount: number;
-  aiCalls: number;
-  aiCostCents: number;
 };
 
 /** One row per edition (all time), each metric a grouped aggregate. */
-export async function editionComparison(): Promise<EditionComparisonRow[]> {
-  const editions = await db.select().from(s.editions).orderBy(desc(s.editions.year), desc(s.editions.month));
+export async function editionComparison(scope: TenantScope): Promise<EditionComparisonRow[]> {
+  const editions = await db.select().from(s.editions).where(ownedBy(s.editions.organizationId, scope)).orderBy(desc(s.editions.year), desc(s.editions.month));
   if (!editions.length) return [];
-  const subRows = await db.select({ editionId: s.submissions.editionId, count: sql<number>`count(*)` }).from(s.submissions).where(ne(s.submissions.status, "DRAFT")).groupBy(s.submissions.editionId);
-  const reqRows = await db.select({ editionId: s.submissionRequests.editionId, invited: sql<number>`count(*)`, responded: sql<number>`count(*) filter (where ${s.submissionRequests.status} = 'SUBMITTED')` }).from(s.submissionRequests).groupBy(s.submissionRequests.editionId);
-  const storyRows = await db.select({ editionId: s.stories.editionId, count: sql<number>`count(*)` }).from(s.stories).where(inArray(s.stories.status, [...SELECTED_STORY_STATUSES])).groupBy(s.stories.editionId);
-  const articleRows = await db.select({ editionId: s.articles.editionId, approved: sql<number>`count(*) filter (where ${s.articles.status} in ('APPROVED', 'LOCKED'))` }).from(s.articles).groupBy(s.articles.editionId);
-  const aiRows = await db.select({ editionId: s.aiJobs.editionId, calls: sql<number>`count(*)`, costCents: sql<number>`coalesce(sum(${s.aiJobs.costCents}), 0)` }).from(s.aiJobs).groupBy(s.aiJobs.editionId);
+  const mine = editions.map((e) => e.id);
+  const subRows = await db.select({ editionId: s.submissions.editionId, count: sql<number>`count(*)` }).from(s.submissions).where(and(inArray(s.submissions.editionId, mine), ne(s.submissions.status, "DRAFT"))).groupBy(s.submissions.editionId);
+  const reqRows = await db.select({ editionId: s.submissionRequests.editionId, invited: sql<number>`count(*)`, responded: sql<number>`count(*) filter (where ${s.submissionRequests.status} = 'SUBMITTED')` }).from(s.submissionRequests).where(inArray(s.submissionRequests.editionId, mine)).groupBy(s.submissionRequests.editionId);
+  const storyRows = await db.select({ editionId: s.stories.editionId, count: sql<number>`count(*)` }).from(s.stories).where(and(inArray(s.stories.editionId, mine), inArray(s.stories.status, [...SELECTED_STORY_STATUSES]))).groupBy(s.stories.editionId);
+  const articleRows = await db.select({ editionId: s.articles.editionId, approved: sql<number>`count(*) filter (where ${s.articles.status} in ('APPROVED', 'LOCKED'))` }).from(s.articles).where(inArray(s.articles.editionId, mine)).groupBy(s.articles.editionId);
   const pageRows = await db
     .selectDistinctOn([s.publicationVersions.editionId], { editionId: s.publicationVersions.editionId, pages: s.publicationAssets.pageCount })
     .from(s.publicationVersions)
     .innerJoin(s.publicationAssets, and(eq(s.publicationAssets.versionId, s.publicationVersions.id), eq(s.publicationAssets.kind, "PDF")))
-    .where(eq(s.publicationVersions.status, "READY"))
+    .where(and(inArray(s.publicationVersions.editionId, mine), eq(s.publicationVersions.status, "READY")))
     .orderBy(s.publicationVersions.editionId, desc(s.publicationVersions.sequence));
   const by = <T extends { editionId: string | null }>(rows: T[]) => new Map(rows.map((r) => [r.editionId ?? "", r]));
   const subs = by(subRows);
   const reqs = by(reqRows);
   const stories = by(storyRows);
   const articles = by(articleRows);
-  const ai = by(aiRows);
   const pages = by(pageRows);
   return editions.map((e) => {
     const invited = n(reqs.get(e.id)?.invited);
@@ -356,8 +336,6 @@ export async function editionComparison(): Promise<EditionComparisonRow[]> {
       articlesApproved: n(articles.get(e.id)?.approved),
       pages: pages.get(e.id)?.pages ?? null,
       targetPageCount: e.targetPageCount,
-      aiCalls: n(ai.get(e.id)?.calls),
-      aiCostCents: n(ai.get(e.id)?.costCents),
     };
   });
 }

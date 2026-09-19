@@ -1,20 +1,22 @@
 /**
  * Analytics read model for /analytics.
  *
- * Everything here is a SQL aggregate scoped by an edition (or all of them) and by an activity
- * window applied to the timestamp that is natural to each metric: `submitted_at` for
- * contributions, `reviewed_at` for triage decisions, `approved_at` for articles,
- * `created_at` for AI calls. Nothing is estimated — when a figure cannot be computed it is null.
+ * Everything here is a SQL aggregate scoped by one workspace, by an edition inside it (or all of
+ * that workspace's editions) and by an activity window applied to the timestamp that is natural to
+ * each metric: `submitted_at` for contributions, `reviewed_at` for triage decisions, `approved_at`
+ * for articles. Nothing is estimated — when a figure cannot be computed it is null.
+ *
+ * The workspace is not optional and not a parameter a caller can forget: every function takes a
+ * `TenantScope`, which cannot be constructed without one, and every query starts with either
+ * `ownedBy` or `inOwnEditions`. That is the whole point of the shape. The previous version scoped
+ * by edition alone, so choosing "all editions" — the default — counted every customer's rows.
  */
 import { and, asc, desc, eq, gte, inArray, lte, ne, sql, type SQL } from "drizzle-orm";
 import { db } from "@/server/db/client";
-import { scoped } from "@/server/tenancy/scope";
 import * as s from "@/server/db/schema";
 import { averageOf, bucketByDay, hoursBetween, responseRate, safeRatio, type DayBucket } from "./compute";
 import { SELECTED_STORY_STATUSES } from "./service";
-
-/** Edition + activity window every query on this screen is scoped by. */
-export type AnalyticsScope = { editionId: string | null; from: Date | null; to: Date | null };
+import { inOwnEditions, ownedBy, pickedEdition, type TenantScope } from "./scope";
 
 export type WindowPreset = "all" | "30d" | "90d" | "12m" | "custom";
 
@@ -69,9 +71,8 @@ const MONTH_FMT = new Intl.DateTimeFormat("en-GB", { month: "short", year: "2-di
  * Submissions received per day (short windows, where `bucketByDay` zero-fills the campaign) or
  * per calendar month (long windows), with a running total.
  */
-export async function submissionTrend(scope: AnalyticsScope): Promise<SubmissionTrend> {
-  const where: SQL[] = [ne(s.submissions.status, "DRAFT"), sql`${s.submissions.submittedAt} is not null`, ...windowOn(s.submissions.submittedAt, scope)];
-  if (scope.editionId) where.push(eq(s.submissions.editionId, scope.editionId));
+export async function submissionTrend(scope: TenantScope): Promise<SubmissionTrend> {
+  const where: SQL[] = [inOwnEditions(s.submissions.editionId, scope), ne(s.submissions.status, "DRAFT"), sql`${s.submissions.submittedAt} is not null`, ...windowOn(s.submissions.submittedAt, scope)];
   const spanDays = scope.from && scope.to ? Math.round((scope.to.getTime() - scope.from.getTime()) / DAY_MS) : null;
   const daily = spanDays !== null && spanDays <= 60;
 
@@ -105,9 +106,8 @@ export async function submissionTrend(scope: AnalyticsScope): Promise<Submission
 export type PoolResponse = { groupId: string; name: string; campusName: string | null; members: number; invited: number; responded: number; responseRate: number };
 
 /** One row per contributor group: how many of its members were asked, and how many answered. */
-export async function responseRateByPool(scope: AnalyticsScope): Promise<PoolResponse[]> {
-  const requestWhere: SQL[] = [...windowOn(s.submissionRequests.createdAt, scope)];
-  if (scope.editionId) requestWhere.push(eq(s.submissionRequests.editionId, scope.editionId));
+export async function responseRateByPool(scope: TenantScope): Promise<PoolResponse[]> {
+  const requestWhere: SQL[] = [inOwnEditions(s.submissionRequests.editionId, scope), ...windowOn(s.submissionRequests.createdAt, scope)];
   const rows = await db
     .select({
       groupId: s.contributorGroups.id,
@@ -120,7 +120,8 @@ export async function responseRateByPool(scope: AnalyticsScope): Promise<PoolRes
     .from(s.contributorGroups)
     .leftJoin(s.contributorGroupMembers, eq(s.contributorGroupMembers.groupId, s.contributorGroups.id))
     .leftJoin(s.campuses, eq(s.campuses.id, s.contributorGroups.campusId))
-    .leftJoin(s.submissionRequests, and(eq(s.submissionRequests.contributorId, s.contributorGroupMembers.contributorId), requestWhere.length ? and(...requestWhere) : undefined))
+    .leftJoin(s.submissionRequests, and(eq(s.submissionRequests.contributorId, s.contributorGroupMembers.contributorId), and(...requestWhere)))
+    .where(ownedBy(s.contributorGroups.organizationId, scope))
     .groupBy(s.contributorGroups.id, s.campuses.name)
     .orderBy(desc(sql`count(distinct ${s.submissionRequests.id})`), asc(s.contributorGroups.name));
   return rows.map((r) => ({
@@ -140,31 +141,27 @@ export type FunnelStep = { key: string; label: string; value: number; hint: stri
 export type Conversion = { steps: FunnelStep[]; acceptedRate: number; storyRate: number; articleRate: number; approvalRate: number };
 
 /** Submissions → accepted → clusters → selected stories → drafted articles → approved articles. */
-export async function conversionFunnel(scope: AnalyticsScope): Promise<Conversion> {
-  const subWhere: SQL[] = [ne(s.submissions.status, "DRAFT"), ...windowOn(s.submissions.submittedAt, scope)];
-  if (scope.editionId) subWhere.push(eq(s.submissions.editionId, scope.editionId));
+export async function conversionFunnel(scope: TenantScope): Promise<Conversion> {
+  const subWhere: SQL[] = [inOwnEditions(s.submissions.editionId, scope), ne(s.submissions.status, "DRAFT"), ...windowOn(s.submissions.submittedAt, scope)];
   const [subs] = await db
     .select({ total: sql<number>`count(*)`, accepted: sql<number>`count(*) filter (where ${s.submissions.status} = 'ACCEPTED')` })
     .from(s.submissions)
     .where(and(...subWhere));
 
-  const clusterWhere: SQL[] = [...windowOn(s.storyClusters.createdAt, scope)];
-  if (scope.editionId) clusterWhere.push(eq(s.storyClusters.editionId, scope.editionId));
-  const [clusters] = await db.select({ total: sql<number>`count(*)` }).from(s.storyClusters).where(clusterWhere.length ? and(...clusterWhere) : undefined);
+  const clusterWhere: SQL[] = [inOwnEditions(s.storyClusters.editionId, scope), ...windowOn(s.storyClusters.createdAt, scope)];
+  const [clusters] = await db.select({ total: sql<number>`count(*)` }).from(s.storyClusters).where(and(...clusterWhere));
 
-  const storyWhere: SQL[] = [inArray(s.stories.status, [...SELECTED_STORY_STATUSES]), ...windowOn(s.stories.createdAt, scope)];
-  if (scope.editionId) storyWhere.push(eq(s.stories.editionId, scope.editionId));
+  const storyWhere: SQL[] = [inOwnEditions(s.stories.editionId, scope), inArray(s.stories.status, [...SELECTED_STORY_STATUSES]), ...windowOn(s.stories.createdAt, scope)];
   const [stories] = await db.select({ total: sql<number>`count(*)` }).from(s.stories).where(and(...storyWhere));
 
-  const articleWhere: SQL[] = [...windowOn(s.articles.createdAt, scope)];
-  if (scope.editionId) articleWhere.push(eq(s.articles.editionId, scope.editionId));
+  const articleWhere: SQL[] = [inOwnEditions(s.articles.editionId, scope), ...windowOn(s.articles.createdAt, scope)];
   const [articles] = await db
     .select({
       drafted: sql<number>`count(*) filter (where ${s.articles.status} <> 'EMPTY')`,
       approved: sql<number>`count(*) filter (where ${s.articles.status} in ('APPROVED', 'LOCKED'))`,
     })
     .from(s.articles)
-    .where(articleWhere.length ? and(...articleWhere) : undefined);
+    .where(and(...articleWhere));
 
   const total = n(subs?.total);
   const accepted = n(subs?.accepted);
@@ -193,13 +190,14 @@ export type SectionRow = { slug: string; name: string; colour: string | null; co
 export type SectionCoverage = { editions: { id: string; label: string }[]; sections: SectionRow[]; max: number };
 
 /** Selected stories per section and per edition — the grid behind the coverage heatmap. */
-export async function sectionCoverage(scope: AnalyticsScope): Promise<SectionCoverage> {
-  const editionWhere: SQL[] = [];
-  if (scope.editionId) editionWhere.push(eq(s.editions.id, scope.editionId));
+export async function sectionCoverage(scope: TenantScope): Promise<SectionCoverage> {
+  const editionWhere: SQL[] = [ownedBy(s.editions.organizationId, scope)];
+  const picked = pickedEdition(s.editions.id, scope);
+  if (picked) editionWhere.push(picked);
   const editions = await db
     .select({ id: s.editions.id, label: s.editions.label })
     .from(s.editions)
-    .where(editionWhere.length ? and(...editionWhere) : undefined)
+    .where(and(...editionWhere))
     .orderBy(asc(s.editions.year), asc(s.editions.month));
   if (!editions.length) return { editions: [], sections: [], max: 0 };
   const ids = editions.map((e) => e.id);
@@ -263,14 +261,14 @@ function median(values: number[]): number | null {
 }
 
 /** Hours from a contributor pressing send to an editor deciding, and from AI draft to approval. */
-export async function approvalLatency(scope: AnalyticsScope): Promise<Latency> {
+export async function approvalLatency(scope: TenantScope): Promise<Latency> {
   const subWhere: SQL[] = [
+    inOwnEditions(s.submissions.editionId, scope),
     sql`${s.submissions.submittedAt} is not null`,
     sql`${s.submissions.reviewedAt} is not null`,
     inArray(s.submissions.status, ["ACCEPTED", "REJECTED", "DUPLICATE", "MISSING_INFO"]),
     ...windowOn(s.submissions.reviewedAt, scope),
   ];
-  if (scope.editionId) subWhere.push(eq(s.submissions.editionId, scope.editionId));
   const pairs = await db
     .select({ submittedAt: s.submissions.submittedAt, reviewedAt: s.submissions.reviewedAt })
     .from(s.submissions)
@@ -284,8 +282,7 @@ export async function approvalLatency(scope: AnalyticsScope): Promise<Latency> {
     return { label: edge.label, value: hours.filter((h) => h >= min && h < edge.max).length };
   });
 
-  const artWhere: SQL[] = [sql`${s.articles.aiDraftedAt} is not null`, sql`${s.articles.approvedAt} is not null`, ...windowOn(s.articles.approvedAt, scope)];
-  if (scope.editionId) artWhere.push(eq(s.articles.editionId, scope.editionId));
+  const artWhere: SQL[] = [inOwnEditions(s.articles.editionId, scope), sql`${s.articles.aiDraftedAt} is not null`, sql`${s.articles.approvedAt} is not null`, ...windowOn(s.articles.approvedAt, scope)];
   const articleRows = await db.select({ draftedAt: s.articles.aiDraftedAt, approvedAt: s.articles.approvedAt }).from(s.articles).where(and(...artWhere));
   const articleHours = articleRows
     .map((a) => (a.draftedAt && a.approvedAt ? hoursBetween(a.draftedAt, a.approvedAt) : null))
@@ -308,9 +305,10 @@ export async function approvalLatency(scope: AnalyticsScope): Promise<Latency> {
 export type RightsRow = { editionId: string | null; label: string; green: number; yellow: number; red: number; total: number };
 
 /** Media rights split per edition — what can be printed, what still needs clearing. */
-export async function rightsByEdition(scope: AnalyticsScope): Promise<RightsRow[]> {
-  const where: SQL[] = [eq(s.mediaAssets.isArchived, false), ...windowOn(s.mediaAssets.createdAt, scope)];
-  if (scope.editionId) where.push(eq(s.mediaAssets.editionId, scope.editionId));
+export async function rightsByEdition(scope: TenantScope): Promise<RightsRow[]> {
+  const where: SQL[] = [ownedBy(s.mediaAssets.organizationId, scope), eq(s.mediaAssets.isArchived, false), ...windowOn(s.mediaAssets.createdAt, scope)];
+  const pickedMedia = pickedEdition(s.mediaAssets.editionId, scope);
+  if (pickedMedia) where.push(pickedMedia);
   const rows = await db
     .select({
       editionId: s.mediaAssets.editionId,
@@ -335,9 +333,8 @@ export async function rightsByEdition(scope: AnalyticsScope): Promise<RightsRow[
 export type CampusEditionRow = { campusId: string; name: string; colour: string | null; submissions: number; stories: number; contributors: number };
 
 /** Submissions and selected stories per campus, inside the window. */
-export async function contributionsByCampus(scope: AnalyticsScope): Promise<CampusEditionRow[]> {
-  const subWhere: SQL[] = [ne(s.submissions.status, "DRAFT"), ...windowOn(s.submissions.submittedAt, scope)];
-  if (scope.editionId) subWhere.push(eq(s.submissions.editionId, scope.editionId));
+export async function contributionsByCampus(scope: TenantScope): Promise<CampusEditionRow[]> {
+  const subWhere: SQL[] = [inOwnEditions(s.submissions.editionId, scope), ne(s.submissions.status, "DRAFT"), ...windowOn(s.submissions.submittedAt, scope)];
   const rows = await db
     .select({
       campusId: s.campuses.id,
@@ -350,12 +347,11 @@ export async function contributionsByCampus(scope: AnalyticsScope): Promise<Camp
     .from(s.campuses)
     .leftJoin(s.submissionCampuses, eq(s.submissionCampuses.campusId, s.campuses.id))
     .leftJoin(s.submissions, and(eq(s.submissions.id, s.submissionCampuses.submissionId), and(...subWhere)))
-    .where(eq(s.campuses.isActive, true))
+    .where(and(ownedBy(s.campuses.organizationId, scope), eq(s.campuses.isActive, true)))
     .groupBy(s.campuses.id)
     .orderBy(asc(s.campuses.sortOrder));
 
-  const storyWhere: SQL[] = [inArray(s.stories.status, [...SELECTED_STORY_STATUSES]), ...windowOn(s.stories.createdAt, scope)];
-  if (scope.editionId) storyWhere.push(eq(s.stories.editionId, scope.editionId));
+  const storyWhere: SQL[] = [inOwnEditions(s.stories.editionId, scope), inArray(s.stories.status, [...SELECTED_STORY_STATUSES]), ...windowOn(s.stories.createdAt, scope)];
   const storyRows = await db
     .select({ campusId: s.storyCampuses.campusId, stories: sql<number>`count(distinct ${s.stories.id})` })
     .from(s.storyCampuses)
@@ -371,9 +367,8 @@ export async function contributionsByCampus(scope: AnalyticsScope): Promise<Camp
 export type TopContributor = { contributorId: string; name: string; email: string; campusName: string | null; campusColour: string | null; submissions: number; accepted: number; stories: number; lastAt: Date | null };
 
 /** The people the newsroom actually runs on, inside the window. */
-export async function mostActiveContributors(scope: AnalyticsScope, limit = 10): Promise<TopContributor[]> {
-  const where: SQL[] = [ne(s.submissions.status, "DRAFT"), ...windowOn(s.submissions.submittedAt, scope)];
-  if (scope.editionId) where.push(eq(s.submissions.editionId, scope.editionId));
+export async function mostActiveContributors(scope: TenantScope, limit = 10): Promise<TopContributor[]> {
+  const where: SQL[] = [inOwnEditions(s.submissions.editionId, scope), ne(s.submissions.status, "DRAFT"), ...windowOn(s.submissions.submittedAt, scope)];
   const rows = await db
     .select({
       contributorId: s.contributors.id,
@@ -412,9 +407,6 @@ export async function mostActiveContributors(scope: AnalyticsScope, limit = 10):
  * that bounced never had the chance to open, and counting it as a miss makes every rate a lie
  * about the people who did receive it.
  *
- * Scoped by workspace, unlike its neighbours in this file — the delivery log is one table for every
- * customer, so a missing `organization_id` here would put one newsroom's readers in another's
- * figures. The rest of this module still reads unscoped, which is a separate thing to fix.
  */
 export type DeliveryTotals = {
   sent: number;
@@ -451,24 +443,29 @@ const DELIVERY_COLUMNS = {
   clicks: sql<number>`coalesce(sum(${s.emailLog.clicks}), 0)`,
 };
 
-export async function readerDelivery(scope: AnalyticsScope): Promise<DeliveryTotals> {
-  const where: SQL[] = [...windowOn(s.emailLog.createdAt, scope)];
-  if (scope.editionId) where.push(eq(s.emailLog.editionId, scope.editionId));
-  const [row] = await db.select(DELIVERY_COLUMNS).from(s.emailLog).where(await scoped(s.emailLog.organizationId, ...where));
+function deliveryWhere(scope: TenantScope): SQL[] {
+  const where: SQL[] = [ownedBy(s.emailLog.organizationId, scope), ...windowOn(s.emailLog.createdAt, scope)];
+  const picked = pickedEdition(s.emailLog.editionId, scope);
+  if (picked) where.push(picked);
+  return where;
+}
+
+export async function readerDelivery(scope: TenantScope): Promise<DeliveryTotals> {
+  const where = deliveryWhere(scope);
+  const [row] = await db.select(DELIVERY_COLUMNS).from(s.emailLog).where(and(...where));
   return ratesFrom({ sent: n(row?.sent), delivered: n(row?.delivered), bounced: n(row?.bounced), opened: n(row?.opened), clicked: n(row?.clicked), opens: n(row?.opens), clicks: n(row?.clicks) });
 }
 
 export type DeliveryByEdition = DeliveryTotals & { editionId: string; label: string; issueNumber: number };
 
 /** The same, issue by issue, so a newsroom can see whether what it changed made a difference. */
-export async function readerDeliveryByEdition(scope: AnalyticsScope, limit = 12): Promise<DeliveryByEdition[]> {
-  const where: SQL[] = [...windowOn(s.emailLog.createdAt, scope)];
-  if (scope.editionId) where.push(eq(s.emailLog.editionId, scope.editionId));
+export async function readerDeliveryByEdition(scope: TenantScope, limit = 12): Promise<DeliveryByEdition[]> {
+  const where = deliveryWhere(scope);
   const rows = await db
     .select({ editionId: s.editions.id, label: s.editions.label, issueNumber: s.editions.issueNumber, ...DELIVERY_COLUMNS })
     .from(s.emailLog)
     .innerJoin(s.editions, eq(s.editions.id, s.emailLog.editionId))
-    .where(await scoped(s.emailLog.organizationId, ...where))
+    .where(and(...where))
     .groupBy(s.editions.id, s.editions.label, s.editions.issueNumber)
     .orderBy(desc(s.editions.issueNumber))
     .limit(limit);
