@@ -29,7 +29,7 @@ export const fr: Dictionary = {
   nav: {
     overview: "Vue d'ensemble",
     publications: "Publications",
-    workbench: "Parutions",
+    workbench: "Newsletters",
     audience: "Audience",
     insights: "Statistiques",
     editions: "En cours",

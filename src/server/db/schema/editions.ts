@@ -92,6 +92,19 @@ export const submissionCampaigns = pgTable(
     closedAt: timestamp("closed_at", { withTimezone: true }),
     targets: jsonb("targets").$type<CampaignTargets>().default({}),
     contributorGroupIds: uuid("contributor_group_ids").array().notNull().default([]),
+    /**
+     * How this campaign decides who to ask: DRAW a number from the pool, invite a whole GROUP, or
+     * a list of PEOPLE chosen by hand.
+     *
+     * DRAW is the default because it is what the product already did — per-campus targets are a
+     * draw wearing a school's clothes. The mode is stored rather than inferred so that a
+     * hand-picked list is not quietly replaced the next time the selection runs.
+     */
+    selectionMode: text("selection_mode").notNull().default("DRAW"),
+    /** DRAW: how many to invite from the whole pool, when the campaign is not split by campus. */
+    drawCount: integer("draw_count"),
+    /** PEOPLE: exactly who to ask. Ignored in the other modes. */
+    selectedContributorIds: uuid("selected_contributor_ids").array().notNull().default([]),
     introMessage: text("intro_message"),
     autoProcess: boolean("auto_process").notNull().default(true),
     // When false (the default) a campaign does not re-invite the people invited to the previous

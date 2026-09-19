@@ -21,6 +21,7 @@ import { NoAccess } from "@/components/settings/no-access";
 import { PHASE_LABELS, formatZoned, formatZonedLong, calendarDaysUntil } from "@/lib/campaigns/schedule";
 import { enumLabel, formatDateTime } from "@/lib/utils";
 import { getUi } from "@/server/i18n/locale";
+import { isSelectionMode, type SelectionMode } from "@/lib/campaigns/selection";
 
 export const dynamic = "force-dynamic";
 
@@ -87,6 +88,9 @@ export default async function CampaignPage({ params }: { params: Promise<{ editi
     introMessage: campaign.introMessage ?? "",
     autoProcess: campaign.autoProcess,
     reinvitePrevious: campaign.reinvitePrevious ?? false,
+    selectionMode: (isSelectionMode(campaign.selectionMode) ? campaign.selectionMode : "DRAW") as SelectionMode,
+    drawCount: campaign.drawCount ?? 0,
+    selectedContributorIds: [...(campaign.selectedContributorIds ?? [])],
   };
 
   return (

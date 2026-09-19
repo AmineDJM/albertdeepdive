@@ -3166,4 +3166,21 @@ export const UI_FR: Record<string, string> = {
   "Every output made from the one edition, measured before anybody sees it.": "Chaque sortie fabriquée depuis la même édition, mesurée avant que quiconque la voie.",
   "Send it, publish it, print it, download it. One edition, each way out chosen separately.": "Envoyez-la, publiez-la, imprimez-la, téléchargez-la. Une édition, chaque sortie choisie séparément.",
   "Readers": "Lecteurs",
+
+  // Choosing who to ask.
+  "Newsletters": "Newsletters",
+  "Who are you asking?": "À qui demandez-vous ?",
+  "Three ways, and they are the three things a person actually says: these people, this group, or six of them.": "Trois façons, et ce sont les trois phrases qu'on dit vraiment : ces personnes-là, ce groupe-là, ou six d'entre eux.",
+  "A few of them": "Quelques-uns d'entre eux",
+  "Briefly draws the number you ask for, skipping whoever was asked last time.": "Briefly tire le nombre demandé, en passant ceux qui ont été sollicités la dernière fois.",
+  "A whole group": "Un groupe entier",
+  "Everybody in the groups ticked below.": "Toutes les personnes des groupes cochés ci-dessous.",
+  "People I choose": "Les personnes que je choisis",
+  "Exactly the contributors you pick, and nobody else.": "Exactement les contributeurs que vous désignez, et personne d'autre.",
+  "How many contributors to draw": "Combien de contributeurs tirer",
+  "Ask": "Demander à",
+  "of the people in the groups below. Leave the campus targets at zero to use this number.": "personnes parmi les groupes ci-dessous. Laissez les objectifs par campus à zéro pour utiliser ce nombre.",
+  "contributor(s) chosen. Add or remove them from the contributors screen.": "contributeur(s) choisi(s). Ajoutez-les ou retirez-les depuis l'écran des contributeurs.",
+  "Nobody chosen yet. Pick contributors from the contributors screen and they will be asked — and only them.": "Personne de choisi pour l'instant. Désignez des contributeurs depuis l'écran des contributeurs : ce sont eux qui seront sollicités, et eux seuls.",
+  "Edition created": "Édition créée",
 };

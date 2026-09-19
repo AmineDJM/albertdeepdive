@@ -176,6 +176,13 @@
       "when": 1789826214795,
       "tag": "0024_eager_piledriver",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1789832634048,
+      "tag": "0025_military_leopardon",
+      "breakpoints": true
     }
   ]
 }

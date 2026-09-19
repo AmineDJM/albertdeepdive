@@ -28,7 +28,7 @@ export default async function PublicationsPage() {
   return (
     <>
       <PageHeader
-        title={tr("Publications")}
+        title={tr("Newsletters")}
         description={tr("Your recurring titles. Open one to see its editions and start the next.")}
         actions={canManage ? <PublicationEditor paymentsConnected={paymentsConnected} /> : null}
       />

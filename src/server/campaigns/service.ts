@@ -25,7 +25,7 @@ import { kickJobRunner } from "@/server/jobs/runner";
 import { createLogger } from "@/server/logger";
 import { AppError, NotFoundError, ValidationError } from "@/lib/action-result";
 import { assertTransition, canTransition, type EditionStatus } from "@/lib/editorial/edition-state";
-import { selectContributors, targetKeyFor, type SelectableContributor } from "@/lib/campaigns/selection";
+import { drawFromPool, isSelectionMode, SCHOOL_TARGET_KEY, SELECTION_MODES, selectContributors, targetKeyFor, type SelectableContributor, type SelectionMode, type SelectionResult } from "@/lib/campaigns/selection";
 import { addDays, campaignPhaseAt, computeCampaignSchedule, type CampaignPhase } from "@/lib/campaigns/schedule";
 import { closedEmail, invitationEmail, reminderEmail, type ReminderKind } from "./emails";
 import { notifyEditors } from "./notify";
@@ -90,6 +90,9 @@ export const campaignInputSchema = z
     introMessage: z.string().trim().max(2000).nullable().optional(),
     autoProcess: z.boolean().default(true),
     reinvitePrevious: z.boolean().default(false),
+    selectionMode: z.enum(SELECTION_MODES).default("DRAW"),
+    drawCount: z.coerce.number().int().min(0).max(1000).default(0),
+    selectedContributorIds: z.array(z.uuid()).max(2000).default([]),
   })
   .superRefine((v, ctx) => {
     const order: [keyof typeof v, keyof typeof v, string][] = [
@@ -141,6 +144,9 @@ export async function createOrUpdateCampaign(editionId: string, input: CampaignI
     introMessage: data.introMessage ?? null,
     autoProcess: data.autoProcess,
     reinvitePrevious: data.reinvitePrevious,
+    selectionMode: data.selectionMode,
+    drawCount: data.drawCount,
+    selectedContributorIds: data.selectedContributorIds,
   };
 
   let campaign: Campaign;
@@ -184,7 +190,14 @@ export async function scheduleFromDefaults(editionId: string, user: Actor): Prom
     ? null
     : (
         await db
-          .select({ targets: submissionCampaigns.targets, contributorGroupIds: submissionCampaigns.contributorGroupIds, introMessage: submissionCampaigns.introMessage, reinvitePrevious: submissionCampaigns.reinvitePrevious })
+          .select({
+            targets: submissionCampaigns.targets,
+            contributorGroupIds: submissionCampaigns.contributorGroupIds,
+            introMessage: submissionCampaigns.introMessage,
+            reinvitePrevious: submissionCampaigns.reinvitePrevious,
+            selectionMode: submissionCampaigns.selectionMode,
+            drawCount: submissionCampaigns.drawCount,
+          })
           .from(submissionCampaigns)
           .innerJoin(editions, eq(editions.id, submissionCampaigns.editionId))
           .where(
@@ -222,6 +235,11 @@ export async function scheduleFromDefaults(editionId: string, user: Actor): Prom
       introMessage: existing?.introMessage ?? previous?.introMessage ?? "Tell us what happened around you this month: Business Deep Dives, events, associations, achievements and photos.",
       autoProcess: existing?.autoProcess ?? true,
       reinvitePrevious: existing?.reinvitePrevious ?? previous?.reinvitePrevious ?? false,
+      // How the last edition of this title chose its people is how this one starts. The list of
+      // named people is deliberately *not* inherited: "these six" was a decision about that month.
+      selectionMode: (existing?.selectionMode ?? previous?.selectionMode ?? "DRAW") as SelectionMode,
+      drawCount: existing?.drawCount ?? previous?.drawCount ?? 0,
+      selectedContributorIds: existing?.selectedContributorIds ?? [],
     },
     user,
   );
@@ -304,6 +322,75 @@ async function exclusionFor(campaign: Campaign): Promise<{ excludeIds: Set<strin
   return { excludeIds: await previousEditionContributorIds(campaign.editionId), strictExclude: true };
 }
 
+/**
+ * Who this campaign is asking, whichever of the three ways the editor chose.
+ *
+ * One function so that the preview, the send and anything that comes later cannot disagree about
+ * it. The three modes are the three sentences a person actually says: *these people*, *this
+ * group*, or *six of them*.
+ *
+ * DRAW keeps the per-campus targets when they are set, because a school newsroom genuinely wants
+ * two voices from each site; when they are not, it draws the plain number from the whole pool. The
+ * rota rule — do not ask last edition's people again unless allowed — applies to both, because it
+ * is about fairness to contributors rather than about how the number was arrived at.
+ */
+export async function resolveSelection(campaign: Campaign): Promise<SelectionResult & { mode: SelectionMode; poolSize: number }> {
+  const mode = (isSelectionMode(campaign.selectionMode) ? campaign.selectionMode : "DRAW") as SelectionMode;
+  const pool = await loadEligibleContributors(campaign.contributorGroupIds);
+  const { excludeIds, strictExclude } = await exclusionFor(campaign);
+
+  if (mode === "PEOPLE") {
+    // Named people are asked, full stop: no ranking, no rota, no draw. Somebody chose them.
+    //
+    // Scoped to the edition's own workspace rather than to the request, because this runs from a
+    // job as well as from a click — and because an id stored on a campaign is only trustworthy
+    // until somebody edits a form.
+    const chosen = [...new Set(campaign.selectedContributorIds ?? [])];
+    const edition = await db.query.editions.findFirst({ where: eq(editions.id, campaign.editionId), columns: { organizationId: true } });
+    const named = chosen.length
+      ? await db
+          .select({ id: contributors.id })
+          .from(contributors)
+          .where(
+            and(
+              inArray(contributors.id, chosen),
+              eq(contributors.isActive, true),
+              edition?.organizationId ? eq(contributors.organizationId, edition.organizationId) : isNull(contributors.organizationId),
+            ),
+          )
+      : [];
+    const selected = named.map((row) => row.id);
+    return {
+      mode,
+      selected,
+      byCampus: { [SCHOOL_TARGET_KEY]: selected.length },
+      shortfall: { [SCHOOL_TARGET_KEY]: Math.max(0, chosen.length - selected.length) },
+      pool: { [SCHOOL_TARGET_KEY]: chosen.length },
+      poolSize: chosen.length,
+    };
+  }
+
+  if (mode === "GROUP") {
+    // Everybody in the chosen groups, which is what "invite the partners" means.
+    const selected = pool.filter((person) => person.isActive).map((person) => person.id);
+    return {
+      mode,
+      selected,
+      byCampus: { [SCHOOL_TARGET_KEY]: selected.length },
+      shortfall: {},
+      pool: { [SCHOOL_TARGET_KEY]: pool.length },
+      poolSize: pool.length,
+    };
+  }
+
+  const targets = campaign.targets ?? {};
+  const hasCampusTargets = Object.values(targets).some((n) => Number(n) > 0);
+  const result = hasCampusTargets
+    ? selectContributors({ contributors: pool, groupIds: campaign.contributorGroupIds, targets, seed: campaign.id, excludeIds, strictExclude })
+    : drawFromPool({ contributors: pool, groupIds: campaign.contributorGroupIds, count: campaign.drawCount ?? 0, seed: campaign.id, excludeIds, strictExclude });
+  return { mode, ...result, poolSize: pool.length };
+}
+
 export type SelectionPreview = {
   selected: (EligibleContributor & { alreadyInvited: boolean })[];
   byCampus: { key: string; campusId: string | null; name: string; target: number; selected: number; pool: number; shortfall: number }[];
@@ -315,8 +402,7 @@ export async function previewSelection(campaignId: string): Promise<SelectionPre
   const campaign = await getCampaign(campaignId);
   const pool = await loadEligibleContributors(campaign.contributorGroupIds);
   const targets = campaign.targets ?? {};
-  const { excludeIds, strictExclude } = await exclusionFor(campaign);
-  const selection = selectContributors({ contributors: pool, groupIds: campaign.contributorGroupIds, targets, seed: campaign.id, excludeIds, strictExclude });
+  const selection = await resolveSelection(campaign);
   const existing = await db.select({ contributorId: submissionRequests.contributorId }).from(submissionRequests).where(eq(submissionRequests.campaignId, campaignId));
   const invited = new Set(existing.map((r) => r.contributorId));
   const poolById = new Map(pool.map((c) => [c.id, c]));
@@ -482,8 +568,9 @@ export async function openCampaign(campaignId: string, opts: OpenCampaignOptions
   const step = await runStep({ editionId: edition.id, step: "CAMPAIGN_OPEN", runKey: `${edition.id}:CAMPAIGN_OPEN`, triggeredBy: opts.triggeredBy, scheduledFor: campaign.opensAt, now }, async () => {
     const pool = await loadEligibleContributors(campaign.contributorGroupIds);
     const { excludeIds, strictExclude } = await exclusionFor(campaign);
-    const selection = selectContributors({ contributors: pool, groupIds: campaign.contributorGroupIds, targets: campaign.targets ?? {}, seed: campaign.id, excludeIds, strictExclude });
-    excludedAsPrevious = strictExclude ? pool.filter((contributor) => excludeIds.has(contributor.id)).length : 0;
+    // The same resolver the preview uses, so who is shown is who is asked.
+    const selection = await resolveSelection(campaign);
+    excludedAsPrevious = strictExclude && selection.mode === "DRAW" ? pool.filter((contributor) => excludeIds.has(contributor.id)).length : 0;
     await createPendingRequests(campaign, selection.selected, now);
     const pending = await db.select().from(submissionRequests).where(and(eq(submissionRequests.campaignId, campaign.id), eq(submissionRequests.status, "PENDING")));
     const sent = await sendInvitations(campaign, edition, pending, now);

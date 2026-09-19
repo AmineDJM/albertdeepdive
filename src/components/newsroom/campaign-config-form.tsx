@@ -15,6 +15,7 @@ import { applyCampaignDefaultsAction, saveCampaignAction, type CampaignFormInput
 import { CAMPAIGN_TIMEZONE, zonedParts, zonedTimeToUtc } from "@/lib/campaigns/schedule";
 import { cn } from "@/lib/utils";
 import { useUi } from "@/components/i18n/provider";
+import type { SelectionMode } from "@/lib/campaigns/selection";
 
 /** The campaign as the server holds it: instants as ISO strings. */
 export type CampaignFormInitial = {
@@ -29,6 +30,12 @@ export type CampaignFormInitial = {
   introMessage: string;
   autoProcess: boolean;
   reinvitePrevious: boolean;
+  /** DRAW a number from the pool, invite a whole GROUP, or ask a list of PEOPLE. */
+  selectionMode: SelectionMode;
+  /** DRAW: how many, when the campaign is not split by campus. */
+  drawCount: number;
+  /** PEOPLE: exactly who. */
+  selectedContributorIds: string[];
 };
 
 /** The same campaign as the form edits it: dates as "YYYY-MM-DDTHH:mm" in the school's timezone. */
@@ -264,6 +271,71 @@ export function CampaignConfigForm({
           <FieldError errors={fieldErrors} name="targets" />
         </SettingsCard>
       </div>
+
+      <SettingsCard
+        title={tr("Who are you asking?")}
+        description={tr("Three ways, and they are the three things a person actually says: these people, this group, or six of them.")}
+      >
+        <div className="grid gap-2 sm:grid-cols-3">
+          {(
+            [
+              { mode: "DRAW" as const, label: tr("A few of them"), hint: tr("Briefly draws the number you ask for, skipping whoever was asked last time.") },
+              { mode: "GROUP" as const, label: tr("A whole group"), hint: tr("Everybody in the groups ticked below.") },
+              { mode: "PEOPLE" as const, label: tr("People I choose"), hint: tr("Exactly the contributors you pick, and nobody else.") },
+            ]
+          ).map((choice) => {
+            const picked = values.selectionMode === choice.mode;
+            return (
+              <label
+                key={choice.mode}
+                className={cn(
+                  "flex cursor-pointer flex-col gap-1 rounded-md border px-3 py-2.5 transition-colors",
+                  picked ? "border-brand/60 bg-brand-soft/30" : "border-border bg-card hover:bg-muted/50",
+                  readOnly && "cursor-default opacity-70",
+                )}
+              >
+                <span className="flex items-center gap-2">
+                  <input
+                    type="radio"
+                    name="selection-mode"
+                    className="size-3.5 accent-[var(--brand)]"
+                    checked={picked}
+                    onChange={() => setValues((v) => ({ ...v, selectionMode: choice.mode }))}
+                    disabled={readOnly}
+                  />
+                  <span className="text-[13px] font-medium">{choice.label}</span>
+                </span>
+                <span className="text-2xs text-muted-foreground">{choice.hint}</span>
+              </label>
+            );
+          })}
+        </div>
+
+        {values.selectionMode === "DRAW" ? (
+          <div className="mt-3 flex flex-wrap items-center gap-2 text-[13px]">
+            <span>{tr("Ask")}</span>
+            <Input
+              type="number"
+              min={0}
+              max={1000}
+              value={values.drawCount}
+              onChange={(event) => setValues((v) => ({ ...v, drawCount: Math.max(0, Math.min(1000, Number(event.target.value) || 0)) }))}
+              disabled={readOnly}
+              aria-label={tr("How many contributors to draw")}
+              className="tabular h-7 w-20"
+            />
+            <span className="text-muted-foreground">{tr("of the people in the groups below. Leave the campus targets at zero to use this number.")}</span>
+          </div>
+        ) : null}
+
+        {values.selectionMode === "PEOPLE" ? (
+          <p className="mt-3 text-xs text-muted-foreground">
+            {values.selectedContributorIds.length
+              ? `${values.selectedContributorIds.length} ${tr("contributor(s) chosen. Add or remove them from the contributors screen.")}`
+              : tr("Nobody chosen yet. Pick contributors from the contributors screen and they will be asked — and only them.")}
+          </p>
+        ) : null}
+      </SettingsCard>
 
       <SettingsCard title={tr("Invitation message")} description={tr("Added at the top of every invitation and reminder email.")}>
         <Textarea

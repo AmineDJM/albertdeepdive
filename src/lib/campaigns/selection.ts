@@ -120,3 +120,51 @@ export function selectContributors<T extends SelectableContributor>(input: {
 
   return { selected, byCampus, shortfall, pool };
 }
+
+/**
+ * The simple draw: "six of these twenty-eight", ignoring which campus anybody is at.
+ *
+ * The per-campus version above exists because a school newsroom wants two voices from each site.
+ * Most newsletters do not: they have a pool of people and want a handful of them this month, and
+ * expressing that as a campus target is a costume the idea has to wear for no reason.
+ *
+ * Same ranking, same exclusion, same seed — so the two modes differ only in how the pool is
+ * divided, and a draw is reproducible: asking twice gives the same six, which is what makes it
+ * possible to show somebody who was drawn before the invitations go out.
+ */
+export function drawFromPool<T extends SelectableContributor>(input: {
+  contributors: readonly T[];
+  groupIds: readonly string[];
+  count: number;
+  seed?: string;
+  excludeIds?: Iterable<string>;
+  strictExclude?: boolean;
+}): SelectionResult {
+  const groups = new Set(input.groupIds);
+  const excluded = new Set(input.excludeIds ?? []);
+  const eligible = input.contributors.filter((c) => c.isActive && (groups.size === 0 || c.groupIds.some((g) => groups.has(g))));
+  const count = Math.max(0, Math.floor(Number(input.count) || 0));
+
+  const ranked = rankContributors(eligible, input.seed ?? "");
+  const fresh = ranked.filter((c) => !excluded.has(c.id));
+  const held = ranked.filter((c) => excluded.has(c.id));
+  // Whoever has not been asked lately comes first; last edition's people are only brought back
+  // when the pool is too small to fill the number and the rota rule allows it.
+  const order = input.strictExclude ? fresh : [...fresh, ...held];
+  const take = order.slice(0, count);
+
+  return {
+    selected: take.map((c) => c.id),
+    byCampus: { [SCHOOL_TARGET_KEY]: take.length },
+    shortfall: { [SCHOOL_TARGET_KEY]: Math.max(0, count - take.length) },
+    pool: { [SCHOOL_TARGET_KEY]: eligible.length },
+  };
+}
+
+/** How a campaign decides who to ask. */
+export const SELECTION_MODES = ["DRAW", "GROUP", "PEOPLE"] as const;
+export type SelectionMode = (typeof SELECTION_MODES)[number];
+
+export function isSelectionMode(value: unknown): value is SelectionMode {
+  return typeof value === "string" && (SELECTION_MODES as readonly string[]).includes(value);
+}

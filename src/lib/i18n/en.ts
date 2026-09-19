@@ -26,7 +26,7 @@ export const en = {
   nav: {
     overview: "Overview",
     publications: "Publications",
-    workbench: "Editions",
+    workbench: "Newsletters",
     audience: "Audience",
     insights: "Analytics",
     editions: "In progress",

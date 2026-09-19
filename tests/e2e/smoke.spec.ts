@@ -28,8 +28,14 @@ test.describe("newsroom smoke", () => {
   test("navigates to editions, control room, contributors and campuses", async ({ page }) => {
     await setExperience("advanced");
     await login(page);
-    await page.getByRole("link", { name: "Editions", exact: true }).click();
-    await expect(page.getByRole("heading", { name: "Editions" })).toBeVisible();
+    // The sidebar section is the newsletters; an edition lives inside one. It used to say
+    // "Editions" and land on a page headed "Publications", which is the exact confusion between
+    // the thing that lasts and the thing you make each month.
+    await page.getByRole("link", { name: "Newsletters", exact: true }).click();
+    await expect(page.getByRole("heading", { name: "Newsletters" })).toBeVisible();
+    // A newsletter holds its editions, so getting to one goes through it.
+    await page.locator("main table a").first().click();
+    await expect(page.getByRole("link", { name: "All titles" })).toBeVisible();
     await page.getByRole("link", { name: "May 2025" }).first().click();
     await expect(page.locator("main").getByText("Control room", { exact: true }).first()).toBeVisible();
     await expect(page.locator("main").getByText("Workflow", { exact: true })).toBeVisible();
