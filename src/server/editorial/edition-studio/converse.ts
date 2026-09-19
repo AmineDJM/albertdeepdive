@@ -1,12 +1,11 @@
-import { and, desc, eq } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import { db } from "@/server/db/client";
 import * as s from "@/server/db/schema";
 import { NotFoundError, ValidationError } from "@/lib/action-result";
 import { createLogger } from "@/server/logger";
 import { planEditionChange } from "@/server/ai/services/edition-studio";
-import { editionOperationSchema, asksFirst, summarise, type EditionOperation } from "./operations";
-import { executeOperations, type OperationOutcome } from "./execute";
-import { createRestorePoint, restore } from "./restore";
+import { editionOperationSchema, type EditionOperation } from "./operations";
+import { namesFrom, revisionState, stage, type RevisionState, type StagedChange } from "./revisions";
 import { buildSnapshot, snapshotForPrompt, type StudioSnapshot } from "./snapshot";
 
 const log = createLogger("edition-studio");
@@ -19,16 +18,13 @@ export type StudioTurn = {
   role: "user" | "assistant";
   content: string;
   operations: EditionOperation[];
-  outcomes: OperationOutcome[];
-  pendingOperations: EditionOperation[];
+  /** The ids this turn put in the basket, so a line can be traced back to the sentence that asked. */
+  stagedChangeIds: string[];
   mediaAssetIds: string[];
-  restorePointId: string | null;
-  pagesBefore: number | null;
-  pagesAfter: number | null;
   createdAt: string;
 };
 
-export type StudioReply = { turns: StudioTurn[]; snapshot: StudioSnapshot };
+export type StudioReply = { turns: StudioTurn[]; snapshot: StudioSnapshot; revisions: RevisionState };
 
 function toTurn(row: typeof s.editionStudioMessages.$inferSelect): StudioTurn {
   return {
@@ -36,12 +32,8 @@ function toTurn(row: typeof s.editionStudioMessages.$inferSelect): StudioTurn {
     role: row.role === "user" ? "user" : "assistant",
     content: row.content,
     operations: (row.operations ?? []) as EditionOperation[],
-    outcomes: (row.outcomes ?? []) as OperationOutcome[],
-    pendingOperations: (row.pendingOperations ?? []) as EditionOperation[],
+    stagedChangeIds: (row.pendingOperations ?? []) as string[],
     mediaAssetIds: row.mediaAssetIds ?? [],
-    restorePointId: row.restorePointId,
-    pagesBefore: row.pagesBefore,
-    pagesAfter: row.pagesAfter,
     createdAt: row.createdAt.toISOString(),
   };
 }
@@ -63,11 +55,12 @@ async function organizationOf(editionId: string): Promise<string | null> {
 }
 
 /**
- * One turn: read the issue, plan, do the safe part, say what happened.
+ * One turn: read the issue, work out what is being asked, put it in the basket, say what is in it.
  *
- * The operations the planner marks — or the vocabulary marks — as asking first are not run. They are
- * kept on the assistant's turn so the interface can offer them as a button, which is a clearer yes
- * than a typed one: nobody re-plans an issue by accident because they wrote "ok" to something else.
+ * Nothing is applied here, and that is the whole design. Re-running an issue is the expensive act —
+ * the layout, every format, any film — so it happens once, when the person presses Apply, and not
+ * once per sentence. The conversation's job is to turn "elle est beaucoup trop dense" into a line
+ * somebody can read and agree with before it costs them a revision.
  */
 export async function converse(
   editionId: string,
@@ -77,9 +70,9 @@ export async function converse(
   const message = input.message.trim();
   if (!message) throw new ValidationError("Say something first");
   const organizationId = await organizationOf(editionId);
-  const before = await buildSnapshot(editionId);
+  const snapshot = await buildSnapshot(editionId);
   const history = await listTurns(editionId, HISTORY_TURNS);
-  const pendingFromLast = history.length ? history[history.length - 1].pendingOperations : [];
+  const waiting = (await revisionState(editionId)).draft?.changes ?? [];
 
   const mediaIds = input.mediaAssetIds ?? [];
   const attachedMedia = mediaIds.length
@@ -94,16 +87,16 @@ export async function converse(
     content: message,
     mediaAssetIds: mediaIds,
     createdById: userId,
-    pagesBefore: before.edition.pages,
+    pagesBefore: snapshot.edition.pages,
   });
 
   const planned = await planEditionChange(
     {
-      snapshot: snapshotForPrompt(before),
+      snapshot: snapshotForPrompt(snapshot),
       history: history.map((t) => ({ role: t.role, content: t.content })),
       message,
       attachedMedia: attached,
-      pending: pendingFromLast,
+      waiting: waiting.map((c) => c.op),
     },
     { editionId, entityType: "EDITION", entityId: editionId, cacheable: false },
   );
@@ -117,88 +110,35 @@ export async function converse(
     else log.warn("studio dropped an operation it could not read", { editionId, issue: parsed.error.issues[0]?.message });
   }
 
-  const hold = operations.filter((op) => asksFirst(op));
-  const now = operations.filter((op) => !asksFirst(op));
+  const [assistantTurn] = await db
+    .insert(s.editionStudioMessages)
+    .values({
+      editionId,
+      organizationId,
+      role: "assistant",
+      content: planned.output.reply,
+      operations,
+      aiJobId: planned.aiJobId,
+      createdById: userId,
+      pagesBefore: snapshot.edition.pages,
+    })
+    .returning({ id: s.editionStudioMessages.id });
 
-  let restorePointId: string | null = null;
-  let outcomes: OperationOutcome[] = [];
-  if (now.length) {
-    restorePointId = await createRestorePoint(editionId, now, now.map(summarise).join(" · "), userId);
-    outcomes = await executeOperations(editionId, now, userId);
+  let staged: StagedChange[] = [];
+  if (operations.length) {
+    const result = await stage(editionId, operations, { messageId: assistantTurn.id, names: namesFrom(snapshot), userId });
+    staged = result.added;
+    await db
+      .update(s.editionStudioMessages)
+      .set({ pendingOperations: staged.map((c) => c.id) })
+      .where(eq(s.editionStudioMessages.id, assistantTurn.id));
   }
 
-  const after = outcomes.some((o) => o.ok) ? await buildSnapshot(editionId) : before;
-
-  await db.insert(s.editionStudioMessages).values({
-    editionId,
-    organizationId,
-    role: "assistant",
-    content: planned.output.reply,
-    operations: now,
-    outcomes,
-    pendingOperations: hold,
-    restorePointId,
-    aiJobId: planned.aiJobId,
-    createdById: userId,
-    pagesBefore: before.edition.pages,
-    pagesAfter: after.edition.pages,
-  });
-
-  return { turns: await listTurns(editionId), snapshot: after };
+  return { turns: await listTurns(editionId), snapshot, revisions: await revisionState(editionId) };
 }
 
-/** Runs what a turn held back, once somebody has said yes to it in as many words. */
-export async function applyPending(editionId: string, messageId: string, userId: string): Promise<StudioReply> {
-  const row = await db.query.editionStudioMessages.findFirst({
-    where: and(eq(s.editionStudioMessages.id, messageId), eq(s.editionStudioMessages.editionId, editionId)),
-  });
-  if (!row) throw new NotFoundError("Message");
-  const pending = ((row.pendingOperations ?? []) as unknown[]).map((raw) => editionOperationSchema.safeParse(raw)).flatMap((r) => (r.success ? [r.data] : []));
-  if (!pending.length) throw new ValidationError("There is nothing waiting on this turn");
-
-  const before = await buildSnapshot(editionId);
-  const restorePointId = await createRestorePoint(editionId, pending, pending.map(summarise).join(" · "), userId);
-  const outcomes = await executeOperations(editionId, pending, userId);
-  const after = await buildSnapshot(editionId);
-
-  await db.update(s.editionStudioMessages).set({ pendingOperations: [] }).where(eq(s.editionStudioMessages.id, messageId));
-  await db.insert(s.editionStudioMessages).values({
-    editionId,
-    organizationId: await organizationOf(editionId),
-    role: "assistant",
-    content: outcomes.every((o) => o.ok) ? "Done." : "Done, with one that would not go through.",
-    operations: pending,
-    outcomes,
-    restorePointId,
-    createdById: userId,
-    pagesBefore: before.edition.pages,
-    pagesAfter: after.edition.pages,
-  });
-  return { turns: await listTurns(editionId), snapshot: after };
-}
-
-/** Puts the issue back to what it was before a turn, and says so in the thread. */
-export async function undoTurn(editionId: string, messageId: string, userId: string): Promise<StudioReply> {
-  const row = await db.query.editionStudioMessages.findFirst({
-    where: and(eq(s.editionStudioMessages.id, messageId), eq(s.editionStudioMessages.editionId, editionId)),
-  });
-  if (!row?.restorePointId) throw new ValidationError("There is nothing to undo on this turn");
-  const point = await restore(editionId, row.restorePointId, userId);
-  const after = await buildSnapshot(editionId);
-  await db.insert(s.editionStudioMessages).values({
-    editionId,
-    organizationId: await organizationOf(editionId),
-    role: "assistant",
-    content: `Put back the way it was: ${point.label}`,
-    createdById: userId,
-    pagesAfter: after.edition.pages,
-  });
-  return { turns: await listTurns(editionId), snapshot: after };
-}
-
-/** The opening state of the panel: the thread so far and the issue as it stands. */
+/** The opening state of the panel: the thread, the issue as it stands, and what is waiting to be applied. */
 export async function studioState(editionId: string): Promise<StudioReply> {
-  const [turns, snapshot] = await Promise.all([listTurns(editionId), buildSnapshot(editionId)]);
-  return { turns, snapshot };
+  const [turns, snapshot, revisions] = await Promise.all([listTurns(editionId), buildSnapshot(editionId), revisionState(editionId)]);
+  return { turns, snapshot, revisions };
 }
-

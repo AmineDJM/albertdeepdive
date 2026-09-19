@@ -14,7 +14,7 @@ export const studioPlanSchema = z.object({
   reply: z.string().min(1),
   /** What it intends to do. Empty is a perfectly good answer to a question. */
   operations: z.array(editionOperationSchema).max(12),
-  /** Set when the model wants a yes before the risky ones; the executor decides for itself too. */
+  /** Set when what it proposes is heavy enough to want reading twice; the vocabulary marks those too. */
   askFirst: z.boolean(),
 });
 export type StudioPlan = z.infer<typeof studioPlanSchema>;
@@ -27,8 +27,8 @@ export type StudioPlanInput = {
   message: string;
   /** Photographs dropped in with this message, so "add these" has something to name. */
   attachedMedia: { id: string; fileName: string; caption: string | null }[];
-  /** Operations the last turn held back, so "yes, go on" can be understood. */
-  pending: unknown[];
+  /** What is already in the revision and not yet applied, so it can change its mind rather than repeat itself. */
+  waiting: unknown[];
 };
 
 export async function planEditionChange(input: StudioPlanInput, ctx: AiServiceContext = {}) {
@@ -45,7 +45,7 @@ export async function planEditionChange(input: StudioPlanInput, ctx: AiServiceCo
       history: history || "(this is the first message)",
       message: input.message,
       attachedMedia: attached,
-      pending: input.pending.length ? JSON.stringify(input.pending) : "none",
+      waiting: input.waiting.length ? JSON.stringify(input.waiting) : "nothing yet",
     },
     ctx,
     maxOutputTokens: 2500,

@@ -147,6 +147,46 @@ export async function checkLimit(organizationId: string, key: LimitKey, adding =
   };
 }
 
+/**
+ * How many re-edits this issue has left.
+ *
+ * Counted against the issue rather than the month, because that is where the cost sits: a revision
+ * re-runs the layout, re-renders every format and re-cuts any film. The other limits ask "how much
+ * of your plan have you used"; this one asks "how many goes has this issue had", which is the
+ * question somebody about to spend one is actually holding in their head.
+ *
+ * `null` is unlimited and `0` is none, the same distinction the rest of the entitlements make.
+ */
+export type RevisionAllowance = { used: number; limit: number | null; remaining: number | null; allowed: boolean; message?: string };
+
+export async function revisionAllowance(organizationId: string, editionId: string): Promise<RevisionAllowance> {
+  const [plan, [applied]] = await Promise.all([
+    resolveEntitlements(organizationId),
+    db
+      .select({ n: count() })
+      .from(s.editionRevisions)
+      .where(and(eq(s.editionRevisions.editionId, editionId), eq(s.editionRevisions.status, "APPLIED"))),
+  ]);
+  const used = Number(applied.n);
+  const raw = plan.entitlements.revisionsPerEdition;
+  if (raw === null || raw === undefined) return { used, limit: null, remaining: null, allowed: true };
+  const limit = Number(raw);
+  const remaining = Math.max(0, limit - used);
+  return {
+    used,
+    limit,
+    remaining,
+    allowed: remaining > 0,
+    message: remaining > 0 ? undefined : `This issue has used all ${limit} revision${limit === 1 ? "" : "s"} your plan includes. Upgrade for more, or start the next issue.`,
+  };
+}
+
+export async function requireRevision(organizationId: string, editionId: string): Promise<RevisionAllowance> {
+  const allowance = await revisionAllowance(organizationId, editionId);
+  if (!allowance.allowed) throw new ForbiddenError(allowance.message ?? "No revisions left on this issue");
+  return allowance;
+}
+
 export async function requireLimit(organizationId: string, key: LimitKey, adding = 1) {
   const result = await checkLimit(organizationId, key, adding);
   if (!result.allowed) throw new ForbiddenError(result.message ?? "Plan limit reached");

@@ -1,4 +1,5 @@
-import { index, integer, jsonb, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
+import { index, integer, jsonb, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 import { organizations, users } from "./identity";
 import { editions } from "./editions";
 
@@ -64,4 +65,59 @@ export const editionStudioRestorePoints = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index("edition_studio_restore_edition_idx").on(t.editionId, t.createdAt)],
+);
+
+/**
+ * A revision: everything asked for since the last one, gathered up and spent in one go.
+ *
+ * Re-running an issue is not free — the layout is re-planned and measured, every format is
+ * re-rendered and any film is re-cut — so the studio does not do it once per sentence. The
+ * conversation fills a basket; applying the basket is the expensive moment, and it is the moment a
+ * plan's allowance is spent. That is also the honest version for the person paying: they see the
+ * whole list before it costs them anything, and they can take a line out of it.
+ *
+ * There is at most one DRAFT per issue. `number` is the applied count, assigned when the basket is
+ * spent rather than when it is opened, so a discarded basket does not use up "revision 2".
+ */
+export const editionRevisions = pgTable(
+  "edition_revisions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: uuid("organization_id").references(() => organizations.id, { onDelete: "cascade" }),
+    editionId: uuid("edition_id")
+      .notNull()
+      .references(() => editions.id, { onDelete: "cascade" }),
+    /** Which revision of this issue this is, counted from 1. Null while it is still a basket. */
+    number: integer("number"),
+    /** DRAFT is the open basket; APPLYING is running; APPLIED and FAILED are both finished. */
+    status: text("status").notNull().default("DRAFT"),
+    /**
+     * The basket: `{ id, op, text, values, messageId, addedAt }[]`.
+     *
+     * `text` is an English sentence with `{placeholders}` and `values` fills them, which is how the
+     * rest of the interface is translated — so the list reads in French without the server having
+     * to know what language the reader has chosen.
+     */
+    changes: jsonb("changes").$type<unknown[]>().notNull().default([]),
+    /** What each one did when the basket was spent, in the same order. */
+    outcomes: jsonb("outcomes").$type<unknown[]>().notNull().default([]),
+    /** Formats re-made afterwards, and what happened to each. */
+    rerenders: jsonb("rerenders").$type<unknown[]>().notNull().default([]),
+    /** One point for the whole batch: undoing a revision puts the issue back before all of it. */
+    restorePointId: uuid("restore_point_id"),
+    pagesBefore: integer("pages_before"),
+    pagesAfter: integer("pages_after"),
+    error: text("error"),
+    appliedAt: timestamp("applied_at", { withTimezone: true }),
+    appliedById: uuid("applied_by_id").references(() => users.id, { onDelete: "set null" }),
+    createdById: uuid("created_by_id").references(() => users.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+  },
+  (t) => [
+    index("edition_revisions_edition_idx").on(t.editionId, t.createdAt),
+    uniqueIndex("edition_revisions_number_idx").on(t.editionId, t.number),
+    // One basket at a time. Two open baskets would mean two answers to "what am I about to spend".
+    uniqueIndex("edition_revisions_open_idx").on(t.editionId).where(sql`${t.status} = 'DRAFT'`),
+  ],
 );

@@ -24,6 +24,15 @@ export type Entitlements = {
   users?: number | null;
   subscribers?: number | null;
   editionsPerMonth?: number | null;
+  /**
+   * Re-edits of an issue that has already been made, counted per issue.
+   *
+   * Each one re-runs the layout, re-renders every format and, where a film is part of the issue,
+   * re-cuts it — which is where the money goes. Counted per issue rather than per month because
+   * that is what the cost follows and what a person can hold in their head: this issue has had two
+   * of its three.
+   */
+  revisionsPerEdition?: number | null;
   /** Output formats this plan may publish in. */
   outputs?: string[];
   customDomain?: boolean;
