@@ -2,7 +2,7 @@ import { whyNotPictureKind } from "@/server/media/constants";
 import { effectivePpi } from "../profiles";
 import {
   ASSET_DECODES,
-  IMAGE_ASPECT_DISTORTION,
+  IMAGE_CROP_LOSS,
   IMAGE_EFFECTIVE_PPI,
   IMAGE_ELIGIBLE,
   RIGHTS_CLEARED,
@@ -235,17 +235,19 @@ export const imageryCheck: Check = {
         );
       }
 
-      // Distortion: a container whose shape is not the picture's shape stretches faces.
+      // The crop: how much of the picture the page keeps. Nothing is ever stretched — every figure
+      // in the stylesheet is object-fit: cover or contain — so the question is what is cut off.
       if (media.aspectRatio && where.template) {
         const container = containerAspect(ctx, where.template);
         if (container) {
+          const lost = 1 - Math.min(container, media.aspectRatio) / Math.max(container, media.aspectRatio);
           results.push(
             compare({
-              spec: IMAGE_ASPECT_DISTORTION,
-              actual: Math.abs(container / media.aspectRatio - 1),
+              spec: IMAGE_CROP_LOSS,
+              actual: lost,
               location,
-              message: `"${label}" is ${media.aspectRatio.toFixed(2)}:1 in a ${container.toFixed(2)}:1 box on page ${where.page}.`,
-              evidence: { sourceAspect: media.aspectRatio, containerAspect: container },
+              message: `"${label}" is ${media.aspectRatio.toFixed(2)}:1 in a ${container.toFixed(2)}:1 box on page ${where.page}, so ${Math.round(lost * 100)}% of the frame is cropped away.`,
+              evidence: { sourceAspect: Number(media.aspectRatio.toFixed(3)), containerAspect: Number(container.toFixed(3)), lostFraction: Number(lost.toFixed(3)) },
             }),
           );
         }
@@ -256,12 +258,19 @@ export const imageryCheck: Check = {
   },
 };
 
-/** The shape of the box a template gives a picture, where the template declares one. */
+/**
+ * The shape of the box a template gives a picture, for the templates that crop.
+ *
+ * Only the ones whose figures are `object-fit: cover`. A template that uses `contain` fits the
+ * whole picture inside its box and throws nothing away, so asking how much it crops has no answer —
+ * and answering anyway would report a loss on a picture that is entirely visible.
+ */
 function containerAspect(ctx: QcContext, template: string): number | null {
   const trim = ctx.profile.trimMm;
   if (!trim) return null;
+  if (/BDD_VISUAL|VISUAL_GRID|SOCIAL/i.test(template)) return null;
   if (/COVER/i.test(template)) return trim.width / trim.height;
-  if (/PHOTO_STORY|BDD_VISUAL/i.test(template)) return 3 / 2;
+  if (/PHOTO_STORY/i.test(template)) return 3 / 2;
   if (/ARTICLE_HERO/i.test(template)) return 16 / 9;
   return null;
 }
@@ -318,7 +327,7 @@ export const ASSET_METRIC_IDS = [
   ASSET_DECODES.id,
   IMAGE_ELIGIBLE.id,
   IMAGE_EFFECTIVE_PPI.id,
-  IMAGE_ASPECT_DISTORTION.id,
+  IMAGE_CROP_LOSS.id,
   RIGHTS_CLEARED.id,
   RIGHTS_RESOLVED.id,
 ] as const;

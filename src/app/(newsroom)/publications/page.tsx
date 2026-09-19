@@ -29,7 +29,7 @@ export default async function PublicationsPage() {
     <>
       <PageHeader
         title={tr("Publications")}
-        description={tr("Your recurring titles. An edition belongs to one; where it is published is decided edition by edition.")}
+        description={tr("Your recurring titles. Open one to see its editions and start the next.")}
         actions={canManage ? <PublicationEditor paymentsConnected={paymentsConnected} /> : null}
       />
       <PageBody className="space-y-4">
@@ -47,7 +47,9 @@ export default async function PublicationsPage() {
               header: tr("Title"),
               cell: (p) => (
                 <span className="flex flex-col">
-                  <span className="font-medium">{p.name}</span>
+                  <Link href={`/publications/${p.id}`} className="font-medium hover:underline">
+                    {p.name}
+                  </Link>
                   {p.description ? <span className="line-clamp-1 text-xs text-muted-foreground">{p.description}</span> : null}
                 </span>
               ),

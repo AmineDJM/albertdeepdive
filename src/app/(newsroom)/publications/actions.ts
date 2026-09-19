@@ -6,6 +6,7 @@ import { currentOrganizationId } from "@/server/tenancy/context";
 import { createPublication, deletePublication, updatePublication, type PublicationInput } from "@/server/publications/service";
 import { ok, toActionFailure, type ActionResult } from "@/lib/action-result";
 import { getUi } from "@/server/i18n/locale";
+import { logger } from "@/server/logger";
 
 export type { PublicationInput };
 
@@ -62,6 +63,36 @@ export async function setShowcaseConsentAction(publicationId: string, on: boolea
     revalidatePath("/publications");
     revalidatePath("/collections");
     return ok(null, on ? tr("Your published editions can now appear in Briefly's gallery.") : tr("Removed from Briefly's gallery."));
+  } catch (err) {
+    return toActionFailure(err);
+  }
+}
+
+/**
+ * "+ New edition": the next edition of this title, from the last one, opened on its first step.
+ *
+ * The month, the issue number, the title, the sections, the page, the outputs and the campaign are
+ * all decided from what this title already did. None of them is asked, because none of them is a
+ * question a person can answer faster or better than Briefly can — and every one of them can be
+ * changed from the edition itself.
+ */
+export async function startNextEditionAction(publicationId: string): Promise<ActionResult<{ id: string }>> {
+  try {
+    const user = await requirePermission("edition:create");
+    const { nextEditionMonth, createEdition } = await import("@/server/editions/service");
+    const when = await nextEditionMonth();
+    const edition = await createEdition({ month: when.month, year: when.year, publicationId }, user.id);
+    try {
+      const { scheduleFromDefaults } = await import("@/server/campaigns/service");
+      await scheduleFromDefaults(edition.id, { id: user.id });
+    } catch (err) {
+      // The edition stands without its campaign; its first step offers to open one.
+      logger.warn("started an edition without a campaign", { editionId: edition.id, err });
+    }
+    revalidatePath(`/publications/${publicationId}`);
+    revalidatePath("/editions");
+    revalidatePath("/overview");
+    return ok({ id: edition.id }, `${edition.label} created`);
   } catch (err) {
     return toActionFailure(err);
   }

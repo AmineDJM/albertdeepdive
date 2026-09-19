@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { db } from "@/server/db/client";
 import * as s from "@/server/db/schema";
 import type { OutputConfig } from "@/server/db/schema/outputs";
@@ -200,6 +200,63 @@ export async function listPublications(organizationId: string) {
     published: editionCounts.get(p.id)?.published ?? 0,
     subscribers: subCounts.get(p.id) ?? 0,
   }));
+}
+
+/**
+ * One title, with its editions — the newsletter as a durable thing rather than a row in a list.
+ *
+ * A newsletter is set up once and then runs for years; an edition is the thing you make every
+ * month. Reading them together is what lets a screen say "Edition #6 · October 2026, collecting
+ * contributions" with one button beside it, which is the whole shape of the work.
+ */
+export async function publicationWithEditions(publicationId: string, organizationId: string) {
+  const publication = await db.query.publications.findFirst({
+    where: and(eq(s.publications.id, publicationId), eq(s.publications.organizationId, organizationId)),
+  });
+  if (!publication) return null;
+
+  const editions = await db
+    .select({
+      id: s.editions.id,
+      issueNumber: s.editions.issueNumber,
+      label: s.editions.label,
+      title: s.editions.title,
+      status: s.editions.status,
+      month: s.editions.month,
+      year: s.editions.year,
+      publicationTargetAt: s.editions.publicationTargetAt,
+      publishedAt: s.editions.publishedAt,
+      createdAt: s.editions.createdAt,
+    })
+    .from(s.editions)
+    .where(and(eq(s.editions.publicationId, publicationId), eq(s.editions.organizationId, organizationId), isNull(s.editions.hiddenAt)))
+    .orderBy(desc(s.editions.year), desc(s.editions.month), desc(s.editions.issueNumber));
+
+  // The edition being worked on is the most recent one that has not gone out; failing that, the
+  // most recent one there is. A title whose last edition published is between issues, and saying
+  // so is more useful than showing the published one as though it were live.
+  const live = editions.find((edition) => edition.status !== "PUBLISHED" && edition.status !== "ARCHIVED") ?? editions[0] ?? null;
+
+  const [subscribers] = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(s.publicationSubscriptions)
+    .innerJoin(s.subscribers, eq(s.publicationSubscriptions.subscriberId, s.subscribers.id))
+    .where(
+      and(
+        eq(s.publicationSubscriptions.publicationId, publicationId),
+        eq(s.publicationSubscriptions.isActive, true),
+        eq(s.subscribers.organizationId, organizationId),
+        eq(s.subscribers.status, "SUBSCRIBED"),
+      ),
+    );
+
+  return {
+    publication,
+    editions,
+    live,
+    published: editions.filter((edition) => edition.status === "PUBLISHED" || edition.status === "ARCHIVED").length,
+    subscribers: Number(subscribers?.count ?? 0),
+  };
 }
 
 /** Formats that went out, for the edition header and the archive. */

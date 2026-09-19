@@ -172,12 +172,31 @@ export async function scheduleFromDefaults(editionId: string, user: Actor): Prom
   const defaults = await getCampaignDefaults();
   const schedule = computeCampaignSchedule({ month: edition.month, year: edition.year, defaults });
   const existing = await getCampaignForEdition(editionId);
+  /*
+   * The last campaign *of this title*, to start from.
+   *
+   * It used to be the last campaign on the table with no scope at all, which on a platform with
+   * more than one customer means a new edition could inherit another customer's invitation targets,
+   * contributor groups and the words of their intro message. The join is the fix: a campaign
+   * belongs to an edition, and an edition belongs to a workspace and to a title.
+   */
   const previous = existing
     ? null
-    : await db.query.submissionCampaigns.findFirst({
-        where: ne(submissionCampaigns.editionId, editionId),
-        orderBy: [desc(submissionCampaigns.opensAt)],
-      });
+    : (
+        await db
+          .select({ targets: submissionCampaigns.targets, contributorGroupIds: submissionCampaigns.contributorGroupIds, introMessage: submissionCampaigns.introMessage, reinvitePrevious: submissionCampaigns.reinvitePrevious })
+          .from(submissionCampaigns)
+          .innerJoin(editions, eq(editions.id, submissionCampaigns.editionId))
+          .where(
+            and(
+              ne(submissionCampaigns.editionId, editionId),
+              eq(editions.organizationId, edition.organizationId!),
+              edition.publicationId ? eq(editions.publicationId, edition.publicationId) : isNull(editions.publicationId),
+            ),
+          )
+          .orderBy(desc(submissionCampaigns.opensAt))
+          .limit(1)
+      )[0] ?? null;
   let targets: CampaignTargets = existing?.targets ?? previous?.targets ?? {};
   let groupIds = existing?.contributorGroupIds ?? previous?.contributorGroupIds ?? [];
   if (!Object.keys(targets).length) {

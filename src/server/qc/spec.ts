@@ -82,17 +82,21 @@ export const IMAGE_ELIGIBLE = m({
   origin: "BRIEFLY_HOUSE_STANDARD",
 });
 
-export const IMAGE_ASPECT_DISTORTION = m({
-  id: "image.aspect.distortion",
-  title: "An image is not stretched",
-  method: "|container aspect ÷ source aspect − 1|, for images placed without a crop.",
+export const IMAGE_CROP_LOSS = m({
+  id: "image.crop.loss",
+  title: "How much of a picture the page throws away",
+  method: "The source aspect ratio is compared with the aspect of the box the template gives it, and the fraction of the frame lost to the crop is 1 − min(a,c) ÷ max(a,c). Every picture in the print stylesheet is object-fit: cover or contain, so nothing is ever stretched — what varies is how much is cut off.",
   unit: "ratio",
-  warningThreshold: 0.02,
-  failureThreshold: 0.1,
-  severity: "FAIL",
+  target: "no more than a third of the frame lost",
+  // A warning, and deliberately not a failure. A tight crop is an art-direction decision and an art
+  // director is allowed to make it; what they are not allowed to do is make it by accident. This
+  // rule started life as "aspect distortion" at FAIL, which measured a defect this renderer cannot
+  // produce — it crops, it never stretches — and so blocked publication on every cover it saw.
+  warningThreshold: 0.35,
+  severity: "WARNING",
   repair: null,
   origin: "BRIEFLY_HOUSE_STANDARD",
-  reference: "2% is invisible; 10% is a face nobody recognises.",
+  reference: "A portrait in a landscape box loses the top of a head before it loses anything else.",
 });
 
 /* ── Rights ───────────────────────────────────────────────────────────────────────────────── */
@@ -114,14 +118,23 @@ export const RIGHTS_CLEARED = m({
 
 export const RIGHTS_RESOLVED = m({
   id: "rights.resolved",
-  title: "Nothing is published with rights still unresolved",
-  method: "Every placed asset is checked for a YELLOW (unresolved) rights status.",
+  title: "Rights nobody has got round to clearing",
+  method: "Every placed asset is checked for a YELLOW (unresolved) rights status, which in this product is what a picture has until somebody decides.",
   unit: "count",
-  failureThreshold: 0,
-  severity: "FAIL",
+  /*
+   * A warning, because YELLOW is where every picture in this product starts.
+   *
+   * Refused rights are a different rule and a hard one: rights.cleared is HARD_FAIL and nothing
+   * gets past it. This is the other case — a picture nobody has got round to deciding about — and
+   * making it block a publish means blocking every publish, since a library's default state is
+   * undecided. A gate that fires on the default state of everything is a gate that gets switched
+   * off, and then the refused-rights rule goes off with it.
+   */
+  warningThreshold: 0,
+  severity: "WARNING",
   repair: null,
   origin: "BRIEFLY_HOUSE_STANDARD",
-  reference: "Blocks a publish, not a draft: a draft is how a newsroom finds out what to clear.",
+  reference: "Refused rights block absolutely (rights.cleared); undecided rights are worth knowing about.",
 });
 
 /* ── Geometry and typography ──────────────────────────────────────────────────────────────── */
@@ -460,7 +473,7 @@ export const ALL_METRICS: readonly MetricSpec[] = [
   ASSET_DECODES,
   IMAGE_EFFECTIVE_PPI,
   IMAGE_ELIGIBLE,
-  IMAGE_ASPECT_DISTORTION,
+  IMAGE_CROP_LOSS,
   RIGHTS_CLEARED,
   RIGHTS_RESOLVED,
   TEXT_OVERFLOW,

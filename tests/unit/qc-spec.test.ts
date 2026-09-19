@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ALL_METRICS, IMAGE_ASPECT_DISTORTION, IMAGE_EFFECTIVE_PPI, IMAGE_ELIGIBLE, PAGE_FIT_RATIO, PRINT_SAFE_MARGIN, QC_SPEC_VERSION, RIGHTS_CLEARED, TEXT_OVERFLOW, metricById } from "@/server/qc/spec";
+import { ALL_METRICS, IMAGE_CROP_LOSS, IMAGE_EFFECTIVE_PPI, IMAGE_ELIGIBLE, PAGE_FIT_RATIO, PRINT_SAFE_MARGIN, QC_SPEC_VERSION, RIGHTS_CLEARED, RIGHTS_RESOLVED, TEXT_OVERFLOW, metricById } from "@/server/qc/spec";
 import { DEFAULT_PROFILE, PROFILES, documentSizeMm, effectivePpi, mmToPt, profile, ptToMm } from "@/server/qc/profiles";
 import { BLOCKING, HARD_BLOCKING, SEVERITY_ORDER, assertThat, compare, merge, worst } from "@/server/qc/types";
 import { articleTeaser, extractFacts } from "@/server/qc/checks/integrity";
@@ -28,6 +28,25 @@ describe("the rule catalogue", () => {
   it("has no duplicate ids, and can find every rule by id", () => {
     expect(metricById.size).toBe(ALL_METRICS.length);
     for (const metric of ALL_METRICS) expect(metricById.get(metric.id)).toBe(metric);
+  });
+
+  it("keeps the rules that measure what this renderer can actually do wrong", () => {
+    // Every figure in the print stylesheet is object-fit: cover or contain, so a picture is never
+    // stretched — it is cropped. A rule called "aspect distortion" at FAIL measured a defect that
+    // cannot occur here and blocked publication on every cover it saw. What it was really
+    // computing, all along, was how much of the frame the crop throws away.
+    expect(IMAGE_CROP_LOSS.id).toBe("image.crop.loss");
+    expect(IMAGE_CROP_LOSS.severity, "a tight crop is a decision an art director is allowed to make").toBe("WARNING");
+    expect(IMAGE_CROP_LOSS.failureThreshold, "and therefore not something that blocks anything").toBeUndefined();
+    expect(IMAGE_CROP_LOSS.method).toMatch(/cover|crop/i);
+  });
+
+  it("blocks refused rights absolutely and merely mentions undecided ones", () => {
+    // YELLOW is where every picture in this product starts. A rule that fires on the default state
+    // of everything is a rule somebody switches off, and the refused-rights rule goes off with it.
+    expect(RIGHTS_CLEARED.severity).toBe("HARD_FAIL");
+    expect(RIGHTS_RESOLVED.severity).toBe("WARNING");
+    expect(RIGHTS_RESOLVED.failureThreshold).toBeUndefined();
   });
 
   it("never lets software clear a rights gate by removing the picture", () => {
@@ -76,7 +95,7 @@ describe("comparing a measurement with its threshold", () => {
 
   it("reverses the comparison when more is better", () => {
     // Resolution: 150 PPI against a 300 floor is a failure, 400 is not.
-    const spec = { ...IMAGE_ASPECT_DISTORTION, id: "test.ppi", failureThreshold: 300, warningThreshold: 350 };
+    const spec = { ...IMAGE_CROP_LOSS, id: "test.ppi", failureThreshold: 300, warningThreshold: 350 };
     expect(compare({ spec, actual: 150, direction: "at-least", location: {}, message: "" }).findings[0].severity).toBe(spec.severity);
     expect(compare({ spec, actual: 320, direction: "at-least", location: {}, message: "" }).findings[0].severity).toBe("WARNING");
     expect(compare({ spec, actual: 400, direction: "at-least", location: {}, message: "" }).findings).toEqual([]);

@@ -34,6 +34,11 @@ export const createEditionSchema = z.object({
   pageSize: z.enum(["A4", "TABLOID", "LETTER"]).default("A4"),
   editorInChiefId: z.string().uuid().optional().nullable(),
   notes: z.string().max(2000).optional().nullable(),
+  /**
+   * The edition to copy the configuration of: an id for "create from this one", null for "start
+   * from the platform defaults", and absent for the usual thing — the last edition of this title.
+   */
+  inheritFrom: z.string().uuid().nullable().optional(),
 });
 export type CreateEditionInput = z.infer<typeof createEditionSchema>;
 
@@ -55,6 +60,61 @@ export async function nextEditionMonth(now = new Date()): Promise<{ month: numbe
   if (!latest) return coming;
   const after = { month: latest.month === 12 ? 1 : latest.month + 1, year: latest.month === 12 ? latest.year + 1 : latest.year };
   return after.year * 12 + after.month >= coming.year * 12 + coming.month ? after : coming;
+}
+
+/**
+ * The edition a new one should be modelled on: the last one of the same title.
+ *
+ * The whole point of a second edition is that almost nothing about it is new. The sections, the
+ * shape of the page, the outputs, the people asked and what they were asked for were all decided
+ * once; asking again is not a question, it is a form. So a new edition starts as a copy of the last
+ * one of its own title and the editor changes only what they mean to change.
+ *
+ * Scoped to the workspace and then to the title, in that order, because a customer's second
+ * edition must never inherit another customer's configuration — and because an organisation
+ * running two titles should not have one of them set the other's sections.
+ */
+export async function editionToInheritFrom(publicationId: string | null, exceptEditionId?: string) {
+  const conditions = [isNull(s.editions.hiddenAt)];
+  if (publicationId) conditions.push(eq(s.editions.publicationId, publicationId));
+  if (exceptEditionId) conditions.push(ne(s.editions.id, exceptEditionId));
+  const [previous] = await db
+    .select()
+    .from(s.editions)
+    .where(await scoped(s.editions.organizationId, and(...conditions)))
+    .orderBy(desc(s.editions.year), desc(s.editions.month), desc(s.editions.issueNumber))
+    .limit(1);
+  return previous ?? null;
+}
+
+/**
+ * Everything a new edition takes from the last one, in one place so it can be read and argued with.
+ *
+ * Deliberately not "copy the row": an edition's identity — its number, month, title, slug, dates,
+ * status and everything it produced — is its own. What is inherited is *configuration*: how the
+ * page is shaped, who edits it, how it looks, what sections it runs and what it publishes as.
+ */
+export async function inheritedSettings(previous: typeof s.editions.$inferSelect | null) {
+  if (!previous) return null;
+  const sections = await db
+    .select({ slug: s.editionSections.slug, name: s.editionSections.name, kicker: s.editionSections.kicker, colour: s.editionSections.colour, sortOrder: s.editionSections.sortOrder, targetPages: s.editionSections.targetPages })
+    .from(s.editionSections)
+    .where(eq(s.editionSections.editionId, previous.id))
+    .orderBy(asc(s.editionSections.sortOrder));
+  const outputs = await db
+    .select({ format: s.editionOutputs.format, config: s.editionOutputs.config })
+    .from(s.editionOutputs)
+    .where(eq(s.editionOutputs.editionId, previous.id));
+  return {
+    from: { id: previous.id, label: previous.label, issueNumber: previous.issueNumber },
+    targetPageCount: previous.targetPageCount,
+    pageCountMode: previous.pageCountMode,
+    pageSize: previous.pageSize,
+    editorInChiefId: previous.editorInChiefId,
+    theme: previous.theme,
+    sections,
+    outputs,
+  };
 }
 
 /**
@@ -99,6 +159,23 @@ export async function createEdition(rawInput: z.input<typeof createEditionSchema
   if (existing) throw new ValidationError(`An edition already exists for ${label}`, { month: ["Edition already exists"] });
   const publicationTargetAt = input.publicationTargetAt ?? new Date(Date.UTC(input.year, input.month - 1, 15, 10, 0, 0));
   const finalReviewAt = input.finalReviewAt ?? new Date(Date.UTC(input.year, input.month - 1, 11, 16, 0, 0));
+
+  /*
+   * What the last edition of this title decided, unless this call says otherwise.
+   *
+   * Explicit input always wins — a caller who names a page size means it. Everything the caller is
+   * silent about comes from the previous edition rather than from a constant, because an editor who
+   * chose A4 and five sections in March did not choose them for March.
+   */
+  const previous =
+    input.inheritFrom === null
+      ? null
+      : input.inheritFrom
+        // "Create from this edition": scoped, so an id belonging to another workspace finds nothing
+        // rather than handing over its configuration.
+        ? ((await db.query.editions.findFirst({ where: await scoped(s.editions.organizationId, eq(s.editions.id, input.inheritFrom)) })) ?? null)
+        : await editionToInheritFrom(publication?.id ?? null);
+  const inherited = await inheritedSettings(previous);
   const edition = await db.transaction(async (tx) => {
     const [row] = await tx
       .insert(s.editions)
@@ -114,21 +191,41 @@ export async function createEdition(rawInput: z.input<typeof createEditionSchema
         isSpecialIssue: input.isSpecialIssue,
         publicationTargetAt,
         finalReviewAt,
-        targetPageCount: input.targetPageCount,
-        pageCountMode: input.pageCountMode,
-        pageSize: input.pageSize,
-        editorInChiefId: input.editorInChiefId ?? null,
+        targetPageCount: rawInput.targetPageCount ?? inherited?.targetPageCount ?? input.targetPageCount,
+        pageCountMode: rawInput.pageCountMode ?? inherited?.pageCountMode ?? input.pageCountMode,
+        pageSize: rawInput.pageSize ?? inherited?.pageSize ?? input.pageSize,
+        editorInChiefId: input.editorInChiefId ?? inherited?.editorInChiefId ?? null,
+        theme: inherited?.theme ?? {},
         createdById: userId ?? null,
         notes: input.notes ?? null,
       }))
       .returning();
-    const setting = await tx.query.systemSettings.findFirst({ where: eq(s.systemSettings.key, "default_sections") });
-    const sections = (Array.isArray(setting?.value) ? setting!.value : DEFAULT_SECTIONS) as unknown as { slug: string; name: string; kicker: string | null; colour: string; targetPages: number }[];
+    // The last edition's own sections, when there was one. The platform defaults are for the first
+    // edition a workspace ever makes — after that, the sections an editor arranged are the answer.
+    let sections: { slug: string; name: string; kicker: string | null; colour: string | null; targetPages: number | null }[];
+    if (inherited?.sections.length) {
+      sections = inherited.sections;
+    } else {
+      const setting = await tx.query.systemSettings.findFirst({ where: eq(s.systemSettings.key, "default_sections") });
+      sections = (Array.isArray(setting?.value) ? setting!.value : DEFAULT_SECTIONS) as unknown as typeof sections;
+    }
     await tx.insert(s.editionSections).values(sections.map((sec, i) => ({ editionId: row.id, slug: sec.slug, name: sec.name, kicker: sec.kicker ?? null, colour: sec.colour ?? null, sortOrder: i, targetPages: sec.targetPages ?? null })));
     return row;
   });
-  // The title's usual formats are a starting point; the edition can change them before it goes out.
-  await applyPublicationDefaults(edition.id, userId);
+  /*
+   * What this edition publishes as: what the last one published as, or the title's usual formats.
+   *
+   * The previous edition wins because it is the more specific answer. A title that usually goes out
+   * as email and web, whose last two editions also went to print, is a title that goes to print.
+   */
+  if (inherited?.outputs.length) {
+    const { enableOutput } = await import("@/server/outputs/service");
+    for (const output of inherited.outputs) {
+      await enableOutput(edition.id, output.format, userId).catch(() => null);
+    }
+  } else {
+    await applyPublicationDefaults(edition.id, userId);
+  }
   await audit({ action: "edition.create", userId, entityType: "EDITION", entityId: edition.id, editionId: edition.id, metadata: { issueNumber, label, publicationId: publication?.id ?? null } });
   return edition;
 }
