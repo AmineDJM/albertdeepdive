@@ -2,6 +2,7 @@ import { and, eq } from "drizzle-orm";
 import { db } from "@/server/db/client";
 import * as s from "@/server/db/schema";
 import { renderEditionEmail } from "@/server/outputs/email-edition";
+import { designEmailFor } from "@/server/design/email";
 import { mediaUrls } from "@/server/media/urls";
 import {
   DELIVERY_RECONCILES,
@@ -40,12 +41,21 @@ async function renderForCheck(ctx: QcContext) {
     "WEB",
     3600,
   );
+  // The same choice the send path makes, or this checks a message nobody receives.
+  const unsubscribeUrl = "https://example.test/s/unsubscribe/qc-preflight-token";
+  const designed = await designEmailFor(ctx.editionId, {
+    document: ctx.document,
+    imageUrls,
+    organizationName: organization?.name ?? "Briefly",
+    showBrieflyMark: true,
+  });
+  if (designed) return designed({ unsubscribeUrl });
   return renderEditionEmail(ctx.document, {
     organizationName: organization?.name ?? "Briefly",
     accentColour: null,
     webUrl: null,
     // A real per-recipient link, so the shape being checked is the shape that is sent.
-    unsubscribeUrl: "https://example.test/s/unsubscribe/qc-preflight-token",
+    unsubscribeUrl,
     imageUrls,
     showBrieflyMark: true,
   });
@@ -55,6 +65,31 @@ const IMG = /<img\b[^>]*>/gi;
 const ATTR = (tag: string, name: string): string | null => new RegExp(`${name}\\s*=\\s*"([^"]*)"`, "i").exec(tag)?.[1] ?? null;
 const HREF = /href\s*=\s*"([^"]*)"/gi;
 const WIDTH = /(?:width\s*[:=]\s*"?|max-width\s*:\s*)(\d{2,4})\s*(?:px)?/gi;
+const SIZED = /<(?:table|td|th|div|img|p|a|v:roundrect)\b[^>]*>/gi;
+
+/**
+ * The widest thing in the message that a phone cannot shrink.
+ *
+ * Measured per element rather than over the whole document, because the width that matters is the
+ * one that is still there after the client has done its own arithmetic. A 600 px table carrying
+ * `max-width:100%` is the standard responsive email: it is 600 px on a desktop and 375 px on a
+ * phone, and counting it as 600 reports sideways scroll on every well-built newsletter ever sent.
+ */
+export function widestFixedWidth(html: string): number {
+  let widest = 0;
+  // Markup only Outlook on a desktop ever renders is not measured against a phone. The other
+  // conditional — the one that reveals content to every client except Outlook — is left in place,
+  // because that content is exactly what the phone will draw.
+  const visible = html.replace(/<!--\[if (?!!)[^\]]*\]>[\s\S]*?<!\[endif\]-->/gi, "");
+  for (const tag of visible.match(SIZED) ?? []) {
+    if (/(?:max-)?width\s*:\s*100%/i.test(tag)) continue;
+    for (const match of tag.matchAll(WIDTH)) {
+      const value = Number(match[1]);
+      if (Number.isFinite(value) && value < 3000) widest = Math.max(widest, value);
+    }
+  }
+  return widest;
+}
 
 export const emailCheck: Check = {
   id: "email",
@@ -128,7 +163,7 @@ export const emailCheck: Check = {
 
     // ── width ──
     const viewport = ctx.profile.viewportPx?.width ?? 375;
-    const widest = Math.max(0, ...[...html.matchAll(WIDTH)].map((match) => Number(match[1])).filter((n) => Number.isFinite(n) && n < 3000));
+    const widest = widestFixedWidth(html);
     results.push(
       compare({
         spec: EMAIL_WIDTH,

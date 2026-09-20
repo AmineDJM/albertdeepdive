@@ -23,7 +23,8 @@ import { newIdentity, resolveDirection } from "@/lib/design/identity";
 import { DEFAULT_BRAND_SYSTEM } from "@/lib/brand/system";
 import { marginsMm, printCss, printWords, renderPrintEdition, renderPrintPage } from "@/server/design/render/print";
 import { resolve } from "@/server/design/render/content";
-import type { DocumentArticle, EditionDocument } from "@/lib/publication/document";
+import { fixtureArticle as article, fixtureEdition as doc } from "../helpers/edition-fixture";
+import type { DocumentArticle } from "@/lib/publication/document";
 
 /**
  * The design on paper.
@@ -60,68 +61,6 @@ function designOf(surfaces: { kind: "cover" | "opener" | "spread" | "flow" | "cl
         surfaces: surfaces.map((entry) => surface({ kind: entry.kind, blocks: entry.blocks, atomic: entry.atomic ?? false })),
       }),
     ],
-  };
-}
-
-function article(id: string): DocumentArticle {
-  return {
-    id,
-    storyId: `st-${id}`,
-    sectionId: "s1",
-    storyType: "NEWS",
-    kicker: "News",
-    headline: `Headline ${id}`,
-    standfirst: "A standfirst.",
-    byline: "A. Writer",
-    body: [
-      { id: `${id}-p1`, type: "paragraph", text: "One." },
-      { id: `${id}-p2`, type: "paragraph", text: "Two." },
-      { id: `${id}-p3`, type: "paragraph", text: "Three." },
-    ],
-    pullQuotes: [],
-    media: [],
-    heroMediaId: null,
-    tags: [],
-    campuses: [],
-    wordCount: 600,
-    bdd: null,
-    sourceIds: [],
-    status: "APPROVED",
-    eventDateText: null,
-  };
-}
-
-function doc(articles: DocumentArticle[]): EditionDocument {
-  return {
-    schemaVersion: "1",
-    meta: {
-      editionId: "ed1",
-      versionLabel: "v1",
-      issueNumber: 1,
-      title: "The Review",
-      label: "May 2026",
-      month: 5,
-      year: 2026,
-      isSpecialIssue: false,
-      issueLabel: "Issue N°1",
-      publicationDate: null,
-      generatedAt: new Date().toISOString(),
-      pageSize: { name: "A4", widthMm: 210, heightMm: 297 },
-      masthead: { title: "The Review", tagline: "Every month" },
-      cover: { storyId: null, articleId: null, headline: null, standfirst: null, mediaId: null, teasers: [] },
-      editorial: null,
-      credits: [],
-      contactEmail: null,
-      website: null,
-      campuses: [],
-    },
-    sections: [{ id: "s1", slug: "news", name: "News", kicker: null, colour: null, sortOrder: 0 }],
-    articles,
-    media: [],
-    pages: [],
-    toc: [],
-    references: [],
-    warnings: [],
   };
 }
 

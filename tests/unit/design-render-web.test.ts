@@ -9,7 +9,8 @@ import { newIdentity, resolveDirection } from "@/lib/design/identity";
 import { genomeFromBrand } from "@/lib/design/genome";
 import { DEFAULT_BRAND_SYSTEM } from "@/lib/brand/system";
 import { blocksOf } from "@/lib/design/model";
-import type { DocumentArticle, DocumentMedia, EditionDocument } from "@/lib/publication/document";
+import { fixtureArticle as article, fixtureEdition as edition, fixtureMedia as media } from "../helpers/edition-fixture";
+import type { EditionDocument } from "@/lib/publication/document";
 
 /**
  * The design, as a web edition.
@@ -22,87 +23,6 @@ import type { DocumentArticle, DocumentMedia, EditionDocument } from "@/lib/publ
 
 const brand = genomeFromBrand(DEFAULT_BRAND_SYSTEM);
 const direction = resolveDirection(brand, newIdentity("p1", "The Review"), null);
-
-function media(id: string, extra: Partial<DocumentMedia> = {}): DocumentMedia {
-  const width = extra.width ?? 2400;
-  const height = extra.height ?? 1600;
-  return {
-    id,
-    kind: "PHOTO",
-    caption: "A caption",
-    credit: "A. Photographer",
-    altText: "What is in the picture",
-    width,
-    height,
-    aspectRatio: width / height,
-    rightsStatus: "GREEN",
-    src: { print: { key: id, url: `https://example.test/${id}.jpg`, path: null, width, height }, web: null, thumb: null },
-    ...extra,
-  };
-}
-
-function article(id: string, extra: Partial<DocumentArticle> = {}): DocumentArticle {
-  return {
-    id,
-    storyId: `st-${id}`,
-    sectionId: "s1",
-    storyType: "NEWS",
-    kicker: "News",
-    headline: `Headline ${id}`,
-    standfirst: "A standfirst that says what happened.",
-    byline: "A. Writer",
-    body: [
-      { id: `${id}-b1`, type: "paragraph", text: "The first paragraph of the story." },
-      { id: `${id}-b2`, type: "crosshead", text: "A crosshead" },
-      { id: `${id}-b3`, type: "list", items: ["One", "Two"] },
-    ],
-    pullQuotes: [{ text: "A line worth pulling out", attribution: "Somebody" }],
-    media: [],
-    heroMediaId: null,
-    tags: [],
-    campuses: [],
-    wordCount: 600,
-    bdd: null,
-    sourceIds: [],
-    status: "APPROVED",
-    eventDateText: null,
-    ...extra,
-  };
-}
-
-function edition(articles: DocumentArticle[], mediaItems: DocumentMedia[] = [], coverArticleId: string | null = null): EditionDocument {
-  return {
-    schemaVersion: "1",
-    meta: {
-      editionId: "ed1",
-      versionLabel: "v1",
-      issueNumber: 1,
-      title: "The Review",
-      label: "May 2026",
-      month: 5,
-      year: 2026,
-      isSpecialIssue: false,
-      issueLabel: "Issue N°1",
-      publicationDate: null,
-      generatedAt: new Date().toISOString(),
-      pageSize: { name: "A4", widthMm: 210, heightMm: 297 },
-      masthead: { title: "The Review", tagline: "Every month" },
-      cover: { storyId: null, articleId: coverArticleId, headline: null, standfirst: null, mediaId: null, teasers: [] },
-      editorial: null,
-      credits: [{ role: "Editor", name: "E. Chief" }],
-      contactEmail: "hello@example.test",
-      website: "example.test",
-      campuses: [],
-    },
-    sections: [{ id: "s1", slug: "news", name: "News", kicker: null, colour: null, sortOrder: 0 }],
-    articles,
-    media: mediaItems,
-    pages: [],
-    toc: [],
-    references: [],
-    warnings: [],
-  };
-}
 
 function build(doc: EditionDocument) {
   const signals = readSignals(doc);

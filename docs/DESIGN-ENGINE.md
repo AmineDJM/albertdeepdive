@@ -168,3 +168,36 @@ Four things the first run on a real issue taught, all fixed in the engine rather
 On the seeded issue, without a model: 39 pages, nothing overflowing, one relaxation recorded (a pull
 quote moved off an opener that could not hold it). The pages that remain under-filled are reported
 rather than hidden — they are a composition problem, which is #142's to solve.
+
+## Email, as built (#141)
+
+A second renderer over the same design rather than a variant of the HTML one, because tables are not
+a stylesheet choice.
+
+| Where | What it does |
+| --- | --- |
+| `src/server/design/render/email.ts` | The design as a message: one fluid 600 px column of tables, every style inline, a palette in two schemes, type capped at inbox sizes, alt text that reads when pictures are blocked, a button Outlook draws, a preheader, and a plain-text alternative built from the same blocks. |
+| `src/server/design/email.ts` | Prepared once per edition, rendered once per recipient — the greeting and the unsubscribe link are the only parts that differ between two readers. |
+| `src/server/outputs/publish.ts` | Sends the design when the edition has one, and exactly what it always sent when it does not. |
+
+Email's own editorial decision: it carries the issue's **openings**, never its body copy. Twenty-six
+articles in one message is a message nobody reads and Gmail truncates. When the message would still
+pass the clipping limit, the tail is dropped on purpose and counted — "and 6 more in this edition" —
+rather than being cut mid-sentence by the client.
+
+Three defects the first render exposed, all fixed in the engine:
+
+1. **A font stack is full of double quotes, and an inline style lives inside a double-quoted
+   attribute.** `style="font-family:"Fraunces"…` ends the attribute and takes the rest of the tag
+   with it. The stack is written with single quotes.
+2. **An element that resolves to nothing must not be the one the email finds.** A deck element whose
+   standfirst was never written drew nothing *and* suppressed the excerpt that should have replaced
+   it, so those stories went out as a headline with no line under it.
+3. **`email.width` was failing on every message Briefly has ever sent.** The check took the widest
+   number in the file, so a 600 px table carrying `max-width:100%` — the standard responsive email —
+   read as 225 px of sideways scroll, as did Outlook-only markup no phone ever renders. It now
+   measures per element, and skips what the client will shrink or never draw.
+
+The designed email passes the quality engine's existing email metrics — images resolve, alt text,
+links valid, unsubscribe present, nothing wider than a 375 px phone — measured under the EMAIL
+profile on the seeded issue.

@@ -4,6 +4,7 @@ import { db } from "@/server/db/client";
 import * as s from "@/server/db/schema";
 import { blockText, editionDocumentSchema, type ArticleBlock } from "@/lib/publication/document";
 import { renderEditionEmail } from "@/server/outputs/email-edition";
+import { designEmailFor } from "@/server/design/email";
 import { ANALYTICS_RECONCILES, ANALYTICS_TENANCY, FACT_CONSISTENCY, OUTPUT_STALE, PROVIDER_OUTPUT_CHECKED, REVISION_SCOPE } from "../spec";
 import { assertThat, compare, merge, nothing, type CheckResult } from "../types";
 import type { Check, QcContext } from "../engine";
@@ -164,7 +165,11 @@ export const factsCheck: Check = {
     // real figure, in the one line most readers will ever see.
     let emailText = "";
     try {
-      emailText = renderEditionEmail(ctx.document, { organizationName: "QC", unsubscribeUrl: "https://example.test/s/unsubscribe/qc", imageUrls: {} }).text;
+      const unsubscribeUrl = "https://example.test/s/unsubscribe/qc";
+      // Whichever renderer would actually send this edition: checking the teaser in a message that
+      // is not the one going out is a check that passes while the sent one is wrong.
+      const designed = await designEmailFor(ctx.editionId, { document: ctx.document, imageUrls: {}, organizationName: "QC" });
+      emailText = designed ? designed({ unsubscribeUrl }).text : renderEditionEmail(ctx.document, { organizationName: "QC", unsubscribeUrl, imageUrls: {} }).text;
     } catch {
       emailText = "";
     }

@@ -10,6 +10,7 @@ import { mediaUrls } from "@/server/media/urls";
 import { recipientsFor } from "@/server/subscribers/service";
 import { showsBrieflyBranding } from "@/server/billing/entitlements";
 import { renderEditionEmail } from "./email-edition";
+import { designEmailFor } from "@/server/design/email";
 import { setOutputStatus } from "./service";
 import { NotFoundError, ValidationError } from "@/lib/action-result";
 
@@ -23,8 +24,13 @@ const EMAIL_IMAGE_TTL_SECONDS = 400 * 24 * 60 * 60;
 
 export type SendResult = { sent: number; failed: number; skipped: number; outputId: string };
 
-async function loadOutput(editionId: string, format: (typeof s.outputFormatEnum.enumValues)[number]) {
-  const output = await db.query.editionOutputs.findFirst({ where: and(eq(s.editionOutputs.editionId, editionId), eq(s.editionOutputs.format, format)) });
+async function loadOutput(
+  editionId: string,
+  format: (typeof s.outputFormatEnum.enumValues)[number],
+) {
+  const output = await db.query.editionOutputs.findFirst({
+    where: and(eq(s.editionOutputs.editionId, editionId), eq(s.editionOutputs.format, format)),
+  });
   if (!output) throw new NotFoundError(`${format} output`);
   return output;
 }
@@ -36,10 +42,17 @@ async function loadOutput(editionId: string, format: (typeof s.outputFormatEnum.
  * unsubscribe link — a shared link would let any reader unsubscribe every other reader. Delivery
  * failures are counted, not thrown: one bad address must not stop the send.
  */
-export async function sendEditionEmail(editionId: string, userId?: string | null, options: { resend?: boolean } = {}): Promise<SendResult> {
+export async function sendEditionEmail(
+  editionId: string,
+  userId?: string | null,
+  options: { resend?: boolean } = {},
+): Promise<SendResult> {
   const edition = await db.query.editions.findFirst({ where: eq(s.editions.id, editionId) });
   if (!edition) throw new NotFoundError("Edition");
-  if (!edition.publicationId) throw new ValidationError("This edition does not belong to a publication, so it has no subscribers to send to.");
+  if (!edition.publicationId)
+    throw new ValidationError(
+      "This edition does not belong to a publication, so it has no subscribers to send to.",
+    );
 
   const output = await loadOutput(editionId, "EMAIL");
   // A second send is possible and deliberate: a corrected issue is worth the inbox, and refusing
@@ -47,52 +60,98 @@ export async function sendEditionEmail(editionId: string, userId?: string | null
   // happens by accident — `resend` comes from a control that says how many people will get it
   // twice, and the audit records which send this was.
   if (output.status === "PUBLISHED" && !options.resend) {
-    throw new ValidationError("This edition has already been emailed. Use “Send again” if the readers should get the corrected issue.");
+    throw new ValidationError(
+      "This edition has already been emailed. Use “Send again” if the readers should get the corrected issue.",
+    );
   }
 
   const [organization, publication, recipients, showBrieflyMark] = await Promise.all([
-    edition.organizationId ? db.query.organizations.findFirst({ where: eq(s.organizations.id, edition.organizationId) }) : Promise.resolve(undefined),
+    edition.organizationId
+      ? db.query.organizations.findFirst({ where: eq(s.organizations.id, edition.organizationId) })
+      : Promise.resolve(undefined),
     db.query.publications.findFirst({ where: eq(s.publications.id, edition.publicationId) }),
     recipientsFor(edition.publicationId),
     edition.organizationId ? showsBrieflyBranding(edition.organizationId) : Promise.resolve(true),
   ]);
 
   if (!recipients.length) {
-    await setOutputStatus(output.id, "FAILED", { lastError: "Nobody has confirmed a subscription to this title yet." });
+    await setOutputStatus(output.id, "FAILED", {
+      lastError: "Nobody has confirmed a subscription to this title yet.",
+    });
     throw new ValidationError("Nobody has confirmed a subscription to this title yet.");
   }
 
-  await setOutputStatus(output.id, "GENERATING", { recipientCount: recipients.length, lastError: null });
+  await setOutputStatus(output.id, "GENERATING", {
+    recipientCount: recipients.length,
+    lastError: null,
+  });
 
-  const doc = await buildEditionDocument(editionId, { versionLabel: "email", signedUrlTtlSeconds: EMAIL_IMAGE_TTL_SECONDS });
-  const mediaIds = [doc.meta.cover.mediaId, ...doc.articles.map((a) => a.heroMediaId)].filter((id): id is string => !!id);
+  const doc = await buildEditionDocument(editionId, {
+    versionLabel: "email",
+    signedUrlTtlSeconds: EMAIL_IMAGE_TTL_SECONDS,
+  });
+  // Every picture in the edition, not only the covers and heroes: a design may place any of them,
+  // and a picture with no URL is an empty frame in somebody's inbox.
+  const mediaIds = [
+    ...new Set(
+      [
+        doc.meta.cover.mediaId,
+        ...doc.articles.map((a) => a.heroMediaId),
+        ...doc.media.map((m) => m.id),
+      ].filter((id): id is string => !!id),
+    ),
+  ];
   const imageUrls = await mediaUrls(mediaIds, "WEB", EMAIL_IMAGE_TTL_SECONDS);
 
   const webOutput = await db.query.editionOutputs.findFirst({
-    where: and(eq(s.editionOutputs.editionId, editionId), eq(s.editionOutputs.format, "WEB"), eq(s.editionOutputs.status, "PUBLISHED")),
+    where: and(
+      eq(s.editionOutputs.editionId, editionId),
+      eq(s.editionOutputs.format, "WEB"),
+      eq(s.editionOutputs.status, "PUBLISHED"),
+    ),
   });
-  const webUrl = webOutput?.publicSlug ? `${env.NEXT_PUBLIC_APP_URL}/r/${webOutput.publicSlug}` : null;
+  const webUrl = webOutput?.publicSlug
+    ? `${env.NEXT_PUBLIC_APP_URL}/r/${webOutput.publicSlug}`
+    : null;
 
   const brand = (organization?.brandColours ?? {}) as { primary?: string; accent?: string };
   const config = output.config ?? {};
+
+  /*
+   * An edition that has been designed is sent as its design; one that has not is sent exactly as
+   * it has always been. The switch is the existence of a design rather than a flag, so nobody's
+   * readers receive something different until somebody designs an issue.
+   */
+  const designEmail = await designEmailFor(editionId, {
+    document: doc,
+    imageUrls,
+    organizationName: organization?.name ?? doc.meta.masthead.title,
+    logoUrl: organization?.logoUrl ?? null,
+    webUrl,
+    footerNote: typeof config.fromName === "string" ? config.fromName : null,
+    showBrieflyMark,
+    locale: publication?.language ?? "en",
+  });
 
   let sent = 0;
   let failed = 0;
   for (const recipient of recipients) {
     const unsubscribeUrl = `${env.NEXT_PUBLIC_APP_URL}/s/unsubscribe/${recipient.unsubscribeToken}?p=${edition.publicationId}`;
-    const rendered = renderEditionEmail(doc, {
-      organizationName: organization?.name ?? doc.meta.masthead.title,
-      logoUrl: organization?.logoUrl ?? null,
-      accentColour: brand.primary ?? brand.accent ?? null,
-      webUrl,
-      unsubscribeUrl,
-      greetingName: recipient.firstName,
-      imageUrls,
-      footerNote: typeof config.fromName === "string" ? config.fromName : null,
-      // The reader agreed to receive this title, in the language it publishes in.
-      locale: publication?.language ?? "en",
-      showBrieflyMark,
-    });
+    const rendered = designEmail
+      ? designEmail({ unsubscribeUrl, greetingName: recipient.firstName })
+      : renderEditionEmail(doc, {
+          organizationName: organization?.name ?? doc.meta.masthead.title,
+          logoUrl: organization?.logoUrl ?? null,
+          accentColour: brand.primary ?? brand.accent ?? null,
+          webUrl,
+          unsubscribeUrl,
+          greetingName: recipient.firstName,
+          imageUrls,
+          footerNote: typeof config.fromName === "string" ? config.fromName : null,
+          // The reader agreed to receive this title, in the language it publishes in.
+          locale: publication?.language ?? "en",
+          showBrieflyMark,
+        });
 
     const result = await sendEmail({
       to: recipient.email,
@@ -105,7 +164,12 @@ export async function sendEditionEmail(editionId: string, userId?: string | null
       replyTo: typeof config.replyTo === "string" ? config.replyTo : undefined,
       listUnsubscribeUrl: unsubscribeUrl,
       // The digest is already complete HTML; the transactional layout would wrap it in a second one.
-      layout: { title: rendered.subject, blocks: [], rawHtml: rendered.html, rawText: rendered.text },
+      layout: {
+        title: rendered.subject,
+        blocks: [],
+        rawHtml: rendered.html,
+        rawText: rendered.text,
+      },
     });
     if (result.ok) sent += 1;
     else failed += 1;
@@ -143,15 +207,34 @@ export async function sendEditionEmail(editionId: string, userId?: string | null
 export async function publishWebEdition(editionId: string, userId?: string | null) {
   const output = await loadOutput(editionId, "WEB");
   if (!output.publicSlug) throw new ValidationError("This web edition has no address yet.");
-  const row = await setOutputStatus(output.id, "PUBLISHED", { publishedAt: new Date(), generatedAt: new Date(), lastError: null });
-  await audit({ action: "output.web.publish", organizationId: output.organizationId, userId, entityType: "EDITION", entityId: editionId, editionId, metadata: { slug: output.publicSlug } });
+  const row = await setOutputStatus(output.id, "PUBLISHED", {
+    publishedAt: new Date(),
+    generatedAt: new Date(),
+    lastError: null,
+  });
+  await audit({
+    action: "output.web.publish",
+    organizationId: output.organizationId,
+    userId,
+    entityType: "EDITION",
+    entityId: editionId,
+    editionId,
+    metadata: { slug: output.publicSlug },
+  });
   return row;
 }
 
 export async function unpublishWebEdition(editionId: string, userId?: string | null) {
   const output = await loadOutput(editionId, "WEB");
   const row = await setOutputStatus(output.id, "READY", { publishedAt: null });
-  await audit({ action: "output.web.unpublish", organizationId: output.organizationId, userId, entityType: "EDITION", entityId: editionId, editionId });
+  await audit({
+    action: "output.web.unpublish",
+    organizationId: output.organizationId,
+    userId,
+    entityType: "EDITION",
+    entityId: editionId,
+    editionId,
+  });
   return row;
 }
 
@@ -166,34 +249,63 @@ export async function unpublishWebEdition(editionId: string, userId?: string | n
  * message in somebody's inbox, which is a decision a person makes, not a side effect of a button
  * called republish.
  */
-export type RepublishLine = { format: (typeof s.outputFormatEnum.enumValues)[number]; done: boolean; detail: string };
+export type RepublishLine = {
+  format: (typeof s.outputFormatEnum.enumValues)[number];
+  done: boolean;
+  detail: string;
+};
 
-export async function republishEdition(editionId: string, userId?: string | null): Promise<RepublishLine[]> {
-  const outputs = await db.select().from(s.editionOutputs).where(eq(s.editionOutputs.editionId, editionId));
+export async function republishEdition(
+  editionId: string,
+  userId?: string | null,
+): Promise<RepublishLine[]> {
+  const outputs = await db
+    .select()
+    .from(s.editionOutputs)
+    .where(eq(s.editionOutputs.editionId, editionId));
   if (!outputs.length) throw new ValidationError("This edition has no formats switched on yet.");
   const lines: RepublishLine[] = [];
 
-  const frozen = outputs.filter((output) => output.format === "MAGAZINE" || output.format === "PRINT");
+  const frozen = outputs.filter(
+    (output) => output.format === "MAGAZINE" || output.format === "PRINT",
+  );
   if (frozen.length) {
     const { requestExport } = await import("@/server/publication/versions");
     try {
-      const { version } = await requestExport(editionId, { kind: "DRAFT", userId, notes: "Republished" });
+      const { version } = await requestExport(editionId, {
+        kind: "DRAFT",
+        userId,
+        notes: "Republished",
+      });
       for (const output of frozen) {
         await setOutputStatus(output.id, "PENDING", { versionId: version.id, lastError: null });
-        lines.push({ format: output.format, done: true, detail: `Being made again as ${version.label}. The version that went out before stays in the history.` });
+        lines.push({
+          format: output.format,
+          done: true,
+          detail: `Being made again as ${version.label}. The version that went out before stays in the history.`,
+        });
       }
     } catch (err) {
       const error = err instanceof Error ? err.message : String(err);
-      for (const output of frozen) lines.push({ format: output.format, done: false, detail: error });
+      for (const output of frozen)
+        lines.push({ format: output.format, done: false, detail: error });
     }
   }
 
   for (const output of outputs.filter((each) => each.format === "WEB")) {
     if (output.status === "PUBLISHED") {
       await setOutputStatus(output.id, "PUBLISHED", { generatedAt: new Date() });
-      lines.push({ format: "WEB", done: true, detail: "The page is built when it is read, so it is already showing the corrected issue." });
+      lines.push({
+        format: "WEB",
+        done: true,
+        detail: "The page is built when it is read, so it is already showing the corrected issue.",
+      });
     } else {
-      lines.push({ format: "WEB", done: false, detail: "Not published yet — publish it and it will carry the corrected issue." });
+      lines.push({
+        format: "WEB",
+        done: false,
+        detail: "Not published yet — publish it and it will carry the corrected issue.",
+      });
     }
   }
 
@@ -208,13 +320,27 @@ export async function republishEdition(editionId: string, userId?: string | null
     });
   }
 
-  await audit({ action: "output.republish", organizationId: outputs[0]?.organizationId, userId, entityType: "EDITION", entityId: editionId, editionId, metadata: { formats: lines.map((line) => line.format) } });
+  await audit({
+    action: "output.republish",
+    organizationId: outputs[0]?.organizationId,
+    userId,
+    entityType: "EDITION",
+    entityId: editionId,
+    editionId,
+    metadata: { formats: lines.map((line) => line.format) },
+  });
   return lines;
 }
 
 /** Attach the rendered PDF to the magazine output once a version is published. */
 export async function linkMagazineVersion(editionId: string, versionId: string) {
-  const output = await db.query.editionOutputs.findFirst({ where: and(eq(s.editionOutputs.editionId, editionId), eq(s.editionOutputs.format, "MAGAZINE")) });
+  const output = await db.query.editionOutputs.findFirst({
+    where: and(eq(s.editionOutputs.editionId, editionId), eq(s.editionOutputs.format, "MAGAZINE")),
+  });
   if (!output) return null;
-  return setOutputStatus(output.id, "PUBLISHED", { versionId, publishedAt: new Date(), generatedAt: new Date() });
+  return setOutputStatus(output.id, "PUBLISHED", {
+    versionId,
+    publishedAt: new Date(),
+    generatedAt: new Date(),
+  });
 }
