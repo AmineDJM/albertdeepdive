@@ -167,10 +167,16 @@ export function editionLabel(month: number, year: number) {
   return `${MONTH_NAMES[month - 1]} ${year}`;
 }
 
-/** "1 Oct, 09:00" in the school's timezone. */
-export function formatZoned(date: Date | string | null | undefined, opts: Intl.DateTimeFormatOptions = {}, timezone: string = CAMPAIGN_TIMEZONE) {
+/**
+ * "1 Oct, 09:00" in the newsroom's timezone, in the reader's own language.
+ *
+ * The locale was "en-GB" and nothing else, which put "Sunday 1 November at 09:00" in the middle of
+ * a French sentence — the one place in the interface where the language switch plainly did not
+ * work. It stays the default so that a caller with no locale to hand behaves as it always did.
+ */
+export function formatZoned(date: Date | string | null | undefined, opts: Intl.DateTimeFormatOptions = {}, timezone: string = CAMPAIGN_TIMEZONE, locale: string = "en-GB") {
   if (!date) return "—";
-  return new Intl.DateTimeFormat("en-GB", {
+  return new Intl.DateTimeFormat(locale, {
     timeZone: timezone,
     day: "numeric",
     month: "short",
@@ -180,9 +186,14 @@ export function formatZoned(date: Date | string | null | undefined, opts: Intl.D
   }).format(toDate(date));
 }
 
-/** "Wednesday 7 October, 23:59" in the school's timezone. */
-export function formatZonedLong(date: Date | string | null | undefined, timezone: string = CAMPAIGN_TIMEZONE) {
-  return formatZoned(date, { weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" }, timezone);
+/** "Wednesday 7 October, 23:59" — or "mercredi 7 octobre, 23:59" — in the newsroom's timezone. */
+export function formatZonedLong(date: Date | string | null | undefined, timezone: string = CAMPAIGN_TIMEZONE, locale: string = "en-GB") {
+  return formatZoned(date, { weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" }, timezone, locale);
+}
+
+/** "7 Nov 2026" — or "7 nov. 2026" — in the newsroom's timezone. */
+export function formatZonedDay(date: Date | string | null | undefined, locale: string = "en-GB", timezone: string = CAMPAIGN_TIMEZONE) {
+  return formatZoned(date, { day: "numeric", month: "short", year: "numeric", hour: undefined, minute: undefined }, timezone, locale);
 }
 
 /** Whole calendar days from `now` to `date`, counted in the school's timezone (0 = today). */
@@ -246,6 +257,55 @@ export const PHASE_LABELS: Record<CampaignPhase, string> = {
   GRACE_PERIOD: "Grace period",
   CLOSED: "Closed",
 };
+
+/** Everything one date decides, with the opening it decided them against. */
+export type DeadlinePlan = {
+  opensAt: Date;
+  reminder1At: Date;
+  reminder2At: Date;
+  deadlineAt: Date;
+  graceEndsAt: Date;
+  /** True when the last day came before the opening, so the invitation moves to now. */
+  movedOpening: boolean;
+};
+
+/**
+ * What one date does to all the others.
+ *
+ * The reminders and the day of grace are not decisions anybody makes — they follow from the span
+ * between the invitation and the last day — so they are derived, one about halfway through and one
+ * near the end, with the grace day after. This is the only place that derivation exists: it ran on
+ * the server at save time and the screen showed whatever had been saved *before*, so moving the
+ * date moved nothing on screen until you saved and the page came back. Two copies of this rule
+ * would be worse: a screen that predicts a different schedule from the one it is about to write is
+ * a screen that cannot be trusted at all.
+ *
+ * A last day that falls before the opening is the one interesting case. On a campaign that has not
+ * gone out it means "ask them now", so the opening moves to now. On one already sent, or a date
+ * already past, it means nothing sensible, and this returns null rather than inventing something.
+ */
+export function planFromDeadline(input: { opensAt: Date | string; deadlineAt: Date | string; unsent: boolean; now?: Date }): DeadlinePlan | null {
+  const now = input.now ?? new Date();
+  const deadlineAt = toDate(input.deadlineAt);
+  if (Number.isNaN(deadlineAt.getTime())) return null;
+  let opensAt = toDate(input.opensAt);
+  if (Number.isNaN(opensAt.getTime())) return null;
+  let movedOpening = false;
+  if (deadlineAt.getTime() <= opensAt.getTime()) {
+    if (!input.unsent || deadlineAt.getTime() <= now.getTime()) return null;
+    opensAt = now;
+    movedOpening = true;
+  }
+  const span = deadlineAt.getTime() - opensAt.getTime();
+  return {
+    opensAt,
+    reminder1At: new Date(opensAt.getTime() + Math.round(span * 0.45)),
+    reminder2At: new Date(opensAt.getTime() + Math.round(span * 0.85)),
+    deadlineAt,
+    graceEndsAt: new Date(deadlineAt.getTime() + 86_400_000),
+    movedOpening,
+  };
+}
 
 export function addDays(date: Date | string, days: number): Date {
   return new Date(toDate(date).getTime() + days * 86_400_000);

@@ -18,7 +18,9 @@ import { Decision, LanguageChange, OutputsChange, PublishDateChange, type Output
 import { Button } from "@/components/ui/button";
 import { GuidedNext } from "@/components/newsroom/guided-next";
 import { formatDate } from "@/lib/utils";
-import { getUi } from "@/server/i18n/locale";
+import { calendarDaysUntil } from "@/lib/campaigns/schedule";
+import { intlLocale } from "@/lib/i18n";
+import { currentLocale, getUi } from "@/server/i18n/locale";
 
 /**
  * An edition, in Standard.
@@ -30,6 +32,8 @@ import { getUi } from "@/server/i18n/locale";
  */
 export async function StandardOverview({ editionId }: { editionId: string }) {
   const tr = await getUi();
+  const locale = intlLocale(await currentLocale());
+  const at = (date: Date | string | null | undefined) => formatDate(date, undefined, locale);
   const [user, tenant] = await Promise.all([getCurrentUser(), requireTenant()]);
   const [d, outputs, brand, sender, stats] = await Promise.all([editionDashboard(editionId), outputMatrix(editionId), activeBrand(tenant.organizationId), senderFor(tenant.organizationId).catch(() => null), publicationStats(tenant.organizationId)]);
   const publication = d.edition.publicationId ? await db.query.publications.findFirst({ where: eq(s.publications.id, d.edition.publicationId), columns: { id: true, name: true, language: true } }) : null;
@@ -46,10 +50,27 @@ export async function StandardOverview({ editionId }: { editionId: string }) {
   const choices: OutputChoice[] = outputs.map(({ format, label, output }) => ({ format, label, enabled: !!output, locked: output?.status === "PUBLISHED", publicUrl: format === "WEB" && output?.publicSlug ? `/r/${output.publicSlug}` : null }));
   const emailOn = choices.some((c) => c.format === "EMAIL" && c.enabled);
   const asked = d.requests.invited;
+  /*
+   * A little more management, and not a control room.
+   *
+   * The list answered "what did Briefly decide" and stopped there, which is the right question
+   * once and the wrong one every day after: the person running an edition wants to know how long
+   * they have, whether the invitation has actually gone, and how many people have written back.
+   * So three of these rows carry a number they did not: days left, the last day, and the share who
+   * have answered. Nothing new to click, no chart, and no second opinion about anything — each
+   * number sits on the decision it is about, which is the only place it means anything.
+   */
+  const daysToPublish = d.edition.publicationTargetAt ? calendarDaysUntil(d.edition.publicationTargetAt) : null;
+  const inDays = (days: number | null) =>
+    days === null ? null : days > 1 ? tr("in {count} days", { count: days }) : days === 1 ? tr("tomorrow") : days === 0 ? tr("today") : tr("{count} days ago", { count: Math.abs(days) });
+  const publishHint = published ? null : [inDays(daysToPublish), at(d.edition.finalReviewAt) !== "—" ? tr("last check {date}", { date: at(d.edition.finalReviewAt) }) : null].filter(Boolean).join(" · ") || null;
+  const deadlineDays = d.campaign ? calendarDaysUntil(d.campaign.deadlineAt) : null;
+  const answered = d.requests.submitted;
+  const responseRate = asked ? Math.round((answered / asked) * 100) : 0;
   const tone = ((brand?.system as { voice?: { tone?: string[] } } | null)?.voice?.tone ?? []).map((word) => toneLabel(word, tr)).join(", ");
   const webUrl = choices.find((c) => c.format === "WEB")?.publicUrl ?? null;
   const summary = published
-    ? tr("Went out on {date}.", { date: formatDate(d.edition.publishedAt ?? d.edition.publicationTargetAt) })
+    ? tr("Went out on {date}.", { date: at(d.edition.publishedAt ?? d.edition.publicationTargetAt) })
     : d.stories.selected
       ? tr("{count} stories in · {waiting} waiting for a decision", { count: d.stories.selected, waiting: d.stories.candidates })
       : d.submissions.total
@@ -115,7 +136,7 @@ export async function StandardOverview({ editionId }: { editionId: string }) {
             {publication && canEdit && !published ? <LanguageChange publicationId={publication.id} current={publication.language} /> : null}
           </Decision>
           <Decision label={tr("Audience")} value={subscribers === 1 ? tr("1 subscriber") : tr("{count} subscribers", { count: subscribers })} hint={subscribers === 0 ? tr("nobody yet — add readers first") : null} tone={subscribers === 0 && emailOn ? "attention" : "default"} change={{ href: "/subscribers" }} />
-          <Decision label={tr("Publish date")} value={formatDate(d.edition.publicationTargetAt)} hint={published ? null : formatDate(d.edition.finalReviewAt) !== "—" ? tr("last check {date}", { date: formatDate(d.edition.finalReviewAt) }) : null}>
+          <Decision label={tr("Publish date")} value={at(d.edition.publicationTargetAt)} hint={publishHint}>
             {canEdit ? <PublishDateChange editionId={editionId} current={d.edition.publicationTargetAt} locked={published} /> : null}
           </Decision>
           <Decision label={tr("Outputs")} value={<OutputsChange editionId={editionId} outputs={choices} canEdit={canEdit && !published} />} />
@@ -132,17 +153,26 @@ export async function StandardOverview({ editionId }: { editionId: string }) {
             hint={
               asked === 0
                 ? d.campaign?.status === "SCHEDULED"
-                  ? tr("the invitation goes out on {date}", { date: formatDate(d.campaign.opensAt) })
+                  ? tr("the invitation goes out on {date}", { date: at(d.campaign.opensAt) })
                   : d.campaign
                     ? tr("the invitation is ready to go")
                     : tr("nobody is collecting news for this issue")
-                : d.requests.submitted
-                  ? tr("{count} have answered", { count: d.requests.submitted })
+                : answered
+                  ? tr("{count} have answered · {percent}%", { count: answered, percent: responseRate })
                   : tr("nobody has answered yet")
             }
             tone={asked === 0 && !published ? "attention" : "default"}
             change={{ href: `${ed}/campaign`, label: canEdit ? (asked === 0 ? tr("Set up") : tr("Change")) : tr("See") }}
           />
+          {d.campaign && !published ? (
+            <Decision
+              label={tr("Last day")}
+              value={at(d.campaign.deadlineAt)}
+              hint={deadlineDays !== null && deadlineDays < 0 ? tr("closed") : inDays(deadlineDays)}
+              tone={deadlineDays !== null && deadlineDays >= 0 && deadlineDays <= 2 ? "attention" : "default"}
+              change={canEdit ? { href: `${ed}/deadline` } : null}
+            />
+          ) : null}
           <Decision label={tr("Stories")} value={d.stories.selected === 1 ? tr("1 story in") : tr("{count} stories in", { count: d.stories.selected })} hint={d.stories.candidates ? tr("{count} more to decide on", { count: d.stories.candidates }) : d.submissions.total ? tr("from {count} updates", { count: d.submissions.total }) : null} tone={d.stories.selected === 0 && !published ? "attention" : "default"} change={{ href: `${ed}/topics`, label: canEdit ? tr("Choose") : tr("See") }} />
           <Decision label={tr("Pictures")} value={d.media.total === 1 ? tr("1 picture") : tr("{count} pictures", { count: d.media.total })} hint={d.media.yellow + d.media.red ? tr("{count} need a look", { count: d.media.yellow + d.media.red }) : null} tone={d.media.red ? "attention" : "default"} change={{ href: `${ed}/media` }} />
           <Decision label={tr("Tone")} value={tone || tr("Plain and confident")} hint={tr("from your brand")} change={canSetUp ? { href: "/settings/brand" } : null} />

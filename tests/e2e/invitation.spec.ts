@@ -42,6 +42,33 @@ test.describe("the invitation", () => {
     await closeDb();
   });
 
+  test("moves the reminders as the last day is typed, before anything is saved", async ({ page }) => {
+    /*
+     * The consequences used to be whatever had last been saved, so changing the date changed
+     * nothing on screen: a card reading "4 Nov" under a field reading 20 September, with a line
+     * underneath promising it would catch up later. An editor who cannot see what a date does
+     * tends to set it and then check twice.
+     */
+    await setExperience("standard");
+    await login(page);
+    await page.goto(`/editions/${editionId}/deadline`);
+    await expect(page.getByRole("heading", { level: 1, name: "When for?" })).toBeVisible();
+
+    const consequences = page.getByTestId("deadline-consequences");
+    await expect(consequences).toBeVisible();
+    const before = (await consequences.innerText()).replace(/\s+/g, " ");
+
+    const later = new Date(Date.now() + 15 * 86_400_000);
+    const pad = (n: number) => String(n).padStart(2, "0");
+    await expect(async () => {
+      await page.getByLabel("Last day to contribute").fill(`${later.getFullYear()}-${pad(later.getMonth() + 1)}-${pad(later.getDate())}`);
+      await expect(consequences).not.toHaveText(before, { timeout: 5_000 });
+    }).toPass({ timeout: 60_000 });
+
+    // And nothing was written: the card moved, the campaign did not.
+    expect((await one<{ status: string }>(`select status from submission_campaigns where edition_id = $1`, [editionId]))!.status).toBe("DRAFT");
+  });
+
   test("is read, then sent on a second press — or given a date that can be taken back", async ({ page }) => {
     await setExperience("standard");
     await login(page);

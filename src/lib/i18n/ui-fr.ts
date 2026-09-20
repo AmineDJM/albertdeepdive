@@ -3462,4 +3462,22 @@ export const UI_FR: Record<string, string> = {
   "This campaign is closed.": "Cette campagne est close.",
   "The invitations have already gone out.": "Les invitations sont déjà parties.",
   "Nobody is chosen yet, so there is nobody to write to.": "Personne n'est encore choisi, il n'y a donc personne à qui écrire.",
+
+  // ── One date, and everything that follows from it ────────────────────────
+  "Last day": "Dernier jour",
+  "That is sooner than the invitation was due to go out, so it goes out as soon as you save.": "C'est avant la date prévue pour l'invitation : elle partira donc dès que vous enregistrez.",
+  "Save to keep this.": "Enregistrez pour conserver ces dates.",
+  "That date is too early: the invitation goes out on {date}, and the last day has to come after it.": "Cette date est trop tôt : l'invitation part le {date}, et le dernier jour doit venir après.",
+  "The rest of the edition opens once the invitation has gone.": "La suite de l'édition s'ouvre une fois l'invitation partie.",
+  "in {count} days": "dans {count} jours",
+  "tomorrow": "demain",
+  "today": "aujourd'hui",
+  "{count} days ago": "il y a {count} jours",
+  "{count} have answered · {percent}%": "{count} ont répondu · {percent} %",
+  "closed": "clos",
+  "A first name, a last name and an email address.": "Un prénom, un nom et une adresse email.",
+  "{name} is on the list and will be asked": "{name} est sur la liste et sera sollicité",
+  "Add somebody": "Ajouter quelqu'un",
+  "Anybody ticked here is asked as well, on top of the choice above.": "Toute personne cochée ici est sollicitée en plus du choix ci-dessus.",
+  "Nobody yet. Add somebody and they will be asked.": "Personne pour l'instant. Ajoutez quelqu'un et il sera sollicité.",
 };

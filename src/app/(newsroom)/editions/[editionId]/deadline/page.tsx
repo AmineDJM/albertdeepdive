@@ -8,11 +8,9 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { screenWords } from "@/components/newsroom/guided-words";
 import { GUIDED_PATH, nextFrom, previousFrom } from "@/lib/editorial/guided-path";
 import { experienceOf } from "@/lib/experience";
-import { formatZonedLong, zonedDayInput } from "@/lib/campaigns/schedule";
+import { zonedDayInput } from "@/lib/campaigns/schedule";
 import { getUi } from "@/server/i18n/locale";
-import { SettingsCard } from "@/components/settings/key-value";
-import { SendInvitations } from "@/components/newsroom/send-invitations";
-import { ACTIVE_CAMPAIGN_STATUSES } from "@/server/campaigns/service";
+import { isUnsent } from "@/server/campaigns/service";
 import { DeadlineForm } from "./deadline-form";
 
 export const dynamic = "force-dynamic";
@@ -33,7 +31,8 @@ export default async function DeadlinePage({ params }: { params: Promise<{ editi
   const [edition, campaign] = await Promise.all([getEdition(editionId), getCampaignForEdition(editionId)]);
   const standard = experienceOf(user?.preferences) === "standard";
   const at = GUIDED_PATH.findIndex((screen) => screen.room === "deadline");
-  const next = standard ? nextFrom(editionId, "deadline") : null;
+  const sent = campaign ? !isUnsent(campaign.status) : false;
+  const next = standard ? nextFrom(editionId, "deadline", { invitationSent: sent }) : null;
   const previous = standard ? previousFrom(editionId, "deadline") : null;
   const words = screenWords(tr);
 
@@ -45,8 +44,6 @@ export default async function DeadlinePage({ params }: { params: Promise<{ editi
           <DeadlineForm
             editionId={editionId}
             initialDay={zonedDayInput(campaign.deadlineAt)}
-            reminders={[campaign.reminder1At.toISOString(), campaign.reminder2At.toISOString()]}
-            graceEndsAt={campaign.graceEndsAt.toISOString()}
             canManage={hasPermission(user, "campaign:manage")}
             closed={campaign.status === "CLOSED"}
             next={next?.href ?? null}
@@ -54,27 +51,11 @@ export default async function DeadlinePage({ params }: { params: Promise<{ editi
             nextHint={tr("Step {step} of {total}", { step: at + 1, total: GUIDED_PATH.length })}
             title={tr("Next: {question}", { question: words[GUIDED_PATH[at + 1].key].question })}
             back={previous ? { href: previous.href, label: tr("Back") } : null}
-            invitation={
-              /*
-               * The last screen before anything leaves the building.
-               *
-               * Who, what and by when have all been answered by now, so this is the moment the
-               * invitation exists as a real email — and the moment to read it. Sending it is two
-               * presses; dating it is one; neither happens by accident.
-               */
-              ACTIVE_CAMPAIGN_STATUSES.includes(campaign.status) || campaign.status === "CLOSED" ? null : (
-                <SettingsCard
-                  title={tr("The invitation")}
-                  description={
-                    campaign.status === "SCHEDULED"
-                      ? tr("Briefly sends it on its own on {date}. You can read it, move it, or send it now.", { date: formatZonedLong(campaign.opensAt) })
-                      : tr("Nothing has gone out. Read what Briefly will send, then send it now or pick a date.")
-                  }
-                >
-                  <SendInvitations editionId={editionId} scheduledFor={campaign.status === "SCHEDULED" ? campaign.opensAt.toISOString() : null} />
-                </SettingsCard>
-              )
-            }
+            opensAt={campaign.opensAt.toISOString()}
+            unsent={isUnsent(campaign.status)}
+            invitationSent={sent}
+            scheduledFor={campaign.status === "SCHEDULED" ? campaign.opensAt.toISOString() : null}
+            showInvitation={isUnsent(campaign.status)}
           />
         ) : (
           <EmptyState

@@ -10,7 +10,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { invitationPreviewAction, launchCampaignAction, scheduleInvitationsAction, unscheduleInvitationsAction } from "@/app/(newsroom)/editions/[editionId]/campaign/actions";
 import type { InvitationPreview } from "@/server/campaigns/preview";
 import { formatZonedLong, zonedParts, zonedTimeToUtc } from "@/lib/campaigns/schedule";
-import { useUi } from "@/components/i18n/provider";
+import { intlLocale } from "@/lib/i18n";
+import { useLocale, useUi } from "@/components/i18n/provider";
 
 /**
  * The invitation, read before it is sent.
@@ -47,8 +48,9 @@ function tomorrowMorning(): Date {
 
 type Step = "read" | "confirm" | "schedule";
 
-export function SendInvitations({ editionId, scheduledFor = null }: { editionId: string; scheduledFor?: string | null }) {
+export function SendInvitations({ editionId, scheduledFor = null, withSendNow = false }: { editionId: string; scheduledFor?: string | null; withSendNow?: boolean }) {
   const tr = useUi();
+  const locale = intlLocale(useLocale());
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState<Step>("read");
@@ -71,9 +73,18 @@ export function SendInvitations({ editionId, scheduledFor = null }: { editionId:
     setPreview(null);
   }
 
-  function openDialog() {
+  /*
+   * Two ways in, and both of them still ask twice.
+   *
+   * Reading it first is the safe order and the default. But an editor who has just set the date,
+   * on the screen where the whole invitation is described, means "send it" when they say it — and
+   * making them open a preview they have already read to find the button is a step that teaches
+   * them to click through previews. So the card offers it directly, landing on the confirmation
+   * against the number of people rather than on the send itself.
+   */
+  function openDialog(at: Step = "read") {
     setOpen(true);
-    setStep("read");
+    setStep(at);
     // Read on opening rather than with the page: the email is built from the brief, the note, the
     // last day and the people currently chosen, every one of which lives on a neighbouring screen.
     startLoad(async () => {
@@ -85,6 +96,8 @@ export function SendInvitations({ editionId, scheduledFor = null }: { editionId:
       }
       setPreview(result.data);
       setWhen(toMinuteInput(result.data.scheduledFor ? new Date(result.data.scheduledFor) : tomorrowMorning()));
+      // Nothing to confirm when there is nobody to write to: the preview says why, so show it.
+      if (at === "confirm" && !result.data.canSend) setStep("read");
     });
   }
 
@@ -137,10 +150,17 @@ export function SendInvitations({ editionId, scheduledFor = null }: { editionId:
 
   return (
     <>
-      <Button size="sm" variant={booked ? "outline" : "default"} data-testid="send-invitations" onClick={openDialog}>
-        {booked ? <CalendarClock /> : <Eye />}{" "}
-        {booked ? tr("Going out {date}", { date: formatZonedLong(new Date(booked)) }) : tr("Read the invitation")}
-      </Button>
+      <div className="flex flex-wrap items-center gap-2">
+        <Button size="sm" variant={booked || withSendNow ? "outline" : "default"} data-testid="send-invitations" onClick={() => openDialog()}>
+          {booked ? <CalendarClock /> : <Eye />}{" "}
+          {booked ? tr("Going out {date}", { date: formatZonedLong(new Date(booked), undefined, locale) }) : tr("Read the invitation")}
+        </Button>
+        {withSendNow ? (
+          <Button size="sm" data-testid="send-invitations-straight-away" loading={loading && step === "confirm"} onClick={() => openDialog("confirm")}>
+            <Send /> {tr("Send it now")}
+          </Button>
+        ) : null}
+      </div>
 
       <Dialog open={open} onOpenChange={(next) => (next ? setOpen(true) : close())}>
         <DialogContent size="lg" className="max-h-[92vh] overflow-y-auto">
@@ -179,7 +199,7 @@ export function SendInvitations({ editionId, scheduledFor = null }: { editionId:
                 aria-label={tr("When should it go out?")}
                 className="tabular h-9 w-full rounded-md border border-border bg-background px-2 text-[13px] focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none"
               />
-              {preview ? <p className="text-xs text-muted-foreground">{tr("The last day is {date}, and the invitation has to go out before it.", { date: formatZonedLong(new Date(preview.deadlineAt)) })}</p> : null}
+              {preview ? <p className="text-xs text-muted-foreground">{tr("The last day is {date}, and the invitation has to go out before it.", { date: formatZonedLong(new Date(preview.deadlineAt), undefined, locale) })}</p> : null}
               <DialogFooter>
                 <Button variant="ghost" onClick={() => setStep("read")} disabled={working}>
                   {tr("Back")}
@@ -194,7 +214,7 @@ export function SendInvitations({ editionId, scheduledFor = null }: { editionId:
               <DialogHeader>
                 <DialogTitle>{tr("This is what they will get")}</DialogTitle>
                 <DialogDescription>
-                  {booked ? tr("It goes out on its own on {date}, unless you change it here.", { date: formatZonedLong(new Date(booked)) }) : tr("Nothing has been sent. Read it, then send it now or pick a date.")}
+                  {booked ? tr("It goes out on its own on {date}, unless you change it here.", { date: formatZonedLong(new Date(booked), undefined, locale) }) : tr("Nothing has been sent. Read it, then send it now or pick a date.")}
                 </DialogDescription>
               </DialogHeader>
 

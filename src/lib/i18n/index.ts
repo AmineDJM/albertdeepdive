@@ -16,6 +16,17 @@ import { fr } from "./fr";
 export const LOCALES = ["en", "fr"] as const;
 export type Locale = (typeof LOCALES)[number];
 
+/**
+ * The BCP-47 tag for Intl, from the two languages the interface speaks.
+ *
+ * Dates went through `Intl` with "en-GB" hardcoded everywhere, which is why a French screen said
+ * "Sunday 1 November at 09:00" — the one place the language switch visibly did not work.
+ */
+export function intlLocale(locale: Locale): string {
+  return locale === "fr" ? "fr-FR" : "en-GB";
+}
+
+
 export const LOCALE_LABELS: Record<Locale, string> = { en: "English", fr: "Français" };
 
 /**

@@ -54,13 +54,33 @@ export function screenFor(room: string): GuidedScreen | null {
   return GUIDED_PATH.find((screen) => screen.room === room) ?? null;
 }
 
-/** Where the button at the bottom of a room goes, and what it says. */
-export function nextFrom(editionId: string, room: string): { href: string; label: string } | null {
+/**
+ * The path stops where the edition does.
+ *
+ * Setting an edition up is the first four screens — what you are asking for, who you are asking,
+ * and by when — and the fifth onwards is about what came back. Nothing comes back until the
+ * invitation has gone, so a path that walked straight on to the pictures and the topics was
+ * walking through empty rooms and calling it progress: an editor could reach "Which topics are
+ * going in?" on an edition nobody had been invited to, read "0 topics", and have no way of knowing
+ * that the reason was a button they never pressed two screens back.
+ *
+ * So while the invitation is unsent, the fourth screen is the last one, and the thing to do there
+ * is send it. Afterwards the whole path opens and nothing has moved.
+ */
+export const LAST_SETUP_ROOM = "deadline";
+
+export type PathState = {
+  /** Whether the contribution request has actually gone out. */
+  invitationSent?: boolean;
+};
+
+export function nextFrom(editionId: string, room: string, state: PathState = {}): { href: string; label: string } | null {
   const at = GUIDED_PATH.findIndex((screen) => screen.room === room);
   if (at < 0) return null;
   const here = GUIDED_PATH[at];
   const next = GUIDED_PATH[at + 1];
   if (!here.cta || !next) return null;
+  if (room === LAST_SETUP_ROOM && state.invitationSent === false) return null;
   return { href: `/editions/${editionId}${next.room ? `/${next.room}` : ""}`, label: here.cta };
 }
 
@@ -86,12 +106,16 @@ export function positionOf(room: string | null | undefined): number {
  * whichever is further is the only rule that never sends a person back over work they finished,
  * and never skips a step the edition has not reached.
  */
-export function resumeAt(editionId: string, status: EditionStatus, reached?: string | null): string {
+export function resumeAt(editionId: string, status: EditionStatus, reached?: string | null, state: PathState = {}): string {
   // The timeline already owns status → step. Re-deriving it here would be exactly the second
   // opinion this file exists to prevent.
   const step = stepForStatus(status);
   const byStatus = GUIDED_PATH.find((each) => each.step === step) ?? GUIDED_PATH[0];
-  const screen = positionOf(reached) > positionOf(byStatus.room) ? GUIDED_PATH[positionOf(reached)] : byStatus;
+  let screen = positionOf(reached) > positionOf(byStatus.room) ? GUIDED_PATH[positionOf(reached)] : byStatus;
+  // And never past the setup while the invitation is still sitting there unsent, whatever anybody
+  // reached by typing a URL: coming back to an edition should land on the thing left to do.
+  const stopAt = positionOf(LAST_SETUP_ROOM);
+  if (state.invitationSent === false && positionOf(screen.room) > stopAt) screen = GUIDED_PATH[stopAt];
   return `/editions/${editionId}${screen.room ? `/${screen.room}` : ""}`;
 }
 

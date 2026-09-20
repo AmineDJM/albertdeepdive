@@ -9,6 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { SettingsCard } from "@/components/settings/key-value";
 import { GuidedFooter } from "./guided-footer";
+import { AddContributorInline } from "./add-contributor-inline";
 import { saveAudienceAction } from "@/app/(newsroom)/editions/[editionId]/campaign/actions";
 import type { SelectionMode } from "@/lib/campaigns/selection";
 import { cn } from "@/lib/utils";
@@ -20,7 +21,12 @@ export type AudienceValues = {
   selectionMode: SelectionMode;
   drawCount: number;
   contributorGroupIds: string[];
-  /** PEOPLE: exactly who is being asked, chosen here rather than on another screen. */
+  /**
+   * People named by hand, asked whatever the mode says.
+   *
+   * In PEOPLE they are the whole invitation. In the other two they are added to it: "six of them"
+   * and "and Marie, whatever happens" are not competing instructions.
+   */
   selectedContributorIds: string[];
 };
 
@@ -73,11 +79,14 @@ export function CampaignSimpleForm({
   const dirty = useMemo(() => JSON.stringify(values) !== JSON.stringify(initial), [values, initial]);
   const pool = groups.filter((g) => values.contributorGroupIds.includes(g.id)).reduce((n, g) => n + g.members, 0);
   const [search, setSearch] = useState("");
+  const [added, setAdded] = useState<SimplePerson[]>([]);
   const chosen = new Set(values.selectedContributorIds);
   const needle = search.trim().toLowerCase();
   // The whole list when nobody has typed, narrowed the moment they do; the people already ticked
   // stay visible whatever the search says, so unticking somebody never means finding them again.
-  const shown = needle ? people.filter((person) => chosen.has(person.id) || `${person.name} ${person.email} ${person.groups.join(" ")}`.toLowerCase().includes(needle)) : people;
+  // Whoever was added on this screen sits at the top, before the page has been round again.
+  const everybody = [...added, ...people.filter((person) => !added.some((one) => one.id === person.id))];
+  const shown = needle ? everybody.filter((person) => chosen.has(person.id) || `${person.name} ${person.email} ${person.groups.join(" ")}`.toLowerCase().includes(needle)) : everybody;
 
   const choices: { mode: SelectionMode; label: string; hint: string }[] = [
     { mode: "DRAW", label: tr("A few of them"), hint: tr("Briefly draws the number you ask for, skipping whoever was asked last time.") },
@@ -134,8 +143,17 @@ export function CampaignSimpleForm({
           </div>
         ) : null}
 
-        {values.selectionMode === "PEOPLE" ? (
-          <div className="mt-3 space-y-2">
+        {/*
+          * The names, whichever way the rest are chosen.
+          *
+          * This list only appeared for "the people I choose", so an editor drawing six from a pool
+          * had no way to add the one person they had just thought of, and a workspace with no
+          * groups yet — which is every workspace on its first day — reached this screen, read "of
+          * the 0 people in the groups below", and could go no further. Naming somebody is not a
+          * fourth way of choosing; it is what you do on top of any of the three, so the people
+          * ticked here are always asked, in addition to the draw or the group.
+          */}
+        <div className="mt-3 space-y-2">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <Input
                 value={search}
@@ -145,10 +163,23 @@ export function CampaignSimpleForm({
                 aria-label={tr("Search the contributors")}
                 className="h-8 w-full sm:w-64"
               />
-              <span className="text-2xs text-muted-foreground">
-                {values.selectedContributorIds.length === 1 ? tr("1 person chosen") : tr("{count} people chosen", { count: values.selectedContributorIds.length })}
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-2xs text-muted-foreground">
+                  {values.selectedContributorIds.length === 1 ? tr("1 person chosen") : tr("{count} people chosen", { count: values.selectedContributorIds.length })}
+                </span>
+                <AddContributorInline
+                  disabled={readOnly}
+                  onAdded={(person) => {
+                    setAdded((list) => [{ ...person, groups: [] }, ...list]);
+                    setValues((v) => ({ ...v, selectedContributorIds: [...v.selectedContributorIds, person.id] }));
+                    setSearch("");
+                  }}
+                />
+              </div>
             </div>
+            {values.selectionMode !== "PEOPLE" ? (
+              <p className="text-2xs text-muted-foreground">{tr("Anybody ticked here is asked as well, on top of the choice above.")}</p>
+            ) : null}
             <ul className="max-h-64 space-y-1 overflow-y-auto rounded-md border border-border p-1">
               {shown.map((person) => {
                 const picked = chosen.has(person.id);
@@ -175,10 +206,9 @@ export function CampaignSimpleForm({
                   </li>
                 );
               })}
-              {!shown.length ? <li className="p-3 text-xs text-muted-foreground">{people.length ? tr("Nobody here by that name.") : tr("There are no contributors yet. Add some and they will be here.")}</li> : null}
+              {!shown.length ? <li className="p-3 text-xs text-muted-foreground">{everybody.length ? tr("Nobody here by that name.") : tr("Nobody yet. Add somebody and they will be asked.")}</li> : null}
             </ul>
-          </div>
-        ) : null}
+        </div>
 
         <ul className="mt-3 space-y-1">
           {groups.map((g) => {

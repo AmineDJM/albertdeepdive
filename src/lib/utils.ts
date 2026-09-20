@@ -5,10 +5,17 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export function formatDate(date: Date | string | null | undefined, opts?: Intl.DateTimeFormatOptions) {
+/**
+ * "7 Nov 2026", in the reader's own language.
+ *
+ * The locale was "en-GB" and nothing else, so a French screen printed English month names and, in
+ * the long forms, English weekdays. It stays the default: a caller with no locale to hand behaves
+ * exactly as it always did, and the screens that know which language they are in say so.
+ */
+export function formatDate(date: Date | string | null | undefined, opts?: Intl.DateTimeFormatOptions, locale: string = "en-GB") {
   if (!date) return "—";
   const d = typeof date === "string" ? new Date(date) : date;
-  return new Intl.DateTimeFormat("en-GB", {
+  return new Intl.DateTimeFormat(locale, {
     day: "numeric",
     month: "short",
     year: "numeric",

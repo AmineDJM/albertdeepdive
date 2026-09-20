@@ -27,7 +27,7 @@ import { AppError, NotFoundError, ValidationError } from "@/lib/action-result";
 import { assertTransition, canTransition, type EditionStatus } from "@/lib/editorial/edition-state";
 import { ASK_KINDS, ASK_WANTS, asksFor, normaliseBrief } from "@/lib/campaigns/brief";
 import { drawFromPool, isSelectionMode, SCHOOL_TARGET_KEY, SELECTION_MODES, selectContributors, targetKeyFor, type SelectableContributor, type SelectionMode, type SelectionResult } from "@/lib/campaigns/selection";
-import { addDays, campaignPhaseAt, computeCampaignSchedule, type CampaignPhase } from "@/lib/campaigns/schedule";
+import { addDays, campaignPhaseAt, computeCampaignSchedule, planFromDeadline, type CampaignPhase } from "@/lib/campaigns/schedule";
 import { closedEmail, invitationEmail, reminderEmail, type ReminderKind } from "./emails";
 import { notifyEditors } from "./notify";
 import { releaseRun, runStep, type TriggeredBy } from "./runs";
@@ -52,6 +52,17 @@ export type StepOptions = {
 };
 
 export const ACTIVE_CAMPAIGN_STATUSES: readonly CampaignStatus[] = ["OPEN", "REMINDER_1", "REMINDER_2", "GRACE_PERIOD"];
+
+/**
+ * Nothing has left the building yet.
+ *
+ * DRAFT waits for somebody to press send; SCHEDULED waits for a date they chose. Every other
+ * status means the invitations are in inboxes, which is the line the whole edition turns on —
+ * before it, the setup can still be changed; after it, people are already writing.
+ */
+export function isUnsent(status: CampaignStatus): boolean {
+  return status === "DRAFT" || status === "SCHEDULED";
+}
 export const REMINDABLE_REQUEST_STATUSES: readonly SubmissionRequest["status"][] = ["SENT", "OPENED"];
 
 // ── Loading ────────────────────────────────────────────────────────────────
@@ -272,19 +283,13 @@ export async function setCampaignAudience(editionId: string, input: AudienceInpu
    * touched.
    */
   const deadlineAt = data.deadlineAt ?? existing.deadlineAt;
-  let opensAt = existing.opensAt;
-  if (deadlineAt.getTime() <= opensAt.getTime()) {
-    const now = new Date();
-    const unsent = existing.status === "DRAFT" || existing.status === "SCHEDULED";
-    if (!unsent || deadlineAt.getTime() <= now.getTime()) {
-      throw new ValidationError(`The last day must come after ${opensAt.toISOString().slice(0, 10)}, when the invitations go out`, { deadlineAt: ["Too early"] });
-    }
-    opensAt = now;
+  // The same derivation the screen shows while you are still typing. One copy, so that what the
+  // deadline screen predicts and what this writes cannot be two different schedules.
+  const plan = planFromDeadline({ opensAt: existing.opensAt, deadlineAt, unsent: isUnsent(existing.status) });
+  if (!plan) {
+    throw new ValidationError(`The last day must come after ${existing.opensAt.toISOString().slice(0, 10)}, when the invitations go out`, { deadlineAt: ["Too early"] });
   }
-  const span = deadlineAt.getTime() - opensAt.getTime();
-  const reminder1At = new Date(opensAt.getTime() + Math.round(span * 0.45));
-  const reminder2At = new Date(opensAt.getTime() + Math.round(span * 0.85));
-  const graceEndsAt = new Date(deadlineAt.getTime() + 86_400_000);
+  const { opensAt, reminder1At, reminder2At, graceEndsAt } = plan;
 
   const [campaign] = await db
     .update(submissionCampaigns)
@@ -486,27 +491,32 @@ export async function resolveSelection(campaign: Campaign): Promise<SelectionRes
   const pool = await loadEligibleContributors(campaign.contributorGroupIds);
   const { excludeIds, strictExclude } = await exclusionFor(campaign);
 
+  /*
+   * The people somebody named, whichever way the rest are chosen.
+   *
+   * Scoped to the edition's own workspace rather than to the request, because this runs from a job
+   * as well as from a click — and because an id stored on a campaign is only trustworthy until
+   * somebody edits a form.
+   */
+  const chosen = [...new Set(campaign.selectedContributorIds ?? [])];
+  const edition = await db.query.editions.findFirst({ where: eq(editions.id, campaign.editionId), columns: { organizationId: true } });
+  const namedRows = chosen.length
+    ? await db
+        .select({ id: contributors.id })
+        .from(contributors)
+        .where(
+          and(
+            inArray(contributors.id, chosen),
+            eq(contributors.isActive, true),
+            edition?.organizationId ? eq(contributors.organizationId, edition.organizationId) : isNull(contributors.organizationId),
+          ),
+        )
+    : [];
+  const named = namedRows.map((row) => row.id);
+
   if (mode === "PEOPLE") {
     // Named people are asked, full stop: no ranking, no rota, no draw. Somebody chose them.
-    //
-    // Scoped to the edition's own workspace rather than to the request, because this runs from a
-    // job as well as from a click — and because an id stored on a campaign is only trustworthy
-    // until somebody edits a form.
-    const chosen = [...new Set(campaign.selectedContributorIds ?? [])];
-    const edition = await db.query.editions.findFirst({ where: eq(editions.id, campaign.editionId), columns: { organizationId: true } });
-    const named = chosen.length
-      ? await db
-          .select({ id: contributors.id })
-          .from(contributors)
-          .where(
-            and(
-              inArray(contributors.id, chosen),
-              eq(contributors.isActive, true),
-              edition?.organizationId ? eq(contributors.organizationId, edition.organizationId) : isNull(contributors.organizationId),
-            ),
-          )
-      : [];
-    const selected = named.map((row) => row.id);
+    const selected = named;
     return {
       mode,
       selected,
@@ -518,8 +528,10 @@ export async function resolveSelection(campaign: Campaign): Promise<SelectionRes
   }
 
   if (mode === "GROUP") {
-    // Everybody in the chosen groups, which is what "invite the partners" means.
-    const selected = pool.filter((person) => person.isActive).map((person) => person.id);
+    // Everybody in the chosen groups, which is what "invite the partners" means — plus anybody
+    // named by hand. Choosing a group has never meant "and nobody else, ever", and a workspace
+    // with no groups yet had no way at all to ask a single person.
+    const selected = [...new Set([...pool.filter((person) => person.isActive).map((person) => person.id), ...named])];
     return {
       mode,
       selected,
@@ -535,7 +547,22 @@ export async function resolveSelection(campaign: Campaign): Promise<SelectionRes
   const result = hasCampusTargets
     ? selectContributors({ contributors: pool, groupIds: campaign.contributorGroupIds, targets, seed: campaign.id, excludeIds, strictExclude })
     : drawFromPool({ contributors: pool, groupIds: campaign.contributorGroupIds, count: campaign.drawCount ?? 0, seed: campaign.id, excludeIds, strictExclude });
-  return { mode, ...result, poolSize: pool.length };
+  /*
+   * A draw, and the people somebody insisted on.
+   *
+   * "Six of them" and "and Marie, whatever happens" are not competing instructions, and an editor
+   * who has just added a contributor by hand on this screen means them to be asked. They are added
+   * rather than drawn, so the draw's own count is unaffected: ask six *and* Marie.
+   */
+  const withNamed = [...new Set([...result.selected, ...named])];
+  const extra = withNamed.length - result.selected.length;
+  return {
+    mode,
+    ...result,
+    selected: withNamed,
+    byCampus: extra ? { ...result.byCampus, [SCHOOL_TARGET_KEY]: (result.byCampus[SCHOOL_TARGET_KEY] ?? 0) + extra } : result.byCampus,
+    poolSize: pool.length,
+  };
 }
 
 export type SelectionPreview = {
