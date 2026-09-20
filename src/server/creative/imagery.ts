@@ -271,11 +271,18 @@ export const openAiImagery: ImageryProvider = {
 /**
  * Best first, ours last.
  *
- * Order is a product decision rather than a technical one: a customer who has paid for Higgsfield
- * should get Higgsfield, a customer who has only an OpenAI key should get something rather than
- * nothing, and everybody gets a designed ground in the worst case.
+ * Order is a product decision rather than a technical one, and it is the same decision the image
+ * engine next door already made: Nano Banana draws a realistic scene better than the alternatives,
+ * so it goes first here too rather than only in the Library. A frame behind a carousel is exactly
+ * the "realistic scene" job that routing names.
+ *
+ * It is not the cheapest order — Nano Banana is 13¢ against Higgsfield's 4¢ — and that is the
+ * trade being made on purpose: a carousel is six frames somebody posts under their own name, and
+ * three cents is the wrong thing to optimise there. Higgsfield stays second and takes over the
+ * moment Google declines, is out of credits, or is not connected at all; a customer with only an
+ * OpenAI key still gets something; and everybody gets a designed ground in the worst case.
  */
-export const IMAGERY_PROVIDERS: ImageryProvider[] = [higgsfieldImagery, googleImagery, openAiImagery, brieflyImagery];
+export const IMAGERY_PROVIDERS: ImageryProvider[] = [googleImagery, higgsfieldImagery, openAiImagery, brieflyImagery];
 
 export type ImageryOptions = {
   deps: ImageryDeps;

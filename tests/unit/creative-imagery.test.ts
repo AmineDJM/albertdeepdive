@@ -132,13 +132,22 @@ describe("the route", () => {
     expect(result.provider).toBe("briefly");
   });
 
-  it("offers Nano Banana before the general-purpose image model", () => {
-    // The image engine next door has routed Google first for a realistic scene since it was built.
-    // The studio's own chain did not have it at all, so a workspace with a Gemini key connected was
-    // getting GPT Image behind its carousels and Nano Banana everywhere else — the same picture,
-    // from two different models, depending on which screen asked for it.
+  it("draws a carousel with the model the whole product judges best at a realistic scene", () => {
+    /*
+     * Two bugs, one after the other, both invisible on screen.
+     *
+     * First the studio's chain had no Google in it at all, so a workspace with a Gemini key was
+     * getting GPT Image behind its carousels and Nano Banana everywhere else — the same picture
+     * from two different models depending on which screen asked. Then Higgsfield was connected and
+     * went first, which quietly took the carousels off Nano Banana again.
+     *
+     * The order is a product decision and this is it: a frame behind a carousel is the "realistic
+     * scene" job the image engine already routes to Nano Banana, so it leads here too. Higgsfield
+     * is second and takes over when Google declines or is not connected.
+     */
     const order = IMAGERY_PROVIDERS.map((each) => each.name);
-    expect(order).toContain("google");
+    expect(order.indexOf("google")).toBe(0);
+    expect(order.indexOf("higgsfield"), "the fallback, not the default").toBe(1);
     expect(order.indexOf("google")).toBeLessThan(order.indexOf("openai"));
     // And ours stays last, because a frame always gets a ground.
     expect(order[order.length - 1]).toBe("briefly");
