@@ -1,0 +1,1 @@
+ALTER TABLE "editions" ADD COLUMN "guided_room" text;

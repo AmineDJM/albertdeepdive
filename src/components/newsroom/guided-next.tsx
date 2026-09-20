@@ -2,9 +2,10 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { getCurrentUser } from "@/server/auth/session";
 import { experienceOf } from "@/lib/experience";
-import { GUIDED_PATH, nextFrom } from "@/lib/editorial/guided-path";
+import { GUIDED_PATH, nextFrom, previousFrom } from "@/lib/editorial/guided-path";
 import { Button } from "@/components/ui/button";
 import { GuidedFooter } from "./guided-footer";
+import { RememberStep } from "./remember-step";
 import { screenWords } from "./guided-words";
 import { getUi } from "@/server/i18n/locale";
 
@@ -28,21 +29,29 @@ export async function GuidedNext({ editionId, room }: { editionId: string; room:
   const next = nextFrom(editionId, room);
   // The end of the path is a place too. A last screen that simply stops is the one moment a person
   // is most likely to wonder whether they missed a step.
+  const back = previousFrom(editionId, room);
+  const backTo = back ? { href: back.href, label: tr("Back") } : null;
   if (!next)
     return (
-      <GuidedFooter title={words[GUIDED_PATH[at].key].question} hint={tr("That is the whole of it. This edition is yours to send.")}>
-        <Button asChild variant="outline" data-testid="guided-done-button">
-          <Link href="/overview">{tr("Back to my newsletters")}</Link>
-        </Button>
-      </GuidedFooter>
+      <>
+        <RememberStep editionId={editionId} room={room} />
+        <GuidedFooter title={words[GUIDED_PATH[at].key].question} hint={tr("That is the whole of it. This edition is yours to send.")} back={backTo}>
+          <Button asChild variant="outline" data-testid="guided-done-button">
+            <Link href="/overview">{tr("Back to my newsletters")}</Link>
+          </Button>
+        </GuidedFooter>
+      </>
     );
   return (
-    <GuidedFooter title={tr("Next: {question}", { question: words[GUIDED_PATH[at + 1].key].question })} hint={tr("Step {step} of {total}", { step: at + 1, total: GUIDED_PATH.length })}>
-      <Button asChild size="lg" data-testid="guided-next-button">
-        <Link href={next.href}>
-          {words[GUIDED_PATH[at].key].cta} <ArrowRight />
-        </Link>
-      </Button>
-    </GuidedFooter>
+    <>
+      <RememberStep editionId={editionId} room={room} />
+      <GuidedFooter title={tr("Next: {question}", { question: words[GUIDED_PATH[at + 1].key].question })} hint={tr("Step {step} of {total}", { step: at + 1, total: GUIDED_PATH.length })} back={backTo}>
+        <Button asChild size="lg" data-testid="guided-next-button">
+          <Link href={next.href}>
+            {words[GUIDED_PATH[at].key].cta} <ArrowRight />
+          </Link>
+        </Button>
+      </GuidedFooter>
+    </>
   );
 }

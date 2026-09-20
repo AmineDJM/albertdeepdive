@@ -37,6 +37,8 @@ export type HomeNext = {
   label: string;
   issueLabel: string;
   status: EditionStatus;
+  /** The furthest screen of the guided path anybody reached, so "continue" comes back to it. */
+  guidedRoom: string | null;
   phase: EditionPhase;
   /** How far along the seven phases, 0–1. */
   progress: number;
@@ -164,6 +166,7 @@ export async function homeData(organizationId: string): Promise<HomeData> {
       label: current.label,
       issueLabel: issueLabel(current),
       status: current.status,
+      guidedRoom: current.guidedRoom,
       phase,
       progress: Math.max(0, index) / Math.max(1, PHASES.length - 1),
       coverUrl: current.coverMediaAssetId ? (covers[current.coverMediaAssetId] ?? null) : null,

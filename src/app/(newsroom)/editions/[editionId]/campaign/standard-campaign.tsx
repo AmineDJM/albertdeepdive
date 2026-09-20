@@ -7,7 +7,7 @@ import { CampaignSimpleForm, type AudienceValues } from "@/components/newsroom/c
 import { SendInvitations } from "@/components/newsroom/send-invitations";
 import { CreateCampaignButton } from "@/components/newsroom/campaign-controls";
 import { screenWords } from "@/components/newsroom/guided-words";
-import { GUIDED_PATH, nextFrom } from "@/lib/editorial/guided-path";
+import { GUIDED_PATH, nextFrom, previousFrom } from "@/lib/editorial/guided-path";
 import { ACTIVE_CAMPAIGN_STATUSES } from "@/server/campaigns/service";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -34,6 +34,7 @@ export async function StandardCampaign({ editionId }: { editionId: string }) {
   const at = GUIDED_PATH.findIndex((s) => s.room === "campaign");
   const next = nextFrom(editionId, "campaign");
   const hint = tr("Step {step} of {total}", { step: at + 1, total: GUIDED_PATH.length });
+  const previous = previousFrom(editionId, "campaign");
 
   if (!campaign) {
     return (
@@ -99,6 +100,7 @@ export async function StandardCampaign({ editionId }: { editionId: string }) {
           nextLabel={words[GUIDED_PATH[at].key].cta}
           nextHint={hint}
           title={tr("Next: {question}", { question: words[GUIDED_PATH[at + 1].key].question })}
+          back={previous ? { href: previous.href, label: tr("Back") } : null}
         />
       </PageBody>
     </>

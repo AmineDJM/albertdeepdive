@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requirePermission } from "@/server/auth/session";
-import { createEdition, deleteEditions, prepareEdition, setEditionsHidden, transitionEdition, updateEdition, saveEditionSections, createEditionSchema, updateEditionSchema, sectionInputSchema } from "@/server/editions/service";
+import { createEdition, deleteEditions, prepareEdition, rememberGuidedRoom, setEditionsHidden, transitionEdition, updateEdition, saveEditionSections, createEditionSchema, updateEditionSchema, sectionInputSchema } from "@/server/editions/service";
 import { ok, toActionFailure, type ActionResult } from "@/lib/action-result";
 import type { EditionStatus } from "@/lib/editorial/edition-state";
 import type { z } from "zod";
@@ -107,6 +107,23 @@ export async function deleteEditionsAction(ids: string[]): Promise<ActionResult<
     revalidatePath("/editions");
     revalidatePath("/overview");
     return ok({ count }, `${plural(count, "edition")} deleted`);
+  } catch (err) {
+    return toActionFailure(err);
+  }
+}
+
+/**
+ * "We got this far."
+ *
+ * Called by the screen itself when somebody arrives on it, so Home's "Continue" comes back where
+ * the work was left rather than where the edition's status happens to put it. It changes nothing
+ * about the edition but the bookmark, which is why viewing it is enough.
+ */
+export async function rememberStepAction(editionId: string, room: string): Promise<ActionResult> {
+  try {
+    await requirePermission("edition:view");
+    await rememberGuidedRoom(editionId, room);
+    return ok(null);
   } catch (err) {
     return toActionFailure(err);
   }

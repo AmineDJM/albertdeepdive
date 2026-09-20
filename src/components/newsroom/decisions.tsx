@@ -9,6 +9,7 @@ import { updateEditionAction } from "@/app/(newsroom)/editions/actions";
 import { toggleOutputAction } from "@/app/(newsroom)/editions/[editionId]/output-actions";
 import { updatePublicationAction } from "@/app/(newsroom)/publications/actions";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useUi } from "@/components/i18n/provider";
 import type { OutputFormat } from "@/server/outputs/service";
@@ -96,25 +97,54 @@ export function PublishDateChange({ editionId, current, locked }: { editionId: s
   const tr = useUi();
   const router = useRouter();
   const [pending, start] = useTransition();
+  const [open, setOpen] = useState(false);
   const [value, setValue] = useState(toInputDate(current));
   if (locked) return null;
-  function save(next: string) {
-    setValue(next);
-    if (!next) return;
+  /*
+   * A field you can see, rather than a calendar you have to summon.
+   *
+   * "Change" used to be a label wrapping a date input one pixel wide and fully transparent. The
+   * click focused it and nothing happened: a browser opens its date picker when the calendar
+   * button is pressed or a key is typed, never because an invisible field took focus. So the
+   * control did nothing at all, which is the worst thing a control can do.
+   */
+  function save() {
+    if (!value) return;
     start(async () => {
-      const res = await updateEditionAction(editionId, { publicationTargetAt: new Date(`${next}T10:00:00`) });
-      if (!res.ok) toast.error(res.error);
-      else {
-        toast.success(tr("Publish date changed"));
-        router.refresh();
+      const res = await updateEditionAction(editionId, { publicationTargetAt: new Date(`${value}T10:00:00`) });
+      if (!res.ok) {
+        toast.error(res.error);
+        return;
       }
+      setOpen(false);
+      toast.success(tr("Publish date changed"));
+      router.refresh();
     });
   }
   return (
-    <label className="flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-brand transition-colors duration-150 hover:bg-brand-soft">
-      <span>{tr("Change")}</span>
-      <input type="date" value={value} onChange={(e) => save(e.target.value)} disabled={pending} aria-label={tr("Publish date")} className="w-[1px] opacity-0" />
-    </label>
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button type="button" className="rounded-md px-2 py-1 text-xs font-medium text-brand transition-colors duration-150 hover:bg-brand-soft">
+          {tr("Change")}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-56 space-y-2 p-3">
+        <label className="block text-xs font-medium text-muted-foreground" htmlFor={`publish-date-${editionId}`}>
+          {tr("Publish date")}
+        </label>
+        <input
+          id={`publish-date-${editionId}`}
+          type="date"
+          value={value}
+          onChange={(event) => setValue(event.target.value)}
+          disabled={pending}
+          className="tabular h-8 w-full rounded-md border border-border bg-background px-2 text-[13px] focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none"
+        />
+        <Button size="sm" className="w-full" disabled={!value} loading={pending} onClick={save}>
+          {tr("Save")}
+        </Button>
+      </PopoverContent>
+    </Popover>
   );
 }
 

@@ -312,7 +312,7 @@ function StandardHome({ first, next, shelf, contributions, canCreate, newNewslet
                 * an issue that is already being written is not shown its setup again.
                 */
               <Button asChild size="lg">
-                <Link href={resumeAt(next.id, next.status)}>
+                <Link href={resumeAt(next.id, next.status, next.guidedRoom)}>
                   {tr("Continue edition")} <ArrowRight />
                 </Link>
               </Button>

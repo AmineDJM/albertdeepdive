@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { GUIDED_PATH, nextFrom, resumeAt, screenFor, STEP_ORDER } from "@/lib/editorial/guided-path";
+import { GUIDED_PATH, nextFrom, previousFrom, resumeAt, screenFor, STEP_ORDER } from "@/lib/editorial/guided-path";
 import { screenWords } from "@/components/newsroom/guided-words";
 import { EDITION_STEPS, stepForStatus } from "@/lib/editorial/edition-steps";
 import { EDITION_TABS } from "@/components/newsroom/nav";
@@ -65,6 +65,24 @@ describe("the guided path", () => {
     // "Validate" belongs to the setup screen, which is the word the editor asked for on it; the
     // screen it opens is the one that asks what you are asking for.
     expect(nextFrom("e1", "")).toEqual({ href: "/editions/e1/ask", label: "Validate" });
+  });
+
+  it("goes back the way it came, and not off the front of the path", () => {
+    expect(previousFrom("e1", "campaign")).toEqual({ href: "/editions/e1/ask" });
+    expect(previousFrom("e1", "ask")).toEqual({ href: "/editions/e1" });
+    // The first screen has nowhere behind it, and a room off the path has no way back either.
+    expect(previousFrom("e1", "")).toBeNull();
+    expect(previousFrom("e1", "layout")).toBeNull();
+  });
+
+  it("resumes where the people got to when that is further than the pipeline", () => {
+    // An edition can sit collecting for a fortnight while somebody has already done the pictures.
+    expect(resumeAt("e1", "OPEN", "media")).toBe("/editions/e1/media");
+    // And never earlier than the edition itself has reached: a bookmark cannot undo a draft.
+    expect(resumeAt("e1", "EDITORIAL_REVIEW", "ask")).toBe(resumeAt("e1", "EDITORIAL_REVIEW"));
+    // A room that is not on the path is not a place to resume.
+    expect(resumeAt("e1", "OPEN", "layout")).toBe(resumeAt("e1", "OPEN"));
+    expect(resumeAt("e1", "OPEN", null)).toBe(resumeAt("e1", "OPEN"));
   });
 
   it("resumes an edition at the step the pipeline says it is on", () => {

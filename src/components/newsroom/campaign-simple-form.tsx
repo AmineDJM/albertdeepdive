@@ -46,6 +46,7 @@ export function CampaignSimpleForm({
   nextLabel,
   nextHint,
   title,
+  back,
 }: {
   editionId: string;
   initial: AudienceValues;
@@ -56,6 +57,7 @@ export function CampaignSimpleForm({
   nextLabel: string;
   nextHint: string;
   title: string;
+  back?: { href: string; label: string } | null;
 }) {
   const tr = useUi();
   const router = useRouter();
@@ -168,7 +170,7 @@ export function CampaignSimpleForm({
         />
       </SettingsCard>
 
-      <GuidedFooter title={title} hint={dirty ? tr("Not saved yet") : nextHint}>
+      <GuidedFooter title={title} hint={dirty ? tr("Not saved yet") : nextHint} back={back}>
         <div className="flex items-center gap-2">
           {!readOnly && dirty ? (
             <Button

@@ -63,18 +63,34 @@ export function nextFrom(editionId: string, room: string): { href: string; label
   return { href: `/editions/${editionId}${next.room ? `/${next.room}` : ""}`, label: here.cta };
 }
 
+/** The screen before this one, for the way back. The first screen has none. */
+export function previousFrom(editionId: string, room: string): { href: string } | null {
+  const at = GUIDED_PATH.findIndex((screen) => screen.room === room);
+  if (at <= 0) return null;
+  const before = GUIDED_PATH[at - 1];
+  return { href: `/editions/${editionId}${before.room ? `/${before.room}` : ""}` };
+}
+
+/** How far along the path a room is, or -1 for a room that is not on it. */
+export function positionOf(room: string | null | undefined): number {
+  return room === null || room === undefined ? -1 : GUIDED_PATH.findIndex((screen) => screen.room === room);
+}
+
 /**
- * Where to resume, from the status the pipeline set.
+ * Where to resume: the further of what the pipeline did and what the people did.
  *
- * Home opens an edition at the first screen of the step it is actually on, rather than always at
- * the beginning — somebody coming back to an edition that is already collecting should not be
- * shown the setup again as though nothing had happened.
+ * The status says where the edition has got to on its own — collecting, being written, out. The
+ * remembered room says where somebody actually walked to, which the status cannot know: an issue
+ * can sit collecting for a fortnight while an editor has already been through the pictures. Taking
+ * whichever is further is the only rule that never sends a person back over work they finished,
+ * and never skips a step the edition has not reached.
  */
-export function resumeAt(editionId: string, status: EditionStatus): string {
+export function resumeAt(editionId: string, status: EditionStatus, reached?: string | null): string {
   // The timeline already owns status → step. Re-deriving it here would be exactly the second
   // opinion this file exists to prevent.
   const step = stepForStatus(status);
-  const screen = GUIDED_PATH.find((each) => each.step === step) ?? GUIDED_PATH[0];
+  const byStatus = GUIDED_PATH.find((each) => each.step === step) ?? GUIDED_PATH[0];
+  const screen = positionOf(reached) > positionOf(byStatus.room) ? GUIDED_PATH[positionOf(reached)] : byStatus;
   return `/editions/${editionId}${screen.room ? `/${screen.room}` : ""}`;
 }
 

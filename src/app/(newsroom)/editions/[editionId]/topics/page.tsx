@@ -34,12 +34,21 @@ export default async function TopicsPage({ params }: { params: Promise<{ edition
         description={tr("What came in, grouped and deduplicated. Keep what belongs in the issue, leave the rest, and nothing is written until you build the draft.")}
       />
       <PageBody className="space-y-5">
-        <StatGrid columns={4}>
-          <Stat label={tr("To decide")} value={String(board.counts.waiting)} tone={board.counts.waiting ? "warning" : "default"} />
-          <Stat label={tr("In the issue")} value={String(board.counts.kept)} hint={`${board.counts.drafted} ${tr("written")}`} />
-          <Stat label={tr("Left out")} value={String(board.counts.left)} hint={tr("kept on file, not in this issue")} />
-          <Stat label={tr("Contributions behind them")} value={String(board.topics.reduce((sum, topic) => sum + topic.sources, 0))} />
-        </StatGrid>
+        {/*
+          * Four zeros are not a summary of anything.
+          *
+          * On a new edition nothing has come in yet, and a row reading "0 · 0 · 0 · 0" tells the
+          * person setting it up that they are behind on work that has not started. The counters
+          * appear with the first topic, which is also the first moment they mean something.
+          */}
+        {board.topics.length ? (
+          <StatGrid columns={4}>
+            <Stat label={tr("To decide")} value={String(board.counts.waiting)} tone={board.counts.waiting ? "warning" : "default"} />
+            <Stat label={tr("In the issue")} value={String(board.counts.kept)} hint={`${board.counts.drafted} ${tr("written")}`} />
+            <Stat label={tr("Left out")} value={String(board.counts.left)} hint={tr("kept on file, not in this issue")} />
+            <Stat label={tr("Contributions behind them")} value={String(board.topics.reduce((sum, topic) => sum + topic.sources, 0))} />
+          </StatGrid>
+        ) : null}
 
         <GuidedNext editionId={editionId} room="topics" />
         <TopicsBoard board={board} canEdit={canEdit} />

@@ -51,6 +51,15 @@ export const editions = pgTable(
      */
     hiddenAt: timestamp("hidden_at", { withTimezone: true }),
     publishedVersionId: uuid("published_version_id"),
+    /**
+     * The furthest screen of the guided path this edition reached, as its room.
+     *
+     * The status says where the pipeline has got to; this says where the people did. They are not
+     * the same thing — an issue can be collecting for a fortnight while somebody has already been
+     * through the pictures — and "continue" should land on whichever is further rather than
+     * showing the setup again to somebody who finished it on Tuesday.
+     */
+    guidedRoom: text("guided_room"),
     notes: text("notes"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
