@@ -1,10 +1,12 @@
-import { beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { eq } from "drizzle-orm";
 import { db } from "@/server/db/client";
 import * as s from "@/server/db/schema";
 import { ensureSeeded } from "../helpers/db";
 import { runAsOrganization } from "@/server/tenancy/context";
 import { directEditionDesign, explain } from "@/server/design/director";
+import { currentDesign, designEdition, designHistory, restoreDesign } from "@/server/design/service";
+import { blocksOf } from "@/lib/design/model";
 
 /**
  * The director, on a real edition.
@@ -84,4 +86,51 @@ describe("directing a real edition", () => {
       expect(placed.has(story.articleId), `“${story.headline}” is nowhere in the plan`).toBe(true);
     }
   }, 120_000);
+});
+
+describe("composing and keeping a design", () => {
+  let editionId: string;
+  let organizationId: string;
+
+  beforeAll(async () => {
+    const seeded = await ensureSeeded();
+    editionId = seeded.editionId;
+    const edition = await db.query.editions.findFirst({ where: eq(s.editions.id, editionId) });
+    organizationId = edition!.organizationId!;
+  }, 180_000);
+
+  afterAll(async () => {
+    await db.delete(s.editionDesigns).where(eq(s.editionDesigns.editionId, editionId));
+  });
+
+  it("designs a real edition and stores what it designed", async () => {
+    const result = await runAsOrganization(organizationId, () => designEdition(editionId, { local: true }));
+    expect(result.revision).toBe(0);
+    expect(result.source).toBe("local");
+
+    const blocks = blocksOf(result.design);
+    expect(blocks.length).toBeGreaterThan(5);
+    expect(blocks.some((block) => block.role === "cover")).toBe(true);
+    // Every block says what it is and why it is drawn that way.
+    for (const block of blocks) expect(block.rationale, `${block.role}`).toBeTruthy();
+
+    const current = await runAsOrganization(organizationId, () => currentDesign(editionId));
+    expect(current?.revision).toBe(0);
+    expect(blocksOf(current!).length).toBe(blocks.length);
+  }, 180_000);
+
+  it("keeps every revision, and restores one as a new revision rather than by rewriting", async () => {
+    const first = await runAsOrganization(organizationId, () => designEdition(editionId, { local: true }));
+    const second = await runAsOrganization(organizationId, () => designEdition(editionId, { local: true }));
+    expect(second.revision).toBe(first.revision + 1);
+
+    const restored = await runAsOrganization(organizationId, () => restoreDesign(editionId, first.revision));
+    // A restore is the next revision, so "what did we send" stays answerable.
+    expect(restored.revision).toBe(second.revision + 1);
+
+    const history = await runAsOrganization(organizationId, () => designHistory(editionId));
+    expect(history[0].revision).toBe(restored.revision);
+    expect(history[0].summary).toContain("Restored");
+    expect(history.filter((row) => row.isCurrent)).toHaveLength(1);
+  }, 240_000);
 });
