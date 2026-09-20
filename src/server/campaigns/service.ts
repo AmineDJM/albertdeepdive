@@ -173,13 +173,25 @@ export async function createOrUpdateCampaign(editionId: string, input: CampaignI
 
   let campaign: Campaign;
   if (existing) {
-    const status: CampaignStatus = existing.status === "DRAFT" ? "SCHEDULED" : existing.status;
+    // Same rule as a new campaign below: a draft becomes a plan only when there is still time for
+    // the plan to happen. Otherwise saving the form would quietly undo somebody's "not yet".
+    const status: CampaignStatus = existing.status === "DRAFT" ? (data.opensAt.getTime() > Date.now() ? "SCHEDULED" : "DRAFT") : existing.status;
     [campaign] = await db.update(submissionCampaigns).set({ ...values, status }).where(eq(submissionCampaigns.id, existing.id)).returning();
     if (ACTIVE_CAMPAIGN_STATUSES.includes(campaign.status)) await extendRequestTokens(campaign);
   } else {
+    /*
+     * A campaign is only *scheduled* while its opening is still ahead of it.
+     *
+     * SCHEDULED is what the automation tick reads as "send this the moment `opensAt` arrives", and
+     * for an edition started in the middle of a month whose opening day was the first, that moment
+     * went by two weeks ago: the next tick would post the invitations before anybody had read them.
+     * DRAFT is the honest word for that campaign — it waits for somebody to press send, or for a
+     * date they chose themselves.
+     */
+    const born: CampaignStatus = values.opensAt.getTime() > Date.now() ? "SCHEDULED" : "DRAFT";
     [campaign] = await db
       .insert(submissionCampaigns)
-      .values({ ...values, editionId, status: "SCHEDULED", createdById: user?.id ?? null })
+      .values({ ...values, editionId, status: born, createdById: user?.id ?? null })
       .returning();
   }
   await audit({
@@ -573,7 +585,7 @@ export async function previewSelection(campaignId: string): Promise<SelectionPre
 
 type ContributorRow = typeof contributors.$inferSelect;
 
-async function contributorContext(contributorIds: string[]) {
+export async function contributorContext(contributorIds: string[]) {
   if (!contributorIds.length) return new Map<string, ContributorRow & { campusName: string | null }>();
   const rows = await db
     .select({ contributor: contributors, campusName: campuses.name })
@@ -978,6 +990,56 @@ export async function extendCampaign(campaignId: string, input: { graceEndsAt: D
   const [updated] = await db.update(submissionCampaigns).set({ graceEndsAt }).where(eq(submissionCampaigns.id, campaign.id)).returning();
   const renewed = await extendRequestTokens(updated, now);
   await audit({ action: "campaign.extend", userId: input.userId, entityType: "CAMPAIGN", entityId: campaign.id, editionId: edition.id, metadata: { from: campaign.graceEndsAt.toISOString(), to: graceEndsAt.toISOString(), tokensRenewed: renewed } });
+  return updated;
+}
+
+/**
+ * Put the invitation in the diary, or take it back out.
+ *
+ * Two words the campaign already knows: SCHEDULED means the automation tick sends it the moment
+ * `opensAt` arrives, DRAFT means nothing leaves until somebody presses send. Scheduling is writing
+ * the first one down with a date a person chose; cancelling is writing the second one back. Both
+ * only exist while the invitations are still unsent — after that the dates are history, not plans.
+ *
+ * The two reminders move with the opening, the same way they do when the last day changes: they
+ * are not a decision anybody made, they are a consequence of the span between the two ends.
+ */
+export async function scheduleCampaign(editionId: string, when: Date, user: Actor, now = new Date()): Promise<Campaign> {
+  const campaign = await getCampaignForEdition(editionId);
+  if (!campaign) throw new NotFoundError("Campaign");
+  if (campaign.status === "CLOSED") throw new AppError("The campaign is closed. Reopen it to change it.", "CAMPAIGN_CLOSED", 409);
+  if (campaign.status !== "DRAFT" && campaign.status !== "SCHEDULED") throw new AppError("The invitations have already gone out", "CAMPAIGN_ALREADY_OPEN", 409);
+  if (!(when instanceof Date) || Number.isNaN(when.getTime())) throw new ValidationError("Enter a valid date", { opensAt: ["Enter a valid date"] });
+  if (when.getTime() <= now.getTime()) throw new ValidationError("Choose a date in the future, or send it now", { opensAt: ["Must be in the future"] });
+  if (when.getTime() >= campaign.deadlineAt.getTime()) {
+    throw new ValidationError(`The invitation has to go out before the last day, ${campaign.deadlineAt.toISOString().slice(0, 10)}`, { opensAt: ["Too late"] });
+  }
+
+  const span = campaign.deadlineAt.getTime() - when.getTime();
+  const [updated] = await db
+    .update(submissionCampaigns)
+    .set({
+      status: "SCHEDULED",
+      opensAt: when,
+      reminder1At: new Date(when.getTime() + Math.round(span * 0.45)),
+      reminder2At: new Date(when.getTime() + Math.round(span * 0.85)),
+    })
+    .where(eq(submissionCampaigns.id, campaign.id))
+    .returning();
+  await audit({ action: "campaign.schedule", userId: user?.id, entityType: "CAMPAIGN", entityId: campaign.id, editionId, metadata: { opensAt: when.toISOString(), from: campaign.opensAt.toISOString() } });
+  return updated;
+}
+
+/** Takes a scheduled invitation back out of the diary: nothing goes out until somebody sends it. */
+export async function unscheduleCampaign(editionId: string, user: Actor): Promise<Campaign> {
+  const campaign = await getCampaignForEdition(editionId);
+  if (!campaign) throw new NotFoundError("Campaign");
+  if (campaign.status !== "SCHEDULED") {
+    if (campaign.status === "DRAFT") return campaign;
+    throw new AppError("The invitations have already gone out", "CAMPAIGN_ALREADY_OPEN", 409);
+  }
+  const [updated] = await db.update(submissionCampaigns).set({ status: "DRAFT" }).where(eq(submissionCampaigns.id, campaign.id)).returning();
+  await audit({ action: "campaign.unschedule", userId: user?.id, entityType: "CAMPAIGN", entityId: campaign.id, editionId, metadata: { was: campaign.opensAt.toISOString() } });
   return updated;
 }
 

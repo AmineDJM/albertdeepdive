@@ -14,14 +14,18 @@ import {
   openCampaign,
   reopenCampaign,
   resendInvitation,
+  scheduleCampaign,
   scheduleFromDefaults,
   sendReminders,
+  unscheduleCampaign,
 } from "@/server/campaigns/service";
+import { previewInvitation, type InvitationPreview } from "@/server/campaigns/preview";
 import type { ReminderKind } from "@/server/campaigns/emails";
 import { NotFoundError, ok, toActionFailure, type ActionResult } from "@/lib/action-result";
 import type { SelectionMode } from "@/lib/campaigns/selection";
 import type { EditionBrief } from "@/lib/campaigns/brief";
 import { getUi } from "@/server/i18n/locale";
+import { formatZonedLong } from "@/lib/campaigns/schedule";
 
 /** The campaign form speaks ISO strings; the service coerces them and validates the ordering. */
 export type CampaignFormInput = {
@@ -242,6 +246,49 @@ export async function addContributorsToEditionAction(editionId: string, contribu
     revalidateCampaign(editionId);
     const message = result.added === 0 ? "Those contributors were already invited" : result.sent > 0 ? `${result.added} added · ${result.sent} invited by email` : `${result.added} added to the edition`;
     return ok(result, message);
+  } catch (err) {
+    return toActionFailure(err);
+  }
+}
+
+
+/**
+ * What the invitation says, before anybody gets it.
+ *
+ * Read-only, and read on demand: the email is built from the brief, the note, the deadline and the
+ * people currently selected, all of which change on the screens either side of this one, so a copy
+ * rendered with the page would be out of date by the time somebody opened the dialog.
+ */
+export async function invitationPreviewAction(editionId: string): Promise<ActionResult<InvitationPreview>> {
+  try {
+    await requirePermission("campaign:manage");
+    return ok(await previewInvitation(editionId));
+  } catch (err) {
+    return toActionFailure(err);
+  }
+}
+
+/** Sets the invitation to go out on its own at `when` (ISO), or moves a date already chosen. */
+export async function scheduleInvitationsAction(editionId: string, when: string): Promise<ActionResult> {
+  const tr = await getUi();
+  try {
+    const user = await requirePermission("campaign:manage");
+    const campaign = await scheduleCampaign(editionId, new Date(when), user);
+    revalidateCampaign(editionId);
+    return ok(null, tr("The invitation will go out on {date}", { date: formatZonedLong(campaign.opensAt) }));
+  } catch (err) {
+    return toActionFailure(err);
+  }
+}
+
+/** Takes it back out of the diary — nothing leaves until somebody presses send. */
+export async function unscheduleInvitationsAction(editionId: string): Promise<ActionResult> {
+  const tr = await getUi();
+  try {
+    const user = await requirePermission("campaign:manage");
+    await unscheduleCampaign(editionId, user);
+    revalidateCampaign(editionId);
+    return ok(null, tr("Nothing will go out until you send it"));
   } catch (err) {
     return toActionFailure(err);
   }

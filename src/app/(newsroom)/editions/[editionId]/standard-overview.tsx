@@ -129,7 +129,17 @@ export async function StandardOverview({ editionId }: { editionId: string }) {
           <Decision
             label={tr("Contributors")}
             value={asked === 0 ? tr("Nobody asked yet") : asked === 1 ? tr("1 person asked") : tr("{count} people asked", { count: asked })}
-            hint={asked === 0 ? (d.campaign ? tr("the invitation is ready to go") : tr("nobody is collecting news for this issue")) : d.requests.submitted ? tr("{count} have answered", { count: d.requests.submitted }) : tr("nobody has answered yet")}
+            hint={
+              asked === 0
+                ? d.campaign?.status === "SCHEDULED"
+                  ? tr("the invitation goes out on {date}", { date: formatDate(d.campaign.opensAt) })
+                  : d.campaign
+                    ? tr("the invitation is ready to go")
+                    : tr("nobody is collecting news for this issue")
+                : d.requests.submitted
+                  ? tr("{count} have answered", { count: d.requests.submitted })
+                  : tr("nobody has answered yet")
+            }
             tone={asked === 0 && !published ? "attention" : "default"}
             change={{ href: `${ed}/campaign`, label: canEdit ? (asked === 0 ? tr("Set up") : tr("Change")) : tr("See") }}
           />

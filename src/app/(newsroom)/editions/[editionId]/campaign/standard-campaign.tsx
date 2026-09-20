@@ -13,6 +13,7 @@ import { ACTIVE_CAMPAIGN_STATUSES } from "@/server/campaigns/service";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { formatDate } from "@/lib/utils";
+import { formatZonedLong } from "@/lib/campaigns/schedule";
 import { isSelectionMode, type SelectionMode } from "@/lib/campaigns/selection";
 import { getUi } from "@/server/i18n/locale";
 
@@ -63,7 +64,9 @@ export async function StandardCampaign({ editionId }: { editionId: string }) {
       : tr("Open, and nobody has been invited yet.")
     : campaign.status === "CLOSED"
       ? tr("Closed on {date}.", { date: formatDate(campaign.closedAt ?? campaign.graceEndsAt) })
-      : tr("Nothing has been sent yet. Nobody hears from Briefly until you press the button.");
+      : campaign.status === "SCHEDULED"
+        ? tr("Set to go out on {date}.", { date: formatZonedLong(campaign.opensAt) })
+        : tr("Nothing has been sent yet. Nobody hears from Briefly until you press the button.");
 
   const initial: AudienceValues = {
     selectionMode: (isSelectionMode(campaign.selectionMode) ? campaign.selectionMode : "DRAW") as SelectionMode,
@@ -91,7 +94,7 @@ export async function StandardCampaign({ editionId }: { editionId: string }) {
                 <Users /> {tr("Contributors")}
               </Link>
             </Button>
-            {canManage && !open && campaign.status !== "CLOSED" ? <SendInvitations editionId={editionId} /> : null}
+            {canManage && !open && campaign.status !== "CLOSED" ? <SendInvitations editionId={editionId} scheduledFor={campaign.status === "SCHEDULED" ? campaign.opensAt.toISOString() : null} /> : null}
           </>
         }
       />

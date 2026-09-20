@@ -246,6 +246,10 @@ the bucket public, unless a CDN base URL is given on the card.
 - **Overview** — the current edition, phase, deadlines, coverage by campus, flags, AI cost.
 - **Editions → Control room** — the whole workflow (collect, organise, write, edit, layout, QA, publish).
 - **Campaign** — schedule, contributor targets per campus, invitations, reminders, response tracking.
+  The invitation is read before it is sent: `Read the invitation` opens the real email — the same
+  builder the sender uses, with the subject line and the names of everybody who would receive it —
+  and sending asks a second time against that number. It can be given a date instead, which Briefly
+  keeps and sends on; the date can be moved or dropped for as long as nothing has gone out.
 - **Inbox** — triage submissions (needs review, missing information, duplicates), bulk actions.
 - **Stories** — clusters and story candidates with sources, facts, quotes, people, media, AI notes.
 - **Articles** — the editor: headline, standfirst, blocks, pull quotes, provenance ("Why is this sentence here?"), explicit AI actions, revision history, approval.

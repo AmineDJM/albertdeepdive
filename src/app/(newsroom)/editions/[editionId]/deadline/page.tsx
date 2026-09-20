@@ -8,8 +8,11 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { screenWords } from "@/components/newsroom/guided-words";
 import { GUIDED_PATH, nextFrom, previousFrom } from "@/lib/editorial/guided-path";
 import { experienceOf } from "@/lib/experience";
-import { zonedDayInput } from "@/lib/campaigns/schedule";
+import { formatZonedLong, zonedDayInput } from "@/lib/campaigns/schedule";
 import { getUi } from "@/server/i18n/locale";
+import { SettingsCard } from "@/components/settings/key-value";
+import { SendInvitations } from "@/components/newsroom/send-invitations";
+import { ACTIVE_CAMPAIGN_STATUSES } from "@/server/campaigns/service";
 import { DeadlineForm } from "./deadline-form";
 
 export const dynamic = "force-dynamic";
@@ -51,6 +54,27 @@ export default async function DeadlinePage({ params }: { params: Promise<{ editi
             nextHint={tr("Step {step} of {total}", { step: at + 1, total: GUIDED_PATH.length })}
             title={tr("Next: {question}", { question: words[GUIDED_PATH[at + 1].key].question })}
             back={previous ? { href: previous.href, label: tr("Back") } : null}
+            invitation={
+              /*
+               * The last screen before anything leaves the building.
+               *
+               * Who, what and by when have all been answered by now, so this is the moment the
+               * invitation exists as a real email — and the moment to read it. Sending it is two
+               * presses; dating it is one; neither happens by accident.
+               */
+              ACTIVE_CAMPAIGN_STATUSES.includes(campaign.status) || campaign.status === "CLOSED" ? null : (
+                <SettingsCard
+                  title={tr("The invitation")}
+                  description={
+                    campaign.status === "SCHEDULED"
+                      ? tr("Briefly sends it on its own on {date}. You can read it, move it, or send it now.", { date: formatZonedLong(campaign.opensAt) })
+                      : tr("Nothing has gone out. Read what Briefly will send, then send it now or pick a date.")
+                  }
+                >
+                  <SendInvitations editionId={editionId} scheduledFor={campaign.status === "SCHEDULED" ? campaign.opensAt.toISOString() : null} />
+                </SettingsCard>
+              )
+            }
           />
         ) : (
           <EmptyState

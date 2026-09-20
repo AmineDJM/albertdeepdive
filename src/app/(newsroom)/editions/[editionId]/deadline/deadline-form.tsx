@@ -32,6 +32,7 @@ export function DeadlineForm({
   nextHint,
   title,
   back,
+  invitation,
 }: {
   editionId: string;
   initialDay: string;
@@ -44,6 +45,8 @@ export function DeadlineForm({
   nextHint: string;
   title: string;
   back?: { href: string; label: string } | null;
+  /** The invitation card: reading, sending and dating it all happen here, on the last screen before it goes. */
+  invitation?: React.ReactNode;
 }) {
   const tr = useUi();
   const router = useRouter();
@@ -82,6 +85,8 @@ export function DeadlineForm({
         </dl>
         {dirty ? <p className="mt-2 text-2xs text-muted-foreground">{tr("Briefly moves the reminders with the date once you save.")}</p> : null}
       </SettingsCard>
+
+      {invitation}
 
       <GuidedFooter title={title} hint={dirty ? tr("Not saved yet") : nextHint} back={back}>
         <div className="flex items-center gap-2">
