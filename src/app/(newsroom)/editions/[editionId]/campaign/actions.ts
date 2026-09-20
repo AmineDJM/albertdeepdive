@@ -5,6 +5,8 @@ import { requirePermission } from "@/server/auth/session";
 import {
   addContributorsToCampaign,
   availableContributorsForCampaign,
+  setCampaignAudience,
+  type AudienceInput,
   closeCampaign,
   createOrUpdateCampaign,
   extendCampaign,
@@ -17,6 +19,8 @@ import {
 } from "@/server/campaigns/service";
 import type { ReminderKind } from "@/server/campaigns/emails";
 import { NotFoundError, ok, toActionFailure, type ActionResult } from "@/lib/action-result";
+import type { SelectionMode } from "@/lib/campaigns/selection";
+import type { EditionBrief } from "@/lib/campaigns/brief";
 import { getUi } from "@/server/i18n/locale";
 
 /** The campaign form speaks ISO strings; the service coerces them and validates the ordering. */
@@ -32,6 +36,18 @@ export type CampaignFormInput = {
   introMessage: string | null;
   autoProcess: boolean;
   reinvitePrevious: boolean;
+  /*
+   * How contributors are chosen, and what they are being asked for.
+   *
+   * These were on the form and not in this type, so every save sent the server nothing for them
+   * and the server's defaults won: a campaign saved after any edit lost its brief and reverted to
+   * drawing at random. The screens that own these fields send them back unchanged; the ones that
+   * change them are the only ones that change them.
+   */
+  selectionMode: SelectionMode;
+  drawCount: number;
+  selectedContributorIds: string[];
+  brief: EditionBrief;
 };
 
 function revalidateCampaign(editionId: string) {
@@ -55,6 +71,25 @@ export async function saveCampaignAction(editionId: string, input: CampaignFormI
     await createOrUpdateCampaign(editionId, input, user);
     revalidateCampaign(editionId);
     return ok(null, tr("Campaign saved"));
+  } catch (err) {
+    return toActionFailure(err);
+  }
+}
+
+/**
+ * Who is asked and by when, from the one screen that asks it.
+ *
+ * Standard's campaign screen decides three things — which people, how many, and the closing date —
+ * and writes only those. The five-date schedule, the campus targets and the brief are left exactly
+ * as they were, by a writer that never touches them.
+ */
+export async function saveAudienceAction(editionId: string, input: AudienceInput): Promise<ActionResult> {
+  const tr = await getUi();
+  try {
+    const user = await requirePermission("campaign:manage");
+    await setCampaignAudience(editionId, input, user);
+    revalidateCampaign(editionId);
+    return ok(null, tr("Saved"));
   } catch (err) {
     return toActionFailure(err);
   }

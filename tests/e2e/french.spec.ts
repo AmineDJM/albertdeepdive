@@ -19,10 +19,11 @@ test.describe("the French interface", () => {
     // The open menu hides the rest of the page from the accessibility tree; close it first.
     await page.keyboard.press("Escape");
     await expect(page.getByRole("heading", { level: 1 })).toContainText(/Vue d'ensemble|Bonjour|Bon après-midi|Bonsoir/);
-    // The hub is "Newsletters" in the sidebar, in both languages — it is the word a French
-    // newsroom uses for the thing that lasts, and the one the customers use themselves. It opens
-    // the titles, not a second list of editions: Home already opens on the issue being made.
-    await page.getByRole("link", { name: "Newsletters", exact: true }).click();
+    // The newsletters are on Home, as the shelf, and "Toutes les newsletters" opens the full list.
+    // They left the sidebar because a second entry leading to the same titles is a second place to
+    // look for one thing — and they are still one click from where a person lands.
+    await expect(page.locator("main").getByText("Vos newsletters", { exact: true })).toBeVisible();
+    await page.getByRole("link", { name: "Toutes les newsletters", exact: true }).click();
     await expect(page).toHaveURL(/\/publications$/);
     await expect(page.getByRole("heading", { name: "Newsletters" }).first()).toBeVisible();
     await expect(page.locator("main").getByText(/titres récurrents/i), "and everything around it is French").toBeVisible();

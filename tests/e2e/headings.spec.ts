@@ -75,7 +75,7 @@ test.describe("heading outlines", () => {
     const edition = await one<{ id: string; label: string }>("select id, label from editions order by issue_number desc limit 1");
     expect(edition, "the seed must have an edition").toBeTruthy();
 
-    for (const tab of ["", "/campaign", "/articles", "/revise", "/layout", "/exports", "/inbox", "/media"]) {
+    for (const tab of ["", "/ask", "/campaign", "/topics", "/articles", "/revise", "/layout", "/exports", "/inbox", "/media"]) {
       const route = `/editions/${edition!.id}${tab}`;
       const response = await page.goto(route, { waitUntil: "networkidle" });
       expect(response?.status(), `${route} did not load`).toBeLessThan(400);

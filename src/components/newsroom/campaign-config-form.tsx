@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { CalendarClock, RotateCcw, Save, Users } from "lucide-react";
 import { toast } from "sonner";
@@ -17,7 +18,6 @@ import { cn } from "@/lib/utils";
 import { useUi } from "@/components/i18n/provider";
 import type { SelectionMode } from "@/lib/campaigns/selection";
 import type { EditionBrief } from "@/lib/campaigns/brief";
-import { BriefEditor } from "./brief-editor";
 
 /** The campaign as the server holds it: instants as ISO strings. */
 export type CampaignFormInitial = {
@@ -96,15 +96,12 @@ export function CampaignConfigForm({
   canManage,
   openingLocked,
   closed,
-  askableContributors = [],
 }: {
   editionId: string;
   initial: CampaignFormInitial;
   campuses: CampusOption[];
   groups: GroupOption[];
   canManage: boolean;
-  /** Who a topic can be handed to. Empty is fine: a topic is then asked of everybody. */
-  askableContributors?: { id: string; name: string }[];
   /** The campaign is already open: the service refuses a new opening date. */
   openingLocked: boolean;
   closed: boolean;
@@ -150,6 +147,10 @@ export function CampaignConfigForm({
         introMessage: values.introMessage.trim() || null,
         autoProcess: values.autoProcess,
         reinvitePrevious: values.reinvitePrevious,
+        selectionMode: values.selectionMode,
+        drawCount: values.drawCount,
+        selectedContributorIds: values.selectedContributorIds,
+        brief: values.brief,
       };
       const res = await saveCampaignAction(editionId, payload);
       if (!res.ok) {
@@ -344,7 +345,28 @@ export function CampaignConfigForm({
         ) : null}
       </SettingsCard>
 
-      <BriefEditor brief={values.brief} onChange={(brief) => setValues((v) => ({ ...v, brief }))} readOnly={readOnly} contributors={askableContributors} />
+      {/*
+        * The brief is a screen now, not a card here.
+        *
+        * It is the one editorial decision on a page of logistics, and it was edited beside the
+        * reminder dates by a Save that wrote all eleven fields at once. This says what it holds
+        * and where it is; the form still carries it through untouched so saving the dates cannot
+        * blank it.
+        */}
+      <SettingsCard title={tr("What are you asking for?")} description={tr("Questions everybody answers, topics handed to somebody in particular, and whether they may send anything else.")}>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="text-[13px] text-muted-foreground">
+            {values.brief.asks.length === 0
+              ? tr("Nothing asked in particular — contributors send whatever they like.")
+              : values.brief.asks.length === 1
+                ? tr("1 thing asked")
+                : tr("{count} things asked", { count: values.brief.asks.length })}
+          </p>
+          <Button asChild variant="outline" size="sm">
+            <Link href={`/editions/${editionId}/ask`}>{tr("Change")}</Link>
+          </Button>
+        </div>
+      </SettingsCard>
 
       <SettingsCard title={tr("Invitation message")} description={tr("Added at the top of every invitation and reminder email.")}>
         <Textarea

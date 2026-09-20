@@ -10,6 +10,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { formatBytes } from "@/server/media/constants";
 import { creatorNames } from "@/server/publication/creators";
 import { getUi } from "@/server/i18n/locale";
+import { GuidedNext } from "@/components/newsroom/guided-next";
 
 export const dynamic = "force-dynamic";
 
@@ -82,6 +83,8 @@ export default async function ExportsPage({ params }: { params: Promise<{ editio
         ) : (
           <EmptyState icon={FileDown} title={tr("No export yet")} description={tr("Once the flatplan is validated, generate a version here to produce the PDF and the Word document together.")} />
         )}
+
+        <GuidedNext editionId={editionId} room="exports" />
       </PageBody>
     </>
   );

@@ -78,6 +78,25 @@ async function loadCampaignWithEdition(campaignId: string): Promise<{ campaign: 
 
 const dateInput = z.coerce.date({ error: "Enter a valid date" });
 
+/** What an edition asks its contributors for. Its own schema: one screen edits nothing else. */
+export const briefSchema = z.object({
+  asks: z
+    .array(
+      z.object({
+        id: z.string().trim().max(64).optional(),
+        kind: z.enum(ASK_KINDS),
+        text: z.string().trim().min(1).max(400),
+        hint: z.string().trim().max(400).optional(),
+        required: z.boolean().default(false),
+        wants: z.array(z.enum(ASK_WANTS)).default(["TEXT"]),
+        contributorId: z.uuid().nullable().optional(),
+      }),
+    )
+    .max(40)
+    .default([]),
+  openContributions: z.boolean().default(true),
+});
+
 export const campaignInputSchema = z
   .object({
     name: z.string().trim().min(1).max(160).optional(),
@@ -94,25 +113,7 @@ export const campaignInputSchema = z
     selectionMode: z.enum(SELECTION_MODES).default("DRAW"),
     drawCount: z.coerce.number().int().min(0).max(1000).default(0),
     selectedContributorIds: z.array(z.uuid()).max(2000).default([]),
-    brief: z
-      .object({
-        asks: z
-          .array(
-            z.object({
-              id: z.string().trim().max(64).optional(),
-              kind: z.enum(ASK_KINDS),
-              text: z.string().trim().min(1).max(400),
-              hint: z.string().trim().max(400).optional(),
-              required: z.boolean().default(false),
-              wants: z.array(z.enum(ASK_WANTS)).default(["TEXT"]),
-              contributorId: z.uuid().nullable().optional(),
-            }),
-          )
-          .max(40)
-          .default([]),
-        openContributions: z.boolean().default(true),
-      })
-      .default({ asks: [], openContributions: true }),
+    brief: briefSchema.default({ asks: [], openContributions: true }),
   })
   .superRefine((v, ctx) => {
     const order: [keyof typeof v, keyof typeof v, string][] = [
@@ -188,6 +189,103 @@ export async function createOrUpdateCampaign(editionId: string, input: CampaignI
     entityId: campaign.id,
     editionId,
     metadata: { status: campaign.status, opensAt: campaign.opensAt.toISOString(), graceEndsAt: campaign.graceEndsAt.toISOString(), targets: campaign.targets },
+  });
+  return campaign;
+}
+
+/**
+ * Save what this edition is asking for, and nothing else.
+ *
+ * The brief used to be a field on the campaign form, which meant saving it meant saving the
+ * dates, the pools and the selection with it — and a screen that asks one question must not be
+ * able to change the answer to another. An edition whose campaign has not been scheduled yet gets
+ * one from the defaults first: somebody writing their questions has already decided to ask, and
+ * "create a campaign" is not a step they should have to find.
+ */
+export async function setCampaignBrief(editionId: string, input: unknown, user: Actor): Promise<Campaign> {
+  const parsed = briefSchema.safeParse(input);
+  if (!parsed.success) throw validationError(parsed.error);
+  const existing = (await getCampaignForEdition(editionId)) ?? (await scheduleFromDefaults(editionId, user));
+  const [campaign] = await db
+    .update(submissionCampaigns)
+    .set({ brief: normaliseBrief(parsed.data) })
+    .where(eq(submissionCampaigns.id, existing.id))
+    .returning();
+  await audit({ action: "campaign.brief", userId: user?.id, entityType: "CAMPAIGN", entityId: campaign.id, editionId, metadata: { asks: normaliseBrief(campaign.brief).asks.length, openContributions: normaliseBrief(campaign.brief).openContributions } });
+  return campaign;
+}
+
+/**
+ * Who is being asked, and by when — the whole of the campaign a Standard editor decides.
+ *
+ * One date rather than five. The reminders are not a decision anybody wants to make; they are a
+ * consequence of the deadline, so they are derived from it — one about two thirds of the way
+ * through and one the day before — and the grace period is the day after. Advanced still edits all
+ * five, and this writes the same columns it does.
+ */
+export const audienceSchema = z.object({
+  selectionMode: z.enum(SELECTION_MODES).default("DRAW"),
+  drawCount: z.coerce.number().int().min(0).max(1000).default(0),
+  contributorGroupIds: z.array(z.uuid()).default([]),
+  deadlineAt: dateInput,
+  introMessage: z.string().trim().max(2000).nullable().optional(),
+});
+export type AudienceInput = z.input<typeof audienceSchema>;
+
+export async function setCampaignAudience(editionId: string, input: AudienceInput, user: Actor): Promise<Campaign> {
+  const parsed = audienceSchema.safeParse(input);
+  if (!parsed.success) throw validationError(parsed.error);
+  const data = parsed.data;
+  const existing = (await getCampaignForEdition(editionId)) ?? (await scheduleFromDefaults(editionId, user));
+  if (existing.status === "CLOSED") throw new AppError("The campaign is closed. Reopen it to change it.", "CAMPAIGN_CLOSED", 409);
+
+  /*
+   * A campaign cannot close before it opens.
+   *
+   * The Standard screen has no opening date on it, so a deadline earlier than the opening is a
+   * real thing a person can ask for by accident. One case is not a mistake: a campaign that has
+   * not gone out yet, given a deadline sooner than the date it was scheduled to open — that means
+   * "ask them now", so the opening moves to now and the invitations are ready to send. Every other
+   * case is refused with the date that is in the way, rather than silently rewriting a date nobody
+   * touched.
+   */
+  let opensAt = existing.opensAt;
+  if (data.deadlineAt.getTime() <= opensAt.getTime()) {
+    const now = new Date();
+    const unsent = existing.status === "DRAFT" || existing.status === "SCHEDULED";
+    if (!unsent || data.deadlineAt.getTime() <= now.getTime()) {
+      throw new ValidationError(`The last day must come after ${opensAt.toISOString().slice(0, 10)}, when the invitations go out`, { deadlineAt: ["Too early"] });
+    }
+    opensAt = now;
+  }
+  const span = data.deadlineAt.getTime() - opensAt.getTime();
+  const reminder1At = new Date(opensAt.getTime() + Math.round(span * 0.45));
+  const reminder2At = new Date(opensAt.getTime() + Math.round(span * 0.85));
+  const graceEndsAt = new Date(data.deadlineAt.getTime() + 86_400_000);
+
+  const [campaign] = await db
+    .update(submissionCampaigns)
+    .set({
+      opensAt,
+      reminder1At,
+      reminder2At,
+      deadlineAt: data.deadlineAt,
+      graceEndsAt,
+      selectionMode: data.selectionMode,
+      drawCount: data.drawCount,
+      contributorGroupIds: data.contributorGroupIds,
+      introMessage: data.introMessage ?? null,
+    })
+    .where(eq(submissionCampaigns.id, existing.id))
+    .returning();
+  if (ACTIVE_CAMPAIGN_STATUSES.includes(campaign.status)) await extendRequestTokens(campaign);
+  await audit({
+    action: "campaign.audience",
+    userId: user?.id,
+    entityType: "CAMPAIGN",
+    entityId: campaign.id,
+    editionId,
+    metadata: { selectionMode: campaign.selectionMode, drawCount: campaign.drawCount, pools: campaign.contributorGroupIds.length, deadlineAt: campaign.deadlineAt.toISOString() },
   });
   return campaign;
 }

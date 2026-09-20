@@ -12,6 +12,7 @@ import { cn, formatDate } from "@/lib/utils";
 import { PHASES, STATUS_LABELS } from "@/lib/editorial/edition-state";
 import { getUi } from "@/server/i18n/locale";
 import { experienceOf } from "@/lib/experience";
+import { resumeAt } from "@/lib/editorial/guided-path";
 import { NewEditionButton } from "@/components/newsroom/new-edition-button";
 import { NewsletterShelf, NoNewsletters, type Shelf } from "@/components/newsroom/newsletter-shelf";
 import { PublicationEditor } from "@/app/(newsroom)/publications/publication-editor";
@@ -86,7 +87,7 @@ export default async function HomePage() {
   const newNewsletter = canCreate ? <PublicationEditor trigger={<Button size="sm"><Plus /> {tr("New newsletter")}</Button>} /> : null;
 
   if (experienceOf(user?.preferences) === "standard") {
-    return <StandardHome first={first} next={next} shelf={shelf} contributions={data.pulse.contributions30} canCreate={canCreate} nextLabels={nextLabels} newNewsletter={newNewsletter} tr={tr} />;
+    return <StandardHome first={first} next={next} shelf={shelf} contributions={data.pulse.contributions30} canCreate={canCreate} newNewsletter={newNewsletter} tr={tr} />;
   }
 
   return (
@@ -267,7 +268,7 @@ function Shortcut({ href, icon: Icon, title, body }: { href: string; icon: React
  * has come in and the button that turns it into the next edition. Below it the last few editions,
  * for the person who wants to look back. No pulse, no shortcuts: the sidebar is the map.
  */
-function StandardHome({ first, next, shelf, contributions, canCreate, nextLabels, newNewsletter, tr }: { first: string; next: Awaited<ReturnType<typeof homeData>>["next"]; shelf: Shelf; contributions: number; canCreate: boolean; nextLabels: Record<string, string>; newNewsletter: React.ReactNode; tr: (text: string, values?: Record<string, string | number>) => string }) {
+function StandardHome({ first, next, shelf, contributions, canCreate, newNewsletter, tr }: { first: string; next: Awaited<ReturnType<typeof homeData>>["next"]; shelf: Shelf; contributions: number; canCreate: boolean; newNewsletter: React.ReactNode; tr: (text: string, values?: Record<string, string | number>) => string }) {
   const sentence = next
     ? next.stories
       ? next.stories === 1
@@ -302,16 +303,19 @@ function StandardHome({ first, next, shelf, contributions, canCreate, nextLabels
           <p className="mt-2 max-w-xl text-[13.5px] text-muted-foreground">{body}</p>
           <div className="mt-5 flex flex-wrap items-center gap-2">
             {next ? (
-              <>
-                <Button asChild size="lg">
-                  <Link href={`/editions/${next.id}`}>
-                    {tr("Continue edition")} <ArrowRight />
-                  </Link>
-                </Button>
-                <Button asChild variant="ghost">
-                  <Link href={next.next.href}>{nextLabels[next.next.label] ?? tr("Open the edition")}</Link>
-                </Button>
-              </>
+              /*
+                * One button, and it lands where the work is.
+                *
+                * There were two: "continue" to the edition's own page and, beside it, the pipeline's
+                * idea of the next thing — two doors to the same edition, with different words on
+                * them. The edition's step decides where "continue" goes, so somebody coming back to
+                * an issue that is already being written is not shown its setup again.
+                */
+              <Button asChild size="lg">
+                <Link href={resumeAt(next.id, next.status)}>
+                  {tr("Continue edition")} <ArrowRight />
+                </Link>
+              </Button>
             ) : canCreate && shelf.length ? (
               <NewEditionButton size="lg" label={tr("Prepare my next edition")} />
             ) : canCreate ? (

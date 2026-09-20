@@ -28,13 +28,18 @@ export async function createEditionAction(input: z.input<typeof createEditionSch
  * decision it took can be changed. When it cannot — the plan's limit, a month already taken — the
  * list says why.
  */
-export async function prepareEditionAction(): Promise<void> {
+export async function prepareEditionAction(formData?: FormData): Promise<void> {
   let target: string;
+  // Which newsletter the button belonged to. A form field rather than a bound argument so the
+  // button still works with no script, and so a card on the shelf can only ever start an edition
+  // of its own title.
+  const publicationId = typeof formData?.get("publicationId") === "string" ? String(formData.get("publicationId")) : null;
   try {
     const user = await requirePermission("edition:create");
-    const edition = await prepareEdition(user.id);
+    const edition = await prepareEdition(user.id, publicationId);
     revalidatePath("/editions");
     revalidatePath("/overview");
+    revalidatePath("/publications");
     target = `/editions/${edition.id}`;
   } catch (err) {
     const failure = toActionFailure(err);

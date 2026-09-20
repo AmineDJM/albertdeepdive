@@ -6,6 +6,7 @@ import { PageBody, PageHeader } from "@/components/newsroom/page-header";
 import { Stat, StatGrid } from "@/components/newsroom/stat";
 import { TopicsBoard } from "./topics-board";
 import { getUi } from "@/server/i18n/locale";
+import { GuidedNext } from "@/components/newsroom/guided-next";
 
 export const dynamic = "force-dynamic";
 
@@ -40,6 +41,7 @@ export default async function TopicsPage({ params }: { params: Promise<{ edition
           <Stat label={tr("Contributions behind them")} value={String(board.topics.reduce((sum, topic) => sum + topic.sources, 0))} />
         </StatGrid>
 
+        <GuidedNext editionId={editionId} room="topics" />
         <TopicsBoard board={board} canEdit={canEdit} />
       </PageBody>
     </>

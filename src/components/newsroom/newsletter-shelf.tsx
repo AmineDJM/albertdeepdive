@@ -64,7 +64,7 @@ export function NewsletterShelf({
 
           {canCreate ? (
             <div className="mt-auto">
-              <NewEditionButton variant="outline" size="sm" label={title.live ? tr("New edition") : tr("Start the next edition")} />
+              <NewEditionButton variant="outline" size="sm" publicationId={title.id} label={title.live ? tr("New edition") : tr("Start the next edition")} />
             </div>
           ) : null}
         </article>

@@ -4,6 +4,7 @@ import { studioState } from "@/server/editorial/edition-studio/converse";
 import { PageBody, PageHeader } from "@/components/newsroom/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
 import { getUi } from "@/server/i18n/locale";
+import { GuidedNext } from "@/components/newsroom/guided-next";
 import { ReviseWorkbench } from "./revise-workbench";
 
 export const dynamic = "force-dynamic";
@@ -40,8 +41,9 @@ export default async function RevisePage({ params }: { params: Promise<{ edition
   return (
     <>
       <PageHeader title={tr("Revise")} description={`${state.snapshot.edition.pages} ${tr("pages")} · ${left}`} />
-      <PageBody>
+      <PageBody className="space-y-4">
         <ReviseWorkbench editionId={editionId} initial={state} />
+        <GuidedNext editionId={editionId} room="revise" />
       </PageBody>
     </>
   );

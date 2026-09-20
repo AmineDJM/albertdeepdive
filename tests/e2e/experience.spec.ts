@@ -16,20 +16,23 @@ test.describe("standard and advanced", () => {
     await closeDb();
   });
 
-  test("a new person starts in Standard: six places, one question, decisions on an edition", async ({ page }) => {
+  test("a new person starts in Standard: five places, one question, decisions on an edition", async ({ page }) => {
     await setExperience("standard");
     await login(page);
     // Home answers one question.
     await expect(page.locator("main").getByText("What should I do now?")).toBeVisible();
     await expect(page.getByTestId("home-now")).toBeVisible();
     await expect(page.locator("main").getByText("Organization pulse", { exact: true })).toHaveCount(0);
-    // The sidebar: Home, Newsletters, Library — Audience, Analytics, Settings. No Content, no Brand.
-    // "Newsletters" rather than "Editions" because that section holds the titles, and an edition
-    // lives inside one of them.
+    // The sidebar: Home, Library — Audience, Analytics, Settings. No Content, no Brand, and no
+    // Newsletters either: they are the first thing on Home, each title with the edition being made
+    // and the button that starts the next, so a sidebar entry to the same titles was one thing in
+    // two places.
     const nav = page.getByRole("navigation", { name: "Main" });
-    for (const name of ["Home", "Newsletters", "Library", "Audience", "Analytics", "Settings"]) await expect(nav.getByRole("link", { name, exact: true })).toBeVisible();
-    await expect(nav.getByRole("link", { name: "Content", exact: true })).toHaveCount(0);
-    await expect(nav.getByRole("link", { name: "Brand", exact: true })).toHaveCount(0);
+    for (const name of ["Home", "Library", "Audience", "Analytics", "Settings"]) await expect(nav.getByRole("link", { name, exact: true })).toBeVisible();
+    for (const name of ["Content", "Brand", "Newsletters"]) await expect(nav.getByRole("link", { name, exact: true })).toHaveCount(0);
+    // Hidden from the sidebar, on the screen: the shelf, and the way to the whole list.
+    await expect(page.locator("main").getByText("Your newsletters", { exact: true })).toBeVisible();
+    await expect(page.getByRole("link", { name: "All newsletters", exact: true })).toBeVisible();
 
     // An edition is its decisions, each with a Change.
     const edition = await one<{ id: string }>(`select id from editions where label = 'May 2025' limit 1`);
@@ -56,6 +59,17 @@ test.describe("standard and advanced", () => {
     await expect(steps.getByRole("link", { name: "Topics", exact: false })).toHaveAttribute("href", `/editions/${edition!.id}/topics`);
     // Distribute has somewhere of its own, rather than sharing Validate's gate.
     await expect(steps.getByRole("link", { name: "Distribute", exact: false })).toHaveAttribute("href", `/editions/${edition!.id}/exports`);
+    /*
+     * One button at the bottom, and it goes forward.
+     *
+     * The screen used to end twice: "Look at what came in" above the decisions and "Publish" below
+     * them, with eight "Change" links in between — three answers to "and now?" on one page.
+     */
+    const forward = page.getByTestId("guided-next");
+    await expect(forward.getByRole("link", { name: /Validate/ })).toHaveAttribute("href", `/editions/${edition!.id}/ask`);
+    await expect(page.locator("main").getByText("Happy with it?")).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "Look at what came in" })).toHaveCount(0);
+
     // The control room is one link away, not gone.
     await page.getByRole("link", { name: "See the full control room" }).click();
     await expect(page.locator("main").getByText("Control room", { exact: true }).first()).toBeVisible();
@@ -86,6 +100,36 @@ test.describe("standard and advanced", () => {
     expect(Number(made!.sections)).toBeGreaterThan(0);
     expect(Number(made!.campaigns)).toBe(1);
     await one(`delete from editions where id = $1`, [made!.id]);
+  });
+
+  test("the path leads from the edition to the pictures, one button at a time", async ({ page }) => {
+    await setExperience("standard");
+    await login(page);
+    const edition = await one<{ id: string }>(`select id from editions where label = 'May 2025' limit 1`);
+    await page.goto(`/editions/${edition!.id}`);
+
+    // Validate → what are you asking for.
+    await page.getByTestId("guided-next").getByRole("link", { name: /Validate/ }).click();
+    await expect(page).toHaveURL(new RegExp(`/editions/${edition!.id}/ask$`));
+    await expect(page.getByRole("heading", { name: "What are you asking for?" })).toBeVisible();
+
+    // Next → who are you asking. The campaign screen asks the question rather than showing the
+    // phase timeline, six counters, a coverage table and an email log.
+    await page.getByTestId("guided-next-button").click();
+    await expect(page).toHaveURL(new RegExp(`/editions/${edition!.id}/campaign$`));
+    await expect(page.getByRole("heading", { name: "Who are you asking?" })).toBeVisible();
+    await expect(page.locator("main").getByText("Email log")).toHaveCount(0);
+    await expect(page.locator("main").getByText("Coverage", { exact: true })).toHaveCount(0);
+
+    // Next → the pictures, which are the pictures.
+    await page.getByTestId("guided-next-button").click();
+    await expect(page).toHaveURL(new RegExp(`/editions/${edition!.id}/media$`));
+    await expect(page.getByRole("heading", { name: "Pictures" })).toBeVisible();
+    await expect(page.locator("main").getByText("Duplicates", { exact: true })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: /Describe/ })).toHaveCount(0);
+
+    // And on to the topics, which is where the timeline's second step also goes.
+    await expect(page.getByTestId("guided-next").getByRole("link", { name: /Next/ })).toHaveAttribute("href", `/editions/${edition!.id}/topics`);
   });
 
   test("Advanced opens every door from the profile, and Standard closes them again", async ({ page }) => {

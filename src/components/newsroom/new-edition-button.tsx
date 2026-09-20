@@ -22,10 +22,11 @@ function Submit({ label, variant, size }: { label: string; variant?: "default" |
  * what the workspace already knows and opened, where each of those decisions is one line with a
  * "Change". The button is a form so it works before any script runs.
  */
-export function NewEditionButton({ label, variant, size }: { label?: string; variant?: "default" | "outline"; size?: "default" | "sm" | "lg" }) {
+export function NewEditionButton({ label, variant, size, publicationId }: { label?: string; variant?: "default" | "outline"; size?: "default" | "sm" | "lg"; /** The newsletter this edition belongs to. Without one, the workspace's first title. */ publicationId?: string }) {
   const tr = useUi();
   return (
     <form action={prepareEditionAction}>
+      {publicationId ? <input type="hidden" name="publicationId" value={publicationId} /> : null}
       <Submit label={label ?? tr("New edition")} variant={variant} size={size} />
     </form>
   );

@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { db } from "@/server/db/client";
 import * as s from "@/server/db/schema";
 import { ensureSeeded } from "../helpers/db";
@@ -25,6 +25,7 @@ describe("a new newsletter and its first edition", () => {
   let organizationId: string;
   let userId: string;
   const made: string[] = [];
+  const madeEditions: string[] = [];
 
   beforeAll(async () => {
     const seeded = await ensureSeeded();
@@ -34,6 +35,7 @@ describe("a new newsletter and its first edition", () => {
   }, 180_000);
 
   afterAll(async () => {
+    if (madeEditions.length) await db.delete(s.editions).where(inArray(s.editions.id, madeEditions));
     if (!made.length) return;
     await db.delete(s.editions).where(inArray(s.editions.publicationId, made));
     await db.delete(s.publications).where(inArray(s.publications.id, made));
@@ -93,5 +95,33 @@ describe("a new newsletter and its first edition", () => {
     } finally {
       await db.update(s.editions).set({ status: edition!.status }).where(eq(s.editions.id, edition!.id));
     }
+  }, 120_000);
+  it("starts the next edition on the shelf the button was pressed on", async () => {
+    /*
+     * Which newsletter a new edition belongs to.
+     *
+     * "New edition" took no title at all: it created the next edition of whichever publication the
+     * workspace happened to list first. On a shelf with one title that is invisible; on a shelf
+     * with two it files September's issue of the quarterly under the monthly, and the month it
+     * picked came from the workspace's latest edition rather than from that title's — so the
+     * second newsletter was pushed a month further ahead every time the first one advanced.
+     */
+    const title = made[0];
+    const { prepareEdition } = await import("@/server/editions/service");
+    const latest = await db.query.editions.findFirst({ where: eq(s.editions.publicationId, title), orderBy: [desc(s.editions.year), desc(s.editions.month)] });
+    expect(latest, "the title has its first edition").toBeTruthy();
+
+    const next = await runAsOrganization(organizationId, () => prepareEdition(userId, title));
+    madeEditions.push(next.id);
+    expect(next.publicationId, "it goes on the shelf it was started from").toBe(title);
+    // And it follows that title's own last edition, not the workspace's.
+    const expected = latest!.month === 12 ? { month: 1, year: latest!.year + 1 } : { month: latest!.month + 1, year: latest!.year };
+    expect({ month: next.month, year: next.year }).toEqual(expected);
+
+    // Named no title, an edition still lands somewhere sensible: the workspace's first.
+    const first = await db.query.publications.findFirst({ where: eq(s.publications.organizationId, organizationId), orderBy: [asc(s.publications.sortOrder), asc(s.publications.createdAt)] });
+    const unnamed = await runAsOrganization(organizationId, () => prepareEdition(userId));
+    madeEditions.push(unnamed.id);
+    expect(unnamed.publicationId).toBe(first!.id);
   }, 120_000);
 });

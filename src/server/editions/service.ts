@@ -49,11 +49,14 @@ export type CreateEditionInput = z.infer<typeof createEditionSchema>;
  * latest is already behind us. It answers the one question the old dialog asked that a person
  * could not answer faster than Briefly.
  */
-export async function nextEditionMonth(now = new Date()): Promise<{ month: number; year: number }> {
+export async function nextEditionMonth(now = new Date(), publicationId?: string | null): Promise<{ month: number; year: number }> {
+  // The month after this title's last one, not after the workspace's. A monthly and a quarterly
+  // run on their own clocks, and an organisation with two newsletters was having the second one
+  // pushed a month forward every time the first advanced.
   const [latest] = await db
     .select({ month: s.editions.month, year: s.editions.year })
     .from(s.editions)
-    .where(await scoped(s.editions.organizationId, isNull(s.editions.hiddenAt)))
+    .where(await scoped(s.editions.organizationId, isNull(s.editions.hiddenAt), publicationId ? eq(s.editions.publicationId, publicationId) : undefined))
     .orderBy(desc(s.editions.year), desc(s.editions.month))
     .limit(1);
   const coming = { month: now.getMonth() + 2 > 12 ? 1 : now.getMonth() + 2, year: now.getMonth() + 2 > 12 ? now.getFullYear() + 1 : now.getFullYear() };
@@ -124,9 +127,16 @@ export async function inheritedSettings(previous: typeof s.editions.$inferSelect
  * campaign are all decided from what the workspace already knows. Every one of them can be
  * changed afterwards from the edition itself; none of them needs to be asked first.
  */
-export async function prepareEdition(userId: string) {
-  const when = await nextEditionMonth();
-  const edition = await createEdition({ month: when.month, year: when.year, isSpecialIssue: false }, userId);
+/**
+ * The next edition of a title, prepared.
+ *
+ * `publicationId` is which shelf it goes on. Without one the workspace's first title is used, which
+ * is right for the workspace that has one and wrong for every workspace that has two: "New edition"
+ * on the second newsletter was quietly filing it under the first.
+ */
+export async function prepareEdition(userId: string, publicationId?: string | null) {
+  const when = await nextEditionMonth(new Date(), publicationId);
+  const edition = await createEdition({ month: when.month, year: when.year, isSpecialIssue: false, publicationId: publicationId ?? undefined }, userId);
   try {
     const { scheduleFromDefaults } = await import("@/server/campaigns/service");
     await scheduleFromDefaults(edition.id, { id: userId });

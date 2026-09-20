@@ -19,6 +19,8 @@ import { GenerateImageDialog } from "@/components/images/generate-image-dialog";
 import { PicturesInProgress } from "@/components/images/pictures-in-progress";
 import { mayShowRouting, pendingViews, referenceCandidates } from "@/server/images/views";
 import { requireTenant } from "@/server/tenancy/context";
+import { experienceOf } from "@/lib/experience";
+import { StandardMedia } from "./standard-media";
 import { getUi } from "@/server/i18n/locale";
 
 export const dynamic = "force-dynamic";
@@ -55,6 +57,8 @@ export default async function MediaLibraryPage({
   }
   const view: MediaView = sp.view === "list" ? "list" : "grid";
   const user = await getCurrentUser();
+  // Standard shows the pictures; the counters, the filters and the bulk tools open in Advanced.
+  if (experienceOf(user?.preferences) === "standard") return <StandardMedia editionId={editionId} rights={sp.rights} page={sp.page} />;
   const canManage = hasPermission(user, "media:manage");
   const canRights = hasPermission(user, "media:rights");
   const basePath = `/editions/${editionId}/media`;

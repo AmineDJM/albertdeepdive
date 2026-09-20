@@ -116,11 +116,23 @@ export function visibleTabs(role: Role, tabs: readonly SubTab[]): SubTab[] {
  * Advanced is the full list. Both are cut from the same entries, so nothing can be on one and
  * missing from ⌘K.
  */
+/**
+ * On Standard's way, but not a door of its own.
+ *
+ * The newsletters are the first thing on Home, each with the edition being made and the button to
+ * start the next: a second entry in the sidebar that leads to the same titles is a second place to
+ * look for one thing, and the question "which of these two do I click" is exactly the one Standard
+ * exists to not ask. The page still opens from the shelf, and Advanced still lists it.
+ */
+const HIDDEN_IN_STANDARD = new Set<string>(["/publications"]);
+
 export function navItemsFor(mode: ExperienceMode): { primary: readonly NavItem[]; secondary: readonly NavItem[] } {
   if (mode === "advanced") return { primary: NAV_ITEMS, secondary: SETUP_ITEMS };
   // Brand is not on this list, so Settings lights up for it too: `exclude` only made sense beside it.
-  const shown = [...NAV_ITEMS, ...SETUP_ITEMS].filter((item) => STANDARD_PATHS.has(item.href)).map((item) => (item.exclude ? { ...item, exclude: undefined } : item));
-  const work = new Set(["/overview", "/publications", "/library"]);
+  const shown = [...NAV_ITEMS, ...SETUP_ITEMS]
+    .filter((item) => STANDARD_PATHS.has(item.href) && !HIDDEN_IN_STANDARD.has(item.href))
+    .map((item) => (item.exclude ? { ...item, exclude: undefined } : item));
+  const work = new Set(["/overview", "/library"]);
   return { primary: shown.filter((item) => work.has(item.href)), secondary: shown.filter((item) => !work.has(item.href)) };
 }
 
@@ -177,6 +189,7 @@ export const EDITION_DOORS: readonly EditionDoor[] = [
       { slug: "stories", label: "nav.stories" },
       { slug: "articles", label: "nav.articles" },
       { slug: "inbox", label: "nav.contributions", permission: "submission:view" },
+      { slug: "ask", label: "editionTabs.ask", permission: "campaign:manage" },
       { slug: "campaign", label: "editionTabs.campaign", permission: "campaign:manage", standardLabel: "editionTabs.askForNews" },
     ],
   },

@@ -1,7 +1,6 @@
 import Link from "next/link";
-import { ArrowRight, Download, ExternalLink, Send } from "lucide-react";
+import { Download, ExternalLink } from "lucide-react";
 import { editionDashboard, type EditionDashboard } from "@/server/editions/service";
-import { nextActionFor } from "@/server/home/service";
 import { outputMatrix } from "@/server/outputs/service";
 import { activeBrand } from "@/server/brand/service";
 import { senderFor } from "@/server/email/sender";
@@ -17,8 +16,8 @@ import { CoverThumbnail } from "@/components/newsroom/cover-thumbnail";
 import { EditionStatusBadge } from "@/components/newsroom/status-badge";
 import { Decision, LanguageChange, OutputsChange, PublishDateChange, type OutputChoice } from "@/components/newsroom/decisions";
 import { Button } from "@/components/ui/button";
+import { GuidedNext } from "@/components/newsroom/guided-next";
 import { formatDate } from "@/lib/utils";
-import { phaseForStatus } from "@/lib/editorial/edition-state";
 import { getUi } from "@/server/i18n/locale";
 
 /**
@@ -37,13 +36,8 @@ export async function StandardOverview({ editionId }: { editionId: string }) {
   const coverUrl = d.edition.coverMediaAssetId ? await mediaUrl(d.edition.coverMediaAssetId, "WEB") : null;
   const ed = `/editions/${editionId}`;
   const canEdit = hasPermission(user, "edition:edit");
-  const canPublish = hasPermission(user, "edition:publish");
   const canSetUp = hasPermission(user, "settings:manage") || tenant.role === "OWNER" || tenant.role === "ADMIN";
   const published = d.edition.status === "PUBLISHED" || d.edition.status === "ARCHIVED";
-  const phase = phaseForStatus(d.edition.status);
-  const action = nextActionFor(phase, d);
-  // Literal so the dictionary test sees every sentence a person can be shown.
-  const nextLabels: Record<string, string> = { collect: tr("Ask your people for news"), review: tr("Look at what came in"), triage: tr("Sort what came in"), select: tr("Choose the stories"), draft: tr("Write the articles"), approve: tr("Approve the articles"), layout: tr("Lay out the pages"), publish: tr("Check and publish"), published: tr("Open the edition") };
   const attention = needsALook(d);
   const attentionLabels = { submissions: tr("updates to look at"), stories: tr("stories missing something"), articles: tr("articles waiting for your approval"), pictures: tr("pictures with unclear rights"), facts: tr("facts that disagree") };
   const languageNames: Record<string, string> = { en: tr("English"), fr: tr("French") };
@@ -76,13 +70,6 @@ export async function StandardOverview({ editionId }: { editionId: string }) {
           </div>
           <p className="mt-1 text-[13.5px] text-muted-foreground">{summary}</p>
           <div className="mt-4 flex flex-wrap items-center gap-2">
-            {!published ? (
-              <Button asChild>
-                <Link href={action.href}>
-                  {nextLabels[action.key] ?? tr("Open the edition")} <ArrowRight />
-                </Link>
-              </Button>
-            ) : null}
             <Button asChild variant={published ? "default" : "outline"}>
               <a href={`/print/edition/${editionId}`} target="_blank" rel="noreferrer">
                 {tr("Preview")} <ExternalLink />
@@ -131,7 +118,7 @@ export async function StandardOverview({ editionId }: { editionId: string }) {
             {canEdit ? <PublishDateChange editionId={editionId} current={d.edition.publicationTargetAt} locked={published} /> : null}
           </Decision>
           <Decision label={tr("Outputs")} value={<OutputsChange editionId={editionId} outputs={choices} canEdit={canEdit && !published} />} />
-          <Decision label={tr("Stories")} value={d.stories.selected === 1 ? tr("1 story in") : tr("{count} stories in", { count: d.stories.selected })} hint={d.stories.candidates ? tr("{count} more to decide on", { count: d.stories.candidates }) : d.submissions.total ? tr("from {count} updates", { count: d.submissions.total }) : null} tone={d.stories.selected === 0 && !published ? "attention" : "default"} change={{ href: `${ed}/stories`, label: canEdit ? tr("Choose") : tr("See") }} />
+          <Decision label={tr("Stories")} value={d.stories.selected === 1 ? tr("1 story in") : tr("{count} stories in", { count: d.stories.selected })} hint={d.stories.candidates ? tr("{count} more to decide on", { count: d.stories.candidates }) : d.submissions.total ? tr("from {count} updates", { count: d.submissions.total }) : null} tone={d.stories.selected === 0 && !published ? "attention" : "default"} change={{ href: `${ed}/topics`, label: canEdit ? tr("Choose") : tr("See") }} />
           <Decision label={tr("Pictures")} value={d.media.total === 1 ? tr("1 picture") : tr("{count} pictures", { count: d.media.total })} hint={d.media.yellow + d.media.red ? tr("{count} need a look", { count: d.media.yellow + d.media.red }) : null} tone={d.media.red ? "attention" : "default"} change={{ href: `${ed}/media` }} />
           <Decision label={tr("Tone")} value={tone || tr("Plain and confident")} hint={tr("from your brand")} change={canSetUp ? { href: "/settings/brand" } : null} />
           {emailOn ? (
@@ -146,26 +133,27 @@ export async function StandardOverview({ editionId }: { editionId: string }) {
         </ul>
       </section>
 
-      <section className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-muted/30 px-4 py-3">
-        <div>
-          <p className="text-[13px] font-semibold">{published ? tr("This edition is out.") : tr("Happy with it?")}</p>
-          <p className="text-xs text-muted-foreground">{published ? tr("You can still open it, read the numbers, or start the next one.") : tr("Briefly checks everything before it goes out, and asks only when something needs you.")}</p>
-        </div>
-        <div className="flex items-center gap-2">
-          {!published && canPublish ? (
-            <Button asChild>
-              <Link href={`${ed}/qa`}>
-                <Send /> {tr("Publish")}
-              </Link>
-            </Button>
-          ) : null}
-          {published ? (
-            <Button asChild variant="outline">
-              <Link href={`/analytics?editionId=${editionId}`}>{tr("How it did")}</Link>
-            </Button>
-          ) : null}
-        </div>
-      </section>
+      {/*
+        * One button, and it goes forward.
+        *
+        * What stood here was two: "look at what came in" at the top and "publish" at the bottom,
+        * on either side of eight rows each offering "Change" — three competing answers to "and
+        * now?" on one screen. An edition already out is the one case with nothing ahead of it, so
+        * it gets the one thing left to do with it: read what happened.
+        */}
+      {published ? (
+        <section className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-muted/30 px-4 py-3">
+          <div>
+            <p className="text-[13px] font-semibold">{tr("This edition is out.")}</p>
+            <p className="text-xs text-muted-foreground">{tr("You can still open it, read the numbers, or start the next one.")}</p>
+          </div>
+          <Button asChild variant="outline">
+            <Link href={`/analytics?editionId=${editionId}`}>{tr("How it did")}</Link>
+          </Button>
+        </section>
+      ) : (
+        <GuidedNext editionId={editionId} room="" />
+      )}
 
       <p className="text-center text-2xs text-muted-foreground">
         <Link href={`${ed}?view=full`} className="hover:text-foreground hover:underline">{tr("See the full control room")}</Link>

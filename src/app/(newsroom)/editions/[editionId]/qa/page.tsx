@@ -15,6 +15,7 @@ import { SeverityBadge } from "@/components/newsroom/status-badge";
 import { Badge } from "@/components/ui/badge";
 import { nextStatuses, type EditionStatus } from "@/lib/editorial/edition-state";
 import { getUi } from "@/server/i18n/locale";
+import { GuidedNext } from "@/components/newsroom/guided-next";
 
 export const dynamic = "force-dynamic";
 
@@ -136,6 +137,7 @@ export default async function QaPage({ params }: { params: Promise<{ editionId: 
             </p>
           </aside>
         </div>
+        <GuidedNext editionId={editionId} room="qa" />
       </PageBody>
     </>
   );

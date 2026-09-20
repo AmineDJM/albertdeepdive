@@ -19,12 +19,17 @@ describe("the experience mode", () => {
     expect(isExperienceMode("pro")).toBe(false);
   });
 
-  it("puts six places on the Standard sidebar, three to work and three to look after", () => {
+  it("puts five places on the Standard sidebar, two to work and three to look after", () => {
     const nav = navItemsFor("standard");
-    // The editions list left the sidebar: Home already opens on the issue being made and the
-    // recent ones, so a second list a click away was the same answer twice.
-    expect(nav.primary.map((item) => item.href)).toEqual(["/overview", "/publications", "/library"]);
+    // The editions list left the sidebar, and then the newsletters did too: Home leads with the
+    // shelf, each title carrying the edition being made and the button that starts the next, so a
+    // sidebar entry to the same titles was the same answer in two places.
+    expect(nav.primary.map((item) => item.href)).toEqual(["/overview", "/library"]);
     expect(nav.secondary.map((item) => item.href)).toEqual(["/subscribers", "/analytics", "/settings"]);
+    // Hidden from the sidebar is not removed: the page is on Standard's way, opens from the shelf,
+    // keeps its tab row, and is a door in Advanced.
+    expect(onStandardPath("/publications")).toBe(true);
+    expect(navItemsFor("advanced").primary.some((item) => item.href === "/publications")).toBe(true);
     // Content folds into the editions; Brand becomes a line under Settings.
     expect([...nav.primary, ...nav.secondary].some((item) => item.href === "/content" || item.href === "/settings/brand")).toBe(false);
   });

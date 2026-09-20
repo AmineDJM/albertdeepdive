@@ -89,6 +89,7 @@ export const fr: Dictionary = {
     publish: "Publier",
     revise: "Réviser",
     askForNews: "Demander des nouvelles",
+    ask: "Ce que vous demandez",
   },
 
   auth: {

@@ -86,6 +86,7 @@ export const en = {
     publish: "Publish",
     revise: "Revise",
     askForNews: "Ask for news",
+    ask: "What you are asking for",
   },
 
   auth: {

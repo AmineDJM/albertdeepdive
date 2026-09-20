@@ -23,6 +23,8 @@ import { enumLabel, formatDateTime } from "@/lib/utils";
 import { getUi } from "@/server/i18n/locale";
 import { isSelectionMode, type SelectionMode } from "@/lib/campaigns/selection";
 import { normaliseBrief } from "@/lib/campaigns/brief";
+import { experienceOf } from "@/lib/experience";
+import { StandardCampaign } from "./standard-campaign";
 
 export const dynamic = "force-dynamic";
 
@@ -33,6 +35,8 @@ export default async function CampaignPage({ params }: { params: Promise<{ editi
   const { editionId } = await params;
   const user = await getCurrentUser();
   if (!hasPermission(user, "campaign:manage")) return <NoAccess title={tr("Campaign")} permission="campaign:manage" />;
+  // Standard asks the question; the control room below is what Advanced opens.
+  if (experienceOf(user?.preferences) === "standard") return <StandardCampaign editionId={editionId} />;
   const canManage = hasPermission(user, "campaign:manage");
 
   const screen = await campaignScreen(editionId);
