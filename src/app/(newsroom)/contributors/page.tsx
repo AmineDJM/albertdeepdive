@@ -20,6 +20,12 @@ import { CONTRIBUTOR_TYPES } from "@/lib/constants";
 import { GroupsPanel } from "./groups-panel";
 import { enumLabel, formatDate } from "@/lib/utils";
 import { getUi } from "@/server/i18n/locale";
+import { and, eq } from "drizzle-orm";
+import { db } from "@/server/db/client";
+import * as s from "@/server/db/schema";
+import { requireTenant } from "@/server/tenancy/context";
+import { titlesForContributors } from "@/server/contributors/join";
+import { ShareLinks } from "@/components/newsroom/share-links";
 
 export const dynamic = "force-dynamic";
 
@@ -30,7 +36,20 @@ export default async function ContributorsPage({ searchParams }: { searchParams:
   const canManage = hasPermission(user, "contributor:manage");
   // Hidden (inactive) contributors stay out of the list until asked for.
   const active = sp.active === "any" ? undefined : sp.active === "false" ? ("false" as const) : ("true" as const);
-  const [rows, groups, campuses, programs, stats] = await Promise.all([listContributors({ q: sp.q, campusId: sp.campusId, type: sp.type, groupId: sp.groupId, active }), listGroups(), listCampusesWithStats(), listPrograms(), contributorStats()]);
+  const tenant = await requireTenant();
+  const [rows, groups, campuses, programs, stats, titles] = await Promise.all([
+    listContributors({ q: sp.q, campusId: sp.campusId, type: sp.type, groupId: sp.groupId, active }),
+    listGroups(),
+    listCampusesWithStats(),
+    listPrograms(),
+    contributorStats(),
+    db
+      .select({ id: s.publications.id, name: s.publications.name, joinSlug: s.publications.joinSlug })
+      .from(s.publications)
+      .where(and(eq(s.publications.organizationId, tenant.organizationId), eq(s.publications.isPublic, true))),
+  ]);
+  // Which newsletters each of them writes for, which is what the public sign-up link fills in.
+  const writesFor = await titlesForContributors(rows.map((row) => row.id));
   type Row = (typeof rows)[number];
   const columns: Column<Row>[] = [
     ...(canManage ? [{ key: "select", header: <SelectAll ids={rows.map((c) => c.id)} />, cell: (c: Row) => <SelectRow id={c.id} label={`${c.firstName} ${c.lastName}`} />, width: "36px" }] : []),
@@ -44,6 +63,7 @@ export default async function ContributorsPage({ searchParams }: { searchParams:
     { key: "program", header: tr("Programme"), cell: (c) => <span className="text-xs">{c.program?.code ?? "—"}</span> },
     { key: "type", header: tr("Type"), cell: (c) => <Badge variant="outline">{tr(enumLabel(c.type))}</Badge> },
     { key: "groups", header: tr("Pools"), cell: (c) => <span className="line-clamp-1 text-2xs text-muted-foreground">{c.groupMemberships.map((m) => m.group.name).join(", ") || "—"}</span> },
+    { key: "titles", header: tr("Newsletters"), cell: (c) => <span className="line-clamp-1 text-2xs text-muted-foreground">{(writesFor.get(c.id) ?? []).join(", ") || "—"}</span> },
     { key: "response", header: tr("Response"), cell: (c) => <span className="tabular text-xs">{c.responseRate === null ? "—" : `${Math.round((c.responseRate ?? 0) * 100)}%`}</span>, align: "right" },
     { key: "subs", header: tr("Submissions"), cell: (c) => <span className="tabular text-xs">{c.submissionsCount}</span>, align: "right" },
     { key: "last", header: tr("Last contribution"), cell: (c) => <span className="text-xs text-muted-foreground">{formatDate(c.lastContributionAt)}</span> },
@@ -56,6 +76,16 @@ export default async function ContributorsPage({ searchParams }: { searchParams:
         <HubTabs tabs={AUDIENCE_TABS} />
       </PageHeader>
       <PageBody className="space-y-4">
+        {canManage && titles.some((title) => title.joinSlug) ? (
+          <ShareLinks
+            title={tr("Share these links")}
+            description={tr("Anybody who follows one of these puts themselves on the contributor list, and is asked when the next edition is made.")}
+            links={[
+              ...titles.filter((title) => title.joinSlug).map((title) => ({ label: title.name, path: `/c/${title.joinSlug}` })),
+              ...(titles.filter((title) => title.joinSlug).length > 1 ? [{ label: tr("All of them"), path: `/c/all/${tenant.slug}`, hint: tr("they tick what they want") }] : []),
+            ]}
+          />
+        ) : null}
         <StatGrid columns={4}>
           <Stat label={tr("Contributors")} value={stats.total} hint={`${stats.active} active`} />
           <Stat label={tr("Have contributed")} value={stats.responders} hint={tr("at least one submission")} />

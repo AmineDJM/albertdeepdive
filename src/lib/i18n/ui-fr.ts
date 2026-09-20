@@ -3297,6 +3297,12 @@ export const UI_FR: Record<string, string> = {
   "Out into the world": "En route vers le monde",
   "Ask them now": "Les solliciter maintenant",
 
+  // ── The public links, both doors ───────────────────────────────────────────────────────
+  "Anybody who follows one of these puts themselves on the contributor list, and is asked when the next edition is made.": "Qui suit l'un de ces liens entre dans la liste des contributeurs et sera sollicité à la préparation du prochain numéro.",
+  "All of them": "Toutes",
+  "they tick what they want": "ils cochent ce qu'ils veulent",
+  "One link per newsletter, and one where a reader ticks the ones they want.": "Un lien par newsletter, et un où le lecteur coche celles qu'il veut.",
+
   // ── The audience: exported, added by hand, imported from a sheet ───────────────────────
   "Export": "Exporter",
   "Import readers": "Importer des lecteurs",

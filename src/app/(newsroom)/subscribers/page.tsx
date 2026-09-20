@@ -14,6 +14,7 @@ import { Stat, StatGrid } from "@/components/newsroom/stat";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { AddSubscriber } from "@/components/subscribers/add-subscriber";
+import { ShareLinks } from "@/components/newsroom/share-links";
 import { formatDate } from "@/lib/utils";
 import { getUi } from "@/server/i18n/locale";
 
@@ -100,19 +101,14 @@ export default async function SubscribersPage() {
         </StatGrid>
 
         {titles.length ? (
-          <div className="rounded-lg border border-border bg-card p-4">
-            <p className="label-caps mb-2">{tr("Share these links")}</p>
-            <ul className="space-y-1">
-              {titles.map((t) => (
-                <li key={t.id} className="flex items-center gap-2 text-[13px]">
-                  <span className="w-44 shrink-0 truncate font-medium">{t.name}</span>
-                  <Link href={`/s/${t.subscribeSlug}`} className="font-mono text-2xs text-muted-foreground underline-offset-4 hover:underline">
-                    /s/{t.subscribeSlug}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
+          <ShareLinks
+            title={tr("Share these links")}
+            description={tr("One link per newsletter, and one where a reader ticks the ones they want.")}
+            links={[
+              ...titles.filter((title) => title.subscribeSlug).map((title) => ({ label: title.name, path: `/s/${title.subscribeSlug}` })),
+              ...(titles.length > 1 ? [{ label: tr("All of them"), path: `/s/all/${tenant.slug}`, hint: tr("they tick what they want") }] : []),
+            ]}
+          />
         ) : null}
 
         <DataTable

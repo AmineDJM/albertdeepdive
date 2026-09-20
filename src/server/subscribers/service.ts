@@ -1,5 +1,5 @@
 import { randomBytes, createHash, timingSafeEqual } from "node:crypto";
-import { and, eq, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/server/db/client";
 import * as s from "@/server/db/schema";
@@ -55,6 +55,47 @@ export async function publicationBySubscribeSlug(slug: string) {
 }
 
 export type SubscribeResult = { status: "confirmation_sent" | "already_subscribed"; confirmToken?: string; subscriberId: string };
+
+/**
+ * Everything a workspace publishes that a stranger may put themselves on.
+ *
+ * The other door: one link for the whole shelf, where somebody ticks the titles they want. A
+ * reader who found the organisation rather than a particular newsletter should not have to be
+ * handed three separate links and asked to visit each of them.
+ */
+export async function publicShelf(organizationSlug: string) {
+  const organization = await db.query.organizations.findFirst({ where: eq(s.organizations.slug, organizationSlug) });
+  if (!organization) return null;
+  const publications = await db.query.publications.findMany({
+    where: and(eq(s.publications.organizationId, organization.id), eq(s.publications.isPublic, true)),
+    orderBy: [asc(s.publications.sortOrder), asc(s.publications.name)],
+  });
+  const open = publications.filter((publication) => publication.status !== "ARCHIVED");
+  return open.length ? { organization, publications: open } : null;
+}
+
+/**
+ * Subscribe to several titles at once.
+ *
+ * One person, one confirmation, however many boxes they ticked — a reader who asked for three
+ * newsletters and got three confirmation emails would assume something had gone wrong, and would
+ * be right.
+ */
+export async function subscribeToMany(publicationIds: string[], raw: SubscribeInput, meta?: { ip?: string | null; source?: string }): Promise<SubscribeResult> {
+  if (!publicationIds.length) throw new ValidationError("Choose at least one newsletter");
+  const chosen = await db.query.publications.findMany({ where: inArray(s.publications.id, publicationIds) });
+  if (!chosen.length) throw new NotFoundError("Publication");
+  const organizationId = chosen[0].organizationId;
+  // One organisation per sign-up: the form is theirs, and a list of ids that crosses workspaces is
+  // not a reader making a choice.
+  if (chosen.some((publication) => publication.organizationId !== organizationId)) throw new ValidationError("Those newsletters do not belong together");
+  const open = chosen.filter((publication) => publication.isPublic && publication.status !== "ARCHIVED");
+  if (!open.length) throw new ValidationError("Those newsletters are not accepting subscribers");
+
+  const first = await subscribe(open[0].id, raw, meta);
+  for (const publication of open.slice(1)) await linkSubscription(publication.id, first.subscriberId);
+  return first;
+}
 
 /**
  * Subscribe to a title.

@@ -113,6 +113,14 @@ export const publications = pgTable(
     theme: jsonb("theme").$type<Record<string, unknown>>().notNull().default({}),
     /** Public subscription page slug, e.g. /s/acme-weekly. */
     subscribeSlug: text("subscribe_slug"),
+    /**
+     * Public contributor sign-up slug, e.g. /c/acme-weekly.
+     *
+     * The other half of a newsletter's public face. Readers had a link to put themselves on the
+     * list and the people who write it had none — they arrived because somebody typed them in, or
+     * imported them, which is how a title ends up asking the same twenty people for four years.
+     */
+    joinSlug: text("join_slug"),
     isPublic: boolean("is_public").notNull().default(true),
     /**
      * Whether this title may be shown in Briefly's public gallery, and on whose word.
@@ -145,6 +153,7 @@ export const publications = pgTable(
   (t) => [
     uniqueIndex("publications_org_slug_idx").on(t.organizationId, t.slug),
     uniqueIndex("publications_subscribe_slug_idx").on(t.subscribeSlug),
+    uniqueIndex("publications_join_slug_idx").on(t.joinSlug),
     index("publications_org_idx").on(t.organizationId),
   ],
 );
@@ -260,6 +269,25 @@ export const contributorGroups = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [uniqueIndex("contributor_groups_slug_idx").on(t.organizationId, t.slug)],
+);
+
+/**
+ * Which newsletters a contributor writes for.
+ *
+ * A workspace may run several titles and the same person rarely writes for all of them. This is
+ * what the public sign-up link fills in — the one thing a contributor knows about themselves that
+ * the newsroom otherwise has to guess.
+ */
+export const publicationContributors = pgTable(
+  "publication_contributors",
+  {
+    publicationId: uuid("publication_id").notNull().references(() => publications.id, { onDelete: "cascade" }),
+    contributorId: uuid("contributor_id").notNull().references(() => contributors.id, { onDelete: "cascade" }),
+    /** How they got here: `form` when they signed themselves up, `by-hand` when an editor said so. */
+    source: text("source").notNull().default("form"),
+    addedAt: timestamp("added_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.publicationId, t.contributorId] }), index("publication_contributors_contributor_idx").on(t.contributorId)],
 );
 
 export const contributorGroupMembers = pgTable(

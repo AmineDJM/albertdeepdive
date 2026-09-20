@@ -83,6 +83,8 @@ export async function createPublication(organizationId: string, raw: Publication
       priceCurrency: input.priceCurrency,
       priceInterval: input.priceInterval,
       subscribeSlug: `${org?.slug ?? "workspace"}-${slug}`,
+      // The same handle on both doors: /s/… to read it, /c/… to write for it.
+      joinSlug: `${org?.slug ?? "workspace"}-${slug}`,
       createdById: userId ?? null,
     })
     .returning();

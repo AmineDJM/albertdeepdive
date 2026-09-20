@@ -170,6 +170,7 @@ export async function runSeed(options: { quiet?: boolean } = {}): Promise<SeedRe
       defaultFormats: ["MAGAZINE", "EMAIL"],
       cadence: "monthly",
       subscribeSlug: "albert-deep-dive",
+      joinSlug: "albert-deep-dive",
       createdById: admin.id,
     })
     .returning();

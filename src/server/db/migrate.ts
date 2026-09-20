@@ -11,6 +11,16 @@ export async function runMigrations() {
   const db = drizzle(client);
   console.log(`[migrate] applying migrations to ${url.replace(/:[^:@/]+@/, ":***@")}`);
   await migrate(db, { migrationsFolder: path.join(process.cwd(), "drizzle") });
+
+  /*
+   * Titles made before contributors had a public door get one now.
+   *
+   * The same handle as the subscribe link: a newsletter is one thing, and asking somebody to
+   * remember two unrelated strings for the two halves of it would be a worse answer than none.
+   * It runs while this connection is still open, which the plan seeding below does not need.
+   */
+  const opened = await client`update publications set join_slug = subscribe_slug where join_slug is null and subscribe_slug is not null`;
+  if (opened.count) console.log(`[migrate] opened the contributor link on ${opened.count} title(s)`);
   await client.end();
 
   // The plans Briefly sells are defined in code and seeded here rather than written into a
@@ -25,6 +35,7 @@ export async function runMigrations() {
   if (taught.length) console.log(`[migrate] added new entitlements to existing plans: ${taught.join("; ")}`);
   if (corrected.length) console.log(`[migrate] corrected revision allowances: ${corrected.join("; ")}`);
   if (attached) console.log(`[migrate] put ${attached} workspace(s) on the default plan`);
+
   console.log("[migrate] done");
 }
 
