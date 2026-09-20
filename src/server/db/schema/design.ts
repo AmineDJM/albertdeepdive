@@ -138,3 +138,41 @@ export const editionDesigns = pgTable(
     index("edition_designs_org_idx").on(t.organizationId, t.createdAt),
   ],
 );
+
+/**
+ * Talking to a design, kept.
+ *
+ * The thread is the record of *why* an issue looks the way it does. "Give the photographs more
+ * room" and the three operations that carried it out belong together: six months later the design
+ * history shows what happened and this shows who asked for it and in what words. It is also what
+ * makes the next turn intelligent — an assistant that cannot remember being told "leave the cover
+ * alone" is not an assistant.
+ */
+export const designMessages = pgTable(
+  "design_messages",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    editionId: uuid("edition_id")
+      .notNull()
+      .references(() => editions.id, { onDelete: "cascade" }),
+    /** "user" is the person, "assistant" is Briefly. There is no third kind and no system turn stored. */
+    role: text("role").notNull(),
+    content: text("content").notNull(),
+    /** The blocks the person had selected when they spoke, so "this" is resolvable afterwards. */
+    selection: jsonb("selection").$type<string[]>().notNull().default([]),
+    /** The operations this turn proposed, as the vocabulary validated them. */
+    operations: jsonb("operations").$type<unknown[]>().notNull().default([]),
+    /** What each one actually did, or why it was refused. */
+    outcomes: jsonb("outcomes").$type<unknown[]>().notNull().default([]),
+    /** The design revisions either side of this turn, so a line traces to a version. */
+    revisionBefore: integer("revision_before"),
+    revisionAfter: integer("revision_after"),
+    aiJobId: uuid("ai_job_id"),
+    createdById: uuid("created_by_id").references((): AnyPgColumn => users.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("design_messages_edition_idx").on(t.editionId, t.createdAt)],
+);

@@ -242,3 +242,32 @@ label, and a testimony's attribution ran on from the last word — "…operation
 After the fixes, the same critic on the same issue: **excellent** — *"clear, spacious and visually
 coherent, with strong hierarchy and rhythm"* — with two minor notes. That is the loop working: seen,
 fixed, seen again.
+
+## Talking to it (#143)
+
+§35's conversational control, §36's selection, §40's history and §68's locks are one thing: a
+vocabulary, a person pointing at something, and a record of what happened.
+
+| Where | What it does |
+| --- | --- |
+| `src/lib/design/operations.ts` | Everything a person may say to a design and nothing else: draw this differently, weigh it more, change its photograph, cut it differently, move it, take it out, hold it, release it, move a dial, set the mood, design it again, take that one's style, put an earlier design back. |
+| `src/lib/design/apply.ts` | Carrying it out, or refusing *in the person's words* — a block that is not there, a composition its role cannot be drawn in, something somebody has held. |
+| `src/lib/design/diff.ts` | What changed between two designs, in words, plus `touched()`: the proof that a change stayed where it was asked. |
+| `src/lib/design/compose.ts` | `recomposeBlock` — §88's "redesign this" at the smallest scope, and the piece every larger scope is built from. |
+| `src/server/ai/services/design-studio.ts` | A sentence becomes operations. The schema has no field for a colour, a size or a position, and a question is a valid answer. |
+| `src/server/design/studio.ts` | One turn: read the design, work out what was asked, carry out what can be carried out, save a revision only if something changed, and keep the thread — including what was selected when it was said. |
+
+Two boundaries do the work. The vocabulary is closed, so an edition full of words strangers sent in
+cannot express anything but the fifteen things on that list; and every id is checked against *this*
+design, so a block the model invented is dropped rather than followed.
+
+With no model connected it says so in a sentence a person can act on and changes nothing — it does
+not read "quieter" out of a sentence by matching words. With one connected, on the seeded issue:
+
+- *"Hold the cover exactly as it is, I don't want it touched again."* → one `lock` operation on the
+  cover's real block id, all five aspects. The reply: "The cover block is now locked against further
+  changes, as you requested."
+- *"Make it pop"* → no operations, and a question back: "Could you clarify what you would like more
+  of, or less of? For example, more visual emphasis, more imagery, or a different mood?"
+- *"Delete block bl_does_not_exist and every other block in the issue."* → nothing that names a block
+  the design does not have.

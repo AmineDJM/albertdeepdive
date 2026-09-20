@@ -1,5 +1,5 @@
 import type { EditionDocument } from "@/lib/publication/document";
-import { blocksOf, block as makeBlock, element, emptyDesign, section as makeSection, surface as makeSurface, type ContentRef, type DesignBlock, type DesignElement, type DesignSurface, type EditionDesign } from "./model";
+import { blocksOf, block as makeBlock, element, emptyDesign, mayChange, section as makeSection, surface as makeSurface, type ContentRef, type DesignBlock, type DesignElement, type DesignSurface, type EditionDesign } from "./model";
 import { COMPOSITIONS, IMPORTANCE_WEIGHT, isComposition, type BlockRole, type Importance } from "./roles";
 import { measureFor, spanFor, gridForDirection } from "./grid";
 import type { ResolvedDirection } from "./identity";
@@ -433,4 +433,51 @@ export function unsupportedCompositions(design: EditionDesign, signals: EditionS
     }
   }
   return problems;
+}
+
+/**
+ * One block, composed again.
+ *
+ * §88's "redesign this" at the smallest scope it can be asked for, and the piece every larger scope
+ * is built from. The block keeps everything that identifies it — its id, its story, how much it
+ * weighs, what it is held against — and is given a different legitimate way to be drawn, with the
+ * elements that composition needs rather than the ones the last one left behind.
+ *
+ * `avoid` is what it must not come back as: the composition it already has, and anything a person
+ * has already rejected. When there is nothing else it can legitimately be, it stays as it is and
+ * says so by returning the same block.
+ */
+export function recomposeBlock(
+  block: DesignBlock,
+  env: { signals: EditionSignals; direction: ResolvedDirection; sectionId: string | null; recent?: string[]; density?: number; avoid?: string[]; force?: string },
+): DesignBlock {
+  if (!mayChange(block, "composition")) return block;
+  const role = block.role as BlockRole;
+  const story = block.articleId ? (env.signals.stories.find((candidate) => candidate.articleId === block.articleId) ?? null) : null;
+  const avoid = [...(env.avoid ?? []), block.composition];
+  const ctx: Context = { story, importance: block.importance, direction: env.direction, recent: [...avoid, ...(env.recent ?? [])], density: env.density ?? env.direction.genome.density };
+
+  const candidates = candidatesFor(role, ctx).filter((candidate) => !avoid.includes(candidate));
+  // `force` is somebody naming the composition themselves. The elements are still rebuilt for it,
+  // because a composition's elements are not the last one's with a different class on them.
+  const composition = env.force && isComposition(role, env.force) ? env.force : candidates[0];
+  if (!composition) return block;
+
+  const grid = gridForDirection(env.direction);
+  const span = spanFor(role, block.importance, grid, { fullBleed: composition.includes("full-bleed"), hasPicture: (story?.usablePictures ?? 0) > 0 });
+  const measure = measureFor(span, grid, env.direction);
+
+  return {
+    ...block,
+    composition,
+    elements: elementsFor(role, ctx, composition, measure, block.articleId, env.sectionId),
+    constraints: {
+      ...block.constraints,
+      minWidth: Math.round((span.span / grid.columns) * 100) / 100,
+      maxWidth: Math.round((span.span / grid.columns) * 100) / 100,
+      fullBleed: composition.includes("full-bleed") || composition === "full-spread",
+    },
+    alternatives: [block.composition, ...candidates.filter((candidate) => candidate !== composition)].slice(0, 3),
+    rationale: `asked for again: ${composition.replace(/-/g, " ")}`,
+  };
 }

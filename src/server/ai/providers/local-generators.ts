@@ -119,6 +119,8 @@ export function generateLocal(request: ProviderRequest): unknown {
       return localImagePlanner(input);
     case "edition_studio":
       return localEditionStudio(input);
+    case "design_studio":
+      return localDesignStudio(input);
     default:
       throw new Error(`Local generator not implemented for ${service}`);
   }
@@ -1273,6 +1275,33 @@ function localImagePlanner(input: Input): unknown {
  * the fix is one click away instead of a mystery. An honest "I cannot read that" is worth more than
  * a confident wrong operation.
  */
+/**
+ * Talking to a design with no model connected.
+ *
+ * It says what it can count and refuses to guess at what was meant. Reading "quieter" out of a
+ * sentence by matching words is not understanding, and acting on that guess is worse than saying
+ * plainly that nothing is connected — which is a sentence a person can act on.
+ */
+function localDesignStudio(input: Input): unknown {
+  const design = str(input, "design");
+  const selection = str(input, "selection");
+  const blocks = design.split("\n").filter((line) => /^\s*(bl_|—)/.test(line.trim())).length;
+  const held = (design.match(/held/g) ?? []).length;
+
+  const facts = [
+    blocks ? `This design has ${blocks} blocks.` : null,
+    held ? `${held} of them are held against change.` : null,
+    selection && selection !== "nothing is selected" ? `You have ${selection.split(",").length} selected.` : null,
+  ].filter(Boolean);
+
+  return {
+    reply: `${facts.join(" ")} I can't read what you asked for: no language model is connected to this workspace, and I won't guess at your words and then change your issue on the guess. Connect one under Platform → Integrations and ask me again. Nothing else is blocked: the design controls change the same things by hand, and the design history still puts an earlier version back.`,
+    operations: [],
+    askFirst: false,
+    question: null,
+  };
+}
+
 function localEditionStudio(input: Input): unknown {
   const snapshot = str(input, "snapshot");
   const attached = str(input, "attachedMedia");
