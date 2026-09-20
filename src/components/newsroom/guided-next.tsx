@@ -37,10 +37,7 @@ export async function GuidedNext({ editionId, room }: { editionId: string; room:
       </GuidedFooter>
     );
   return (
-    <GuidedFooter
-      title={words[GUIDED_PATH[at].key].question}
-      hint={`${tr("Step {step} of {total}", { step: at + 1, total: GUIDED_PATH.length })} · ${tr("next")} ${words[GUIDED_PATH[at + 1].key].question}`}
-    >
+    <GuidedFooter title={tr("Next: {question}", { question: words[GUIDED_PATH[at + 1].key].question })} hint={tr("Step {step} of {total}", { step: at + 1, total: GUIDED_PATH.length })}>
       <Button asChild size="lg" data-testid="guided-next-button">
         <Link href={next.href}>
           {words[GUIDED_PATH[at].key].cta} <ArrowRight />

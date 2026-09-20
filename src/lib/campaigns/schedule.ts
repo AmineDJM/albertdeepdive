@@ -250,3 +250,24 @@ export const PHASE_LABELS: Record<CampaignPhase, string> = {
 export function addDays(date: Date | string, days: number): Date {
   return new Date(toDate(date).getTime() + days * 86_400_000);
 }
+
+/**
+ * The calendar day an instant falls on, in the newsroom's timezone: "YYYY-MM-DD".
+ *
+ * What a date input holds, and what a person means by "the last day". Read in the newsroom's
+ * timezone rather than the browser's, so an editor abroad and the contributor's invitation agree
+ * about which day the deadline is.
+ */
+export function zonedDayInput(date: Date | string, timezone: string = CAMPAIGN_TIMEZONE): string {
+  const p = zonedParts(toDate(date), timezone);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${p.year}-${pad(p.month)}-${pad(p.day)}`;
+}
+
+/** "YYYY-MM-DD" as the newsroom reads it → the last minute of that day, as an instant. */
+export function endOfZonedDay(day: string, timezone: string = CAMPAIGN_TIMEZONE): Date | null {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(day);
+  if (!match) return null;
+  const [, y, m, d] = match;
+  return zonedTimeToUtc(Number(y), Number(m), Number(d), 23, 59, 0, timezone);
+}

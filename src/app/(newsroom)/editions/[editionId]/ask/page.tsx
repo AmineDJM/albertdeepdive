@@ -46,8 +46,8 @@ export default async function AskPage({ params }: { params: Promise<{ editionId:
           canManage={hasPermission(user, "campaign:manage")}
           next={next?.href ?? null}
           nextLabel={words[GUIDED_PATH[at].key].cta}
-          title={words[GUIDED_PATH[at].key].question}
-          nextHint={`${tr("Step {step} of {total}", { step: at + 1, total: GUIDED_PATH.length })} · ${tr("next")} ${words[GUIDED_PATH[at + 1].key].question}`}
+          title={tr("Next: {question}", { question: words[GUIDED_PATH[at + 1].key].question })}
+          nextHint={tr("Step {step} of {total}", { step: at + 1, total: GUIDED_PATH.length })}
         />
       </PageBody>
     </>

@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { SettingsCard } from "@/components/settings/key-value";
 import { GuidedFooter } from "./guided-footer";
 import { saveAudienceAction } from "@/app/(newsroom)/editions/[editionId]/campaign/actions";
-import { CAMPAIGN_TIMEZONE, zonedParts, zonedTimeToUtc } from "@/lib/campaigns/schedule";
+import { endOfZonedDay } from "@/lib/campaigns/schedule";
 import type { SelectionMode } from "@/lib/campaigns/selection";
 import { cn } from "@/lib/utils";
 import { useUi } from "@/components/i18n/provider";
@@ -26,20 +26,6 @@ export type AudienceValues = {
   deadlineDay: string;
   introMessage: string;
 };
-
-/** An instant → "YYYY-MM-DD" in the workspace's timezone, which is the day a person means. */
-export function toDayInput(iso: string): string {
-  const p = zonedParts(new Date(iso), CAMPAIGN_TIMEZONE);
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${p.year}-${pad(p.month)}-${pad(p.day)}`;
-}
-
-function endOfDay(day: string): string {
-  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(day);
-  if (!match) return "";
-  const [, y, m, d] = match;
-  return zonedTimeToUtc(Number(y), Number(m), Number(d), 23, 59, 0, CAMPAIGN_TIMEZONE).toISOString();
-}
 
 /**
  * Who are you asking, and by when.
@@ -91,7 +77,7 @@ export function CampaignSimpleForm({
       selectionMode: values.selectionMode,
       drawCount: values.drawCount,
       contributorGroupIds: values.contributorGroupIds,
-      deadlineAt: endOfDay(values.deadlineDay),
+      deadlineAt: endOfZonedDay(values.deadlineDay)?.toISOString() ?? "",
       introMessage: values.introMessage.trim() || null,
     });
     if (!result.ok) {
@@ -103,7 +89,7 @@ export function CampaignSimpleForm({
 
   return (
     <div className="space-y-4">
-      <SettingsCard title={tr("Who are you asking?")} description={tr("Three ways, and they are the three things a person actually says: these people, this group, or six of them.")}>
+      <SettingsCard title={tr("The people")} description={tr("Three ways, and they are the three things a person actually says: these people, this group, or six of them.")}>
         <div className="grid gap-2 sm:grid-cols-3">
           {choices.map((choice) => {
             const picked = values.selectionMode === choice.mode;

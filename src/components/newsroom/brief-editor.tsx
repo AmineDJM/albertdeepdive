@@ -47,7 +47,7 @@ export function BriefEditor({
 
   return (
     <SettingsCard
-      title={tr("What are you asking for?")}
+      title={tr("Questions and topics")}
       description={tr("Questions everybody answers, topics you hand to somebody in particular, or nothing at all — and whatever else they want to tell you.")}
     >
       <ul className="space-y-2">

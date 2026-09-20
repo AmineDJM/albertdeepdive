@@ -3,7 +3,7 @@ import { Users } from "lucide-react";
 import { campaignScreen } from "@/server/campaigns/read";
 import { hasPermission, getCurrentUser } from "@/server/auth/session";
 import { PageBody, PageHeader } from "@/components/newsroom/page-header";
-import { CampaignSimpleForm, toDayInput, type AudienceValues } from "@/components/newsroom/campaign-simple-form";
+import { CampaignSimpleForm, type AudienceValues } from "@/components/newsroom/campaign-simple-form";
 import { SendInvitations } from "@/components/newsroom/send-invitations";
 import { CreateCampaignButton } from "@/components/newsroom/campaign-controls";
 import { screenWords } from "@/components/newsroom/guided-words";
@@ -12,6 +12,7 @@ import { ACTIVE_CAMPAIGN_STATUSES } from "@/server/campaigns/service";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { formatDate } from "@/lib/utils";
+import { zonedDayInput } from "@/lib/campaigns/schedule";
 import { isSelectionMode, type SelectionMode } from "@/lib/campaigns/selection";
 import { getUi } from "@/server/i18n/locale";
 
@@ -32,7 +33,7 @@ export async function StandardCampaign({ editionId }: { editionId: string }) {
   const words = screenWords(tr);
   const at = GUIDED_PATH.findIndex((s) => s.room === "campaign");
   const next = nextFrom(editionId, "campaign");
-  const hint = `${tr("Step {step} of {total}", { step: at + 1, total: GUIDED_PATH.length })} · ${tr("next")} ${words[GUIDED_PATH[at + 1].key].question}`;
+  const hint = tr("Step {step} of {total}", { step: at + 1, total: GUIDED_PATH.length });
 
   if (!campaign) {
     return (
@@ -67,7 +68,7 @@ export async function StandardCampaign({ editionId }: { editionId: string }) {
     selectionMode: (isSelectionMode(campaign.selectionMode) ? campaign.selectionMode : "DRAW") as SelectionMode,
     drawCount: campaign.drawCount ?? 0,
     contributorGroupIds: [...campaign.contributorGroupIds],
-    deadlineDay: toDayInput(campaign.deadlineAt.toISOString()),
+    deadlineDay: zonedDayInput(campaign.deadlineAt),
     introMessage: campaign.introMessage ?? "",
   };
 
@@ -97,7 +98,7 @@ export async function StandardCampaign({ editionId }: { editionId: string }) {
           next={next?.href ?? null}
           nextLabel={words[GUIDED_PATH[at].key].cta}
           nextHint={hint}
-          title={words[GUIDED_PATH[at].key].question}
+          title={tr("Next: {question}", { question: words[GUIDED_PATH[at + 1].key].question })}
         />
       </PageBody>
     </>
