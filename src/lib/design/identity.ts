@@ -45,6 +45,48 @@ export const publicationIdentitySchema = z.object({
   recurring: z.array(z.enum(RECURRING_COMPONENTS)).default([]),
   /** How sections open, when this title opens them at all. */
   sectionOpener: z.enum(["full-title", "rule-and-number", "image-band", "quote-led", "colour-field"]).nullable().default(null),
+  /**
+   * The rubrics this title runs, in its own words and its own language.
+   *
+   * `recurring` above is the short list of pieces Briefly knows how to compose — an editor's note,
+   * the numbers, a closing quote. This is the other half of the same question: what a reader of
+   * *this* title sees every month, called what they call it. "Édito" is not "Editor's note", and a
+   * title whose rubric changes language the day it moves to Briefly is not the same title.
+   *
+   * Read out of the model a customer uploaded, or written from their brand when there is none.
+   */
+  rubrics: z
+    .array(
+      z.object({
+        name: z.string().min(1).max(60),
+        purpose: z.string().max(160).default(""),
+        /** The component Briefly composes it as, when one of them fits. */
+        component: z.enum(RECURRING_COMPONENTS).nullable().default(null),
+      }),
+    )
+    .max(12)
+    .default([]),
+  /**
+   * Where this identity came from, so the screen can say it and a person can tell.
+   *
+   * A title designed from a PDF somebody uploaded and one Briefly composed from the brand are both
+   * legitimate, and they are not the same claim. Recording which, with the file it was read from
+   * and how sure the reading was, is the difference between "Briefly understood your newsletter"
+   * and a screen that asserts a design with no account of itself.
+   */
+  source: z
+    .object({
+      kind: z.enum(["uploaded", "brand", "hand"]).default("hand"),
+      fileName: z.string().max(200).nullable().default(null),
+      /** The two or three sentences shown to whoever adopts it. */
+      summary: z.string().max(600).default(""),
+      confidence: z.enum(["high", "medium", "low"]).nullable().default(null),
+      /** Whether a model read it or the measurements alone did. */
+      readBy: z.enum(["model", "measured"]).nullable().default(null),
+      at: z.string().nullable().default(null),
+    })
+    .nullable()
+    .default(null),
   createdAt: z.string(),
   updatedAt: z.string(),
 });
