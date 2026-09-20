@@ -37,7 +37,8 @@ function credentialsLookRight(): boolean {
 async function main(): Promise<number> {
   if (!credentialsLookRight()) {
     console.error("HF_CREDENTIALS is missing or not in the form key-id:key-secret.");
-    console.error("Add it to .env.local (git-ignored) on your machine — never in chat or in a commit — and run again.");
+    console.error("On a deployment it comes from the service's own environment, so run this from there.");
+    console.error("On your machine, put it in .env.local (git-ignored) — never in chat or in a commit — and run again.");
     return 2;
   }
 

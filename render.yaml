@@ -48,6 +48,19 @@ services:
       - key: OPENAI_API_KEY
         sync: false
 
+      # The picture models, both optional: leave either blank and Briefly falls to the next one
+      # connected, and finally to its own renderer, which never fails for want of a key.
+      #
+      # Declared here rather than only added in the dashboard so a fresh deploy is asked for them
+      # instead of silently coming up without pictures. Every one of these can also be set from
+      # Platform → Integrations; the environment wins when both exist, and the console says so
+      # rather than showing an empty field that looks broken.
+      - key: GEMINI_API_KEY
+        sync: false
+      # Both halves of the Higgsfield key, joined by a colon: key-id:key-secret.
+      - key: HF_CREDENTIALS
+        sync: false
+
       - key: DATABASE_URL
         fromDatabase:
           name: albertdeepdive-db
