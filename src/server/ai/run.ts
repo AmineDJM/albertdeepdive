@@ -98,7 +98,16 @@ export async function runAiTask<T>(req: AiTaskRequest<T>): Promise<AiTaskResult<
   const system = renderTemplate(prompt.system, req.input);
   const user = renderTemplate(prompt.user, req.input);
   const schema = toStrictJsonSchema(req.schema);
-  const inputHash = hashInput([req.service, prompt.version, model, system, user]);
+  /*
+   * Pictures count towards identity, by their content rather than their bytes.
+   *
+   * A cache keyed on the words alone would answer "what does this newsletter look like?" with the
+   * reading of a different newsletter, because the two prompts are the same sentence. Hashing the
+   * data URLs themselves would put megabytes through sha256 on every call, so each is reduced to a
+   * short digest first and those go into the key.
+   */
+  const imageKeys = (req.images ?? []).map((image) => `${image.label ?? ""}:${hashInput([image.dataUrl])}`);
+  const inputHash = hashInput([req.service, prompt.version, model, system, user, imageKeys]);
   // Every call is written down with the person behind it, so a bill can be read per customer *and*
   // per person — a cached answer included, because "who asks for what" is the question, not "what
   // did the model charge".
@@ -176,7 +185,7 @@ export async function runAiTask<T>(req: AiTaskRequest<T>): Promise<AiTaskResult<
     attempts += 1;
     try {
       const repair = attempts > 1 && lastError instanceof AiOutputError ? `\n\nYour previous answer was invalid: ${lastError.message}. Return valid JSON matching the schema exactly.` : "";
-      const res = await prov.complete({ system, user: user + repair, model, temperature, maxOutputTokens, schema, schemaName: req.schemaName, hints: { service: req.service, input: req.input } });
+      const res = await prov.complete({ system, user: user + repair, model, temperature, maxOutputTokens, schema, schemaName: req.schemaName, hints: { service: req.service, input: req.input }, images: req.images });
       totalIn += res.inputTokens;
       totalOut += res.outputTokens;
       // Strict mode makes the model send null (or, still, "") for an optional field it has no use

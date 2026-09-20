@@ -34,7 +34,26 @@ export class OpenAiProvider implements AiProvider {
       max_completion_tokens: request.maxOutputTokens,
       messages: [
         { role: "system", content: request.system },
-        { role: "user", content: request.user },
+        /*
+         * Words and pictures in the same turn.
+         *
+         * A task with no pictures sends the string it always sent — the wire format is identical,
+         * so nothing that worked before changes shape. A task with pictures sends the text first
+         * and the images after it, each labelled, because "the second page" means nothing to a
+         * model handed three unnamed pictures.
+         */
+        {
+          role: "user",
+          content: request.images?.length
+            ? [
+                { type: "text" as const, text: request.user },
+                ...request.images.flatMap((image) => [
+                  ...(image.label ? [{ type: "text" as const, text: image.label }] : []),
+                  { type: "image_url" as const, image_url: { url: image.dataUrl, detail: image.detail ?? "auto" } },
+                ]),
+              ]
+            : request.user,
+        },
       ],
       response_format: {
         type: "json_schema",

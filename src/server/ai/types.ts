@@ -13,6 +13,24 @@ export type ProviderRequest = {
   schemaName: string;
   /** Free-form hints for the local provider (service key, input object). */
   hints: { service: string; input: Record<string, unknown> };
+  /**
+   * Pictures the task is asking about, alongside its words.
+   *
+   * A layout cannot be described in a prompt. Reading somebody's newsletter to learn what their
+   * title looks like means *looking* at the page — the weight of the masthead, whether the columns
+   * are two or three, how much air there is around a headline — and none of that survives being
+   * turned into a paragraph first. Providers that cannot see simply ignore them, which is why this
+   * is optional rather than a second kind of task.
+   */
+  images?: TaskImage[];
+};
+
+/** One picture sent with a task. Data URLs only: a model must never be handed one of our URLs. */
+export type TaskImage = {
+  dataUrl: string;
+  /** What the picture is, for the prompt to refer to ("page 1", "the cover"). */
+  label?: string;
+  detail?: "low" | "high" | "auto";
 };
 
 export type ProviderResponse = {
@@ -47,6 +65,8 @@ export type AiTaskRequest<T> = {
   jobId?: string | null;
   /** The person this is done for. Left out, it is the signed-in person or the job's author. */
   userId?: string | null;
+  /** Pictures the task is about. See `ProviderRequest["images"]`. */
+  images?: TaskImage[];
 };
 
 export type EntityTypeForAi = "EDITION" | "SUBMISSION" | "CLUSTER" | "STORY" | "ARTICLE" | "MEDIA" | "PAGE_PLAN" | "PUBLICATION_VERSION";
