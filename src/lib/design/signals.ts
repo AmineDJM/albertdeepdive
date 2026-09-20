@@ -182,11 +182,20 @@ export function readSignals(doc: EditionDocument): EditionSignals {
 }
 
 /**
+ * Shorter than this is a brief, whatever else is in the issue.
+ *
+ * Roughly a column of text at editorial sizes: below it there is nothing for a feature's space to
+ * hold, and the page reads as two thirds empty rather than as generous.
+ */
+export const BRIEF_WORDS = 180;
+
+/**
  * Editorial importance for every story, which is the thing design has to reflect.
  *
  * Proportional rather than absolute: an edition of five stories has one lead and no supporting
  * cast, and an edition of thirty has several majors and a great many briefs. Fixed thresholds would
- * make a small issue look like a big one with most of it missing.
+ * make a small issue look like a big one with most of it missing. The one exception is the floor
+ * below — a piece too short to fill a column cannot carry a feature's space in any issue.
  *
  * Without a clear lead nothing is promoted: every story becomes STANDARD or BRIEF by its own
  * length, because giving a hero treatment to an arbitrary piece reads as a mistake and a stack of
@@ -197,7 +206,18 @@ export function assignImportance(signals: EditionSignals): Map<string, Importanc
   const stories = signals.stories;
   if (stories.length === 0) return out;
 
-  const briefAt = Math.max(60, Math.round((signals.counts.words / Math.max(1, stories.length)) * 0.45));
+  /*
+   * What counts as short here, and what counts as short anywhere.
+   *
+   * The proportional half finds the short items in an issue of long ones: half the issue's average
+   * length is a brief next to its neighbours. On its own it is circular — in an issue where every
+   * piece is a hundred words, nothing is short, and five items that belong gathered on one page
+   * were each given a feature's space with nothing to put in it.
+   *
+   * So there is a floor. A piece that would not fill a column is a brief in any publication, at any
+   * length its neighbours happen to be.
+   */
+  const briefAt = Math.max(BRIEF_WORDS, Math.round((signals.counts.words / Math.max(1, stories.length)) * 0.45));
 
   if (!signals.hasLead) {
     for (const story of stories) out.set(story.articleId, story.words <= briefAt ? "BRIEF" : "STANDARD");

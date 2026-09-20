@@ -1,5 +1,5 @@
 import { blocksOf, mayChange, surfacesOf, type DesignBlock, type EditionDesign } from "./model";
-import { COMPOSITIONS, IMPORTANCE_WEIGHT, PICTURE_ROLES, isComposition, type BlockRole, type Importance } from "./roles";
+import { COMPOSITIONS, IMPORTANCE_WEIGHT, PICTURE_ROLES, isComposition, wantsPicture, type BlockRole, type Importance } from "./roles";
 import type { EditionSignals } from "./signals";
 import type { ResolvedDirection } from "./identity";
 import { buildScale, isDistinguishable } from "./type-scale";
@@ -292,15 +292,25 @@ function imagery({ design, signals }: InspectInput): DesignFinding[] {
 
   for (const block of blocks) {
     if (!PICTURE_ROLES.includes(block.role)) continue;
+    // Only a composition drawn around a photograph can be missing one. A cover set `typographic`
+    // and a hero set `headline-first` open on words on purpose, and reporting those as empty
+    // frames told three perfectly good issues they could not go out.
+    if (!wantsPicture(block.role, block.composition)) continue;
     const hasPicture = block.elements.some((element) => element.content.kind === "media");
     if (hasPicture) continue;
+    // A cover and a hero are not droppable — an issue needs a way in. What they can do is open on
+    // words, which is what an art director does when the photograph does not exist.
+    const remedy: Remedy =
+      block.role === "cover" || block.role === "hero"
+        ? { kind: "composition", blockId: block.id, to: block.role === "cover" ? "typographic" : "headline-first" }
+        : { kind: "drop", blockId: block.id };
     out.push(
       finding({
         id: `imagery:empty-frame:${block.id}`,
         dimension: "imagery",
         severity: "BLOCKING",
-        issue: `A ${block.role} block has no photograph in it: an empty frame with a caption under it.`,
-        remedy: { kind: "drop", blockId: block.id },
+        issue: `A ${block.role} block is set to lead with a photograph and has none: an empty frame with a caption under it.`,
+        remedy,
         blockId: block.id,
       }),
     );

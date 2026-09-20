@@ -2,6 +2,15 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  /*
+   * The loopback address is the same machine, whatever the dev server thinks.
+   *
+   * `next dev` only trusts `localhost` by default and blocks its own dev resources for any other
+   * host — so the end-to-end suite, which drives `http://127.0.0.1`, served pages whose client
+   * bundle never connected and therefore never hydrated: every button on every screen was inert,
+   * and every spec that clicked one failed for a reason no screenshot could show. Development only.
+   */
+  allowedDevOrigins: ["127.0.0.1", "localhost", "0.0.0.0"],
   // Native / node-only packages must not be bundled by Turbopack.
   serverExternalPackages: [
     "sharp",

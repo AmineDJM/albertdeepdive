@@ -250,6 +250,13 @@ the bucket public, unless a CDN base URL is given on the card.
 - **Stories** — clusters and story candidates with sources, facts, quotes, people, media, AI notes.
 - **Articles** — the editor: headline, standfirst, blocks, pull quotes, provenance ("Why is this sentence here?"), explicit AI actions, revision history, approval.
 - **Media** — library with rights status (green / yellow / red), quality, duplicates, crops.
+- **Design** — the design room: the issue rendered live beside the controls that change it. The
+  dials come first, because density, colour, ornament and variation are decisions about a whole
+  issue; then a piece at a time — the ways it can legitimately be drawn with the material it has, a
+  hold that survives the next redesign, and a redesign of that one piece. Underneath, the same
+  engine in the reader's own words ("the photographs are too small"), a pagination pass that says
+  what spills, a critic that looks at the rendered pages, and a history that puts any earlier
+  version back.
 - **Layout** — the flatplan: spreads, drag-and-drop pages, templates, locks, pinned stories, the real copyfit measurement, and signing the plan off. The page count on an edition's settings is either a ceiling — the issue is sized to the copy, short stories share a page rather than each getting one — or a promise to a printer, in which case the extent is kept and the room goes on the photographs a story brought and on giving each story more air. Pages that still come out too empty are named in QA rather than quietly shipped.
 - **QA & publish** — quality gates (overrides require a reason), exports, versions, approval, archive.
 - **Automations** — the nine scheduled steps, the job queue (retry, cancel, inspect a dead letter) and the AI call log.
@@ -606,3 +613,6 @@ lacking publication consent until an editor confirms it.
 - [docs/QC-ENGINE.md](docs/QC-ENGINE.md) — the measure/compare/fail/repair/remeasure quality
   system: what is built, what is deliberately different from the specification, and what is not
   built yet
+- [docs/DESIGN-ENGINE.md](docs/DESIGN-ENGINE.md) — the editorial design engine: the scene graph,
+  the grammar, print, web and email on their own terms, the critic that looks at what it made, and
+  the five publications it is proved against

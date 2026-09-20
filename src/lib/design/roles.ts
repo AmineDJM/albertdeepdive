@@ -203,3 +203,23 @@ export function isStoryRole(role: BlockRole): boolean {
 export function isPictureRole(role: BlockRole): boolean {
   return PICTURE_ROLES.includes(role);
 }
+
+/**
+ * Whether this composition is drawn around a photograph.
+ *
+ * A picture *role* and a picture *composition* are not the same thing: a cover set `typographic` is
+ * a cover with no photograph in it by design, and a hero set `headline-first` opens on words. So
+ * the question "is this frame empty" can only be answered by the composition, never by the role.
+ *
+ * The composer asks this when deciding whether to place a picture and the critic asks it when
+ * deciding whether a frame is empty. They share one answer so the two can never disagree about
+ * what an empty frame is — which is how a deliberately typographic cover came to be reported as a
+ * defect that could not go out.
+ */
+export function wantsPicture(role: BlockRole, composition: string): boolean {
+  // A cover's compositions name what leads: only three of the six lead with a picture.
+  if (role === "cover") return /image|photo|portrait|collage/.test(composition);
+  // The roles whose entire content is the photograph: every composition they have is a picture.
+  if (role !== "hero" && isPictureRole(role)) return true;
+  return /image|photo|portrait|full-bleed|opener|split|collage|compact|side/.test(composition);
+}

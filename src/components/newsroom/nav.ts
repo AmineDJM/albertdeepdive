@@ -198,6 +198,7 @@ export const EDITION_DOORS: readonly EditionDoor[] = [
     label: "editionTabs.design",
     standardLabel: "editionTabs.pictures",
     rooms: [
+      { slug: "design", label: "editionTabs.design", permission: "layout:edit" },
       { slug: "revise", label: "editionTabs.revise", permission: "layout:edit" },
       { slug: "layout", label: "nav.layout" },
       { slug: "media", label: "nav.media" },

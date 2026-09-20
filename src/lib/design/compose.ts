@@ -1,6 +1,6 @@
 import type { EditionDocument } from "@/lib/publication/document";
 import { blocksOf, block as makeBlock, element, emptyDesign, mayChange, section as makeSection, surface as makeSurface, type ContentRef, type DesignBlock, type DesignElement, type DesignSurface, type EditionDesign } from "./model";
-import { COMPOSITIONS, IMPORTANCE_WEIGHT, isComposition, type BlockRole, type Importance } from "./roles";
+import { COMPOSITIONS, IMPORTANCE_WEIGHT, isComposition, wantsPicture, type BlockRole, type Importance } from "./roles";
 import { measureFor, spanFor, gridForDirection } from "./grid";
 import type { ResolvedDirection } from "./identity";
 import type { DesignPlan, PlannedSurface } from "./plan";
@@ -186,7 +186,7 @@ function storyElements(role: BlockRole, ctx: Context, composition: string, measu
   const weight = IMPORTANCE_WEIGHT[importance];
   const elements: DesignElement[] = [];
   const picture = story.bestPictureId;
-  const showsPicture = picture && /image|photo|portrait|full-bleed|opener|split|collage|compact|side/.test(composition);
+  const showsPicture = picture && wantsPicture(role, composition);
 
   // A picture first when the composition leads with one: the order here is reading order, which is
   // what every renderer falls back to when it has nothing better.
@@ -262,7 +262,7 @@ function elementsFor(role: BlockRole, ctx: Context, composition: string, measure
 
     case "cover": {
       const elements: DesignElement[] = [];
-      if (story.bestPictureId && /image|photo|portrait|collage/.test(composition)) elements.push(pictureElement(story.bestPictureId, 1, composition));
+      if (story.bestPictureId && wantsPicture("cover", composition)) elements.push(pictureElement(story.bestPictureId, 1, composition));
       // The story's own kicker, never the issue label: the masthead directly above it is already
       // printing that, and a cover that says "Special issue N°1" twice reads as a mistake.
       elements.push(element("kicker", articleRef(articleId, "kicker"), { style: { type: "label" }, constraints: { priority: 0.3 } }));
@@ -297,25 +297,30 @@ export function composeDesign(input: ComposeInput): EditionDesign {
   const design = emptyDesign(editionId, grid);
   const recent: string[] = [];
 
-  // Surfaces are grouped into design sections by the editorial section they belong to, so a
-  // renderer can treat a section as a run rather than re-deriving it from ids.
-  const sections = new Map<string, { name: string; surfaces: DesignSurface[] }>();
+  /*
+   * Surfaces are grouped into design sections in the order the plan put them.
+   *
+   * By key rather than by order was the obvious way to write this and it was wrong: front matter
+   * and back matter share "no section", so grouping by key filed the closing surface with the
+   * cover — and every issue printed its back page as page two. A run of surfaces is a section when
+   * it is a run; the moment the section changes, so does the group.
+   */
   const sectionName = new Map(signals.sections.map((section) => [section.id, section.name]));
+  const groups: { sectionId: string | null; name: string; surfaces: DesignSurface[] }[] = [];
 
   for (const planned of plan.surfaces) {
     const surface = composeSurface(planned, { byArticle, direction, recent, signals });
-    const key = planned.sectionId ?? "—";
-    const group = sections.get(key) ?? { name: planned.sectionId ? (sectionName.get(planned.sectionId) ?? "Section") : frontOrBack(planned), surfaces: [] };
-    group.surfaces.push(surface);
-    sections.set(key, group);
+    const sectionId = planned.sectionId ?? null;
+    const last = groups[groups.length - 1];
+    if (last && last.sectionId === sectionId) last.surfaces.push(surface);
+    else groups.push({ sectionId, name: sectionId ? (sectionName.get(sectionId) ?? "Section") : frontOrBack(planned), surfaces: [surface] });
   }
 
-  const built = {
+  return {
     ...design,
     grid,
-    sections: [...sections.entries()].map(([key, group]) => makeSection(group.name, { sectionId: key === "—" ? null : key, surfaces: group.surfaces })),
+    sections: groups.map((group) => makeSection(group.name, { sectionId: group.sectionId, surfaces: group.surfaces })),
   };
-  return built;
 }
 
 function frontOrBack(planned: PlannedSurface): string {

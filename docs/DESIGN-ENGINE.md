@@ -304,3 +304,57 @@ seriousness"*.
 - **The critic reads the engine's problems.** A headline that cannot be set in the space its block
   gives it is a SERIOUS finding with no automatic remedy, because only a person can shorten a
   headline; a stranded word or a break after a preposition is a note.
+
+## The controls, and the room they live in (#145)
+
+The engine had every part except the one an editor touches. This is that part: one screen per
+edition, at **Editions → Design**, permission `layout:edit`.
+
+| Where | What it does |
+| --- | --- |
+| `src/server/design/console.ts` | `designState(editionId)`: the design, the dials, the grid, every block with the other ways it could legitimately be drawn, what the critic thinks, the history and the conversation — read once, because four round trips can disagree with each other. |
+| `src/server/design/preview.ts`, `src/app/design/edition/[editionId]/route.ts` | The live render, web or email, served to the iframe beside the controls. The screen never draws the design itself; it shows the same renderer the reader will get. |
+| `src/app/(newsroom)/editions/[editionId]/design/` | The room: the preview, the dials, and the pieces / ask / notes / history tabs. |
+
+§28's order is the screen's order. What an editor meets first is **how this issue should feel** —
+density, colour, ornament, variation, and the mood the direction resolved — because those are the
+decisions that change a whole issue. A piece is only reachable after that, and when you reach one
+you get what it actually is: the ways it can be drawn *with the material it has* (never a menu of
+compositions the picture it lacks would need), a hold that survives the next redesign, and a
+redesign of that one piece. Under it, in the reader's own words: *"The photographs are too small."*
+
+Nothing on the screen is decoration. Every control runs the real engine: **Design this issue**
+composes, **Lay out the pages** paginates and reports what spills, **Look and fix** runs the seen
+critic and the bounded loop, **Try three covers** runs the tournament, and the history restores.
+With no model connected the dials, the alternatives, the pagination and the history all still work,
+and the two that need judgement say so rather than pretending.
+
+### The proof (§103–§107)
+
+`tests/unit/design-golden.test.ts` is §94 and §95: the same design gives byte-identical web, email
+and printed pages twice over, the same edition composes to the same shape whatever ids it draws,
+every block id is distinct, and the same words reach all three media.
+
+`tests/unit/design-terrain.test.ts` is §103, and it is the one that found things. Five publications
+— photography-led, business, no imagery at all, mostly figures, five short pieces — each composed,
+validated, inspected and rendered to all four formats, plus two comparisons: no two of them may come
+out as the same issue, and the one with photographs must use more of them than the one without.
+
+Four defects the terrain found, none of which any single-edition test could have:
+
+- **The back page printed as page two.** Surfaces were grouped by section into a `Map`, so the close
+  surface — which has no section — was filed under the same key as the cover and printed directly
+  after it. Grouping now follows the plan's order and only merges neighbours.
+- **A typographic cover reported as a defect that could not go out.** The critic flagged any picture
+  *role* with no photograph as an empty frame, but a cover set `typographic` and a hero set
+  `headline-first` open on words by design. `wantsPicture(role, composition)` in `roles.ts` is now
+  the single answer the composer uses when placing a picture and the critic uses when deciding a
+  frame is empty, so the two cannot disagree about what an empty frame is.
+- **A cover was droppable.** Visible only once the finding above was correct: the remedy for a
+  genuinely empty cover or hero was to delete it, which leaves an issue with no way in. It is now a
+  composition change to one that opens on words.
+- **In an issue where everything is short, nothing was short.** The brief threshold was purely
+  proportional — half the issue's average length — so five 110-word pieces were each given a
+  feature's space with nothing to put in it. There is now a floor (`BRIEF_WORDS`, 180 — roughly a
+  column): below it a piece is a brief in any publication, and those five are gathered onto one page
+  where they belong.
