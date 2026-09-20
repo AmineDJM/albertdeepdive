@@ -40,6 +40,14 @@ export type ResolveContext = {
   focals?: Record<string, FocalPoint>;
   /** The publication's own name and the edition's, for the metadata references. */
   masthead?: { title: string; tagline: string | null };
+  /**
+   * The page this is being drawn on, when the medium has pages.
+   *
+   * Print is the only medium that can answer `meta/page`, and it can only answer it once the
+   * pagination pass has settled — so the reference stays unresolvable everywhere else rather than
+   * resolving to a guess that would print the wrong folio.
+   */
+  page?: { number: number; total: number };
 };
 
 export function resolve(ref: ContentRef, ctx: ResolveContext): Resolved {
@@ -154,8 +162,8 @@ function resolveMeta(part: Extract<ContentRef, { kind: "meta" }>["part"], ctx: R
     case "toc":
       return { kind: "text", text: ctx.document.toc.map((entry) => entry.text).join(" · ") };
     case "page":
-      // Only print knows page numbers, and it fills this in during pagination.
-      return { kind: "nothing", why: "page numbers belong to print" };
+      // Only print knows page numbers, and only after the pagination pass has settled.
+      return ctx.page ? { kind: "text", text: String(ctx.page.number) } : { kind: "nothing", why: "page numbers belong to print" };
   }
 }
 

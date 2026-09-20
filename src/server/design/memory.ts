@@ -107,6 +107,26 @@ export async function storedFocal(mediaId: string): Promise<StoredFocal | null> 
   return focal && typeof focal.x === "number" && typeof focal.y === "number" ? focal : null;
 }
 
+/**
+ * The focal points for a whole edition's pictures, in one read.
+ *
+ * A print run asks for every picture at once; asking one at a time turns a page of photographs
+ * into a page of round trips.
+ */
+export async function storedFocals(mediaIds: string[]): Promise<Record<string, StoredFocal>> {
+  if (!mediaIds.length) return {};
+  const rows = await db.query.mediaAssets.findMany({
+    where: await scoped(s.mediaAssets.organizationId, inArray(s.mediaAssets.id, mediaIds)),
+    columns: { id: true, metadata: true },
+  });
+  const out: Record<string, StoredFocal> = {};
+  for (const row of rows) {
+    const focal = (row.metadata as { focalPoint?: StoredFocal } | null)?.focalPoint;
+    if (focal && typeof focal.x === "number" && typeof focal.y === "number") out[row.id] = focal;
+  }
+  return out;
+}
+
 export async function storeFocal(mediaId: string, focal: StoredFocal, crops: s.CropSuggestion[]): Promise<void> {
   const asset = await db.query.mediaAssets.findFirst({ where: await scoped(s.mediaAssets.organizationId, eq(s.mediaAssets.id, mediaId)), columns: { id: true, metadata: true } });
   if (!asset) return;

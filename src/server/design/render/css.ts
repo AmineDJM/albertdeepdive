@@ -52,6 +52,10 @@ export function designCss(options: { tokens: BrandTokens; scale: TypeScale; grid
 *{box-sizing:border-box;}
 body{margin:0;background:var(--paper);color:var(--ink);font-family:${scale.roles.body.stack};font-size:${scale.roles.body.size}${unit};line-height:${scale.roles.body.leading};-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;}
 img{max-width:100%;display:block;}
+/* A placed picture fills the frame the composition gave it. Without this an image's own pixel
+   width decides the layout, so measuring with thumbnails and printing with full-size files would
+   produce two different publications. */
+figure img{width:100%;}
 figure{margin:0;}
 h1,h2,h3,h4,p,ul,ol,blockquote{margin:0;}
 a{color:inherit;}

@@ -150,29 +150,29 @@ function renderElement(element: DesignElement, block: DesignBlock, options: Rend
  * a screen reader announces how many items are coming. This is the level at which most editorial
  * markup quietly turns into `<div>`s.
  */
-function renderArticleBlock(block: ArticleBlock): Html {
+export function renderArticleBlock(block: ArticleBlock): Html {
   switch (block.type) {
     case "paragraph":
-      return html`<p data-block="${block.id}">${block.text}</p>`;
+      return html`<p data-copy="${block.id}">${block.text}</p>`;
     case "crosshead":
-      return html`<h4 class="crosshead t-subheadline" data-block="${block.id}">${block.text}</h4>`;
+      return html`<h4 class="crosshead t-subheadline" data-copy="${block.id}">${block.text}</h4>`;
     case "pullquote":
-      return html`<blockquote class="pull-quote t-deck" data-block="${block.id}">${block.text}${block.attribution ? html`<cite>${block.attribution}</cite>` : ""}</blockquote>`;
+      return html`<blockquote class="pull-quote t-deck" data-copy="${block.id}">${block.text}${block.attribution ? html`<cite>${block.attribution}</cite>` : ""}</blockquote>`;
     case "testimony":
-      return html`<blockquote class="testimony" data-block="${block.id}">${block.text}${block.speaker ? html`<cite>${block.speaker}</cite>` : ""}</blockquote>`;
+      return html`<blockquote class="testimony" data-copy="${block.id}">${block.text}${block.speaker ? html`<cite>${block.speaker}</cite>` : ""}</blockquote>`;
     case "list":
       return block.ordered
-        ? html`<ol data-block="${block.id}">${join(block.items.map((item) => html`<li>${item}</li>`))}</ol>`
-        : html`<ul data-block="${block.id}">${join(block.items.map((item) => html`<li>${item}</li>`))}</ul>`;
+        ? html`<ol data-copy="${block.id}">${join(block.items.map((item) => html`<li>${item}</li>`))}</ol>`
+        : html`<ul data-copy="${block.id}">${join(block.items.map((item) => html`<li>${item}</li>`))}</ul>`;
     case "box":
-      return html`<aside class="box" data-block="${block.id}">${block.title ? html`<h4 class="t-label">${block.title}</h4>` : ""}${block.text ? html`<p>${block.text}</p>` : ""}${block.items?.length ? html`<ul>${join(block.items.map((item) => html`<li>${item}</li>`))}</ul>` : ""}</aside>`;
+      return html`<aside class="box" data-copy="${block.id}">${block.title ? html`<h4 class="t-label">${block.title}</h4>` : ""}${block.text ? html`<p>${block.text}</p>` : ""}${block.items?.length ? html`<ul>${join(block.items.map((item) => html`<li>${item}</li>`))}</ul>` : ""}</aside>`;
     case "qa":
-      return html`<div class="qa" data-block="${block.id}"><p class="question t-subheadline">${block.question}</p><p class="answer">${block.answer}</p></div>`;
+      return html`<div class="qa" data-copy="${block.id}"><p class="question t-subheadline">${block.question}</p><p class="answer">${block.answer}</p></div>`;
     case "image":
       // Pictures inside running text are placed by the design, not by the article's own ordering.
       return html``;
     case "divider":
-      return html`<hr data-block="${block.id}">`;
+      return html`<hr data-copy="${block.id}">`;
   }
 }
 

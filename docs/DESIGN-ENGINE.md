@@ -139,3 +139,32 @@ five.
 - **No card soup.** §71 and §72 are design requirements with the same standing as any other: rounded
   rectangles are one tool, and gradients, glows and sparkles are not editorial design.
 - **Nothing is finished until it has been looked at.** Measured, then seen (§34, §80).
+
+## Print, as built (#139)
+
+Print is the medium that cannot be fudged, so it was built before the other two could be trusted.
+
+| Where | What it does |
+| --- | --- |
+| `src/lib/design/pages.ts` | Pure. Surfaces → numbered pages with sides; `breakPoint` (where a page may legitimately be cut), `reflow` (carry what did not fit), `splitCopy` (break a story over the turn), `absorb` (pull a page up that did not earn its paper), `tighten` (copyfit), `demote` (move the lowest priority off a page that cannot be made to fit), `planIntegrity`. |
+| `src/server/design/render/print.ts` | The stylesheet for paper (page box, sheet inside the grid's own margins, folio, bleed to the trim, picture frames sized by importance, four copyfit steps), the page markup, `PRINT_MEASURE_SCRIPT`, and `paginateDesign` — the render → measure → act loop. |
+| `src/server/design/render/pdf.ts` | The loop in a real Chromium, with fonts and photographs embedded, printed and stamped. |
+| `src/server/design/print.ts` | The join to the workspace: which design, which document, which brand, which language, which focal points — all under the tenant's scope. |
+
+Four things the first run on a real issue taught, all fixed in the engine rather than in the test:
+
+1. **A picture's own pixel width must not decide the layout.** Measuring with thumbnails and printing
+   with full-size files produced two different publications, because a placed `<img>` sized itself
+   from its intrinsic width. `figure img { width: 100% }` — the composition owns the frame.
+2. **A photograph needs a frame height on paper.** Unbounded, one picture became four pages. The cap
+   comes from what the picture is *for* (`data-importance`, and the composition it sits in), which is
+   information the design already carries.
+3. **Copyfit has to tighten space, not only type.** A reader sees a smaller letter long before a
+   smaller gap, so a page set one step tighter now loses 6 % of its air and 2.5 % of its type.
+4. **Filling gaps may not create overflow.** Two pages are merged only when both have been *measured*
+   to fit together, and the loop ends with repair-only rounds so a late absorption can never leave a
+   page spilling off the sheet.
+
+On the seeded issue, without a model: 39 pages, nothing overflowing, one relaxation recorded (a pull
+quote moved off an opener that could not hold it). The pages that remain under-filled are reported
+rather than hidden — they are a composition problem, which is #142's to solve.
