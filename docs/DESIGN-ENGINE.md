@@ -201,3 +201,44 @@ Three defects the first render exposed, all fixed in the engine:
 The designed email passes the quality engine's existing email metrics — images resolve, alt text,
 links valid, unsubscribe present, nothing wider than a 375 px phone — measured under the EMAIL
 profile on the seeded issue.
+
+## The critic, and the loop (#142)
+
+§34 is the one requirement in the brief that cannot be satisfied by arithmetic: *the agent must see
+the actual render*. §80 is what makes seeing worth the money: the art director watches the result
+and then changes it.
+
+| Where | What it does |
+| --- | --- |
+| `src/lib/design/critic.ts` | The half that needs no eyes. Hierarchy, rhythm, typography, imagery, density, structure and accessibility, each finding carrying a remedy where a deterministic one exists. Pure, so it is free and reproducible. |
+| `src/lib/design/revise.ts` | Acting on a critique: one change per block per round, a cap on the round, and every lock honoured — a pass that quietly overrides a lock is worse than one that does nothing. |
+| `src/server/design/shots.ts` | The render, as something that can be looked at. Deliberately not exhaustive: the cover, an opener, the fullest page, the emptiest, and something from the middle. |
+| `src/server/ai/services/layout-critic.ts` | The half that needs eyes. Real screenshots to a vision model, a strict schema with no field for a colour or a size, and a boundary that drops an invented block id or a composition no renderer draws. |
+| `src/server/design/refine.ts` | Lay out → measure → look → revise → lay out again. Bounded, stops the moment there is nothing worth changing, and saves a revision only when something actually changed. |
+
+It runs without a model: what is lost is the half that needs eyes, and what remains catches an empty
+frame, a composition no renderer draws and one shape repeated five times.
+
+### What looking found
+
+The first live run was pointed at the seeded issue and came back **broken**: *"the cover is visually
+and structurally broken, with overlapping and unreadable text"*. Every measurement had passed — the
+cover's content measured at exactly 1.00 of the sheet. Four defects, none of them visible to
+arithmetic:
+
+1. **The grid's gutter was read as a fraction of the page instead of a fraction of a column.** Eleven
+   gaps of 22 % is more than a page has, so every track collapsed to zero and every block overflowed
+   sideways to its own min-content width. This had been wrong in print *and* on the web since the
+   grid was written.
+2. **The cover photograph was anchored to its block rather than to the page**, so it started half way
+   down under a band of white.
+3. **Type over a photograph had no scrim**, so its contrast was whatever the photographer happened to
+   shoot — and the masthead, being white on a light picture, was invisible.
+4. **The cover printed `2025-05-15T10:00:00.000Z`.**
+
+Plus two the eye catches and a rule never would: the cover's kicker repeated the masthead's issue
+label, and a testimony's attribution ran on from the last word — "…operational success.Sacha Nardoux".
+
+After the fixes, the same critic on the same issue: **excellent** — *"clear, spacious and visually
+coherent, with strong hierarchy and rhythm"* — with two minor notes. That is the loop working: seen,
+fixed, seen again.

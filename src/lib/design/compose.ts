@@ -263,7 +263,9 @@ function elementsFor(role: BlockRole, ctx: Context, composition: string, measure
     case "cover": {
       const elements: DesignElement[] = [];
       if (story.bestPictureId && /image|photo|portrait|collage/.test(composition)) elements.push(pictureElement(story.bestPictureId, 1, composition));
-      elements.push(element("kicker", { kind: "meta", part: "issueLabel" }, { style: { type: "label" }, constraints: { priority: 0.3 } }));
+      // The story's own kicker, never the issue label: the masthead directly above it is already
+      // printing that, and a cover that says "Special issue N°1" twice reads as a mistake.
+      elements.push(element("kicker", articleRef(articleId, "kicker"), { style: { type: "label" }, constraints: { priority: 0.3 } }));
       elements.push(element("headline", articleRef(articleId, "headline"), { style: { type: "display-xl", emphasis: 1 }, constraints: { priority: 1, maxHeadlineLines: 2, keepWithNext: true } }));
       elements.push(element("deck", articleRef(articleId, "standfirst"), { style: { type: "deck" }, constraints: { priority: 0.5, ...measure } }));
       return elements;

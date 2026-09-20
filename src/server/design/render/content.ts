@@ -1,4 +1,5 @@
 import { blockText, type ArticleBlock, type DocumentArticle, type DocumentMedia, type EditionDocument } from "@/lib/publication/document";
+import { formatIsoDate } from "@/lib/publication/text";
 import type { ContentRef, DesignElement } from "@/lib/design/model";
 import type { OutputMedium } from "@/lib/design/roles";
 import { CROP_SHAPES, cropTo, naturalShape, type CropShape, type FocalPoint, CENTRE } from "@/lib/design/crop";
@@ -150,7 +151,9 @@ function resolveMeta(part: Extract<ContentRef, { kind: "meta" }>["part"], ctx: R
     case "issueLabel":
       return { kind: "text", text: meta.issueLabel };
     case "date":
-      return { kind: "text", text: meta.publicationDate ?? meta.label };
+      // A publication date is stored as an instant and read by a person: "15 May 2025", never
+      // "2025-05-15T10:00:00.000Z", which is what a cover printed before anybody looked at one.
+      return { kind: "text", text: formatIsoDate(meta.publicationDate) || meta.label };
     case "editorial":
       return meta.editorial ? { kind: "text", text: meta.editorial } : { kind: "nothing", why: "there is no editor's note" };
     case "credits":

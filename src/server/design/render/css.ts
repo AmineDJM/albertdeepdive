@@ -38,7 +38,13 @@ export function designCss(options: { tokens: BrandTokens; scale: TypeScale; grid
   return `
 :root{
   --space:${tokens.shape.unit}px;
-  --gutter:${grid.gutter * 100}%;
+  /*
+   * The grid states its gutter as a fraction of a *column*, not of the page. Read as a fraction of
+   * the container it is eleven gaps of 22 %, which is more than the page has, so every track
+   * collapses to nothing and every block overflows sideways to its own min-content width. The
+   * arithmetic is the whole difference between a grid and a pile.
+   */
+  --gutter:calc(${grid.gutter} * 100% / ${grid.columns});
   --columns:${grid.columns};
   --radius:${tokens.shape.radiusSm}px;
   --border:${tokens.shape.borderWidth}px;
@@ -67,7 +73,10 @@ ${surfaceRules}
 .edition{max-width:${medium === "print" ? "none" : "1180px"};margin:0 auto;padding:0 ${space(2)};}
 .surface{display:grid;grid-template-columns:repeat(var(--columns),1fr);column-gap:var(--gutter);align-items:start;padding:${space(3)} 0;}
 .surface + .surface{border-top:${direction.ornament > 0.3 ? "var(--border) solid var(--rule)" : "0"};}
-.block{grid-column:span var(--span,${grid.columns});display:flex;flex-direction:column;gap:${space(1)};}
+.block{grid-column:span var(--span,${grid.columns});display:flex;flex-direction:column;gap:${space(1)};min-width:0;}
+/* A grid item's automatic minimum is its longest word, so one unbreakable string would otherwise
+   widen the track and push the page sideways. Headlines break rather than the layout. */
+.headline,.subheadline,.deck,.quote{overflow-wrap:break-word;}
 .block[data-bleed="true"]{grid-column:1 / -1;}
 
 /* Body copy runs in the publication's own number of columns, and never wider than its measure. */
@@ -78,6 +87,10 @@ ${surfaceRules}
 .byline,.credit,.caption{color:var(--subdued);}
 .caption{margin-top:${space(0.5)};}
 .kicker{color:var(--highlight);}
+/* An attribution is a line of its own. Run on, it reads as the last word of the quote: the page
+   ends "…operational success.Sacha Nardoux", which is how a testimony becomes a typo. */
+cite{display:block;font-style:normal;margin-top:${space(0.5)};color:var(--subdued);}
+blockquote + p,.testimony + p,.pull-quote + p{margin-top:${space(1)};}
 .rule-above{border-top:var(--border) solid var(--rule);padding-top:${space(1)};}
 .rule-below{border-bottom:var(--border) solid var(--rule);padding-bottom:${space(1)};}
 
@@ -125,7 +138,13 @@ ${surfaceRules}
 .b-cover{min-height:${medium === "print" ? "100%" : "70vh"};justify-content:flex-end;position:relative;}
 .c-image-led figure{position:absolute;inset:0;z-index:0;}
 .c-image-led img{width:100%;height:100%;object-fit:cover;}
-.c-image-led .headline,.c-image-led .deck,.c-image-led .kicker{position:relative;z-index:1;}
+/*
+ * Type set over a photograph is legible by luck unless something makes it legible. The scrim is
+ * that something: the brand's own strength, darkest where the words are, absent where they are not.
+ */
+.c-image-led figure::after{content:"";position:absolute;inset:0;background:linear-gradient(to top, rgba(0,0,0,${Math.min(0.85, 0.45 + tokens.imagery.scrim * 0.4).toFixed(2)}) 0%, rgba(0,0,0,${Math.min(0.5, tokens.imagery.scrim * 0.3).toFixed(2)}) 45%, rgba(0,0,0,0) 80%);}
+.c-image-led .headline,.c-image-led .deck,.c-image-led .kicker,.c-image-led .byline{position:relative;z-index:1;color:${tokens.surfaces.ink.foreground};text-shadow:0 1px 2px rgba(0,0,0,0.35);}
+.c-image-led .kicker{color:${tokens.surfaces.ink.highlight};}
 .b-footer{color:var(--subdued);}
 
 /* ── Responsive: the hierarchy survives, the arrangement changes ────────────────────────── */

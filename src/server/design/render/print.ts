@@ -175,9 +175,34 @@ body{-webkit-print-color-adjust:exact;print-color-adjust:exact;font-kerning:norm
 .page-body .b-photo-spread.c-lead-and-three figure:first-child img{max-height:calc(var(--sheet-h) * 0.52);}
 .page-body .b-photo-spread.c-full-spread figure img{max-height:calc(var(--sheet-h) * 0.8);}
 
-/* A cover is the whole page, so the page is what its picture is measured against. */
-.page[data-kind="cover"] .page-body,.page[data-kind="cover"] .page-body > .surface,.page[data-kind="cover"] .b-cover{height:100%;min-height:0;}
-.page[data-kind="cover"] figure img{max-height:none;height:100%;}
+/*
+ * A cover is the whole page.
+ *
+ * The picture is anchored to the page rather than to the block, or it covers only the row the
+ * block happens to occupy — which is how a cover ends up as a masthead, a band of white, and a
+ * photograph starting half way down. The furniture then sits on the picture, in the order the
+ * design put it, with the last block at the foot where a cover line belongs.
+ */
+.page[data-kind="cover"] .page-body{position:relative;}
+/* Flex rather than grid: the masthead keeps its own height at the top and the cover takes the rest,
+   whether or not there is a masthead at all. A cover is the one page whose furniture has a place. */
+.page[data-kind="cover"] .page-body > .surface{display:flex;flex-direction:column;height:100%;position:relative;z-index:1;}
+.page[data-kind="cover"] .b-masthead{flex:none;}
+.page[data-kind="cover"] .b-cover{flex:1 1 auto;min-height:0;position:static;justify-content:flex-end;}
+.page[data-kind="cover"] .b-cover figure{position:absolute;inset:0;z-index:-1;}
+.page[data-kind="cover"] figure img{max-height:none;height:100%;object-fit:cover;}
+.page[data-kind="cover"] .b-masthead{position:relative;z-index:1;}
+/*
+ * A veil at the head as well as the foot.
+ *
+ * The masthead sits at the top of the picture, and a photograph is light up there as often as it is
+ * dark — so the cover carries the title in white over whatever the photographer happened to shoot.
+ * Two gradients: strong where the cover lines are, just enough where the masthead is, nothing in
+ * between, so the photograph is still the photograph.
+ */
+.page[data-kind="cover"] .b-cover figure::after{background:linear-gradient(to top, rgba(0,0,0,${Math.min(0.85, 0.45 + tokens.imagery.scrim * 0.4).toFixed(2)}) 0%, rgba(0,0,0,${Math.min(0.5, tokens.imagery.scrim * 0.3).toFixed(2)}) 45%, rgba(0,0,0,0) 78%),linear-gradient(to bottom, rgba(0,0,0,${Math.min(0.7, 0.34 + tokens.imagery.scrim * 0.3).toFixed(2)}) 0%, rgba(0,0,0,0) 20%);}
+/* A masthead over a photograph is type over a photograph, and obeys the same rule as the rest. */
+.page[data-cover="image-led"] .b-masthead p{color:${tokens.surfaces.ink.foreground};text-shadow:0 1px 2px rgba(0,0,0,0.35);}
 
 /* Bleed reaches the trim, which on paper is the edge of the sheet and not the edge of the text. */
 .page-body .block[data-bleed="true"]{margin-left:calc(-1 * var(--margin-left));margin-right:calc(-1 * var(--margin-right));width:var(--page-w);}
@@ -205,6 +230,7 @@ export function renderPrintPage(page: PrintPage, options: PrintRenderOptions): H
   const total = options.plan.pages.length;
   const ctx: ResolveContext = { ...options.content, medium: "print", page: { number: page.number, total } };
   const first = page.surfaces[0];
+  const coverBlock = first?.kind === "cover" ? first.blocks.find((block) => block.role === "cover") : undefined;
   // A cover and a full-bleed opener own the whole sheet; furniture on them is a design decision
   // the composition makes, not something the page chrome imposes.
   const bleedSheet = Boolean(first && (first.kind === "cover" || (first.kind === "opener" && first.blocks.some((block) => block.constraints.fullBleed))));
@@ -212,7 +238,7 @@ export function renderPrintPage(page: PrintPage, options: PrintRenderOptions): H
   const surfaces = page.surfaces.map((surface) => surfaceMarkup(surface, page, options, ctx)).filter((markup): markup is Html => Boolean(markup));
   const section = page.surfaces.find((surface) => surface.sectionName)?.sectionName ?? "";
 
-  return html`<div class="page" id="${page.id}" data-page="${page.id}" data-number="${page.number}" data-side="${page.side}" data-kind="${first?.kind ?? "blank"}" data-fit="${page.fit}"${raw(
+  return html`<div class="page" id="${page.id}" data-page="${page.id}" data-number="${page.number}" data-side="${page.side}" data-kind="${first?.kind ?? "blank"}" data-fit="${page.fit}"${raw(coverBlock ? ` data-cover="${coverBlock.composition}"` : "")}${raw(
     bleedSheet ? ' data-bleed-sheet="true"' : "",
   )}${raw(page.blank ? ' data-blank="true"' : "")}>
   <div class="sheet">

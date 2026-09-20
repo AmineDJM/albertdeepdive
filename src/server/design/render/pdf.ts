@@ -15,15 +15,19 @@ import type { ResolveContext } from "./content";
 const log = createLogger("design:pdf");
 
 /**
- * A PDF printed from the design rather than from a page plan.
+ * The design on paper, in a real browser.
  *
- * The same two-pass shape as the publication renderer — measure in a browser, act on what it says,
- * print — but what is being measured is an `EditionDesign`, so the result is the design's own
- * decisions on paper instead of eighteen templates filled in. Fonts and photographs travel inside
- * the HTML, so this renders on a host with no network and prints the same on any machine.
+ * The same two-pass shape as the publication renderer — measure, act on what it says, print — but
+ * what is being measured is an `EditionDesign`, so the result is the design's own decisions rather
+ * than eighteen templates filled in. Fonts and photographs travel inside the HTML, so this renders
+ * on a host with no network and prints the same on any machine.
+ *
+ * Laying out and printing are separate on purpose. The refinement loop (§80) lays an issue out
+ * several times and only prints once, and a PDF nobody will read is the most expensive part of the
+ * round.
  */
 
-export type DesignPdfOptions = {
+export type DesignLayoutOptions = {
   design: EditionDesign;
   document: EditionDocument;
   direction: ResolvedDirection;
@@ -38,14 +42,17 @@ export type DesignPdfOptions = {
   onProgress?: (done: number, total: number, message: string) => void | Promise<void>;
 };
 
-export type DesignPdfResult = {
-  buffer: Buffer;
-  pageCount: number;
+export type DesignLayoutResult = {
   plan: PrintPlan;
   report: PrintReport;
-  /** The final print HTML, which is what a screenshot and the layout critic both read. */
+  /** The print HTML, which is what a screenshot and the layout critic both read. */
   markup: string;
   measures: PrintMeasurement[];
+};
+
+export type DesignPdfResult = DesignLayoutResult & {
+  buffer: Buffer;
+  pageCount: number;
   /** Pictures the storage could not hand over — an empty frame is a defect, not a log line. */
   mediaMissing: string[];
 };
@@ -56,38 +63,74 @@ export async function measurePrintHtml(page: Page, markup: string): Promise<Prin
   return (await page.evaluate(PRINT_MEASURE_SCRIPT)) as PrintMeasurement[];
 }
 
-export async function renderDesignPdf(options: DesignPdfOptions): Promise<DesignPdfResult> {
+type Prepared = {
+  base: { grid: EditionDesign["grid"]; direction: ResolvedDirection; brand?: BrandSystem; personality?: PersonalityKey; locale: string; title: string; issueLabel: string | null; fontCss: string };
+  contentFor: (quality: "measure" | "print") => ResolveContext;
+  missing: string[];
+};
+
+async function prepare(options: DesignLayoutOptions, qualities: ("measure" | "print")[]): Promise<Prepared> {
+  const { design, document: doc } = options;
+  const fontCss = await loadEmbeddedFontCss();
+  const loaded = await Promise.all(qualities.map((quality) => loadDataUriAssets(doc, quality)));
+  const urls = new Map<string, Record<string, string>>();
+  for (const [index, quality] of qualities.entries()) {
+    const map: Record<string, string> = {};
+    for (const media of doc.media) {
+      const url = loaded[index].source(media);
+      if (url) map[media.id] = url;
+    }
+    urls.set(quality, map);
+  }
+  return {
+    base: {
+      grid: design.grid,
+      direction: options.direction,
+      brand: options.brand,
+      personality: options.personality,
+      locale: options.locale ?? "en",
+      title: doc.meta.masthead.title,
+      issueLabel: doc.meta.issueLabel,
+      fontCss,
+    },
+    contentFor: (quality) => ({ document: doc, medium: "print", urls: urls.get(quality) ?? {}, focals: options.focals }),
+    missing: loaded[qualities.indexOf("print")]?.missing ?? [],
+  };
+}
+
+/** Pages, measured and settled, with no PDF printed. */
+export async function layoutDesign(options: DesignLayoutOptions): Promise<DesignLayoutResult> {
+  const say = options.log ?? ((message, meta) => log.info(message, meta));
+  const prepared = await prepare(options, ["measure"]);
+  return withBrowser(async (browser) => {
+    const context = await browser.newContext({ viewport: { width: 1240, height: 1754 }, deviceScaleFactor: 1 });
+    const page = await context.newPage();
+    try {
+      await page.emulateMedia({ media: "print" });
+      const content = prepared.contentFor("measure");
+      return await paginateDesign({
+        plan: planPrint(options.design, options.print),
+        render: (current) => renderPrintEdition({ ...prepared.base, plan: current, content }),
+        measure: (markup) => measurePrintHtml(page, markup),
+        maxRounds: options.maxRounds,
+        log: say,
+      });
+    } finally {
+      await context.close().catch(() => {});
+    }
+  }, options.browser);
+}
+
+export async function renderDesignPdf(options: DesignLayoutOptions): Promise<DesignPdfResult> {
   const say = options.log ?? ((message, meta) => log.info(message, meta));
   const progress = async (done: number, total: number, message: string) => {
     await options.onProgress?.(done, total, message);
   };
-  const { design, document: doc } = options;
+  const doc = options.document;
 
   await progress(1, 5, "Embedding fonts and pictures");
-  const fontCss = await loadEmbeddedFontCss();
-  const [measureAssets, printAssets] = await Promise.all([loadDataUriAssets(doc, "measure"), loadDataUriAssets(doc, "print")]);
-  if (printAssets.missing.length) say("some pictures could not be read from storage", { missing: printAssets.missing });
-
-  const urlsFor = (source: (media: EditionDocument["media"][number]) => string | null): Record<string, string> => {
-    const urls: Record<string, string> = {};
-    for (const media of doc.media) {
-      const url = source(media);
-      if (url) urls[media.id] = url;
-    }
-    return urls;
-  };
-
-  const base = {
-    grid: design.grid,
-    direction: options.direction,
-    brand: options.brand,
-    personality: options.personality,
-    locale: options.locale ?? "en",
-    title: doc.meta.masthead.title,
-    issueLabel: doc.meta.issueLabel,
-    fontCss,
-  };
-  const contentFor = (urls: Record<string, string>): ResolveContext => ({ document: doc, medium: "print", urls, focals: options.focals });
+  const prepared = await prepare(options, ["measure", "print"]);
+  if (prepared.missing.length) say("some pictures could not be read from storage", { missing: prepared.missing });
 
   return withBrowser(async (browser) => {
     const context = await browser.newContext({ viewport: { width: 1240, height: 1754 }, deviceScaleFactor: 1 });
@@ -95,17 +138,17 @@ export async function renderDesignPdf(options: DesignPdfOptions): Promise<Design
     try {
       await page.emulateMedia({ media: "print" });
       await progress(2, 5, "Measuring and flowing the pages");
-      const measureContent = contentFor(urlsFor(measureAssets.source));
+      const measureContent = prepared.contentFor("measure");
       const { plan, report: loopReport } = await paginateDesign({
-        plan: planPrint(design, options.print),
-        render: (current) => renderPrintEdition({ ...base, plan: current, content: measureContent }),
+        plan: planPrint(options.design, options.print),
+        render: (current) => renderPrintEdition({ ...prepared.base, plan: current, content: measureContent }),
         measure: (markup) => measurePrintHtml(page, markup),
         maxRounds: options.maxRounds,
         log: say,
       });
 
       await progress(3, 5, "Setting the final pages");
-      const markup = renderPrintEdition({ ...base, plan, content: contentFor(urlsFor(printAssets.source)) });
+      const markup = renderPrintEdition({ ...prepared.base, plan, content: prepared.contentFor("print") });
       // Measured again on the pages that will actually be printed. The pictures are the print-size
       // files this time, and a report describing the rehearsal rather than the performance is how
       // a renderer comes to believe an issue is clean while a page spills off the sheet.
@@ -136,7 +179,7 @@ export async function renderDesignPdf(options: DesignPdfOptions): Promise<Design
         tightened: report.tightened,
         overflowing: report.overflowing.length,
       });
-      return { buffer, pageCount, plan, report, markup, measures, mediaMissing: printAssets.missing };
+      return { buffer, pageCount, plan, report, markup, measures, mediaMissing: prepared.missing };
     } finally {
       await context.close().catch(() => {});
     }
