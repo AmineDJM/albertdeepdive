@@ -100,7 +100,4 @@ function readerFor(kind: BlueprintKind): (bytes: Buffer, fileName: string) => Pr
   }
 }
 
-/** The formats the upload control should offer, as an `accept` attribute. */
-export const BLUEPRINT_ACCEPT = ".pdf,.docx,.doc,.pptx,.ppt,.html,.htm,.mjml,.png,.jpg,.jpeg,.webp,.avif,application/pdf,image/*";
-
 export { BLUEPRINT_KINDS };

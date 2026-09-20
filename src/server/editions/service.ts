@@ -187,6 +187,23 @@ export async function createEdition(rawInput: z.input<typeof createEditionSchema
         ? ((await db.query.editions.findFirst({ where: await scoped(s.editions.organizationId, eq(s.editions.id, input.inheritFrom)) })) ?? null)
         : await editionToInheritFrom(publication?.id ?? null);
   const inherited = await inheritedSettings(previous);
+  /*
+   * The rubrics of the title's model, for a first edition that has nothing to inherit.
+   *
+   * Somebody who uploaded last month's newsletter said, in the clearest way available to them,
+   * what their newsletter is made of: Édito, Les chiffres du mois, Portrait. Reading those and
+   * then starting their first edition with Briefly's own generic sections would be ignoring the
+   * one thing they took the trouble to tell us. Read outside the transaction, because it is a
+   * read of another table and the write below should be short.
+   */
+  const modelRubrics = input.publicationId
+    ? await (async () => {
+        const { activeIdentity } = await import("@/server/design/identity");
+        const identity = await activeIdentity(input.publicationId!).catch(() => null);
+        return identity?.rubrics ?? [];
+      })()
+    : [];
+
   const edition = await db.transaction(async (tx) => {
     const [row] = await tx
       .insert(s.editions)
@@ -216,6 +233,8 @@ export async function createEdition(rawInput: z.input<typeof createEditionSchema
     let sections: { slug: string; name: string; kicker: string | null; colour: string | null; targetPages: number | null }[];
     if (inherited?.sections.length) {
       sections = inherited.sections;
+    } else if (modelRubrics.length) {
+      sections = modelRubrics.map((rubric) => ({ slug: slugify(rubric.name), name: rubric.name, kicker: null, colour: null, targetPages: null }));
     } else {
       const setting = await tx.query.systemSettings.findFirst({ where: eq(s.systemSettings.key, "default_sections") });
       sections = (Array.isArray(setting?.value) ? setting!.value : DEFAULT_SECTIONS) as unknown as typeof sections;

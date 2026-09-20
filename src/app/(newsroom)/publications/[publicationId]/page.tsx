@@ -1,14 +1,16 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, BookOpen, Globe, Mail, Printer, Users } from "lucide-react";
+import { ArrowLeft, BookOpen, Globe, LayoutTemplate, Mail, Printer, Users } from "lucide-react";
 import { getCurrentUser, hasPermission } from "@/server/auth/session";
 import { requireTenant } from "@/server/tenancy/context";
 import { publicationWithEditions } from "@/server/outputs/service";
 import { editionToInheritFrom, inheritedSettings } from "@/server/editions/service";
 import { runAsOrganization } from "@/server/tenancy/context";
+import { activeIdentity } from "@/server/design/identity";
 import { standingOf } from "@/lib/editorial/edition-steps";
 import type { EditionStatus } from "@/lib/editorial/edition-state";
 import { PageBody, PageHeader, SectionTitle } from "@/components/newsroom/page-header";
+import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/newsroom/data-table";
 import { EditionStatusBadge } from "@/components/newsroom/status-badge";
 import { Stat, StatGrid } from "@/components/newsroom/stat";
@@ -40,6 +42,9 @@ export default async function PublicationPage({ params }: { params: Promise<{ pu
   if (!data) notFound();
   const { publication, editions, live, published, subscribers } = data;
   const canCreate = hasPermission(user, "edition:create");
+  const canSetUp = hasPermission(user, "layout:edit");
+  // What this title is made on, if anybody has said. Read here so the button can say which.
+  const model = (await activeIdentity(publicationId)).source;
 
   // What the next edition would start from, said before anybody commits to it.
   const inherits = canCreate
@@ -51,7 +56,22 @@ export default async function PublicationPage({ params }: { params: Promise<{ pu
       <PageHeader
         title={publication.name}
         description={publication.description ?? tr("A recurring title. Each edition inside it starts where the last one left off.")}
-        actions={canCreate ? <NewEditionButton publicationId={publication.id} inheritsFrom={inherits?.from.label ?? null} /> : null}
+        actions={
+          <div className="flex flex-wrap items-center gap-2">
+            {/*
+              * The model sits beside "New edition" because those are the two things a title has.
+              * One makes this month; the other decides what every month is poured into.
+              */}
+            {canSetUp ? (
+              <Button asChild variant="outline" size="sm">
+                <Link href={`/publications/${publication.id}/blueprint`}>
+                  <LayoutTemplate /> {model ? tr("The model") : tr("Choose a model")}
+                </Link>
+              </Button>
+            ) : null}
+            {canCreate ? <NewEditionButton publicationId={publication.id} inheritsFrom={inherits?.from.label ?? null} /> : null}
+          </div>
+        }
       />
       <PageBody className="space-y-6">
         <Link href="/publications" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">

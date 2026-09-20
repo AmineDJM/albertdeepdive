@@ -18,6 +18,7 @@ import { Decision, LanguageChange, OutputsChange, PublishDateChange, type Output
 import { Button } from "@/components/ui/button";
 import { GuidedNext } from "@/components/newsroom/guided-next";
 import { formatDate } from "@/lib/utils";
+import { activeIdentity } from "@/server/design/identity";
 import { calendarDaysUntil } from "@/lib/campaigns/schedule";
 import { intlLocale } from "@/lib/i18n";
 import { currentLocale, getUi } from "@/server/i18n/locale";
@@ -37,6 +38,9 @@ export async function StandardOverview({ editionId }: { editionId: string }) {
   const [user, tenant] = await Promise.all([getCurrentUser(), requireTenant()]);
   const [d, outputs, brand, sender, stats] = await Promise.all([editionDashboard(editionId), outputMatrix(editionId), activeBrand(tenant.organizationId), senderFor(tenant.organizationId).catch(() => null), publicationStats(tenant.organizationId)]);
   const publication = d.edition.publicationId ? await db.query.publications.findFirst({ where: eq(s.publications.id, d.edition.publicationId), columns: { id: true, name: true, language: true } }) : null;
+  // What every edition of this title is poured into, and where to change it.
+  const identity = publication ? await activeIdentity(publication.id) : null;
+  const model = identity?.source ? { ...identity.source, rubrics: identity.rubrics.map((rubric) => rubric.name) } : null;
   const coverUrl = d.edition.coverMediaAssetId ? await mediaUrl(d.edition.coverMediaAssetId, "WEB") : null;
   const ed = `/editions/${editionId}`;
   const canEdit = hasPermission(user, "edition:edit");
@@ -140,6 +144,26 @@ export async function StandardOverview({ editionId }: { editionId: string }) {
             {canEdit ? <PublishDateChange editionId={editionId} current={d.edition.publicationTargetAt} locked={published} /> : null}
           </Decision>
           <Decision label={tr("Outputs")} value={<OutputsChange editionId={editionId} outputs={choices} canEdit={canEdit && !published} />} />
+          {/*
+            * The model this edition is made on, which belongs to the title rather than the month.
+            *
+            * It is on this list because this list is where somebody looks to find out what Briefly
+            * decided, and "what does it look like" is the decision they are least able to guess.
+            */}
+          {publication ? (
+            <Decision
+              label={tr("Model")}
+              value={
+                model?.kind === "uploaded" && model.fileName
+                  ? tr("Read from {file}", { file: model.fileName })
+                  : model?.kind === "brand"
+                    ? tr("Designed from your brand")
+                    : tr("Briefly's own")
+              }
+              hint={model?.rubrics.length ? model.rubrics.slice(0, 3).join(" · ") : tr("upload yours, or have one designed")}
+              change={canEdit ? { href: `/publications/${publication.id}/blueprint`, label: model ? tr("Change") : tr("Choose") } : null}
+            />
+          ) : null}
           {/*
             * Who was asked, which is the decision every other one on this list depends on.
             *

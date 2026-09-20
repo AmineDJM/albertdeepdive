@@ -224,3 +224,13 @@ export function describeEvidence(evidence: BlueprintEvidence): string {
   if (evidence.notes.length) lines.push(`Notes from reading it: ${evidence.notes.join(" ")}`);
   return lines.join("\n");
 }
+
+/**
+ * What the upload control offers, as an `accept` attribute.
+ *
+ * It lives here rather than beside the readers because a browser needs it: importing it from the
+ * server module dragged `node:child_process` into the client bundle through the PDF reader, and
+ * the build said so in the only way webpack knows how.
+ */
+export const BLUEPRINT_ACCEPT =
+  ".pdf,.docx,.doc,.pptx,.ppt,.html,.htm,.mjml,.png,.jpg,.jpeg,.webp,.avif,application/pdf,image/*";

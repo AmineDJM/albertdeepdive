@@ -241,6 +241,30 @@ Two things worth knowing. Files already written to disk stay there, so a switch 
 And the bucket stays private: Briefly signs a time-limited URL for every file rather than making
 the bucket public, unless a CDN base URL is given on the card.
 
+## The model a newsletter is made on
+
+Every title has a *model* — what each edition is poured into — and there are two ways to get one,
+both at **Newsletters → the title → The model**.
+
+**Upload what you already publish.** A PDF, a Word file, a PowerPoint deck, an HTML export from
+Mailchimp or Brevo, or a picture of a page. The format is detected from the bytes rather than the
+file name, and each is asked only for what it actually states: a PDF gives up every run of type
+with its family, size and colour; Word and PowerPoint carry a theme — six accent colours and two
+families — put there by whoever made the template; Word names its headings as styles, so "Titre 2"
+and "Heading 2" are one thing; an HTML email states its colours in its own stylesheet. What cannot
+be measured is read by looking at the rendered pages.
+
+The words are thrown away. The **rubrics** are kept, in their own language — "Édito", "Les chiffres
+du mois", "Portrait" — because those are the half of a newsletter a reader recognises between
+issues, and they become the sections of the first edition made afterwards.
+
+**Or have one designed** from the workspace's brand, with no file at all.
+
+Either way Briefly shows what it understood — the page, the palette, the type, the rubrics and how
+sure it is — and nothing is written until somebody adopts it. With no model connected the
+measurements alone still produce a usable blueprint and the screen says so, rather than inventing a
+mood with a straight face.
+
 ## Running the newsroom
 
 - **Overview** — the current edition, phase, deadlines, coverage by campus, flags, AI cost.
