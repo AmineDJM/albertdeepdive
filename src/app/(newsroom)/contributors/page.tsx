@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Suspense } from "react";
-import { Upload, Users } from "lucide-react";
+import { Download, Upload, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { contributorStats, listContributors, listGroups, listPrograms } from "@/server/contributors/service";
 import { listCampusesWithStats } from "@/server/contributors/service";
@@ -51,7 +51,7 @@ export default async function ContributorsPage({ searchParams }: { searchParams:
   ];
   return (
     <>
-      <PageHeader title={tr("Contributors")} description={tr("Who gets asked each month, and how they respond.")} actions={canManage ? <div className="flex items-center gap-2"><Button asChild variant="outline" size="sm"><Link href="/contributors/import"><Upload />{" "}{tr("Import from a file")}</Link></Button><Suspense><ContributorEditor campuses={campuses} programs={programs} groups={groups} openOnParam /></Suspense></div> : null}
+      <PageHeader title={tr("Contributors")} description={tr("Who gets asked each month, and how they respond.")} actions={canManage ? <div className="flex flex-wrap items-center gap-2"><Button asChild variant="ghost" size="sm"><a href="/api/audience/export?what=contributors" download><Download />{" "}{tr("Export")}</a></Button><Button asChild variant="outline" size="sm"><Link href="/contributors/import"><Upload />{" "}{tr("Import from a file")}</Link></Button><Suspense><ContributorEditor campuses={campuses} programs={programs} groups={groups} openOnParam /></Suspense></div> : null}
       >
         <HubTabs tabs={AUDIENCE_TABS} />
       </PageHeader>

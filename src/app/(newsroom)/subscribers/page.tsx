@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Users } from "lucide-react";
+import { Download, Upload, Users } from "lucide-react";
 import { and, desc, eq, sql } from "drizzle-orm";
 import { db } from "@/server/db/client";
 import * as s from "@/server/db/schema";
@@ -12,6 +12,8 @@ import { AUDIENCE_TABS } from "@/components/newsroom/nav";
 import { DataTable } from "@/components/newsroom/data-table";
 import { Stat, StatGrid } from "@/components/newsroom/stat";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { AddSubscriber } from "@/components/subscribers/add-subscriber";
 import { formatDate } from "@/lib/utils";
 import { getUi } from "@/server/i18n/locale";
 
@@ -67,7 +69,24 @@ export default async function SubscribersPage() {
 
   return (
     <>
-      <PageHeader title={tr("Subscribers")} description={tr("The people who asked to receive your publications. Everyone here confirmed their address.")}
+      <PageHeader
+        title={tr("Subscribers")}
+        description={tr("The people who receive your publications — the ones who signed themselves up, and the ones you added.")}
+        actions={
+          <div className="flex flex-wrap items-center gap-2">
+            <Button asChild variant="ghost" size="sm">
+              <a href="/api/audience/export?what=subscribers" download>
+                <Download /> {tr("Export")}
+              </a>
+            </Button>
+            <Button asChild variant="outline" size="sm">
+              <Link href="/subscribers/import">
+                <Upload /> {tr("Import from a file")}
+              </Link>
+            </Button>
+            <AddSubscriber titles={titles.map((title) => ({ id: title.id, name: title.name }))} />
+          </div>
+        }
       >
         <HubTabs tabs={AUDIENCE_TABS} />
       </PageHeader>
