@@ -16,4 +16,5 @@ export * from "./images";
 export * from "./showcase";
 export * from "./studio";
 export * from "./qc";
+export * from "./design";
 export * from "./relations";

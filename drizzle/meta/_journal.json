@@ -190,6 +190,13 @@
       "when": 1789834616156,
       "tag": "0026_clammy_silhouette",
       "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1789903322784,
+      "tag": "0027_cynical_ironclad",
+      "breakpoints": true
     }
   ]
 }
