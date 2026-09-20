@@ -57,6 +57,20 @@ export function SendInvitations({ editionId, scheduledFor = null }: { editionId:
   const [loading, startLoad] = useTransition();
   const [working, startWork] = useTransition();
 
+  /*
+   * Closing drops the preview as well as the dialog.
+   *
+   * The button's label reads the date off the preview first and the server's own prop second, and
+   * the preview is a copy taken when the dialog opened. Keeping it after a send, a date or a
+   * cancellation meant the refreshed page said one thing and the button went on saying the other:
+   * "Going out Friday" on an invitation nobody was going to send.
+   */
+  function close() {
+    setOpen(false);
+    setStep("read");
+    setPreview(null);
+  }
+
   function openDialog() {
     setOpen(true);
     setStep("read");
@@ -66,7 +80,7 @@ export function SendInvitations({ editionId, scheduledFor = null }: { editionId:
       const result = await invitationPreviewAction(editionId);
       if (!result.ok) {
         toast.error(result.error);
-        setOpen(false);
+        close();
         return;
       }
       setPreview(result.data);
@@ -81,7 +95,7 @@ export function SendInvitations({ editionId, scheduledFor = null }: { editionId:
         toast.error(result.error);
         return;
       }
-      setOpen(false);
+      close();
       toast.success(result.message);
       router.refresh();
     });
@@ -99,7 +113,7 @@ export function SendInvitations({ editionId, scheduledFor = null }: { editionId:
         toast.error(result.error, { description: result.fieldErrors ? Object.values(result.fieldErrors).flat().join(" · ") : undefined });
         return;
       }
-      setOpen(false);
+      close();
       toast.success(result.message);
       router.refresh();
     });
@@ -112,7 +126,7 @@ export function SendInvitations({ editionId, scheduledFor = null }: { editionId:
         toast.error(result.error);
         return;
       }
-      setOpen(false);
+      close();
       toast.success(result.message);
       router.refresh();
     });
@@ -128,7 +142,7 @@ export function SendInvitations({ editionId, scheduledFor = null }: { editionId:
         {booked ? tr("Going out {date}", { date: formatZonedLong(new Date(booked)) }) : tr("Read the invitation")}
       </Button>
 
-      <Dialog open={open} onOpenChange={(next) => (next ? setOpen(true) : (setOpen(false), setStep("read")))}>
+      <Dialog open={open} onOpenChange={(next) => (next ? setOpen(true) : close())}>
         <DialogContent size="lg" className="max-h-[92vh] overflow-y-auto">
           {step === "confirm" ? (
             <>

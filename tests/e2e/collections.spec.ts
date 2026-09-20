@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { closeDb, one } from "./db";
-import { login, PLATFORM_ADMIN, setExperience } from "./helpers";
+import { bodyOf, getAsPage, login, PLATFORM_ADMIN, setExperience } from "./helpers";
 
 /**
  * The gallery, as a stranger meets it.
@@ -91,12 +91,12 @@ test.describe("exporting from the preview", () => {
     await expect(page.getByTestId("preview-export-pdf")).toBeVisible();
     await expect(page.getByTestId("preview-export-docx")).toBeVisible();
 
-    const docx = await page.request.get(`/print/edition/${edition!.id}/export?format=docx`, { timeout: 120_000 });
-    expect(docx.status()).toBe(200);
-    expect(docx.headers()["content-type"]).toContain("wordprocessingml");
-    expect(docx.headers()["content-disposition"]).toContain(".docx");
+    const docx = await getAsPage(page, `/print/edition/${edition!.id}/export?format=docx`);
+    expect(docx.status).toBe(200);
+    expect(docx.headers["content-type"]).toContain("wordprocessingml");
+    expect(docx.headers["content-disposition"]).toContain(".docx");
     // A DOCX is a zip: the first two bytes say so, which proves a file rather than an error page.
-    const body = await docx.body();
+    const body = bodyOf(docx);
     expect(body.length).toBeGreaterThan(2000);
     expect(body.subarray(0, 2).toString("latin1")).toBe("PK");
   });

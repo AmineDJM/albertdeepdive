@@ -1,6 +1,6 @@
 import { test, expect, type Page } from "@playwright/test";
 import { closeDb, one } from "./db";
-import { login, setExperience } from "./helpers";
+import { getAsPage, login, setExperience, textOf } from "./helpers";
 
 /**
  * The design room, end to end.
@@ -75,9 +75,9 @@ test.describe("the design room", () => {
 
     // The preview is the live renderer at the same address the iframe uses.
     await expect(page.locator(`iframe[src="/design/edition/${editionId}?medium=web"]`)).toBeVisible();
-    const web = await page.request.get(`/design/edition/${editionId}?medium=web`);
-    expect(web.status()).toBe(200);
-    const html = await web.text();
+    const web = await getAsPage(page, `/design/edition/${editionId}?medium=web`);
+    expect(web.status).toBe(200);
+    const html = textOf(web);
     expect(html).toContain("<!doctype html>");
     expect(html).toContain('<main id="edition"');
 
@@ -92,9 +92,9 @@ test.describe("the design room", () => {
 
     await press(page, "Email", () => expect(page.locator(`iframe[src="/design/edition/${editionId}?medium=email"]`)).toBeVisible({ timeout: 10_000 }));
 
-    const email = await page.request.get(`/design/edition/${editionId}?medium=email`);
-    expect(email.status()).toBe(200);
-    const html = await email.text();
+    const email = await getAsPage(page, `/design/edition/${editionId}?medium=email`);
+    expect(email.status).toBe(200);
+    const html = textOf(email);
     // Email is tables and inline styles, whatever the web edition does.
     expect(html).toContain("<table");
     expect(html.toLowerCase()).toContain("unsubscribe");

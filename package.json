@@ -22,6 +22,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
+    "test:e2e:built": "tsx scripts/e2e-built.ts",
     "check": "pnpm lint && pnpm typecheck && pnpm test",
     "db:seed:once": "tsx scripts/seed-once.ts",
     "tick": "tsx scripts/tick.ts",

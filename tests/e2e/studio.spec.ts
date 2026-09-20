@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { closeDb, one } from "./db";
-import { PLATFORM_ADMIN, login } from "./helpers";
+import { bodyOf, getAsPage, PLATFORM_ADMIN, login } from "./helpers";
 
 /**
  * The studio's three doors: the work can be taken away, the words can be changed without touching
@@ -27,11 +27,11 @@ test.describe("creative studio", () => {
     await expect(page.getByRole("link", { name: "Download" })).toHaveAttribute("href", `/api/creative/${packId}/download`);
 
     // The same session the browser holds, so this is the click without the file dialog.
-    const response = await page.request.get(`/api/creative/${packId}/download`);
-    expect(response.status()).toBe(200);
-    expect(response.headers()["content-type"]).toBe("application/zip");
-    expect(response.headers()["content-disposition"]).toMatch(/^attachment; filename=".+\.zip"$/);
-    expect((await response.body()).length).toBeGreaterThan(1000);
+    const response = await getAsPage(page, `/api/creative/${packId}/download`);
+    expect(response.status).toBe(200);
+    expect(response.headers["content-type"]).toBe("application/zip");
+    expect(response.headers["content-disposition"]).toMatch(/^attachment; filename=".+\.zip"$/);
+    expect(bodyOf(response).length).toBeGreaterThan(1000);
   });
 
   test("refuses words that cannot be rendered, and says why", async ({ page }) => {

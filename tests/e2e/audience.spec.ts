@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { closeDb, one } from "./db";
-import { login, setExperience } from "./helpers";
+import { getAsPage, login, setExperience, textOf } from "./helpers";
 
 /**
  * The list, out and in.
@@ -22,11 +22,11 @@ test.describe("the audience", () => {
     await login(page);
 
     for (const what of ["subscribers", "contributors"]) {
-      const response = await page.request.get(`/api/audience/export?what=${what}`);
-      expect(response.status(), what).toBe(200);
-      expect(response.headers()["content-type"]).toContain("text/csv");
-      expect(response.headers()["content-disposition"]).toMatch(new RegExp(`attachment; filename="${what}-\\d{4}-\\d{2}-\\d{2}.csv"`));
-      const body = await response.text();
+      const response = await getAsPage(page, `/api/audience/export?what=${what}`);
+      expect(response.status, what).toBe(200);
+      expect(response.headers["content-type"]).toContain("text/csv");
+      expect(response.headers["content-disposition"]).toMatch(new RegExp(`attachment; filename="${what}-\\d{4}-\\d{2}-\\d{2}.csv"`));
+      const body = textOf(response);
       // The mark that makes Excel read it as UTF-8, then a header row naming the columns.
       expect(body.charCodeAt(0), what).toBe(0xfeff);
       expect(body.split("\r\n")[0], what).toContain("Email");
