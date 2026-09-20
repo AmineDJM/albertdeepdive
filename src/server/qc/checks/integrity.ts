@@ -220,12 +220,28 @@ export const factsCheck: Check = {
  * date as a contradiction. Three such reports on a perfectly correct issue is how a gate stops
  * being read.
  */
+/** Whatever the renderer marks the next item with: "- ", "* ", "• ", or a bullet on a line of its own. */
+const NEXT_ITEM = /\n[ \t]*[-*\u2022]/;
+
+/** The teaser is cut to 180 characters at a word boundary; a little slack, and no more. */
+const TEASER_SLACK = 220;
+
 export function articleTeaser(text: string, headline: string): string {
   const at = text.indexOf(headline);
   if (at < 0) return "";
   const after = at + headline.length;
-  const next = text.indexOf("\n- ", after);
-  const end = next >= 0 ? next : Math.min(text.length, after + 400);
+  /*
+   * One article's teaser, and not a word of the next one's.
+   *
+   * This looked only for "\n- ", which is what the plain email renderer writes — and not what the
+   * designed one does: it separates items with an asterisk. So against the renderer that actually
+   * sends, no boundary was ever found, the fallback window ran on through the following two items,
+   * and a date belonging to a different piece came back as this article contradicting itself. The
+   * issue was held at the gate over a sentence nobody had written.
+   */
+  const rest = text.slice(after);
+  const boundary = NEXT_ITEM.exec(rest)?.index ?? -1;
+  const end = after + (boundary >= 0 ? boundary : Math.min(rest.length, TEASER_SLACK));
   return text.slice(at, end);
 }
 

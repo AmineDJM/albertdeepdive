@@ -213,6 +213,30 @@ describe("facts, normalised hard enough to compare", () => {
     expect(articleTeaser(email, "An article that is not in this email")).toBe("");
   });
 
+  it("stops at the next item however the renderer marks one", () => {
+    /*
+     * The guard above held for "- " and for nothing else, and "- " is what the plain renderer
+     * writes. The designed email — the one an edition is actually sent as — separates items with
+     * an asterisk, so no boundary was ever found in it: the window ran through the next two
+     * articles, and a date from one of them was reported as this article contradicting itself.
+     * A correct issue was held at the last gate before publication over it.
+     */
+    const designed = [
+      "School prize list: who can beat us?",
+      "  A modest comparison of Albert School with HEC and Harvard.",
+      "*",
+      "  Four students founded a digital agency between two courses.",
+      "* 1 km for €1: the Jonquille Run",
+      "  On 22 March, We Run Albert brought students to the stadium.",
+    ].join("\n");
+    const teaser = articleTeaser(designed, "School prize list: who can beat us?");
+    expect(teaser).toContain("Harvard");
+    expect(teaser).not.toContain("22 March");
+    expect(extractFacts(teaser)).toEqual([]);
+    // And the piece the date does belong to still reads its own line.
+    expect(articleTeaser(designed, "1 km for €1: the Jonquille Run")).toContain("22 March");
+  });
+
   it("finds nothing in prose that carries no facts", () => {
     expect(extractFacts("The newsroom met on a Tuesday and talked about the cover.")).toEqual([]);
   });
