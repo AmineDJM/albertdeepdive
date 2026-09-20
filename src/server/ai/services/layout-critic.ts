@@ -202,3 +202,88 @@ function remedyOf(proposed: LayoutCritique["findings"][number]["remedy"], blockI
       return { kind: "none" };
   }
 }
+
+
+/* ── Choosing between layouts ────────────────────────────────────────────────────────────── */
+
+/**
+ * Which of these is the better page.
+ *
+ * §41 and §82: never ship the first valid layout, and give the cover and the major pages a
+ * tournament. Scoring can throw out the broken ones; only looking can say which of three good ones
+ * is the one a reader would stop at.
+ *
+ * One call with all the options rather than one call each: "better than that one" is a comparison,
+ * and a model shown them together makes it rather than guessing at an absolute.
+ */
+export const layoutChoiceSchema = z.object({
+  /** The option's number, as labelled in the images. */
+  winner: z.number().int().min(1).max(8),
+  /** Why, in one or two sentences, in the words an art director would use with an editor. */
+  because: z.string().min(5).max(400),
+  /** The one it would take if the winner were refused, or null when nothing else is close. */
+  runnerUp: z.number().int().min(1).max(8).nullable(),
+});
+export type LayoutChoice = z.infer<typeof layoutChoiceSchema>;
+
+export type ChoiceResult = { choice: LayoutChoice; model: string; inputTokens: number; outputTokens: number };
+
+export async function chooseLayout(input: { options: CritiqueShot[]; intent: string; question: string }): Promise<ChoiceResult | null> {
+  if (input.options.length < 2) return null;
+  const { getAiProvider } = await import("@/server/ai/run");
+  if (getAiProvider().name !== "openai") return null;
+
+  const { integrationConfig } = await import("@/server/integrations/service");
+  const { env } = await import("@/server/env");
+  const config = await integrationConfig("openai");
+  const apiKey = config.apiKey ?? env.OPENAI_API_KEY;
+  const proxyManaged = !apiKey || apiKey === "proxy" || apiKey === "proxy-injected";
+  const { default: OpenAI } = await import("openai");
+  const client = new OpenAI({
+    apiKey: proxyManaged ? "proxy-injected" : apiKey,
+    baseURL: config.baseUrl || env.OPENAI_BASE_URL || undefined,
+    defaultHeaders: proxyManaged ? { Authorization: null } : undefined,
+    maxRetries: 1,
+    timeout: 120_000,
+  });
+  const { toStrictJsonSchema } = await import("@/server/ai/json-schema");
+
+  const content: ({ type: "text"; text: string } | { type: "image_url"; image_url: { url: string; detail: "low" | "high" } })[] = [
+    { type: "text", text: `What this publication is trying to be: ${input.intent}` },
+    { type: "text", text: input.question },
+  ];
+  for (const [index, option] of input.options.slice(0, 8).entries()) {
+    content.push({ type: "text", text: `Option ${index + 1}: ${option.label}` });
+    content.push({ type: "image_url", image_url: { url: `data:image/png;base64,${option.png.toString("base64")}`, detail: "high" } });
+  }
+
+  const completion = await client.chat.completions.create({
+    model: config.modelStrong || env.AI_MODEL_STRONG,
+    temperature: 0,
+    max_completion_tokens: 600,
+    messages: [
+      {
+        role: "system",
+        content: [
+          "You are an art director choosing between layouts of the same material for the same publication.",
+          "Judge what you can see: hierarchy, the photograph's cut, how the type sits, whether a reader would stop.",
+          "The words are identical in every option. Do not comment on them.",
+          "Pick one. A tie is not an answer — say which you would run and why in a sentence an editor would understand.",
+        ].join(" "),
+      },
+      { role: "user", content },
+    ],
+    response_format: { type: "json_schema", json_schema: { name: "layout_choice", schema: toStrictJsonSchema(layoutChoiceSchema), strict: true } },
+  });
+  const raw = completion.choices[0]?.message?.content;
+  if (!raw) return null;
+  try {
+    const parsed = layoutChoiceSchema.safeParse(JSON.parse(raw));
+    if (!parsed.success) return null;
+    // An option number nobody offered is not a choice.
+    if (parsed.data.winner > input.options.length) return null;
+    return { choice: parsed.data, model: completion.model, inputTokens: completion.usage?.prompt_tokens ?? 0, outputTokens: completion.usage?.completion_tokens ?? 0 };
+  } catch {
+    return null;
+  }
+}

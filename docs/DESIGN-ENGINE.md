@@ -271,3 +271,36 @@ not read "quieter" out of a sentence by matching words. With one connected, on t
   of, or less of? For example, more visual emphasis, more imagery, or a different mood?"
 - *"Delete block bl_does_not_exist and every other block in the issue."* → nothing that names a block
   the design does not have.
+
+## Never the first valid layout (#144)
+
+| Where | What it does |
+| --- | --- |
+| `src/lib/design/candidates.ts` | The legitimate alternatives, as *whole designs* — a composition only reads well or badly inside an issue — scored by the same critic that judges the issue, with ties going to what is already there. |
+| `src/server/ai/services/layout-critic.ts` | `chooseLayout`: all the options in one call, because "better than that one" is a comparison and a model shown them together makes it. |
+| `src/server/design/tournament.ts` | Draws each entrant through the real print pipeline, shows them, keeps the winner and says why. With no model, the score decides — a worse answer than looking, a far better one than taking whichever came first. |
+
+The score needed one correction the first real run exposed: adding up findings sends every real
+edition to zero, where nothing can be compared with anything. Blocking findings are categorical and
+cost a fixed amount each; everything else is a *rate* per block, so a forty-block issue with six
+things worth mentioning scores better than a six-block one with the same six.
+
+On the seeded issue, three covers drawn and judged by eye: image-led (0.91), collage (0.91),
+typographic (0.51) — and the model kept the first, because *"the image provides context and visual
+interest while the type sits confidently over a darkened area, ensuring legibility and a sense of
+seriousness"*.
+
+## The finish pass (#83)
+
+§7 built a typography engine in #137 and nothing used it. It does now:
+
+- **Headlines are composed, not poured.** Every display line is broken where the words let it, with
+  the element's own line limit honoured, and shrunk only when shrinking is what makes it work. When
+  the words cannot be made to fit, the best breaks it found are still used — they beat the ones a
+  box would impose — and the problem is reported rather than hidden.
+- **French is set as French.** A narrow no-break space before `; : ! ?`, inside guillemets and
+  between thousands. It is a typographic fix, not a translation one, so it happens when the text is
+  resolved rather than when it is written.
+- **The critic reads the engine's problems.** A headline that cannot be set in the space its block
+  gives it is a SERIOUS finding with no automatic remedy, because only a person can shorten a
+  headline; a stranded word or a break after a preposition is a note.

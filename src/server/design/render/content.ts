@@ -1,5 +1,6 @@
 import { blockText, type ArticleBlock, type DocumentArticle, type DocumentMedia, type EditionDocument } from "@/lib/publication/document";
 import { formatIsoDate } from "@/lib/publication/text";
+import { applyLocaleSpacing } from "@/lib/design/headline";
 import type { ContentRef, DesignElement } from "@/lib/design/model";
 import type { OutputMedium } from "@/lib/design/roles";
 import { CROP_SHAPES, cropTo, naturalShape, type CropShape, type FocalPoint, CENTRE } from "@/lib/design/crop";
@@ -49,14 +50,23 @@ export type ResolveContext = {
    * resolving to a guess that would print the wrong folio.
    */
   page?: { number: number; total: number };
+  /**
+   * The language the edition is set in.
+   *
+   * Typographic, not editorial: French puts a narrow non-breaking space before its high punctuation
+   * and inside its quotation marks, and an English renderer that ignores that is the first thing a
+   * French reader notices. The copy is not changed — the spacing is.
+   */
+  locale?: string;
 };
 
 export function resolve(ref: ContentRef, ctx: ResolveContext): Resolved {
   const resolved = resolveRef(ref, ctx);
   // Empty is nothing. A heading whose text resolved to "" renders as an empty tag: invisible in a
   // browser, a blank line in a PDF, and a heading with no name to a screen reader.
-  if (resolved.kind === "text" && !resolved.text.trim()) return { kind: "nothing", why: "there is nothing to say here" };
-  return resolved;
+  if (resolved.kind !== "text") return resolved;
+  if (!resolved.text.trim()) return { kind: "nothing", why: "there is nothing to say here" };
+  return ctx.locale ? { kind: "text", text: applyLocaleSpacing(resolved.text, ctx.locale) } : resolved;
 }
 
 function resolveRef(ref: ContentRef, ctx: ResolveContext): Resolved {

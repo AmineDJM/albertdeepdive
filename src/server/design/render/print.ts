@@ -1,6 +1,6 @@
 import { html, join, raw, type Html } from "@/server/publication/templates/html";
 import { compileBrandSystem, DEFAULT_BRAND_SYSTEM, type BrandSystem } from "@/lib/brand/system";
-import { buildScale, MEDIUM_BASE } from "@/lib/design/type-scale";
+import { buildScale, MEDIUM_BASE, type TypeScale } from "@/lib/design/type-scale";
 import type { DesignGrid } from "@/lib/design/model";
 import type { ResolvedDirection } from "@/lib/design/identity";
 import type { PersonalityKey } from "@/lib/brand/typography";
@@ -215,8 +215,8 @@ ${options.extraCss ?? ""}`;
 
 /* ── The pages ───────────────────────────────────────────────────────────────────────────── */
 
-function surfaceMarkup(surface: PageSurface, page: PrintPage, options: PrintRenderOptions, ctx: ResolveContext): Html | null {
-  const blocks = surface.blocks.map((block) => renderBlock(block, { medium: "print", content: ctx, baseLevel: 1 })).filter((markup) => markup.value.length > 0);
+function surfaceMarkup(surface: PageSurface, page: PrintPage, options: PrintRenderOptions, ctx: ResolveContext, typography: { scale: TypeScale; contentWidth: number }): Html | null {
+  const blocks = surface.blocks.map((block) => renderBlock(block, { medium: "print", content: ctx, baseLevel: 1, typography })).filter((markup) => markup.value.length > 0);
   if (!blocks.length) return null;
   const words = printWords(options.locale);
   const from = surface.continued ? jumpSource(options.plan, page.id, surface.surfaceId) : null;
@@ -226,16 +226,23 @@ function surfaceMarkup(surface: PageSurface, page: PrintPage, options: PrintRend
   }${join(blocks, "\n")}${onward ? html`<p class="jump t-metadata">${words.continuedOn(onward)}</p>` : ""}</section>`;
 }
 
+/** One millimetre in points, which is the unit a printed type scale is stated in. */
+const MM_TO_PT = 2.83465;
+
 export function renderPrintPage(page: PrintPage, options: PrintRenderOptions): Html {
   const total = options.plan.pages.length;
-  const ctx: ResolveContext = { ...options.content, medium: "print", page: { number: page.number, total } };
+  const brandFor = options.brand ?? DEFAULT_BRAND_SYSTEM;
+  const scale = buildScale(options.direction, options.personality ?? brandFor.personality, "print");
+  const margins = marginsMm(options.grid, options.plan.size.widthMm);
+  const contentWidth = (options.plan.size.widthMm - margins.left - margins.right) * MM_TO_PT;
+  const ctx: ResolveContext = { ...options.content, medium: "print", locale: options.locale ?? options.content.locale, page: { number: page.number, total } };
   const first = page.surfaces[0];
   const coverBlock = first?.kind === "cover" ? first.blocks.find((block) => block.role === "cover") : undefined;
   // A cover and a full-bleed opener own the whole sheet; furniture on them is a design decision
   // the composition makes, not something the page chrome imposes.
   const bleedSheet = Boolean(first && (first.kind === "cover" || (first.kind === "opener" && first.blocks.some((block) => block.constraints.fullBleed))));
   const furniture = !page.blank && !bleedSheet && first?.kind !== "cover";
-  const surfaces = page.surfaces.map((surface) => surfaceMarkup(surface, page, options, ctx)).filter((markup): markup is Html => Boolean(markup));
+  const surfaces = page.surfaces.map((surface) => surfaceMarkup(surface, page, options, ctx, { scale, contentWidth })).filter((markup): markup is Html => Boolean(markup));
   const section = page.surfaces.find((surface) => surface.sectionName)?.sectionName ?? "";
 
   return html`<div class="page" id="${page.id}" data-page="${page.id}" data-number="${page.number}" data-side="${page.side}" data-kind="${first?.kind ?? "blank"}" data-fit="${page.fit}"${raw(coverBlock ? ` data-cover="${coverBlock.composition}"` : "")}${raw(

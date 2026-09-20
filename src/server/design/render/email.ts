@@ -433,7 +433,7 @@ export function renderEmailEdition(options: EmailRenderOptions): RenderedEmail {
   const palette = emailPalette(tokens);
   const scale = buildScale(options.direction, options.personality ?? brand.personality, "email");
   const say = words(options.locale);
-  const content: ResolveContext = { ...options.content, medium: "email" };
+  const content: ResolveContext = { ...options.content, medium: "email", locale: options.locale ?? options.content.locale };
   const ctx: RowContext = { scale, palette, content, say, webUrl: options.webUrl ?? null };
   const meta = content.document.meta;
 

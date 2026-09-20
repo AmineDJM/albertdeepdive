@@ -1,4 +1,6 @@
 import { html, join, raw, type Html } from "@/server/publication/templates/html";
+import { composeHeadline } from "@/lib/design/headline";
+import { MEDIUM_BASE, type TypeScale } from "@/lib/design/type-scale";
 import { blockFor, type DesignBlock, type DesignElement, type EditionDesign } from "@/lib/design/model";
 import type { OutputMedium } from "@/lib/design/roles";
 import type { ArticleBlock } from "@/lib/publication/document";
@@ -25,6 +27,15 @@ export type RenderOptions = {
   content: ResolveContext;
   /** The heading level the edition starts at. A web page's `<h1>` is the masthead. */
   baseLevel?: number;
+  /**
+   * What the typography engine needs to set a headline rather than pour it in.
+   *
+   * §7: a display line is composed — broken where the sense breaks, balanced across its lines,
+   * and shrunk only when shrinking is what makes it work. Without this the browser breaks it
+   * wherever the box ends, which is how "a +0.4% sales uplift" ends up as "a +0.4% sales" and a
+   * line reading "uplift".
+   */
+  typography?: { scale: TypeScale; contentWidth: number };
 };
 
 export function renderDesign(design: EditionDesign, options: RenderOptions): Html {
@@ -68,6 +79,41 @@ function surfaceClass(surface: string): string {
   return `s-${surface}`;
 }
 
+/**
+ * A headline, composed.
+ *
+ * The engine is asked only where it can be answered: a display line with a width to fit into. It
+ * returns where to break, and how much to shrink if shrinking is what makes the line work; the
+ * breaks are emitted so the renderer cannot undo them, and the size only when it differs from the
+ * scale's, so a headline that already fits carries no inline style at all.
+ */
+function setHeadline(text: string, element: DesignElement, block: DesignBlock, options: RenderOptions): { markup: string; style: string } {
+  const plain = { markup: escape(text), style: "" };
+  const typography = options.typography;
+  if (!typography) return plain;
+  const role = element.style.type ?? "headline";
+  const style = typography.scale.roles[role as keyof TypeScale["roles"]];
+  if (!style) return plain;
+
+  const width = typography.contentWidth * (block.constraints.maxWidth ?? 1);
+  if (width <= 0) return plain;
+  const composed = composeHeadline(text, style, {
+    maxWidth: width,
+    // The element's own limit first: a cover line that may take two lines said so when it was
+    // composed, and the block it sits on knows nothing about that.
+    maxLines: element.constraints.maxHeadlineLines ?? block.constraints.maxHeadlineLines ?? (block.importance === "COVER" || block.importance === "LEAD" ? 3 : 4),
+    locale: options.content.locale,
+  });
+  // Even when the words cannot be made to fit, the breaks it found beat the ones a box would
+  // impose — and the problems it reports are the critic's business, not the renderer's.
+  if (composed.lines.length <= 1) return plain;
+
+  const unit = MEDIUM_BASE[options.medium].unit;
+  const changed = Math.abs(composed.size - style.size) > 0.01 || Math.abs(composed.tracking - style.tracking) > 0.0001;
+  const inline = changed ? ` style="font-size:${composed.size}${unit};letter-spacing:${(composed.tracking * composed.size).toFixed(3)}${unit};line-height:${composed.leading}"` : "";
+  return { markup: composed.lines.map(escape).join("<br>"), style: inline };
+}
+
 function renderElement(element: DesignElement, block: DesignBlock, options: RenderOptions): Html | null {
   if (element.omitIn.includes(options.medium)) return null;
   const resolved = resolve(element.content, options.content);
@@ -77,8 +123,11 @@ function renderElement(element: DesignElement, block: DesignBlock, options: Rend
   const level = headingLevel(block.importance, options.baseLevel ?? 1);
 
   switch (element.role) {
-    case "headline":
-      return resolved.kind === "text" ? raw(`<h${level} class="headline${typeClass}" data-element="${element.id}">${escape(resolved.text)}</h${level}>`) : null;
+    case "headline": {
+      if (resolved.kind !== "text") return null;
+      const set = setHeadline(resolved.text, element, block, options);
+      return raw(`<h${level} class="headline${typeClass}" data-element="${element.id}"${set.style}>${set.markup}</h${level}>`);
+    }
     case "subheadline":
       return resolved.kind === "text" ? raw(`<h${Math.min(6, level + 1)} class="subheadline${typeClass}" data-element="${element.id}">${escape(resolved.text)}</h${Math.min(6, level + 1)}>`) : null;
     case "kicker":

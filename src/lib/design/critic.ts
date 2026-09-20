@@ -3,6 +3,7 @@ import { COMPOSITIONS, IMPORTANCE_WEIGHT, PICTURE_ROLES, isComposition, type Blo
 import type { EditionSignals } from "./signals";
 import type { ResolvedDirection } from "./identity";
 import { buildScale, isDistinguishable } from "./type-scale";
+import { composeHeadline } from "./headline";
 import { candidatesFor } from "./compose";
 import type { CropShape } from "./crop";
 
@@ -192,11 +193,59 @@ function alternativeFor(block: DesignBlock, signals: EditionSignals, direction: 
 
 /* ── Typography ──────────────────────────────────────────────────────────────────────────── */
 
-function typography({ direction }: InspectInput): DesignFinding[] {
+/** A4's text width in points, which is the tightest measure any of these headlines has to survive. */
+const PRINT_MEASURE_PT = (210 - 35) * 2.83465;
+
+function typography({ design, signals, direction }: InspectInput): DesignFinding[] {
   const out: DesignFinding[] = [];
+  const scale = buildScale(direction, "editorial", "print");
+  const headlines = new Map(signals.stories.map((story) => [story.articleId, story.headline]));
+
+  for (const block of blocksOf(design)) {
+    const element = block.elements.find((candidate) => candidate.role === "headline");
+    const text = block.articleId ? headlines.get(block.articleId) : null;
+    if (!element || !text) continue;
+    const style = scale.roles[(element.style.type ?? "headline") as keyof typeof scale.roles];
+    if (!style) continue;
+
+    const composed = composeHeadline(text, style, {
+      maxWidth: PRINT_MEASURE_PT * (block.constraints.maxWidth ?? 1),
+      maxLines: element.constraints.maxHeadlineLines ?? block.constraints.maxHeadlineLines ?? 3,
+    });
+    if (!composed.fits) {
+      out.push(
+        finding({
+          id: `typography:headline:${block.id}`,
+          dimension: "typography",
+          severity: "SERIOUS",
+          issue: `“${text.slice(0, 60)}${text.length > 60 ? "…" : ""}” cannot be set in the space the ${block.role} gives it: it takes ${composed.lines.length} lines.`,
+          // Only a person can shorten a headline, so there is nothing to apply automatically.
+          remedy: { kind: "none" },
+          blockId: block.id,
+          evidence: { lines: composed.lines.length, wanted: element.constraints.maxHeadlineLines ?? 3 },
+        }),
+      );
+      continue;
+    }
+    if (composed.problems.includes("stranded-word") || composed.problems.includes("dangling-break")) {
+      out.push(
+        finding({
+          id: `typography:break:${block.id}`,
+          dimension: "typography",
+          severity: "MINOR",
+          issue: composed.problems.includes("stranded-word")
+            ? `The ${block.role}'s headline leaves one word alone on its last line.`
+            : `The ${block.role}'s headline breaks after a word the sense carries on from.`,
+          remedy: { kind: "none" },
+          blockId: block.id,
+        }),
+      );
+    }
+  }
+
   for (const medium of ["print", "web", "email"] as const) {
-    const scale = buildScale(direction, "editorial", medium);
-    if (!isDistinguishable(scale)) {
+    const mediumScale = buildScale(direction, "editorial", medium);
+    if (!isDistinguishable(mediumScale)) {
       out.push(
         finding({
           id: `typography:flat-scale:${medium}`,

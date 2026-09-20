@@ -46,8 +46,10 @@ export function renderWebEdition(options: WebRenderOptions): string {
   const scale = buildScale(options.direction, personality, "web");
   const grid = options.design.grid;
   const css = designCss({ tokens, scale, grid, direction: options.direction, medium: "web" });
-  const body = renderDesign(options.design, { medium: "web", content: { ...options.content, medium: "web" }, baseLevel: 2 });
-  const contents = tableOfContents(options.design, options.content);
+  const content: ResolveContext = { ...options.content, medium: "web", locale: options.locale ?? options.content.locale };
+  // 1180px is the edition's own maximum width, less the gutter the page keeps either side.
+  const body = renderDesign(options.design, { medium: "web", content, baseLevel: 2, typography: { scale, contentWidth: 1180 - tokens.shape.unit * 4 } });
+  const contents = tableOfContents(options.design, content);
   const locale = options.locale ?? "en";
 
   return html`<!doctype html>
