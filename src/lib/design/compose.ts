@@ -221,6 +221,59 @@ function storyElements(role: BlockRole, ctx: Context, composition: string, measu
   return elements;
 }
 
+/**
+ * Which elements a block carries, which depends on what the block *is*.
+ *
+ * A block attached to a story is not necessarily the story. A pull quote belongs to a story and
+ * carries one sentence; a stat belongs to a story and carries a number; a photo spread belongs to a
+ * story and carries photographs. Building every story-attached block as a story was how a quote
+ * meant to punctuate a page ended up repeating the whole article underneath it.
+ */
+function elementsFor(role: BlockRole, ctx: Context, composition: string, measure: { min: number; max: number }, articleId: string | null, sectionId: string | null): DesignElement[] {
+  const story = ctx.story;
+  if (!story || !articleId) return furnitureElements(role, articleId, sectionId);
+
+  switch (role) {
+    case "quote":
+    case "pull-quote":
+      return [
+        element("quote", articleRef(articleId, "pullquote"), { style: { type: role === "quote" ? "display-l" : "deck" }, constraints: { priority: 0.6, keepTogether: true, maxMeasure: 40 } }),
+        element("attribution", articleRef(articleId, "byline"), { style: { type: "metadata" }, constraints: { priority: 0.2 } }),
+      ];
+
+    case "stat":
+    case "stat-group":
+      return [
+        element("stat-value", articleRef(articleId, "excerpt"), { style: { type: "display-l" }, constraints: { priority: 0.6, keepTogether: true } }),
+        element("stat-label", articleRef(articleId, "headline"), { style: { type: "label" }, constraints: { priority: 0.4 } }),
+      ];
+
+    case "photo":
+    case "photo-pair":
+    case "photo-grid":
+    case "photo-spread":
+    case "portrait": {
+      if (!story.bestPictureId) return [];
+      return [
+        pictureElement(story.bestPictureId, 0.8, composition),
+        element("caption", articleRef(articleId, "headline"), { style: { type: "caption" }, constraints: { priority: 0.2 } }),
+      ];
+    }
+
+    case "cover": {
+      const elements: DesignElement[] = [];
+      if (story.bestPictureId && /image|photo|portrait|collage/.test(composition)) elements.push(pictureElement(story.bestPictureId, 1, composition));
+      elements.push(element("kicker", { kind: "meta", part: "issueLabel" }, { style: { type: "label" }, constraints: { priority: 0.3 } }));
+      elements.push(element("headline", articleRef(articleId, "headline"), { style: { type: "display-xl", emphasis: 1 }, constraints: { priority: 1, maxHeadlineLines: 2, keepWithNext: true } }));
+      elements.push(element("deck", articleRef(articleId, "standfirst"), { style: { type: "deck" }, constraints: { priority: 0.5, ...measure } }));
+      return elements;
+    }
+
+    default:
+      return storyElements(role, ctx, composition, measure);
+  }
+}
+
 function pictureElement(mediaId: string, weight: number, composition: string): DesignElement {
   const bleeds = /full-bleed|full-spread|image-led/.test(composition);
   return element(
@@ -290,7 +343,7 @@ function composeSurface(
         importance: intended.importance,
         storyId: story?.storyId ?? null,
         articleId: intended.articleId,
-        elements: story ? storyElements(role, ctx, chosen.composition, measure) : furnitureElements(role, intended.articleId),
+        elements: elementsFor(role, ctx, chosen.composition, measure, intended.articleId, planned.sectionId),
         constraints: {
           priority: IMPORTANCE_WEIGHT[intended.importance],
           minWidth: Math.round((span.span / grid.columns) * 100) / 100,
@@ -320,7 +373,7 @@ function composeSurface(
  * They read from the edition's metadata rather than from an article, which is why they are built
  * separately — and why a design can carry a masthead without a story attached to it.
  */
-function furnitureElements(role: BlockRole, articleId: string | null): DesignElement[] {
+function furnitureElements(role: BlockRole, articleId: string | null, sectionId: string | null): DesignElement[] {
   switch (role) {
     case "masthead":
       return [
@@ -329,7 +382,9 @@ function furnitureElements(role: BlockRole, articleId: string | null): DesignEle
         element("dateline", { kind: "meta", part: "date" }, { style: { type: "metadata" }, constraints: { priority: 0.2 } }),
       ];
     case "section-opener":
-      return [element("headline", { kind: "text", text: "" }, { style: { type: "display-l" }, constraints: { priority: 0.6 } })];
+      // The section's own name, read from the edition. An opener built from a literal would be an
+      // opener that says nothing, which is what it did until a rendered page showed the empty tag.
+      return sectionId ? [element("headline", { kind: "section", sectionId, part: "name" }, { style: { type: "display-l" }, constraints: { priority: 0.6 } })] : [];
     case "brief-group":
       return [element("label", { kind: "text", text: "In brief" }, { style: { type: "label" }, constraints: { priority: 0.3 } })];
     case "events":
