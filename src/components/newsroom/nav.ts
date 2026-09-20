@@ -191,6 +191,7 @@ export const EDITION_DOORS: readonly EditionDoor[] = [
       { slug: "inbox", label: "nav.contributions", permission: "submission:view" },
       { slug: "ask", label: "editionTabs.ask", permission: "campaign:manage" },
       { slug: "campaign", label: "editionTabs.campaign", permission: "campaign:manage", standardLabel: "editionTabs.askForNews" },
+      { slug: "deadline", label: "editionTabs.deadline", permission: "campaign:manage" },
     ],
   },
   {

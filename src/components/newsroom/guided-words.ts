@@ -11,6 +11,7 @@ export function screenWords(tr: (text: string) => string): Record<string, { ques
     setup: { question: tr("What Briefly decided"), cta: tr("Validate") },
     ask: { question: tr("What are you asking for?"), cta: tr("Next") },
     who: { question: tr("Who are you asking?"), cta: tr("Next") },
+    when: { question: tr("When for?"), cta: tr("Next") },
     pictures: { question: tr("Pictures"), cta: tr("Next") },
     topics: { question: tr("Which topics are going in?"), cta: tr("Next") },
     draft: { question: tr("The draft"), cta: tr("Next") },

@@ -31,7 +31,7 @@ export type GuidedScreen = {
 };
 
 /**
- * Setting an edition up is four screens, and all four are the first step of the timeline.
+ * Setting an edition up is five screens, and all five are the first step of the timeline.
  *
  * Pictures belongs here rather than beside the draft because it is part of preparing an edition —
  * a cover, the brand's own photographs — and putting it after Topics would make the timeline run
@@ -41,6 +41,7 @@ export const GUIDED_PATH: readonly GuidedScreen[] = [
   { key: "setup", room: "", step: "CONTRIBUTORS", question: "What Briefly decided", cta: "Validate" },
   { key: "ask", room: "ask", step: "CONTRIBUTORS", question: "What are you asking for?", cta: "Next" },
   { key: "who", room: "campaign", step: "CONTRIBUTORS", question: "Who are you asking?", cta: "Next" },
+  { key: "when", room: "deadline", step: "CONTRIBUTORS", question: "When for?", cta: "Next" },
   { key: "pictures", room: "media", step: "CONTRIBUTORS", question: "Pictures", cta: "Next" },
   { key: "topics", room: "topics", step: "TOPICS", question: "Which topics are going in?", cta: "Next" },
   { key: "draft", room: "revise", step: "DRAFT", question: "The draft", cta: "Next" },

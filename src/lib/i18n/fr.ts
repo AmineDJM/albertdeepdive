@@ -90,6 +90,7 @@ export const fr: Dictionary = {
     revise: "Réviser",
     askForNews: "Demander des nouvelles",
     ask: "Ce que vous demandez",
+    deadline: "Date limite",
   },
 
   auth: {

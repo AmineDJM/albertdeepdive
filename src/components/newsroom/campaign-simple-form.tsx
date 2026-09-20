@@ -7,11 +7,9 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { SettingsCard } from "@/components/settings/key-value";
 import { GuidedFooter } from "./guided-footer";
 import { saveAudienceAction } from "@/app/(newsroom)/editions/[editionId]/campaign/actions";
-import { endOfZonedDay } from "@/lib/campaigns/schedule";
 import type { SelectionMode } from "@/lib/campaigns/selection";
 import { cn } from "@/lib/utils";
 import { useUi } from "@/components/i18n/provider";
@@ -22,24 +20,30 @@ export type AudienceValues = {
   selectionMode: SelectionMode;
   drawCount: number;
   contributorGroupIds: string[];
-  /** The closing date, as the calendar day it is in the workspace's timezone. */
-  deadlineDay: string;
-  introMessage: string;
+  /** PEOPLE: exactly who is being asked, chosen here rather than on another screen. */
+  selectedContributorIds: string[];
 };
 
+export type SimplePerson = { id: string; name: string; email: string; groups: string[] };
+
 /**
- * Who are you asking, and by when.
+ * Who are you asking?
  *
- * The campaign screen asked eleven questions: five dates, a campus target per campus, the pools,
- * the selection, the brief, the invitation message and a name for the internal log. Three of them
- * are decisions — which people, how many, and the last day — and the other eight are consequences
- * or logistics. So Standard asks the three, and derives the rest; Advanced still shows all of it,
- * on the same screen, writing the same columns.
+ * One question now, where there were three. The last day moved to a screen of its own, because it
+ * times the whole month rather than describing the invitation, and the word at the top of the
+ * email moved to the screen that asks what you want from people — which is where somebody writing
+ * it is already thinking about what to say.
+ *
+ * What is left is the people, and all three ways of choosing them finish here. "The people I
+ * choose" used to send you to the contributor list with no way to bring anybody back; the names
+ * are on this screen now, with a search box, because "choose them" and "go and find them
+ * somewhere else" are not the same instruction.
  */
 export function CampaignSimpleForm({
   editionId,
   initial,
   groups,
+  people,
   canManage,
   closed,
   next,
@@ -51,6 +55,7 @@ export function CampaignSimpleForm({
   editionId: string;
   initial: AudienceValues;
   groups: SimpleGroup[];
+  people: SimplePerson[];
   canManage: boolean;
   closed: boolean;
   next: string | null;
@@ -67,6 +72,12 @@ export function CampaignSimpleForm({
   const readOnly = !canManage || closed;
   const dirty = useMemo(() => JSON.stringify(values) !== JSON.stringify(initial), [values, initial]);
   const pool = groups.filter((g) => values.contributorGroupIds.includes(g.id)).reduce((n, g) => n + g.members, 0);
+  const [search, setSearch] = useState("");
+  const chosen = new Set(values.selectedContributorIds);
+  const needle = search.trim().toLowerCase();
+  // The whole list when nobody has typed, narrowed the moment they do; the people already ticked
+  // stay visible whatever the search says, so unticking somebody never means finding them again.
+  const shown = needle ? people.filter((person) => chosen.has(person.id) || `${person.name} ${person.email} ${person.groups.join(" ")}`.toLowerCase().includes(needle)) : people;
 
   const choices: { mode: SelectionMode; label: string; hint: string }[] = [
     { mode: "DRAW", label: tr("A few of them"), hint: tr("Briefly draws the number you ask for, skipping whoever was asked last time.") },
@@ -79,8 +90,7 @@ export function CampaignSimpleForm({
       selectionMode: values.selectionMode,
       drawCount: values.drawCount,
       contributorGroupIds: values.contributorGroupIds,
-      deadlineAt: endOfZonedDay(values.deadlineDay)?.toISOString() ?? "",
-      introMessage: values.introMessage.trim() || null,
+      selectedContributorIds: values.selectedContributorIds,
     });
     if (!result.ok) {
       toast.error(result.error, { description: result.fieldErrors ? Object.values(result.fieldErrors).flat().join(" · ") : undefined });
@@ -124,7 +134,51 @@ export function CampaignSimpleForm({
           </div>
         ) : null}
 
-        {values.selectionMode === "PEOPLE" ? <p className="mt-3 text-xs text-muted-foreground">{tr("Pick them on the contributors screen and only they are asked.")}</p> : null}
+        {values.selectionMode === "PEOPLE" ? (
+          <div className="mt-3 space-y-2">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <Input
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                disabled={readOnly}
+                placeholder={tr("Search a name or an address")}
+                aria-label={tr("Search the contributors")}
+                className="h-8 w-full sm:w-64"
+              />
+              <span className="text-2xs text-muted-foreground">
+                {values.selectedContributorIds.length === 1 ? tr("1 person chosen") : tr("{count} people chosen", { count: values.selectedContributorIds.length })}
+              </span>
+            </div>
+            <ul className="max-h-64 space-y-1 overflow-y-auto rounded-md border border-border p-1">
+              {shown.map((person) => {
+                const picked = chosen.has(person.id);
+                return (
+                  <li key={person.id}>
+                    <label className={cn("flex cursor-pointer items-center gap-2.5 rounded-md px-2 py-1.5 transition-colors", picked ? "bg-brand-soft/40" : "hover:bg-muted/60", readOnly && "cursor-default opacity-70")}>
+                      <Checkbox
+                        checked={picked}
+                        onCheckedChange={(on) =>
+                          setValues((v) => ({
+                            ...v,
+                            selectedContributorIds: on === true ? [...v.selectedContributorIds, person.id] : v.selectedContributorIds.filter((id) => id !== person.id),
+                          }))
+                        }
+                        disabled={readOnly}
+                        aria-label={person.name}
+                      />
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-[13px] font-medium">{person.name}</span>
+                        <span className="block truncate text-2xs text-muted-foreground">{person.email}</span>
+                      </span>
+                      {person.groups.length ? <span className="shrink-0 truncate text-2xs text-muted-foreground">{person.groups.join(" · ")}</span> : null}
+                    </label>
+                  </li>
+                );
+              })}
+              {!shown.length ? <li className="p-3 text-xs text-muted-foreground">{people.length ? tr("Nobody here by that name.") : tr("There are no contributors yet. Add some and they will be here.")}</li> : null}
+            </ul>
+          </div>
+        ) : null}
 
         <ul className="mt-3 space-y-1">
           {groups.map((g) => {
@@ -152,22 +206,6 @@ export function CampaignSimpleForm({
           })}
           {groups.length === 0 ? <li className="text-xs text-muted-foreground">{tr("No contributor group exists yet.")}</li> : null}
         </ul>
-      </SettingsCard>
-
-      <SettingsCard title={tr("By when?")} description={tr("The last day to send something in. Briefly reminds them twice before it, and accepts anything late for one more day.")}>
-        <Input type="date" value={values.deadlineDay} onChange={(event) => setValues((v) => ({ ...v, deadlineDay: event.target.value }))} disabled={readOnly} aria-label={tr("Last day to contribute")} className="tabular h-8 w-48" />
-      </SettingsCard>
-
-      <SettingsCard title={tr("Anything to tell them?")} description={tr("Added at the top of every invitation and reminder email. Leave it empty and Briefly writes it.")}>
-        <Textarea
-          value={values.introMessage}
-          onChange={(event) => setValues((v) => ({ ...v, introMessage: event.target.value }))}
-          disabled={readOnly}
-          rows={3}
-          maxLength={2000}
-          placeholder={tr("Tell us what happened around you this month…")}
-          aria-label={tr("Invitation message")}
-        />
       </SettingsCard>
 
       <GuidedFooter title={title} hint={dirty ? tr("Not saved yet") : nextHint} back={back}>

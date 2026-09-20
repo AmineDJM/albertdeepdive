@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Users } from "lucide-react";
 import { campaignScreen } from "@/server/campaigns/read";
+import { listContributors } from "@/server/contributors/service";
 import { hasPermission, getCurrentUser } from "@/server/auth/session";
 import { PageBody, PageHeader } from "@/components/newsroom/page-header";
 import { CampaignSimpleForm, type AudienceValues } from "@/components/newsroom/campaign-simple-form";
@@ -12,7 +13,6 @@ import { ACTIVE_CAMPAIGN_STATUSES } from "@/server/campaigns/service";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { formatDate } from "@/lib/utils";
-import { zonedDayInput } from "@/lib/campaigns/schedule";
 import { isSelectionMode, type SelectionMode } from "@/lib/campaigns/selection";
 import { getUi } from "@/server/i18n/locale";
 
@@ -69,9 +69,15 @@ export async function StandardCampaign({ editionId }: { editionId: string }) {
     selectionMode: (isSelectionMode(campaign.selectionMode) ? campaign.selectionMode : "DRAW") as SelectionMode,
     drawCount: campaign.drawCount ?? 0,
     contributorGroupIds: [...campaign.contributorGroupIds],
-    deadlineDay: zonedDayInput(campaign.deadlineAt),
-    introMessage: campaign.introMessage ?? "",
+    selectedContributorIds: [...(campaign.selectedContributorIds ?? [])],
   };
+  // The names themselves, so "the people I choose" can be done here rather than somewhere else.
+  const people = (await listContributors({ active: "true" })).map((c) => ({
+    id: c.id,
+    name: `${c.firstName} ${c.lastName}`.trim() || c.email,
+    email: c.email,
+    groups: c.groupMemberships.map((membership) => membership.group.name),
+  }));
 
   return (
     <>
@@ -94,6 +100,7 @@ export async function StandardCampaign({ editionId }: { editionId: string }) {
           editionId={editionId}
           initial={initial}
           groups={screen.groups.map((g) => ({ id: g.id, name: g.name, description: g.description, members: g.members }))}
+          people={people}
           canManage={canManage}
           closed={campaign.status === "CLOSED"}
           next={next?.href ?? null}

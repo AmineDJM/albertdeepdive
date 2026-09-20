@@ -3297,6 +3297,23 @@ export const UI_FR: Record<string, string> = {
   "Out into the world": "En route vers le monde",
   "Ask them now": "Les solliciter maintenant",
 
+  // ── When for?, and choosing the people by name ─────────────────────────────────────────
+  "When for?": "Pour quand ?",
+  "The last day": "Le dernier jour",
+  "Everything Briefly does on its own hangs off this date.": "Tout ce que Briefly fait tout seul dépend de cette date.",
+  "First reminder": "Première relance",
+  "Second reminder": "Deuxième relance",
+  "Late arrivals until": "Retardataires jusqu'au",
+  "Briefly moves the reminders with the date once you save.": "Briefly déplace les relances avec la date dès que vous enregistrez.",
+  "There is nothing to date yet": "Il n'y a pas encore de date à fixer",
+  "The last day belongs to the invitation. Set up who you are asking first, and the date will be here.": "Le dernier jour appartient à l'invitation. Choisissez d'abord qui vous sollicitez, et la date sera ici.",
+  "Search a name or an address": "Cherchez un nom ou une adresse",
+  "Search the contributors": "Chercher parmi les contributeurs",
+  "1 person chosen": "1 personne choisie",
+  "{count} people chosen": "{count} personnes choisies",
+  "Nobody here by that name.": "Personne de ce nom ici.",
+  "There are no contributors yet. Add some and they will be here.": "Il n'y a pas encore de contributeurs. Ajoutez-en et ils seront ici.",
+
   // ── Who was asked, on the edition's own screen ──────────────────────────────────────────
   "Nobody asked yet": "Personne n'a encore été sollicité",
   "1 person asked": "1 personne sollicitée",

@@ -223,11 +223,21 @@ export async function setCampaignBrief(editionId: string, input: unknown, user: 
  * through and one the day before — and the grace period is the day after. Advanced still edits all
  * five, and this writes the same columns it does.
  */
+/*
+ * A patch, not a form.
+ *
+ * Three screens now write pieces of this — who is asked, by when, and the word at the top of the
+ * invitation — and a field nobody sent used to fall to its default and quietly overwrite what
+ * another screen had just saved. So every field is optional and only what arrives is written;
+ * `undefined` means "leave it", which is the only thing it can honestly mean.
+ */
 export const audienceSchema = z.object({
-  selectionMode: z.enum(SELECTION_MODES).default("DRAW"),
-  drawCount: z.coerce.number().int().min(0).max(1000).default(0),
-  contributorGroupIds: z.array(z.uuid()).default([]),
-  deadlineAt: dateInput,
+  selectionMode: z.enum(SELECTION_MODES).optional(),
+  drawCount: z.coerce.number().int().min(0).max(1000).optional(),
+  contributorGroupIds: z.array(z.uuid()).optional(),
+  /** PEOPLE: exactly who to ask, chosen by hand on the screen that asks the question. */
+  selectedContributorIds: z.array(z.uuid()).optional(),
+  deadlineAt: dateInput.optional(),
   introMessage: z.string().trim().max(2000).nullable().optional(),
 });
 export type AudienceInput = z.input<typeof audienceSchema>;
@@ -249,19 +259,20 @@ export async function setCampaignAudience(editionId: string, input: AudienceInpu
    * case is refused with the date that is in the way, rather than silently rewriting a date nobody
    * touched.
    */
+  const deadlineAt = data.deadlineAt ?? existing.deadlineAt;
   let opensAt = existing.opensAt;
-  if (data.deadlineAt.getTime() <= opensAt.getTime()) {
+  if (deadlineAt.getTime() <= opensAt.getTime()) {
     const now = new Date();
     const unsent = existing.status === "DRAFT" || existing.status === "SCHEDULED";
-    if (!unsent || data.deadlineAt.getTime() <= now.getTime()) {
+    if (!unsent || deadlineAt.getTime() <= now.getTime()) {
       throw new ValidationError(`The last day must come after ${opensAt.toISOString().slice(0, 10)}, when the invitations go out`, { deadlineAt: ["Too early"] });
     }
     opensAt = now;
   }
-  const span = data.deadlineAt.getTime() - opensAt.getTime();
+  const span = deadlineAt.getTime() - opensAt.getTime();
   const reminder1At = new Date(opensAt.getTime() + Math.round(span * 0.45));
   const reminder2At = new Date(opensAt.getTime() + Math.round(span * 0.85));
-  const graceEndsAt = new Date(data.deadlineAt.getTime() + 86_400_000);
+  const graceEndsAt = new Date(deadlineAt.getTime() + 86_400_000);
 
   const [campaign] = await db
     .update(submissionCampaigns)
@@ -269,12 +280,13 @@ export async function setCampaignAudience(editionId: string, input: AudienceInpu
       opensAt,
       reminder1At,
       reminder2At,
-      deadlineAt: data.deadlineAt,
+      deadlineAt,
       graceEndsAt,
-      selectionMode: data.selectionMode,
-      drawCount: data.drawCount,
-      contributorGroupIds: data.contributorGroupIds,
-      introMessage: data.introMessage ?? null,
+      ...(data.selectionMode === undefined ? {} : { selectionMode: data.selectionMode }),
+      ...(data.drawCount === undefined ? {} : { drawCount: data.drawCount }),
+      ...(data.contributorGroupIds === undefined ? {} : { contributorGroupIds: data.contributorGroupIds }),
+      ...(data.selectedContributorIds === undefined ? {} : { selectedContributorIds: data.selectedContributorIds }),
+      ...(data.introMessage === undefined ? {} : { introMessage: data.introMessage ?? null }),
     })
     .where(eq(submissionCampaigns.id, existing.id))
     .returning();

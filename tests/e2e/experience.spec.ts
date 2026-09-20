@@ -107,6 +107,8 @@ test.describe("standard and advanced", () => {
     await page.getByTestId("guided-next").getByRole("link", { name: /Validate/ }).click();
     await expect(page).toHaveURL(new RegExp(`/editions/${edition!.id}/ask$`));
     await expect(page.getByRole("heading", { name: "What are you asking for?" })).toBeVisible();
+    // The word at the top of the invitation is asked here, beside the questions it introduces.
+    await expect(page.locator("main").getByText("Anything to tell them?")).toBeVisible();
 
     // Next → who are you asking. The campaign screen asks the question rather than showing the
     // phase timeline, six counters, a coverage table and an email log.
@@ -115,6 +117,22 @@ test.describe("standard and advanced", () => {
     await expect(page.getByRole("heading", { name: "Who are you asking?" })).toBeVisible();
     await expect(page.locator("main").getByText("Email log")).toHaveCount(0);
     await expect(page.locator("main").getByText("Coverage", { exact: true })).toHaveCount(0);
+    // Three ways of choosing, and none of them sends you somewhere else to do it.
+    for (const way of ["A few of them", "A whole group", "People I choose"]) await expect(page.locator("main").getByText(way, { exact: true })).toBeVisible();
+    await expect(page.locator("main").getByText("Pick them on the contributors screen")).toHaveCount(0);
+
+    // Next → when for, which is now a screen and not a field under the people.
+    await page.getByTestId("guided-next-button").click();
+    await expect(page).toHaveURL(new RegExp(`/editions/${edition!.id}/deadline$`));
+    await expect(page.getByRole("heading", { level: 1, name: "When for?" })).toBeVisible();
+    // The reminders and the day of grace are shown, because they follow from the date.
+    await expect(page.locator("main").getByText("First reminder")).toBeVisible();
+
+    // And the way back, which the path had no button for at all.
+    await page.getByTestId("guided-back-button").click();
+    await expect(page).toHaveURL(new RegExp(`/editions/${edition!.id}/campaign$`));
+    await page.getByTestId("guided-next-button").click();
+    await expect(page).toHaveURL(new RegExp(`/editions/${edition!.id}/deadline$`));
 
     // Next → the pictures, which are the pictures.
     await page.getByTestId("guided-next-button").click();
@@ -127,20 +145,55 @@ test.describe("standard and advanced", () => {
     await expect(page.getByTestId("guided-next").getByRole("link", { name: /Next/ })).toHaveAttribute("href", `/editions/${edition!.id}/topics`);
   });
 
+  test("the people are chosen by name, on the screen that asks who", async ({ page }) => {
+    await setExperience("standard");
+    await login(page);
+    // An issue whose invitation has not gone out: a closed campaign is read-only, on purpose.
+    const upcoming = await one<{ id: string }>(
+      `select e.id from editions e join submission_campaigns c on c.edition_id = e.id where c.status in ('DRAFT','SCHEDULED') order by e.created_at desc limit 1`,
+    );
+    await page.goto(`/editions/${upcoming!.id}/campaign`);
+    await expect(page.getByRole("heading", { name: "Who are you asking?" })).toBeVisible();
+
+    await expect(async () => {
+      await page.getByRole("radio", { name: "People I choose" }).check();
+      await expect(page.getByPlaceholder("Search a name or an address")).toBeVisible({ timeout: 5_000 });
+    }).toPass({ timeout: 60_000 });
+
+    // The names are here, and the search narrows them.
+    const list = page.getByRole("listitem").filter({ has: page.getByRole("checkbox") });
+    const before = await list.count();
+    expect(before).toBeGreaterThan(1);
+    await page.getByPlaceholder("Search a name or an address").fill("zzzzzz-nobody");
+    await expect(page.locator("main").getByText("Nobody here by that name.")).toBeVisible();
+  });
+
   test("Advanced opens every door from the profile, and Standard closes them again", async ({ page }) => {
     await setExperience("standard");
     await login(page);
     await page.goto("/settings/profile");
-    await page.getByTestId("experience-advanced").click();
-    await expect(page.getByTestId("experience-advanced")).toHaveAttribute("aria-checked", "true");
+    /*
+     * Clicked until it answers.
+     *
+     * In development the markup arrives before React has hydrated, so a click that lands first
+     * does nothing at all — and `aria-checked` is set by the handler, which means a single click
+     * makes this spec a race against how fast this machine compiles rather than a test of the
+     * switch.
+     */
+    await expect(async () => {
+      await page.getByTestId("experience-advanced").click();
+      await expect(page.getByTestId("experience-advanced")).toHaveAttribute("aria-checked", "true", { timeout: 5_000 });
+    }).toPass({ timeout: 60_000 });
     const nav = page.getByRole("navigation", { name: "Main" });
     await expect(nav.getByRole("link", { name: "Content", exact: true })).toBeVisible({ timeout: 15_000 });
     await expect(nav.getByRole("link", { name: "Brand", exact: true })).toBeVisible();
     // The settings list grows to every page.
     await expect(page.getByRole("navigation", { name: "Settings" }).getByRole("link", { name: "Prompts", exact: true })).toBeVisible();
 
-    await page.getByTestId("experience-standard").click();
-    await expect(page.getByTestId("experience-standard")).toHaveAttribute("aria-checked", "true");
+    await expect(async () => {
+      await page.getByTestId("experience-standard").click();
+      await expect(page.getByTestId("experience-standard")).toHaveAttribute("aria-checked", "true", { timeout: 5_000 });
+    }).toPass({ timeout: 60_000 });
     await expect(nav.getByRole("link", { name: "Content", exact: true })).toHaveCount(0, { timeout: 15_000 });
     await expect(page.getByRole("navigation", { name: "Settings" }).getByRole("link", { name: "Prompts", exact: true })).toHaveCount(0);
     // Nothing else moved: the switch is a preference, not a change to the workspace.
