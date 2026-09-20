@@ -113,15 +113,3 @@ export function standingOf(status: EditionStatus): string {
   if (status === "ARCHIVED") return "Archived";
   return STEPS[stepForStatus(status)].active;
 }
-
-/** Each step with where it stands, for a timeline that shows the whole way through. */
-export type StepState = StepDefinition & { state: "done" | "current" | "todo" };
-
-export function timelineFor(status: EditionStatus): StepState[] {
-  const current = stepForStatus(status);
-  const at = EDITION_STEPS.indexOf(current);
-  return EDITION_STEPS.map((key, index) => ({
-    ...STEPS[key],
-    state: index < at ? "done" : index === at ? "current" : "todo",
-  }));
-}

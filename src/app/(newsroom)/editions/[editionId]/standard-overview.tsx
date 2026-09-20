@@ -45,6 +45,7 @@ export async function StandardOverview({ editionId }: { editionId: string }) {
   const subscribers = publication ? (stats.subCounts.get(publication.id) ?? 0) : [...stats.subCounts.values()].reduce((a, b) => a + b, 0);
   const choices: OutputChoice[] = outputs.map(({ format, label, output }) => ({ format, label, enabled: !!output, locked: output?.status === "PUBLISHED", publicUrl: format === "WEB" && output?.publicSlug ? `/r/${output.publicSlug}` : null }));
   const emailOn = choices.some((c) => c.format === "EMAIL" && c.enabled);
+  const asked = d.requests.invited;
   const tone = ((brand?.system as { voice?: { tone?: string[] } } | null)?.voice?.tone ?? []).map((word) => toneLabel(word, tr)).join(", ");
   const webUrl = choices.find((c) => c.format === "WEB")?.publicUrl ?? null;
   const summary = published
@@ -118,6 +119,20 @@ export async function StandardOverview({ editionId }: { editionId: string }) {
             {canEdit ? <PublishDateChange editionId={editionId} current={d.edition.publicationTargetAt} locked={published} /> : null}
           </Decision>
           <Decision label={tr("Outputs")} value={<OutputsChange editionId={editionId} outputs={choices} canEdit={canEdit && !published} />} />
+          {/*
+            * Who was asked, which is the decision every other one on this list depends on.
+            *
+            * It sat only inside the campaign screen, so the overview could say "0 stories in"
+            * without ever saying that nobody had been asked for any — a count that reads as a
+            * failure of the newsroom when it is a setting nobody has touched.
+            */}
+          <Decision
+            label={tr("Contributors")}
+            value={asked === 0 ? tr("Nobody asked yet") : asked === 1 ? tr("1 person asked") : tr("{count} people asked", { count: asked })}
+            hint={asked === 0 ? (d.campaign ? tr("the invitation is ready to go") : tr("nobody is collecting news for this issue")) : d.requests.submitted ? tr("{count} have answered", { count: d.requests.submitted }) : tr("nobody has answered yet")}
+            tone={asked === 0 && !published ? "attention" : "default"}
+            change={{ href: `${ed}/campaign`, label: canEdit ? (asked === 0 ? tr("Set up") : tr("Change")) : tr("See") }}
+          />
           <Decision label={tr("Stories")} value={d.stories.selected === 1 ? tr("1 story in") : tr("{count} stories in", { count: d.stories.selected })} hint={d.stories.candidates ? tr("{count} more to decide on", { count: d.stories.candidates }) : d.submissions.total ? tr("from {count} updates", { count: d.submissions.total }) : null} tone={d.stories.selected === 0 && !published ? "attention" : "default"} change={{ href: `${ed}/topics`, label: canEdit ? tr("Choose") : tr("See") }} />
           <Decision label={tr("Pictures")} value={d.media.total === 1 ? tr("1 picture") : tr("{count} pictures", { count: d.media.total })} hint={d.media.yellow + d.media.red ? tr("{count} need a look", { count: d.media.yellow + d.media.red }) : null} tone={d.media.red ? "attention" : "default"} change={{ href: `${ed}/media` }} />
           <Decision label={tr("Tone")} value={tone || tr("Plain and confident")} hint={tr("from your brand")} change={canSetUp ? { href: "/settings/brand" } : null} />

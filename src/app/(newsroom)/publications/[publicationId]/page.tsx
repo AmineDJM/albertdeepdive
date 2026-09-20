@@ -6,12 +6,11 @@ import { requireTenant } from "@/server/tenancy/context";
 import { publicationWithEditions } from "@/server/outputs/service";
 import { editionToInheritFrom, inheritedSettings } from "@/server/editions/service";
 import { runAsOrganization } from "@/server/tenancy/context";
-import { standingOf, timelineFor } from "@/lib/editorial/edition-steps";
+import { standingOf } from "@/lib/editorial/edition-steps";
 import type { EditionStatus } from "@/lib/editorial/edition-state";
 import { PageBody, PageHeader, SectionTitle } from "@/components/newsroom/page-header";
 import { DataTable } from "@/components/newsroom/data-table";
 import { EditionStatusBadge } from "@/components/newsroom/status-badge";
-import { EditionTimeline } from "@/components/newsroom/edition-timeline";
 import { Stat, StatGrid } from "@/components/newsroom/stat";
 import { NewEditionButton } from "./new-edition-button";
 import { cn, enumLabel, formatDate, formatNumber } from "@/lib/utils";
@@ -71,9 +70,6 @@ export default async function PublicationPage({ params }: { params: Promise<{ pu
                 <span className="text-xs text-muted-foreground">{tr(standingOf(live.status as EditionStatus))}</span>
                 <EditionStatusBadge status={live.status} />
               </span>
-            </div>
-            <div className="mt-3">
-              <EditionTimeline editionId={live.id} steps={timelineFor(live.status as EditionStatus)} />
             </div>
           </section>
         ) : (

@@ -3172,7 +3172,6 @@ export const UI_FR: Record<string, string> = {
   "The first edition of a title is the one that decides how the rest of them start.": "La première édition d'un titre est celle qui décide du départ de toutes les suivantes.",
   "Where it is": "Où elle en est",
   "Your recurring titles. Open one to see its editions and start the next.": "Vos titres récurrents. Ouvrez-en un pour voir ses éditions et lancer la suivante.",
-  "Where this edition is": "Où en est cette édition",
   "Topics": "Sujets",
   "Validate": "Valider",
   "Distribute": "Diffuser",
@@ -3297,6 +3296,15 @@ export const UI_FR: Record<string, string> = {
   "Everything checked": "Tout est vérifié",
   "Out into the world": "En route vers le monde",
   "Ask them now": "Les solliciter maintenant",
+
+  // ── Who was asked, on the edition's own screen ──────────────────────────────────────────
+  "Nobody asked yet": "Personne n'a encore été sollicité",
+  "1 person asked": "1 personne sollicitée",
+  "{count} people asked": "{count} personnes sollicitées",
+  "the invitation is ready to go": "l'invitation est prête à partir",
+  "nobody is collecting news for this issue": "personne ne collecte de nouvelles pour ce numéro",
+  "{count} have answered": "{count} ont répondu",
+  "nobody has answered yet": "personne n'a encore répondu",
 
   // ── The design room ────────────────────────────────────────────────────────────────────
   "Design": "Design",

@@ -38,27 +38,22 @@ test.describe("standard and advanced", () => {
     const edition = await one<{ id: string }>(`select id from editions where label = 'May 2025' limit 1`);
     await page.goto(`/editions/${edition!.id}`);
     await expect(page.locator("main").getByText("What Briefly decided", { exact: true })).toBeVisible();
-    for (const label of ["Language", "Audience", "Publish date", "Outputs", "Stories", "Pictures", "Tone"]) await expect(page.locator("main").getByText(label, { exact: true }).first()).toBeVisible();
+    for (const label of ["Language", "Audience", "Publish date", "Outputs", "Contributors", "Stories", "Pictures", "Tone"]) await expect(page.locator("main").getByText(label, { exact: true }).first()).toBeVisible();
     await expect(page.getByRole("link", { name: "Preview" })).toBeVisible();
+    // Who was asked is a decision like any other, and it opens the screen that sets it.
+    await expect(page.locator("main").getByRole("link", { name: /Set up|Change|See/ }).first()).toBeVisible();
     /*
-     * One navigation, and it is the five steps.
+     * No bar above the page at all.
      *
-     * There used to be two rows here — the doors, and the timeline under them — and they
-     * contradicted each other: "Topics" appeared in both and went to two different pages, while
-     * Validate and Distribute went to the same one. Standard now navigates by the steps alone,
-     * because for this person "where can I go" and "what do I do next" are one question.
+     * There were two rows here once, then one: five steps that said "Contributors" while the page
+     * under them showed the topics. A progress bar that has to disagree with its own screen is a
+     * second opinion, not navigation, so Standard has neither — the decisions below are the map
+     * and the button at the bottom is what comes next.
      */
-    const steps = page.getByRole("list", { name: "Where this edition is" });
-    await expect(steps).toBeVisible();
-    for (const name of ["Contributors", "Topics", "Draft", "Validate", "Distribute"]) {
-      await expect(steps.getByRole("link", { name, exact: false })).toBeVisible();
-    }
-    // And the doors are not drawn beside them.
     await expect(page.getByRole("navigation", { name: "Sections" })).toHaveCount(0);
-    // Topics opens the topics board, not the stories board it used to point at.
-    await expect(steps.getByRole("link", { name: "Topics", exact: false })).toHaveAttribute("href", `/editions/${edition!.id}/topics`);
-    // Distribute has somewhere of its own, rather than sharing Validate's gate.
-    await expect(steps.getByRole("link", { name: "Distribute", exact: false })).toHaveAttribute("href", `/editions/${edition!.id}/exports`);
+    await expect(page.getByRole("list", { name: "Where this edition is" })).toHaveCount(0);
+    // The edition's name in the header is the way back to this screen from any room in it.
+    await expect(page.getByRole("link", { name: /Edition #\d+/ })).toHaveAttribute("href", `/editions/${edition!.id}`);
     /*
      * One button at the bottom, and it goes forward.
      *

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { EDITION_STEPS, STEPS, standingOf, stepForStatus, timelineFor } from "@/lib/editorial/edition-steps";
+import { EDITION_STEPS, STEPS, standingOf, stepForStatus } from "@/lib/editorial/edition-steps";
 import { EDITION_STATUSES, type EditionStatus } from "@/lib/editorial/edition-state";
 import { STANDARD_ROOMS } from "@/lib/experience";
 
@@ -48,19 +48,16 @@ describe("the five steps of an edition", () => {
   });
 
   it("runs Contributors, Topics, Draft, Validate, Distribute, in that order, always", () => {
+    // The steps are no longer drawn as a bar — they order the guided path, which is the only
+    // thing left that says what comes next.
     expect(EDITION_STEPS).toEqual(["CONTRIBUTORS", "TOPICS", "DRAFT", "VALIDATE", "DISTRIBUTE"]);
-    expect(timelineFor("OPEN").map((step) => step.label)).toEqual(["Contributors", "Topics", "Draft", "Validate", "Distribute"]);
+    expect(EDITION_STEPS.map((step) => STEPS[step].label)).toEqual(["Contributors", "Topics", "Draft", "Validate", "Distribute"]);
   });
 
-  it("marks what is behind you done, where you are current, and what is ahead not yet", () => {
-    const midway = timelineFor("EDITORIAL_REVIEW");
-    expect(midway.map((step) => step.state)).toEqual(["done", "done", "current", "todo", "todo"]);
-
-    const start = timelineFor("UPCOMING");
-    expect(start.map((step) => step.state)).toEqual(["current", "todo", "todo", "todo", "todo"]);
-
-    const end = timelineFor("PUBLISHED");
-    expect(end.map((step) => step.state)).toEqual(["done", "done", "done", "done", "current"]);
+  it("puts the status on the step that is actually happening", () => {
+    expect(stepForStatus("UPCOMING")).toBe("CONTRIBUTORS");
+    expect(stepForStatus("EDITORIAL_REVIEW")).toBe("DRAFT");
+    expect(stepForStatus("PUBLISHED")).toBe("DISTRIBUTE");
   });
 
   it("says the thing that is actually happening, not the name of the state it is in", () => {
