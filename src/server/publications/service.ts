@@ -114,13 +114,46 @@ export async function updatePublication(organizationId: string, id: string, raw:
   return row;
 }
 
-export async function deletePublication(organizationId: string, id: string, userId?: string | null) {
+/**
+ * Deleting a title, and deciding what that means for its issues.
+ *
+ * An edition's link to its title is `set null` rather than a cascade, which is the right shape —
+ * an issue that was published is a thing that happened, and it should not vanish because somebody
+ * tidied up the list of titles. So the default is to refuse, and say how many issues are in the
+ * way rather than "this title has editions".
+ *
+ * `withEditions` is the other answer, and a person is entitled to it: a newsletter started by
+ * mistake, tried for two months and abandoned, is theirs to remove entirely. It goes through
+ * `deleteEditions`, which knows what an edition drags with it — the stories, the campaign, the
+ * rendered PDFs and the files contributors sent — because deleting the rows and leaving the
+ * objects in the bucket is how a storage bill outlives the thing it was for.
+ */
+export async function deletePublication(
+  organizationId: string,
+  id: string,
+  userId?: string | null,
+  opts: { withEditions?: boolean } = {},
+): Promise<{ editionsDeleted: number }> {
   const existing = await db.query.publications.findFirst({ where: and(eq(s.publications.id, id), eq(s.publications.organizationId, organizationId)) });
   if (!existing) throw new NotFoundError("Publication");
-  // Deleting a title would orphan its editions and silently drop its subscribers. Archiving keeps
-  // the archive readable and the record of who was reading it.
-  const edition = await db.query.editions.findFirst({ where: eq(s.editions.publicationId, id), columns: { id: true } });
-  if (edition) throw new ValidationError("This title has editions. Archive it instead of deleting it.");
+  const editions = await db.query.editions.findMany({ where: eq(s.editions.publicationId, id), columns: { id: true } });
+  if (editions.length && !opts.withEditions) {
+    throw new ValidationError(
+      editions.length === 1
+        ? "This newsletter has 1 edition. Delete it with its edition, or archive the newsletter instead."
+        : `This newsletter has ${editions.length} editions. Delete it with them, or archive it instead.`,
+      { editions: [String(editions.length)] },
+    );
+  }
+  let editionsDeleted = 0;
+  if (editions.length) {
+    const { deleteEditions } = await import("@/server/editions/service");
+    editionsDeleted = await deleteEditions(
+      editions.map((edition) => edition.id),
+      userId,
+    );
+  }
   await db.delete(s.publications).where(eq(s.publications.id, id));
-  await audit({ action: "publication.delete", organizationId, userId, entityId: id, metadata: { name: existing.name } });
+  await audit({ action: "publication.delete", organizationId, userId, entityId: id, metadata: { name: existing.name, editionsDeleted } });
+  return { editionsDeleted };
 }

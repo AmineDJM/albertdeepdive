@@ -52,13 +52,22 @@ export async function updatePublicationAction(id: string, raw: Partial<Publicati
   }
 }
 
-export async function deletePublicationAction(id: string): Promise<ActionResult> {
+/**
+ * Removing a newsletter, with or without what it published.
+ *
+ * `edition:archive` rather than `edition:create`: the right to start a title and the right to
+ * remove it and everything it ever published are not the same right, and the one that ends things
+ * is the one the archive permission is for.
+ */
+export async function deletePublicationAction(id: string, withEditions = false): Promise<ActionResult<{ editionsDeleted: number }>> {
+  const tr = await getUi();
   try {
-    const user = await requirePermission("edition:create");
+    const user = await requirePermission("edition:archive");
     const organizationId = await currentOrganizationId();
-    await deletePublication(organizationId, id, user.id);
+    const result = await deletePublication(organizationId, id, user.id, { withEditions });
     revalidatePath("/publications");
-    return ok(null);
+    revalidatePath("/overview");
+    return ok(result, result.editionsDeleted ? tr("Newsletter deleted, with its {count} edition(s)", { count: result.editionsDeleted }) : tr("Newsletter deleted"));
   } catch (err) {
     return toActionFailure(err);
   }

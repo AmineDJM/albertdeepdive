@@ -3516,4 +3516,19 @@ export const UI_FR: Record<string, string> = {
   "Your newsletter will be made on this from now on": "Votre newsletter sera faite sur ce modèle désormais",
   "Editor's note": "Le mot de la rédaction",
   "The numbers": "Les chiffres",
+
+  // ── Supprimer une édition ou une newsletter ──────────────────────────────
+  "Delete this edition": "Supprimer cette édition",
+  "Delete {label}?": "Supprimer {label} ?",
+  "Its stories, the contributions it collected, its campaign and its rendered files go with it. Your media library and your contributors stay. This cannot be undone.": "Ses articles, les contributions reçues, sa campagne et ses fichiers générés disparaissent avec elle. Votre médiathèque et vos contributeurs restent. C'est définitif.",
+  "This edition has been published. Deleting it removes the issue, its stories and the files people may still have a link to. Your media library and your contributors stay. This cannot be undone.": "Cette édition a été publiée. La supprimer retire le numéro, ses articles et les fichiers dont certains ont peut-être encore le lien. Votre médiathèque et vos contributeurs restent. C'est définitif.",
+  "Delete {name}?": "Supprimer {name} ?",
+  "Nothing has been published under it. Its subscribers and its public links go with it. This cannot be undone.": "Rien n'a été publié dessus. Ses abonnés et ses liens publics disparaissent avec elle. C'est définitif.",
+  "It has 1 edition. Deleting the newsletter deletes that edition too — its stories, its contributions and its rendered files. Your media library and your contributors stay. This cannot be undone.": "Elle a 1 édition. Supprimer la newsletter supprime aussi cette édition — ses articles, ses contributions et ses fichiers générés. Votre médiathèque et vos contributeurs restent. C'est définitif.",
+  "It has {count} editions. Deleting the newsletter deletes them too — their stories, their contributions and their rendered files. Your media library and your contributors stay. This cannot be undone.": "Elle a {count} éditions. Supprimer la newsletter les supprime aussi — leurs articles, leurs contributions et leurs fichiers générés. Votre médiathèque et vos contributeurs restent. C'est définitif.",
+  "Archive it instead": "L'archiver plutôt",
+  "Delete it and its editions": "Supprimer avec ses éditions",
+  "{name} is archived. Nothing was deleted.": "{name} est archivée. Rien n'a été supprimé.",
+  "Newsletter deleted": "Newsletter supprimée",
+  "Newsletter deleted, with its {count} edition(s)": "Newsletter supprimée, avec ses {count} édition(s)",
 };

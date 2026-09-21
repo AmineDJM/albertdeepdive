@@ -15,6 +15,7 @@ import { DataTable } from "@/components/newsroom/data-table";
 import { EditionStatusBadge } from "@/components/newsroom/status-badge";
 import { Stat, StatGrid } from "@/components/newsroom/stat";
 import { NewEditionButton } from "./new-edition-button";
+import { DeletePublication } from "@/components/newsroom/delete-publication";
 import { cn, enumLabel, formatDate, formatNumber } from "@/lib/utils";
 import { getUi } from "@/server/i18n/locale";
 
@@ -43,6 +44,7 @@ export default async function PublicationPage({ params }: { params: Promise<{ pu
   const { publication, editions, live, published, subscribers } = data;
   const canCreate = hasPermission(user, "edition:create");
   const canSetUp = hasPermission(user, "layout:edit");
+  const canRemove = hasPermission(user, "edition:archive");
   // What this title is made on, if anybody has said. Read here so the button can say which.
   const model = (await activeIdentity(publicationId)).source;
 
@@ -70,6 +72,7 @@ export default async function PublicationPage({ params }: { params: Promise<{ pu
               </Button>
             ) : null}
             {canCreate ? <NewEditionButton publicationId={publication.id} inheritsFrom={inherits?.from.label ?? null} /> : null}
+            {canRemove ? <DeletePublication publicationId={publication.id} name={publication.name} editionCount={editions.length} /> : null}
           </div>
         }
       />

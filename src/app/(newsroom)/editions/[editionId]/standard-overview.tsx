@@ -17,6 +17,7 @@ import { EditionStatusBadge } from "@/components/newsroom/status-badge";
 import { Decision, LanguageChange, OutputsChange, PublishDateChange, type OutputChoice } from "@/components/newsroom/decisions";
 import { Button } from "@/components/ui/button";
 import { GuidedNext } from "@/components/newsroom/guided-next";
+import { DeleteEdition } from "@/components/newsroom/delete-edition";
 import { formatDate } from "@/lib/utils";
 import { activeIdentity } from "@/server/design/identity";
 import { calendarDaysUntil } from "@/lib/campaigns/schedule";
@@ -45,6 +46,7 @@ export async function StandardOverview({ editionId }: { editionId: string }) {
   const ed = `/editions/${editionId}`;
   const canEdit = hasPermission(user, "edition:edit");
   const canSetUp = hasPermission(user, "settings:manage") || tenant.role === "OWNER" || tenant.role === "ADMIN";
+  const canDelete = hasPermission(user, "edition:archive");
   const published = d.edition.status === "PUBLISHED" || d.edition.status === "ARCHIVED";
   const attention = needsALook(d);
   const attentionLabels = { submissions: tr("updates to look at"), stories: tr("stories missing something"), articles: tr("articles waiting for your approval"), pictures: tr("pictures with unclear rights"), facts: tr("facts that disagree") };
@@ -234,9 +236,16 @@ export async function StandardOverview({ editionId }: { editionId: string }) {
         <GuidedNext editionId={editionId} room="" />
       )}
 
-      <p className="text-center text-2xs text-muted-foreground">
-        <Link href={`${ed}?view=full`} className="hover:text-foreground hover:underline">{tr("See the full control room")}</Link>
-      </p>
+      {/*
+        * The two things left that are not about making this issue: the whole control room, and
+        * unmaking it. Quiet, at the bottom, and far from anything anybody presses by habit.
+        */}
+      <div className="flex flex-wrap items-center justify-center gap-3">
+        <p className="text-2xs text-muted-foreground">
+          <Link href={`${ed}?view=full`} className="hover:text-foreground hover:underline">{tr("See the full control room")}</Link>
+        </p>
+        {canDelete ? <DeleteEdition editionId={editionId} label={d.edition.label} published={published} /> : null}
+      </div>
     </PageBody>
   );
 }

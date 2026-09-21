@@ -20,6 +20,7 @@ import { formatCurrency, formatDate, formatDateTime, relativeTime, enumLabel } f
 import { PHASES, STATUS_LABELS, nextStatuses, phaseForStatus } from "@/lib/editorial/edition-state";
 import { getUi } from "@/server/i18n/locale";
 import { experienceOf } from "@/lib/experience";
+import { DeleteEdition } from "@/components/newsroom/delete-edition";
 import { StandardOverview } from "./standard-overview";
 
 export const dynamic = "force-dynamic";
@@ -197,6 +198,13 @@ export default async function ControlRoomPage({ params, searchParams }: { params
           </ul>
         </div>
       </section>
+
+      {/* Unmaking the issue, at the far end of the room from everything that makes it. */}
+      {hasPermission(user, "edition:archive") ? (
+        <div className="flex justify-end pt-2">
+          <DeleteEdition editionId={editionId} label={d.edition.label} published={d.edition.status === "PUBLISHED" || d.edition.status === "ARCHIVED"} />
+        </div>
+      ) : null}
     </PageBody>
   );
 }
