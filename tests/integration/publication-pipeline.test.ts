@@ -3,7 +3,7 @@ import { eq } from "drizzle-orm";
 import { PDFDocument } from "pdf-lib";
 import { ensureSeeded } from "../helpers/db";
 import { db } from "@/server/db/client";
-import { editions, notifications, pagePlanPages, pagePlans, publicationAssets, publicationVersions, users } from "@/server/db/schema";
+import { editions, notifications, pagePlanPages, pagePlans, publicationAssets, publications, publicationVersions, users } from "@/server/db/schema";
 import { getStorage } from "@/server/storage";
 import type { EditionDocument } from "@/lib/publication/document";
 import { buildEditionDocument, documentHash } from "@/server/publication/document-builder";
@@ -21,6 +21,8 @@ import { readZipEntries } from "@/server/publication/zip";
 let editionId: string;
 let doc: EditionDocument;
 let plannedPageCount = 0;
+/** The name of the newsletter this issue belongs to, which is what the masthead must say. */
+let titleName = "";
 
 beforeAll(async () => {
   const seeded = await ensureSeeded();
@@ -28,6 +30,9 @@ beforeAll(async () => {
   doc = await buildEditionDocument(editionId, { versionLabel: "v0.1", includeUnapproved: true });
   const plan = await db.query.pagePlans.findFirst({ where: eq(pagePlans.editionId, editionId) });
   plannedPageCount = plan ? (await db.select().from(pagePlanPages).where(eq(pagePlanPages.planId, plan.id))).length : 0;
+  const edition = await db.query.editions.findFirst({ where: eq(editions.id, editionId), columns: { publicationId: true } });
+  const title = edition?.publicationId ? await db.query.publications.findFirst({ where: eq(publications.id, edition.publicationId), columns: { name: true } }) : null;
+  titleName = title!.name;
 }, 180_000);
 
 describe("buildEditionDocument (seeded edition)", () => {
@@ -37,7 +42,10 @@ describe("buildEditionDocument (seeded edition)", () => {
     expect(doc.pages).toHaveLength(plannedPageCount);
     expect(doc.pages.map((p) => p.number)).toEqual(doc.pages.map((_, i) => i + 1));
     expect(doc.meta.issueLabel).toBe("Special issue N°1");
-    expect(doc.meta.masthead.title).toBe("Albert's Deep Dive");
+    // The masthead is the newsletter's own name, not a workspace setting and not a constant. This
+    // asserted the string "Albert's Deep Dive", which is what the whole product used to say to
+    // every customer; it now reads the title the edition actually belongs to.
+    expect(doc.meta.masthead.title).toBe(titleName);
     expect(doc.meta.credits).toEqual([
       { role: "Editor in chief", name: "Milan Viallet" },
       { role: "Translator", name: "Khadidja Addi" },
@@ -156,8 +164,8 @@ describe("rendering (one shared browser)", () => {
     expect(pdfResult.layoutReport.underfilled.every((u) => u.occupancy >= 0.25)).toBe(true);
     const parsed = await PDFDocument.load(pdfResult.buffer, { updateMetadata: false });
     expect(parsed.getPageCount()).toBe(pdfResult.pageCount);
-    expect(parsed.getTitle()).toBe("Albert's Deep Dive — Special issue N°1, May 2025");
-    expect(parsed.getAuthor()).toBe("Albert's Deep Dive");
+    expect(parsed.getTitle()).toBe(`${titleName} — Special issue N°1, May 2025`);
+    expect(parsed.getAuthor()).toBe(titleName);
     expect(parsed.getSubject()).toBe("Special issue N°1");
     expect(parsed.getKeywords()).toContain("v0.1");
     const { width, height } = parsed.getPage(0).getSize();
