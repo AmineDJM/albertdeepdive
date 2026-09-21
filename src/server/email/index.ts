@@ -5,6 +5,7 @@ import { createLogger } from "@/server/logger";
 import { resolveEmailAdapter } from "./adapters";
 import { senderFor } from "./sender";
 import { emailTextFallback, renderEmailLayout, type EmailLayoutInput } from "./template";
+import { resolveMasthead } from "./masthead";
 
 const log = createLogger("email");
 
@@ -28,8 +29,22 @@ export type SendEmailInput = {
 
 /** Renders, logs and sends an email. Never throws on provider failure: the log row records the error. */
 export async function sendEmail(input: SendEmailInput) {
-  const html = renderEmailLayout(input.layout);
-  const text = emailTextFallback(input.layout);
+  /*
+   * The sender's own mark, filled in here rather than trusted to each builder.
+   *
+   * A builder that forgets does not fail — it signs a customer's message with Briefly's logo — so
+   * the decision is made once, at the only point every email passes through, from what the call
+   * already carries. A layout that named its own masthead keeps it; a workspace's logo and colour
+   * are added to it when it only gave a name.
+   */
+  const resolved = await resolveMasthead({
+    organizationId: input.organizationId,
+    editionId: input.editionId,
+    name: input.layout.masthead?.name ?? null,
+  });
+  const layout: EmailLayoutInput = resolved ? { ...input.layout, masthead: { ...resolved, ...input.layout.masthead, logoUrl: input.layout.masthead?.logoUrl ?? resolved.logoUrl, colour: input.layout.masthead?.colour ?? resolved.colour } } : input.layout;
+  const html = renderEmailLayout(layout);
+  const text = emailTextFallback(layout);
   // Who it is from is the workspace's business — its own domain once verified, Briefly's shared one
   // until then — and only the delivery provider can honour that; a mailbox sends as itself.
   const [adapter, sender] = await Promise.all([resolveEmailAdapter(), senderFor(input.organizationId ?? null)]);

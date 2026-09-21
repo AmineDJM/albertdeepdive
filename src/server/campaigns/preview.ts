@@ -3,6 +3,7 @@ import { db } from "@/server/db/client";
 import * as s from "@/server/db/schema";
 import { NotFoundError } from "@/lib/action-result";
 import { renderEmailLayout } from "@/server/email/template";
+import { resolveMasthead } from "@/server/email/masthead";
 import { invitationEmail } from "./emails";
 import { contributorContext, getCampaignForEdition, resolveSelection } from "./service";
 import { getContactSettings } from "@/server/campaigns/settings";
@@ -78,7 +79,9 @@ export async function previewInvitation(editionId: string): Promise<InvitationPr
     scheduledFor: campaign.status === "SCHEDULED" ? campaign.opensAt.toISOString() : null,
     deadlineAt: campaign.deadlineAt.toISOString(),
     subject: message.subject,
-    html: renderEmailLayout(message.layout),
+    // The same masthead the send would use. A preview that showed a different logo from the email
+    // would be worse than no preview: it is read precisely to catch what this one is for.
+    html: renderEmailLayout({ ...message.layout, masthead: await resolveMasthead({ organizationId: edition.organizationId, editionId, name: newsletter.name }) }),
     recipients: { total: selection.selected.length, names: names.slice(0, 12), mode: selection.mode },
     canSend: !alreadyOut && !closed && selection.selected.length > 0,
     why: closed
