@@ -6,6 +6,7 @@ import { ensureSeeded } from "../helpers/db";
 import { runAsOrganization } from "@/server/tenancy/context";
 import { createPublication, deletePublication } from "@/server/publications/service";
 import { createEdition } from "@/server/editions/service";
+import { publicationWithEditions } from "@/server/outputs/service";
 
 /**
  * Removing a newsletter, and what that is allowed to take with it.
@@ -77,6 +78,24 @@ describe("deleting a newsletter", () => {
     expect((await db.select({ id: s.editionSections.id }).from(s.editionSections).where(inArray(s.editionSections.editionId, editionIds))).length).toBe(0);
     const audits = await db.select({ action: s.auditLog.action }).from(s.auditLog).where(eq(s.auditLog.entityId, title.id));
     expect(audits.map((row) => row.action)).toContain("publication.delete");
+  });
+
+  it("counts a hidden edition, because deleting the title would take it too", async () => {
+    // The screen that asks lists editions with the hidden ones filtered out — rightly, nobody
+    // wants to read them. But the deletion does not filter, so a count taken from that list would
+    // offer "nothing has been published under it" and then fail on the refusal. The count the
+    // dialog reads has to be the count the deletion enforces.
+    const title = await newTitle("Une lettre avec un numéro caché");
+    const hidden = await runAsOrganization(organizationId, () =>
+      createEdition({ month: 7, year: 2031, publicationId: title.id, inheritFrom: null }, userId),
+    );
+    await db.update(s.editions).set({ hiddenAt: new Date() }).where(eq(s.editions.id, hidden.id));
+
+    const view = await runAsOrganization(organizationId, () => publicationWithEditions(title.id, organizationId));
+    expect(view!.editions.map((edition) => edition.id)).not.toContain(hidden.id);
+    expect(view!.editionCount).toBe(1);
+
+    await expect(runAsOrganization(organizationId, () => deletePublication(organizationId, title.id, userId))).rejects.toMatchObject({ code: "VALIDATION" });
   });
 
   it("says nothing exists rather than what exists, for a title of another workspace", async () => {

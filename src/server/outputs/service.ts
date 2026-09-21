@@ -308,11 +308,20 @@ export async function publicationWithEditions(publicationId: string, organizatio
       ),
     );
 
+  // Every issue the title has, hidden ones included. The list above leaves hidden editions out —
+  // rightly, nobody wants to read them — but deleting the title takes them too, so the screen that
+  // asks must count what the deletion counts rather than what the table shows.
+  const [all] = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(s.editions)
+    .where(and(eq(s.editions.publicationId, publicationId), eq(s.editions.organizationId, organizationId)));
+
   return {
     publication,
     editions,
     live,
     published: editions.filter((edition) => edition.status === "PUBLISHED" || edition.status === "ARCHIVED").length,
+    editionCount: Number(all?.count ?? 0),
     subscribers: Number(subscribers?.count ?? 0),
   };
 }

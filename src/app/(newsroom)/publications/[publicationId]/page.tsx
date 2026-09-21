@@ -41,7 +41,7 @@ export default async function PublicationPage({ params }: { params: Promise<{ pu
   const { publicationId } = await params;
   const data = await publicationWithEditions(publicationId, tenant.organizationId);
   if (!data) notFound();
-  const { publication, editions, live, published, subscribers } = data;
+  const { publication, editions, live, published, editionCount, subscribers } = data;
   const canCreate = hasPermission(user, "edition:create");
   const canSetUp = hasPermission(user, "layout:edit");
   const canRemove = hasPermission(user, "edition:archive");
@@ -72,7 +72,7 @@ export default async function PublicationPage({ params }: { params: Promise<{ pu
               </Button>
             ) : null}
             {canCreate ? <NewEditionButton publicationId={publication.id} inheritsFrom={inherits?.from.label ?? null} /> : null}
-            {canRemove ? <DeletePublication publicationId={publication.id} name={publication.name} editionCount={editions.length} /> : null}
+            {canRemove ? <DeletePublication publicationId={publication.id} name={publication.name} editionCount={editionCount} /> : null}
           </div>
         }
       />
