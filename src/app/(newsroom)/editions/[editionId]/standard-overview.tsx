@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Download, ExternalLink } from "lucide-react";
+import { Download, ExternalLink, Shapes } from "lucide-react";
 import { editionDashboard, type EditionDashboard } from "@/server/editions/service";
 import { outputMatrix } from "@/server/outputs/service";
 import { activeBrand } from "@/server/brand/service";
@@ -20,6 +20,7 @@ import { GuidedNext } from "@/components/newsroom/guided-next";
 import { DeleteEdition } from "@/components/newsroom/delete-edition";
 import { formatDate } from "@/lib/utils";
 import { activeIdentity } from "@/server/design/identity";
+import { editionHasContent } from "@/server/publication/readiness";
 import { calendarDaysUntil } from "@/lib/campaigns/schedule";
 import { intlLocale } from "@/lib/i18n";
 import { currentLocale, getUi } from "@/server/i18n/locale";
@@ -48,6 +49,17 @@ export async function StandardOverview({ editionId }: { editionId: string }) {
   const canSetUp = hasPermission(user, "settings:manage") || tenant.role === "OWNER" || tenant.role === "ADMIN";
   const canDelete = hasPermission(user, "edition:archive");
   const published = d.edition.status === "PUBLISHED" || d.edition.status === "ARCHIVED";
+  /*
+   * Whether there is a newsletter here to look at.
+   *
+   * Preview, PDF, Word and the web page were offered from the day the issue was created, and for
+   * most of an issue's life they produce a cover with nothing behind it — a real file, correctly
+   * made, containing no newsletter. That is the worst kind of empty state, because it reads as the
+   * product's best effort rather than as "not yet". The controls only appear once a piece has been
+   * written; until then the question somebody actually has is what it will look like, and that is
+   * the models.
+   */
+  const hasContent = await editionHasContent(editionId);
   const attention = needsALook(d);
   const attentionLabels = { submissions: tr("updates to look at"), stories: tr("stories missing something"), articles: tr("articles waiting for your approval"), pictures: tr("pictures with unclear rights"), facts: tr("facts that disagree") };
   const languageNames: Record<string, string> = { en: tr("English"), fr: tr("French") };
@@ -98,27 +110,40 @@ export async function StandardOverview({ editionId }: { editionId: string }) {
           </div>
           <p className="mt-1 text-[13.5px] text-muted-foreground">{summary}</p>
           <div className="mt-4 flex flex-wrap items-center gap-2">
-            <Button asChild variant={published ? "default" : "outline"}>
-              <a href={`/print/edition/${editionId}`} target="_blank" rel="noreferrer">
-                {tr("Preview")} <ExternalLink />
-              </a>
-            </Button>
-            {/* The two files people ask for while looking at the preview, one click earlier. */}
-            <Button asChild variant="ghost" size="sm">
-              <a href={`/print/edition/${editionId}/export?format=pdf`} download>
-                <Download /> {tr("PDF")}
-              </a>
-            </Button>
-            <Button asChild variant="ghost" size="sm">
-              <a href={`/print/edition/${editionId}/export?format=docx`} download>
-                <Download /> {tr("Word")}
-              </a>
-            </Button>
-            {webUrl ? (
-              <Button asChild variant="outline">
-                <a href={webUrl} target="_blank" rel="noreferrer">{tr("Open the web page")}</a>
-              </Button>
-            ) : null}
+            {hasContent ? (
+              <>
+                <Button asChild variant={published ? "default" : "outline"}>
+                  <a href={`/print/edition/${editionId}`} target="_blank" rel="noreferrer">
+                    {tr("Preview")} <ExternalLink />
+                  </a>
+                </Button>
+                {/* The two files people ask for while looking at the preview, one click earlier. */}
+                <Button asChild variant="ghost" size="sm">
+                  <a href={`/print/edition/${editionId}/export?format=pdf`} download>
+                    <Download /> {tr("PDF")}
+                  </a>
+                </Button>
+                <Button asChild variant="ghost" size="sm">
+                  <a href={`/print/edition/${editionId}/export?format=docx`} download>
+                    <Download /> {tr("Word")}
+                  </a>
+                </Button>
+                {webUrl ? (
+                  <Button asChild variant="outline">
+                    <a href={webUrl} target="_blank" rel="noreferrer">{tr("Open the web page")}</a>
+                  </Button>
+                ) : null}
+              </>
+            ) : (
+              <div className="flex flex-wrap items-center gap-2" data-testid="nothing-to-preview">
+                <Button asChild variant="outline">
+                  <Link href={`${ed}/models`}>
+                    <Shapes /> {tr("See what it will look like")}
+                  </Link>
+                </Button>
+                <p className="text-2xs text-muted-foreground">{tr("Nothing written yet — there is no newsletter to preview.")}</p>
+              </div>
+            )}
           </div>
           {attention.length ? (
             <ul className="mt-4 flex flex-wrap gap-2" aria-label={tr("Needs your attention")}>
@@ -160,7 +185,9 @@ export async function StandardOverview({ editionId }: { editionId: string }) {
                   ? tr("Read from {file}", { file: model.fileName })
                   : model?.kind === "brand"
                     ? tr("Designed from your brand")
-                    : tr("Briefly's own")
+                    : model?.kind === "briefly"
+                      ? tr("One of Briefly's models")
+                      : tr("Briefly's own")
               }
               hint={model?.rubrics.length ? model.rubrics.slice(0, 3).join(" · ") : tr("upload yours, or have one designed")}
               change={canEdit ? { href: `/publications/${publication.id}/blueprint`, label: model ? tr("Change") : tr("Choose") } : null}

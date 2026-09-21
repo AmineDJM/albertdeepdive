@@ -5,9 +5,11 @@ import { getCurrentUser, hasPermission } from "@/server/auth/session";
 import { requireTenant } from "@/server/tenancy/context";
 import { publicationWithEditions } from "@/server/outputs/service";
 import { activeIdentity } from "@/server/design/identity";
-import { PageBody, PageHeader } from "@/components/newsroom/page-header";
+import { PageBody, PageHeader, SectionTitle } from "@/components/newsroom/page-header";
 import { NoAccess } from "@/components/settings/no-access";
 import { getUi } from "@/server/i18n/locale";
+import { modelShelf } from "@/server/design/models/service";
+import { ModelGallery } from "@/app/(newsroom)/editions/[editionId]/models/model-gallery";
 import { BlueprintStudio } from "./blueprint-studio";
 
 export const dynamic = "force-dynamic";
@@ -27,7 +29,7 @@ export default async function BlueprintPage({ params }: { params: Promise<{ publ
   const { publicationId } = await params;
   const data = await publicationWithEditions(publicationId, tenant.organizationId);
   if (!data) notFound();
-  const identity = await activeIdentity(publicationId);
+  const [identity, shelf] = await Promise.all([activeIdentity(publicationId), modelShelf(publicationId)]);
 
   return (
     <>
@@ -40,23 +42,40 @@ export default async function BlueprintPage({ params }: { params: Promise<{ publ
           </Link>
         }
       />
-      <PageBody className="mx-auto w-full max-w-3xl">
-        <BlueprintStudio
-          publicationId={publicationId}
-          publicationName={data.publication.name}
-          current={
-            identity.source
-              ? {
-                  kind: identity.source.kind,
-                  fileName: identity.source.fileName,
-                  summary: identity.source.summary,
-                  at: identity.source.at,
-                  rubrics: identity.rubrics.map((rubric) => rubric.name),
-                }
-              : null
-          }
-          firstEditionId={data.editions[0]?.id ?? null}
-        />
+      <PageBody className="mx-auto w-full max-w-5xl space-y-6">
+        {/*
+          * The shelf first, the two ways of making your own second.
+          *
+          * Somebody arriving here has one of two things: a newsletter they already publish, or
+          * nothing but a logo. The second is much the commoner case and used to be answered with an
+          * empty screen and a button marked "design one from my brand", which asks a person to
+          * imagine the result before agreeing to it. Showing the models as pages answers it before
+          * the question is asked.
+          */}
+        <section className="space-y-2">
+          <SectionTitle>{tr("Choose a model")}</SectionTitle>
+          <ModelGallery shelf={shelf} canAdopt />
+        </section>
+
+        <section className="space-y-2">
+          <SectionTitle>{tr("Or make your own")}</SectionTitle>
+          <BlueprintStudio
+            publicationId={publicationId}
+            publicationName={data.publication.name}
+            current={
+              identity.source
+                ? {
+                    kind: identity.source.kind,
+                    fileName: identity.source.fileName,
+                    summary: identity.source.summary,
+                    at: identity.source.at,
+                    rubrics: identity.rubrics.map((rubric) => rubric.name),
+                  }
+                : null
+            }
+            firstEditionId={data.editions[0]?.id ?? null}
+          />
+        </section>
       </PageBody>
     </>
   );

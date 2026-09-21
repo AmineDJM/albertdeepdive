@@ -8,6 +8,7 @@ import * as s from "@/server/db/schema";
 import { and, eq } from "drizzle-orm";
 import { slugify } from "@/lib/utils";
 import { createLogger } from "@/server/logger";
+import { editionHasContent } from "@/server/publication/readiness";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -46,6 +47,12 @@ export async function GET(request: Request, { params }: { params: Promise<{ edit
     ? await db.query.organizationMembers.findFirst({ where: and(eq(s.organizationMembers.userId, user.id), eq(s.organizationMembers.organizationId, edition.organizationId)), columns: { organizationId: true } })
     : null;
   if (!isPlatformStaff && !member) return NextResponse.json({ error: "Not allowed" }, { status: 404 });
+
+  // An empty issue still renders: a cover, the page furniture, and no newsletter behind it. Handing
+  // that back as a .pdf is worse than refusing, because it looks like the product's best effort.
+  if (!(await runAsOrganization(edition.organizationId!, () => editionHasContent(editionId)))) {
+    return NextResponse.json({ error: "This edition has no written article yet, so there is nothing to export." }, { status: 409 });
+  }
 
   try {
     const started = Date.now();

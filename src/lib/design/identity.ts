@@ -76,7 +76,13 @@ export const publicationIdentitySchema = z.object({
    */
   source: z
     .object({
-      kind: z.enum(["uploaded", "brand", "hand"]).default("hand"),
+      /**
+       * `uploaded` read out of a customer's own file, `brand` composed from their colours and type,
+       * `briefly` one of the six models Briefly ships, `hand` set dial by dial. The distinction is
+       * what lets the screen say where a design came from instead of asserting one with no account
+       * of itself — and they are four different claims, not one.
+       */
+      kind: z.enum(["uploaded", "brand", "briefly", "hand"]).default("hand"),
       fileName: z.string().max(200).nullable().default(null),
       /** The two or three sentences shown to whoever adopts it. */
       summary: z.string().max(600).default(""),

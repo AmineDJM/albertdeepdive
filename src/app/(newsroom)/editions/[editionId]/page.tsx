@@ -21,6 +21,7 @@ import { PHASES, STATUS_LABELS, nextStatuses, phaseForStatus } from "@/lib/edito
 import { getUi } from "@/server/i18n/locale";
 import { experienceOf } from "@/lib/experience";
 import { DeleteEdition } from "@/components/newsroom/delete-edition";
+import { editionHasContent } from "@/server/publication/readiness";
 import { StandardOverview } from "./standard-overview";
 
 export const dynamic = "force-dynamic";
@@ -30,7 +31,7 @@ export default async function ControlRoomPage({ params, searchParams }: { params
   const [{ editionId }, sp, user] = await Promise.all([params, searchParams, getCurrentUser()]);
   // Standard reads the edition as decisions; the control room below stays one link away.
   if (experienceOf(user?.preferences) === "standard" && sp.view !== "full") return <StandardOverview editionId={editionId} />;
-  const [d, activity, outputs, translate] = await Promise.all([editionDashboard(editionId), recentActivity(editionId, 8), outputMatrix(editionId), getTranslations()]);
+  const [d, activity, outputs, translate, hasContent] = await Promise.all([editionDashboard(editionId), recentActivity(editionId, 8), outputMatrix(editionId), getTranslations(), editionHasContent(editionId)]);
   const coverUrl = d.edition.coverMediaAssetId ? await mediaUrl(d.edition.coverMediaAssetId, "WEB") : null;
   const ed = `/editions/${editionId}`;
   const phase = phaseForStatus(d.edition.status);
@@ -120,9 +121,16 @@ export default async function ControlRoomPage({ params, searchParams }: { params
                 <Button asChild size="sm" variant="outline"><Link href={`${ed}/stories`}>{tr("Stories")}</Link></Button>
                 <Button asChild size="sm" variant="outline"><Link href={`${ed}/layout`}>{tr("Flatplan")}</Link></Button>
                 <Button asChild size="sm" variant="outline"><Link href={`${ed}/qa`}>{tr("Quality gates")}</Link></Button>
-                <Button asChild size="sm" variant="ghost"><a href={`/print/edition/${editionId}`} target="_blank" rel="noreferrer">{tr("Live preview")}{" "}<ExternalLink /></a></Button>
-                <Button asChild size="sm" variant="ghost"><a href={`/print/edition/${editionId}/export?format=pdf`} download>{tr("PDF")}</a></Button>
-                <Button asChild size="sm" variant="ghost"><a href={`/print/edition/${editionId}/export?format=docx`} download>{tr("Word")}</a></Button>
+                {/* Same rule as Standard: an empty issue has no preview and no file worth handing over. */}
+                {hasContent ? (
+                  <>
+                    <Button asChild size="sm" variant="ghost"><a href={`/print/edition/${editionId}`} target="_blank" rel="noreferrer">{tr("Live preview")}{" "}<ExternalLink /></a></Button>
+                    <Button asChild size="sm" variant="ghost"><a href={`/print/edition/${editionId}/export?format=pdf`} download>{tr("PDF")}</a></Button>
+                    <Button asChild size="sm" variant="ghost"><a href={`/print/edition/${editionId}/export?format=docx`} download>{tr("Word")}</a></Button>
+                  </>
+                ) : (
+                  <Button asChild size="sm" variant="ghost"><Link href={`${ed}/models`}>{tr("See what it will look like")}</Link></Button>
+                )}
                 {hasPermission(user, "settings:manage") ? <SimulateReturnsButton editionId={editionId} /> : null}
                 {hasPermission(user, "edition:publish") && d.edition.status !== "PUBLISHED" && d.edition.status !== "ARCHIVED" ? <AutopilotButton editionId={editionId} /> : null}
               </div>

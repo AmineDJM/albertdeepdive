@@ -115,7 +115,9 @@ export function BlueprintStudio({
               ? tr("Read from {file}.", { file: current.fileName })
               : current.kind === "brand"
                 ? tr("Designed from your brand.")
-                : tr("Set by hand.")
+                : current.kind === "briefly"
+                  ? tr("One of Briefly's own models.")
+                  : tr("Set by hand.")
           }
         >
           {current.summary ? <p className="text-[13px]">{current.summary}</p> : null}
