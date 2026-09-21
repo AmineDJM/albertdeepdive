@@ -14,6 +14,7 @@ import { NotFoundError, ValidationError } from "@/lib/action-result";
 import { ROLES } from "@/lib/auth/permissions";
 import { onlySent } from "@/lib/zod-patch";
 import { experienceOf, type ExperienceMode } from "@/lib/experience";
+import { normaliseUsername, suggestUsername, usernameProblem, USERNAME_MAX, USERNAME_MIN } from "@/lib/identity/username";
 
 export const userInputSchema = z.object({
   name: z.string().trim().min(2, "Name is too short").max(80),
@@ -133,6 +134,9 @@ export async function getOwnProfile(userId: string, currentToken?: string | null
     id: user.id,
     name: user.name,
     email: user.email,
+    username: user.username,
+    /** What to offer when they have not claimed one, so the field is never an empty box. */
+    suggestedUsername: user.username ?? suggestUsername(user.name, user.email),
     role: user.role,
     campus: user.campus ? { name: user.campus.name, colour: user.campus.colour } : null,
     lastLoginAt: user.lastLoginAt,
@@ -143,13 +147,46 @@ export async function getOwnProfile(userId: string, currentToken?: string | null
   };
 }
 
-export const profileSchema = z.object({ name: z.string().trim().min(2, "Name is too short").max(80) });
+/**
+ * A handle is optional and unique, in that order.
+ *
+ * Optional because every account that already exists predates it, and forcing a claim at the next
+ * sign-in would be a wall in front of work somebody came here to do. Unique because the whole point
+ * is that saying it out loud identifies one person: the database holds the unique index, and this
+ * checks first so the customer gets "taken" rather than a constraint violation.
+ */
+export const profileSchema = z.object({
+  name: z.string().trim().min(2, "Name is too short").max(80),
+  username: z.string().trim().optional(),
+});
+
+const USERNAME_MESSAGES: Record<NonNullable<ReturnType<typeof usernameProblem>>, string> = {
+  "too-short": `A username is at least ${USERNAME_MIN} characters`,
+  "too-long": `A username is at most ${USERNAME_MAX} characters`,
+  "bad-characters": "Use letters, digits, and . _ - only",
+  "bad-edges": "It cannot start or end with . _ - or repeat them",
+  reserved: "That one is kept for Briefly itself",
+};
 
 export async function updateOwnProfile(userId: string, raw: z.input<typeof profileSchema>) {
   const input = profileSchema.parse(raw);
-  const [row] = await db.update(users).set({ name: input.name }).where(eq(users.id, userId)).returning({ id: users.id, name: users.name });
+  const typed = (input.username ?? "").trim();
+  let username: string | null | undefined;
+  if (typed) {
+    const problem = usernameProblem(typed);
+    if (problem) throw new ValidationError(USERNAME_MESSAGES[problem], { username: [USERNAME_MESSAGES[problem]] });
+    username = normaliseUsername(typed);
+    const taken = await db.query.users.findFirst({ where: and(eq(users.username, username), ne(users.id, userId)), columns: { id: true } });
+    if (taken) throw new ValidationError("That username is taken", { username: ["Already taken"] });
+  } else if (input.username !== undefined) {
+    // An emptied field gives the handle up rather than keeping the old one silently.
+    username = null;
+  }
+  const patch: Partial<typeof users.$inferInsert> = { name: input.name };
+  if (username !== undefined) patch.username = username;
+  const [row] = await db.update(users).set(patch).where(eq(users.id, userId)).returning({ id: users.id, name: users.name });
   if (!row) throw new NotFoundError("User");
-  await audit({ action: "user.profile_update", userId, entityType: "USER", entityId: userId, metadata: { fields: ["name"] } });
+  await audit({ action: "user.profile_update", userId, entityType: "USER", entityId: userId, metadata: { fields: Object.keys(patch) } });
   return row;
 }
 

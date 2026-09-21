@@ -6,6 +6,26 @@
  * tests rather than showing English to a French newsroom.
  */
 export const UI_FR: Record<string, string> = {
+  // Belonging to organisations, and the handle that lets somebody hand you a newsletter.
+  "Your organisations": "Vos organisations",
+  "Every workspace you belong to, and what you are in each one.": "Chaque espace auquel vous appartenez, et ce que vous y êtes.",
+  "New organisation": "Nouvelle organisation",
+  "You are not in any organisation yet.": "Vous n'appartenez encore à aucune organisation.",
+  "Create one": "En créer une",
+  "An organisation on your own is a real workspace: it has its newsletters, its audience and its brand. Nobody else is in it until you add them, and a newsletter can be handed to a team later without losing anything.": "Une organisation à vous seul est un espace à part entière : elle a ses newsletters, son audience et sa charte. Personne d'autre n'y est tant que vous n'ajoutez personne, et une newsletter peut être confiée à une équipe plus tard sans rien perdre.",
+  "Adding people and changing their role happens inside a workspace, under Workspace.": "L'ajout de personnes et le changement de rôle se font dans l'espace, sous Espace de travail.",
+  "Some roles here cannot change settings": "Certains rôles ne permettent pas de modifier les réglages",
+  "Just you": "Vous seul",
+  "You are here": "Vous êtes ici",
+  "Your role: {role}": "Votre rôle : {role}",
+  "1 newsletter": "1 newsletter",
+  "{count} newsletters": "{count} newsletters",
+  "1 organisation": "1 organisation",
+  "{count} organisations": "{count} organisations",
+  "where you belong, and your role": "où vous appartenez, et votre rôle",
+  "Username": "Nom d'utilisateur",
+  "This is how colleagues find you when they transfer a newsletter.": "C'est ainsi que vos collègues vous trouvent pour vous transférer une newsletter.",
+  "Optional. Claim one so colleagues can transfer a newsletter to you by name.": "Facultatif. Réservez-en un pour qu'on puisse vous transférer une newsletter par votre nom.",
   // Reading an organisation's own website, and correcting what it said.
   "Read my website again": "Relire mon site",
   "We open your site in a browser and bring back what it says about you.": "Nous ouvrons votre site dans un navigateur et rapportons ce qu'il dit de vous.",

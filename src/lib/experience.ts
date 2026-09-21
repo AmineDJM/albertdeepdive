@@ -48,7 +48,7 @@ export const STANDARD_PATHS = new Set<string>([
 ]);
 
 /** The settings pages Standard lists. The rest open from Advanced, or from a link. */
-export const STANDARD_SETTINGS = new Set<string>(["/settings/profile", "/settings/workspace", "/settings/brand", "/settings/email", "/settings/billing", "/settings/users", "/settings/help"]);
+export const STANDARD_SETTINGS = new Set<string>(["/settings/profile", "/settings/organizations", "/settings/workspace", "/settings/brand", "/settings/email", "/settings/billing", "/settings/users", "/settings/help"]);
 
 /**
  * The rooms of an edition Standard shows: where you stand, the stories and the people who sent

@@ -14,6 +14,7 @@ import * as s from "@/server/db/schema";
 import { PageBody, PageHeader } from "@/components/newsroom/page-header";
 import { experienceOf } from "@/lib/experience";
 import { cn } from "@/lib/utils";
+import { listMyOrganizationsDetailed } from "@/server/tenancy/service";
 import { getUi } from "@/server/i18n/locale";
 
 export const dynamic = "force-dynamic";
@@ -32,12 +33,13 @@ export default async function SettingsIndex() {
   if (!user) redirect("/login");
   if (experienceOf(user.preferences) === "advanced") redirect("/settings/profile");
   const canSetUp = hasPermission(user, "settings:manage") || tenant.role === "OWNER" || tenant.role === "ADMIN";
-  const [brand, sender, domain, report, members, [subs]] = await Promise.all([
+  const [brand, sender, domain, report, members, mine, [subs]] = await Promise.all([
     activeBrand(tenant.organizationId),
     senderFor(tenant.organizationId).catch(() => null),
     getSendingDomain(tenant.organizationId),
     usageReport(tenant.organizationId).catch(() => null),
     listMembers(tenant.organizationId).catch(() => []),
+    listMyOrganizationsDetailed(user.id).catch(() => []),
     db.select({ n: count() }).from(s.subscribers).where(eq(s.subscribers.organizationId, tenant.organizationId)),
   ]);
   const subscribers = Number(subs?.n ?? 0);
@@ -46,6 +48,7 @@ export default async function SettingsIndex() {
   type Row = { href: string; label: string; value: string; hint?: string | null; state: "ready" | "attention" | "plain"; action: string; show: boolean };
   const rows: Row[] = [
     { href: "/settings/profile", label: tr("Experience"), value: tr("Standard"), hint: tr("Advanced opens every door"), state: "plain", action: tr("Change"), show: true },
+    { href: "/settings/organizations", label: tr("Your organisations"), value: mine.length === 1 ? tr("1 organisation") : tr("{count} organisations", { count: mine.length }), hint: tr("where you belong, and your role"), state: "plain", action: tr("See"), show: true },
     { href: "/settings/workspace", label: tr("Workspace"), value: tenant.name, hint: languageNames[tenant.locale] ?? tenant.locale, state: "plain", action: tr("Change"), show: canSetUp },
     { href: "/settings/brand", label: tr("Brand"), value: brand ? tr("Ready") : tr("Not set up"), hint: brand ? tr("colours, type and voice, from your site") : tr("Briefly reads it from your website"), state: brand ? "ready" : "attention", action: brand ? tr("Change") : tr("Set up"), show: canSetUp },
     { href: "/settings/email", label: tr("Email sending"), value: emailValue, hint: sender ? `${sender.name} <${sender.address}>` : null, state: domain?.status === "READY" ? "ready" : domain?.status === "NEEDS_ATTENTION" || !sender ? "attention" : "plain", action: domain?.status === "READY" ? tr("Change") : tr("Set up"), show: canSetUp },

@@ -56,10 +56,11 @@ describe("the experience mode", () => {
     expect(tabsFor("advanced", WORKBENCH_TABS, "/publications")).toHaveLength(WORKBENCH_TABS.length);
   });
 
-  it("lists seven settings pages in Standard and every page in Advanced", () => {
+  it("lists eight settings pages in Standard and every page in Advanced", () => {
     const all = SETTINGS_NAV.flatMap((group) => group.items.map((item) => item.href));
     const standard = all.filter((href) => settingsShown("standard", href, "/settings/profile"));
-    expect(standard).toEqual(["/settings/profile", "/settings/workspace", "/settings/brand", "/settings/billing", "/settings/users", "/settings/email", "/settings/help"]);
+    // Which organisations you belong to is a fact about you, like your profile, so Standard shows it.
+    expect(standard).toEqual(["/settings/profile", "/settings/organizations", "/settings/workspace", "/settings/brand", "/settings/billing", "/settings/users", "/settings/email", "/settings/help"]);
     expect(all.filter((href) => settingsShown("advanced", href, "/settings/profile"))).toEqual(all);
     // A page reached by a link is listed while the reader is on it.
     expect(settingsShown("standard", "/settings/prompts", "/settings/prompts")).toBe(true);

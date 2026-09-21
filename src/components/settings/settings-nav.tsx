@@ -34,7 +34,10 @@ export const SETTINGS_NAV: { label: string; items: SettingsNavItem[] }[] = [
   {
     label: "Workspace",
     items: [
-      { href: "/settings/profile", label: "Your profile", icon: UserRound, hint: "Name, password, theme" },
+      { href: "/settings/profile", label: "Your profile", icon: UserRound, hint: "Name, username, password" },
+      // No permission and no workspace role: belonging to organisations is a fact about the person,
+      // not a right granted inside one of them, and a viewer needs it as much as an owner does.
+      { href: "/settings/organizations", label: "Your organisations", icon: Building2, hint: "Where you belong, and your role" },
       { href: "/settings/workspace", label: "Workspace", icon: Building2, permission: "settings:manage", workspaceRoles: ["OWNER", "ADMIN"], hint: "Name, address, language" },
       { href: "/settings/brand", label: "Brand", icon: Palette, permission: "settings:manage", workspaceRoles: ["OWNER", "ADMIN"], hint: "Colours, type and voice" },
       { href: "/settings/billing", label: "Plan & usage", icon: CreditCard, permission: "settings:manage", workspaceRoles: ["OWNER", "ADMIN"], hint: "What you get and what you use" },

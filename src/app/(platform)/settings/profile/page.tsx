@@ -32,7 +32,7 @@ export default async function ProfilePage() {
       />
       <PageBody className="max-w-3xl space-y-4">
         <ExperienceForm saved={profile.experience} />
-        <IdentityForm name={profile.name} email={profile.email} />
+        <IdentityForm name={profile.name} email={profile.email} username={profile.username} suggestedUsername={profile.suggestedUsername} />
         <PasswordForm />
         <ThemeForm saved={profile.theme} />
         <SessionsCard sessions={profile.sessions} />

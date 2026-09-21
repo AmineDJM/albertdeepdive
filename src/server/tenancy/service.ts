@@ -1,4 +1,4 @@
-import { and, asc, count, eq, ne, sql } from "drizzle-orm";
+import { and, asc, count, eq, inArray, ne, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/server/db/client";
 import { organizationMembers, organizations, publications, users } from "@/server/db/schema";
@@ -199,4 +199,64 @@ export async function removeMember(organizationId: string, userId: string, actor
   }
   await db.delete(organizationMembers).where(and(eq(organizationMembers.organizationId, organizationId), eq(organizationMembers.userId, userId)));
   await audit({ action: "organization.member.remove", userId: actorId, entityId: organizationId, metadata: { memberId: userId } });
+}
+
+/**
+ * Every workspace a person belongs to, as they would describe it.
+ *
+ * The switcher in the sidebar answers "which one am I in"; this answers "which ones are mine, what
+ * am I in each of them, and who else is there" — which is the question somebody has when they are
+ * about to add a colleague, hand a newsletter over, or work out why they cannot change a setting.
+ * Counts are read in two grouped queries rather than per row, because a person with eight
+ * workspaces should not cost sixteen round trips to look at a list.
+ */
+export type MyOrganization = {
+  id: string;
+  name: string;
+  slug: string;
+  role: OrganizationRole;
+  isPersonal: boolean;
+  isDefault: boolean;
+  members: number;
+  publications: number;
+  logoUrl: string | null;
+};
+
+export async function listMyOrganizationsDetailed(userId: string): Promise<MyOrganization[]> {
+  const rows = await db
+    .select({
+      id: organizations.id,
+      name: organizations.name,
+      slug: organizations.slug,
+      isPersonal: organizations.isPersonal,
+      logoUrl: organizations.logoUrl,
+      role: organizationMembers.role,
+      isDefault: organizationMembers.isDefault,
+      status: organizations.status,
+    })
+    .from(organizationMembers)
+    .innerJoin(organizations, eq(organizationMembers.organizationId, organizations.id))
+    .where(eq(organizationMembers.userId, userId))
+    .orderBy(asc(organizations.name));
+
+  const mine = rows.filter((row) => row.status !== "ARCHIVED");
+  if (!mine.length) return [];
+  const ids = mine.map((row) => row.id);
+  const [memberCounts, publicationCounts] = await Promise.all([
+    db.select({ organizationId: organizationMembers.organizationId, n: count() }).from(organizationMembers).where(inArray(organizationMembers.organizationId, ids)).groupBy(organizationMembers.organizationId),
+    db.select({ organizationId: publications.organizationId, n: count() }).from(publications).where(inArray(publications.organizationId, ids)).groupBy(publications.organizationId),
+  ]);
+  const members = new Map(memberCounts.map((row) => [row.organizationId, Number(row.n)]));
+  const pubs = new Map(publicationCounts.map((row) => [row.organizationId, Number(row.n)]));
+  return mine.map((row) => ({
+    id: row.id,
+    name: row.name,
+    slug: row.slug,
+    role: row.role,
+    isPersonal: row.isPersonal,
+    isDefault: row.isDefault,
+    members: members.get(row.id) ?? 0,
+    publications: pubs.get(row.id) ?? 0,
+    logoUrl: row.logoUrl,
+  }));
 }

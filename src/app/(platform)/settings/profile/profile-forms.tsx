@@ -24,13 +24,14 @@ function describeAgent(ua: string | null) {
   return [browser, os].filter(Boolean).join(" · ");
 }
 
-export function IdentityForm({ name, email }: { name: string; email: string }) {
+export function IdentityForm({ name, email, username, suggestedUsername }: { name: string; email: string; username: string | null; suggestedUsername: string }) {
   const tr = useUi();
   const router = useRouter();
   const [value, setValue] = useState(name);
+  const [handle, setHandle] = useState(username ?? "");
   const [errors, setErrors] = useState<Record<string, string[]> | null>(null);
   const [pending, start] = useTransition();
-  const dirty = value.trim() !== name;
+  const dirty = value.trim() !== name || handle.trim().toLowerCase() !== (username ?? "");
   return (
     <SettingsCard title={tr("Identity")} description={tr("Your name appears in bylines, comments and the audit log.")}>
       <form
@@ -38,7 +39,7 @@ export function IdentityForm({ name, email }: { name: string; email: string }) {
         onSubmit={(e) => {
           e.preventDefault();
           start(async () => {
-            const res = await updateProfileAction({ name: value });
+            const res = await updateProfileAction({ name: value, username: handle });
             if (!res.ok) {
               setErrors(res.fieldErrors ?? null);
               toast.error(res.error);
@@ -60,9 +61,35 @@ export function IdentityForm({ name, email }: { name: string; email: string }) {
           <Input id="profile-email" value={email} readOnly disabled />
           <p className="text-2xs text-muted-foreground">{tr("Ask a super admin to change your email.")}</p>
         </div>
+        {/*
+          * A handle is how somebody hands you a newsletter.
+          *
+          * An email address is the wrong name for it: it is typed from memory, a typo can be a real
+          * address, and what arrives is a publication with its subscribers attached. A username is
+          * said out loud and read back.
+          */}
+        <div className="space-y-1.5 sm:col-span-2">
+          <Label htmlFor="profile-username">{tr("Username")}</Label>
+          <div className="flex items-center gap-1.5">
+            <span aria-hidden className="text-sm text-muted-foreground">@</span>
+            <Input
+              id="profile-username"
+              value={handle}
+              onChange={(e) => setHandle(e.target.value)}
+              placeholder={suggestedUsername}
+              autoComplete="off"
+              spellCheck={false}
+              className="font-mono"
+            />
+          </div>
+          <FieldError errors={errors} name="username" />
+          <p className="text-2xs text-muted-foreground">
+            {username ? tr("This is how colleagues find you when they transfer a newsletter.") : tr("Optional. Claim one so colleagues can transfer a newsletter to you by name.")}
+          </p>
+        </div>
         <div className="sm:col-span-2">
           <Button type="submit" size="sm" loading={pending} disabled={!dirty || value.trim().length < 2}>
-            {tr("Save name")}</Button>
+            {tr("Save")}</Button>
         </div>
       </form>
     </SettingsCard>
