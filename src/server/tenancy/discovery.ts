@@ -321,7 +321,9 @@ function withBudget<T>(work: Promise<T>, ms: number): Promise<T | null> {
   return Promise.race([work.catch(() => null), budget]).finally(() => clearTimeout(timer));
 }
 
-const DEEP_BUDGET_MS = 30_000;
+// Long enough for a heavy site to render, short enough that somebody staring at a spinner during
+// onboarding gets the cheap reading instead of waiting out a page that will never settle.
+const DEEP_BUDGET_MS = 20_000;
 
 function contactFacts(reading: PageReading | null): Partial<OrganisationFacts> {
   if (!reading) return {};
@@ -393,8 +395,7 @@ export async function discoverOrganization(rawWebsite: string, options: { deep?:
   // Colours the page actually painted beat colours guessed from a favicon, so the images are only
   // fetched — two network round trips and a resize each — when the browser gave us nothing.
   const themeColour = normaliseHex(reading?.themeColour ?? meta(html, "theme-color"));
-  const rendered = rankColours(reading?.colours ?? []);
-  let palette = rendered;
+  let palette = rankColours(reading?.colours ?? []);
   if (palette.length < 2) {
     const fromIcon = await paletteFromImage(faviconUrl ?? `${url.origin}/favicon.ico`);
     palette = [...palette, ...(fromIcon.length || !logoUrl ? fromIcon : await paletteFromImage(logoUrl))];

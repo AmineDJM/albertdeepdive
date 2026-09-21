@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { NativeSelect } from "@/components/ui/native-select";
+import { Textarea } from "@/components/ui/textarea";
 import { BrieflyLogo } from "@/components/brand/briefly-mark";
 import { cn } from "@/lib/utils";
 import { useTranslations } from "@/components/i18n/provider";
@@ -181,6 +182,10 @@ export function OnboardingFlow({ suggestedTimezone }: { suggestedTimezone: strin
               </NativeSelect>
             </div>
             <div className="space-y-1.5 sm:col-span-2">
+              <Label htmlFor="description">{t("onboarding.whatYouDo")}</Label>
+              <Textarea id="description" name="description" rows={2} defaultValue={found?.description ?? ""} placeholder={t("onboarding.whatYouDoPlaceholder")} />
+            </div>
+            <div className="space-y-1.5 sm:col-span-2">
               <Label htmlFor="publicationName">{t("onboarding.whatWillYouPublish")}</Label>
               <Input id="publicationName" name="publicationName" required defaultValue={found?.name ? `${found.name} Weekly` : ""} placeholder="Acme Weekly" />
               <p className="text-xs text-muted-foreground">{t("onboarding.publicationHint")}</p>
@@ -207,7 +212,6 @@ export function OnboardingFlow({ suggestedTimezone }: { suggestedTimezone: strin
           ) : null}
 
           <input type="hidden" name="website" value={found?.url ?? ""} />
-          <input type="hidden" name="description" value={found?.description ?? ""} />
           <input type="hidden" name="logoUrl" value={chosenLogo} />
           <input type="hidden" name="profile" value={JSON.stringify(found?.profile ?? {})} />
           <input type="hidden" name="faviconUrl" value={found?.faviconUrl ?? ""} />

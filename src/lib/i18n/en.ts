@@ -116,6 +116,8 @@ export const en = {
     publicationHint: "A recurring title. Each edition decides for itself whether it goes out by email, on the web, as a magazine or in print.",
     whereYouPost: "Where you already post",
     whichLogo: "Which of these is your logo?",
+    whatYouDo: "What you do, in a sentence or two",
+    whatYouDoPlaceholder: "We build tools for editorial teams.",
     creating: "Creating your workspace…",
     confirm: "Looks good — create my workspace",
   },
