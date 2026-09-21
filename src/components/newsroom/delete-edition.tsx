@@ -54,8 +54,10 @@ export function DeleteEdition({ editionId, label, published }: { editionId: stri
                   return;
                 }
                 toast.success(result.message);
+                // Push only. The action has already revalidated /overview, and a refresh on top of
+                // it re-fetches the route we just left — the deleted edition's own page — which
+                // answers NOT_FOUND, as it should.
                 router.push("/overview");
-                router.refresh();
               })
             }
           >
