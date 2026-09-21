@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Contribute",
-  description: "Tell Albert's Deep Dive what happened around you.",
+  description: "Tell the newsroom what happened around you.",
   robots: { index: false, follow: false },
 };
 

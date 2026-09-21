@@ -18,6 +18,7 @@ import type { EditionStatus } from "@/lib/editorial/edition-state";
 import { storyTypeShort, templateByCode } from "@/lib/constants";
 import { enumLabel, formatDate, formatDateTime, formatNumber, relativeTime } from "@/lib/utils";
 import { getUi } from "@/server/i18n/locale";
+import { newsletterForEdition } from "@/server/publication/naming";
 
 export const dynamic = "force-dynamic";
 
@@ -30,6 +31,8 @@ export default async function ArchiveEditionPage({ params }: { params: Promise<{
   if (!hasPermission(user, "archive:view")) return <NoAccess title={tr("Archive")} permission="archive:view" />;
   if (!UUID.test(editionId)) notFound();
   const detail = await archiveEditionDetail(editionId);
+  // Which newsletter this back issue belongs to, for the masthead on its cover.
+  const newsletter = await newsletterForEdition(editionId);
   if (!detail) notFound();
   const { edition, toc, sections, versions, revisions, credited, stats } = detail;
   const published = edition.status === "PUBLISHED" || edition.status === "ARCHIVED";
@@ -58,7 +61,7 @@ export default async function ArchiveEditionPage({ params }: { params: Promise<{
       <PageBody className="space-y-6">
         <section className="grid gap-4 xl:grid-cols-[220px_minmax(0,1fr)]">
           <div className="rounded-lg border border-border bg-card p-3 shadow-xs">
-            <CoverThumbnail url={detail.coverUrl} label={edition.label} issueLabel={edition.issueLabel} headline={edition.coverHeadline} />
+            <CoverThumbnail title={newsletter.name} url={detail.coverUrl} label={edition.label} issueLabel={edition.issueLabel} headline={edition.coverHeadline} />
             {edition.coverStandfirst ? <p className="mt-2.5 text-2xs leading-relaxed text-muted-foreground">{edition.coverStandfirst}</p> : null}
           </div>
           <div className="space-y-4">

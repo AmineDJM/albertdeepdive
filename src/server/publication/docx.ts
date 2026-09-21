@@ -414,7 +414,7 @@ export async function renderDocx(doc: EditionDocument, options: RenderDocxOption
       colophon.push(para("Caption", `${article?.headline ?? ref.articleId} — ${ref.url}`));
     }
   }
-  colophon.push(para("Caption", `${doc.meta.masthead.title} · ${doc.meta.issueLabel} · version ${doc.meta.versionLabel} · generated ${formatIsoDate(doc.meta.generatedAt)} by the Albert Deep Dive publication pipeline.`));
+  colophon.push(para("Caption", `${doc.meta.masthead.title} · ${doc.meta.issueLabel} · version ${doc.meta.versionLabel} · generated ${formatIsoDate(doc.meta.generatedAt)}.`));
   sections.push({ ...sectionProps(doc, SectionType.NEXT_PAGE), children: colophon });
 
   const document = new Document({
@@ -423,7 +423,7 @@ export async function renderDocx(doc: EditionDocument, options: RenderDocxOption
     title: `${doc.meta.masthead.title} — ${doc.meta.issueLabel}, ${doc.meta.label}`,
     subject: doc.meta.issueLabel,
     description: `${doc.meta.title} · version ${doc.meta.versionLabel}`,
-    keywords: [doc.meta.versionLabel, doc.meta.generatedAt, doc.meta.label, "Albert School"].join(", "),
+    keywords: [doc.meta.versionLabel, doc.meta.generatedAt, doc.meta.label, doc.meta.masthead.title].join(", "),
     styles: {
       default: { document: { run: { font: "Georgia", size: 21, color: "17191C" } } },
       paragraphStyles: [

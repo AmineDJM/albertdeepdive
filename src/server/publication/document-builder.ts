@@ -38,6 +38,7 @@ import {
 } from "@/lib/publication/document";
 import { issueLabelFor } from "@/lib/publication/text";
 import { canIllustrate } from "@/server/media/constants";
+import { newsletterFor } from "@/server/publication/naming";
 
 const log = createLogger("publication:document");
 
@@ -447,6 +448,9 @@ export async function buildEditionDocument(editionId: string, options: BuildDocu
 
   // ── Meta ───────────────────────────────────────────────────────────────────
   const masthead = readSetting<{ title?: string; tagline?: string | null }>(settingRows, "masthead");
+  // The newsletter this issue belongs to. Its name is the masthead; the workspace setting below is
+  // only a fallback for an issue with no title behind it.
+  const publicationName = (await newsletterFor(edition.publicationId)).name;
   const contact = readSetting<{ email?: string | null; website?: string | null; instagram?: string | null }>(settingRows, "contact");
   const credits = await resolveCredits(settingRows, editorInChief?.name ?? null);
   const pageSize = PAGE_SIZES[(edition.pageSize as keyof typeof PAGE_SIZES) ?? "A4"] ?? PAGE_SIZES.A4;
@@ -467,7 +471,9 @@ export async function buildEditionDocument(editionId: string, options: BuildDocu
       generatedAt: new Date().toISOString(),
       pageSize: { name: pageSize.name, widthMm: pageSize.widthMm, heightMm: pageSize.heightMm },
       extent: { mode: edition.pageCountMode === "fixed" ? "fixed" : "auto", pages: edition.targetPageCount ?? null },
-      masthead: { title: masthead?.title || "Albert's Deep Dive", tagline: masthead?.tagline ?? null },
+      // The title's own name first: a newsletter is the thing with a masthead, and the workspace
+      // setting is only the answer for an issue that belongs to no title.
+      masthead: { title: publicationName || masthead?.title || "This newsletter", tagline: masthead?.tagline ?? null },
       cover: {
         storyId: coverStory?.id ?? null,
         articleId: coverArticle?.id ?? null,

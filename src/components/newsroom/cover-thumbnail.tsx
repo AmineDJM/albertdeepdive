@@ -1,7 +1,15 @@
 import { cn } from "@/lib/utils";
 
-/** A small A4-proportioned preview of the issue: cover photo with masthead overlay, or a typographic placeholder. */
-export function CoverThumbnail({ url, label, issueLabel, headline, className }: { url: string | null; label: string; issueLabel: string; headline?: string | null; className?: string }) {
+/**
+ * A small A4-proportioned preview of the issue: cover photo with masthead overlay, or a typographic
+ * placeholder.
+ *
+ * The masthead used to be the string "Albert's Deep Dive", written into the component. Every
+ * customer's cover, in every workspace, carried the name of the first one — which is what somebody
+ * saw on the issue of the newsletter they had just created and named themselves. It is a prop now,
+ * and required, so the next screen that draws a cover has to say whose it is.
+ */
+export function CoverThumbnail({ title, url, label, issueLabel, headline, className }: { title: string; url: string | null; label: string; issueLabel: string; headline?: string | null; className?: string }) {
   return (
     <div className={cn("relative aspect-[210/297] w-full overflow-hidden rounded-sm border border-border bg-[oklch(0.22_0.05_262)] shadow-md", className)}>
       {url ? (
@@ -10,7 +18,7 @@ export function CoverThumbnail({ url, label, issueLabel, headline, className }: 
       ) : null}
       <div className="absolute inset-0 bg-gradient-to-b from-[oklch(0.2_0.05_262/0.85)] via-transparent to-[oklch(0.15_0.04_262/0.9)]" />
       <div className="absolute inset-x-0 top-0 p-2.5 text-white">
-        <div className="masthead text-[13px] leading-none font-semibold">Albert&rsquo;s Deep Dive</div>
+        <div className="masthead text-[13px] leading-none font-semibold">{title}</div>
         <div className="mt-1 text-[8px] uppercase tracking-[0.12em] text-white/70">
           {issueLabel} · {label}
         </div>

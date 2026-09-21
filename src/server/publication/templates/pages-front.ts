@@ -186,7 +186,7 @@ ${when(hero, () => figureFor(hero, ctx, CONTENT_WIDTH_MM, { widthMm: CONTENT_WID
   <div>${mastheadSmall(ctx)}<div class="issue-line" style="margin-top:1.4mm">${doc.meta.issueLabel} · ${ctx.monthLabel}</div></div>
   <div>${join(doc.meta.credits.map((c) => html`<div><span class="label">${c.role}</span><b>${c.name}</b></div>`))}</div>
   <div><span class="label">Contact</span>${join(contact.map((c) => html`<div>${c}</div>`))}${when(instagram, () => html`<div>@${instagram}</div>`)}</div>
-  <div><span class="label">Colophon</span>${doc.meta.masthead.title} is written by the students of Albert School. Version ${doc.meta.versionLabel} · ${formatIsoDate(doc.meta.generatedAt)}</div>
+  <div><span class="label">Colophon</span>${doc.meta.masthead.title}${doc.meta.masthead.tagline ? ` — ${doc.meta.masthead.tagline}` : ""}. Version ${doc.meta.versionLabel} · ${formatIsoDate(doc.meta.generatedAt)}</div>
 </div>`;
   return { body, className: "back" };
 }

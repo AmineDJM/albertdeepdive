@@ -1,6 +1,11 @@
 /**
  * Campaign email templates — every message the campaign engine sends, built on the shared
- * transactional layout. Times are shown in the school's timezone (Europe/Paris).
+ * transactional layout.
+ *
+ * Every one of these used to sign itself "Albert's Deep Dive", because that is who Briefly was
+ * built for and nobody went back afterwards. A customer creating their own newsletter watched it
+ * introduce itself to their contributors under somebody else's name. The name now arrives in the
+ * edition context and is required, so a call site that forgets it does not compile.
  */
 import type { EmailLayoutInput } from "@/server/email";
 import { calendarDaysUntil, formatZoned, formatZonedLong } from "@/lib/campaigns/schedule";
@@ -20,25 +25,39 @@ export const CAMPAIGN_TEMPLATES = {
 export type EmailMessage = { subject: string; layout: EmailLayoutInput; template: string };
 
 export type ContributorContext = { firstName: string; lastName: string; campusName?: string | null };
-export type EditionContext = { label: string; issueNumber: number; publicationTargetAt?: Date | null };
+export type EditionContext = {
+  /** What this newsletter is called. Required: the compiler is the only reliable way to find every
+   *  place that used to write a name out by hand. */
+  publicationName: string;
+  label: string;
+  issueNumber: number;
+  publicationTargetAt?: Date | null;
+};
 export type CampaignContext = { introMessage?: string | null; deadlineAt: Date; graceEndsAt: Date; asks?: readonly Ask[]; openContributions?: boolean };
 
+/**
+ * What to send, when the editor has asked for nothing in particular.
+ *
+ * This was a list of one school's own categories — Business Deep Dives, campus rivalries, admissions
+ * — sent to every customer of the platform whatever they publish. A law firm's newsletter does not
+ * have campus rivalries. What is left is the shape of any contribution worth having: something that
+ * happened, who was involved, and a picture of it.
+ */
 const WHAT_TO_SEND = [
-  "Business Deep Dive results: the company, the data, the methods, the winning team",
-  "Events that happened or are coming up — with dates and places",
-  "Association news, student projects and startups",
-  "Achievements, admissions, competitions, campus rivalries",
-  "Photos! Teams, juries, dashboards, campus life (with a caption and who took them)",
+  "Something that happened: a result, a decision, a launch, a visit — with the date",
+  "Events, past or coming up, with where and when",
+  "Projects and the people behind them",
+  "Numbers worth knowing, and where they come from",
+  "Photographs (with a caption and who took them)",
 ];
 
 function kicker(edition: EditionContext) {
-  return `Albert's Deep Dive · ${edition.label}`;
+  return `${edition.publicationName} · ${edition.label}`;
 }
 
-function footer(contactEmail: string | null) {
-  return contactEmail
-    ? `You receive this email because you are part of the Albert's Deep Dive contributor network. Questions? Write to ${contactEmail}.`
-    : "You receive this email because you are part of the Albert's Deep Dive contributor network.";
+function footer(publicationName: string, contactEmail: string | null) {
+  const why = `You receive this email because you are part of the ${publicationName} contributor network.`;
+  return contactEmail ? `${why} Questions? Write to ${contactEmail}.` : why;
 }
 
 function deadlineRows(campaign: CampaignContext) {
@@ -80,7 +99,7 @@ export function invitationEmail(input: { contributor: ContributorContext; editio
   const intro = campaign.introMessage?.trim() || "A new issue is in the making and the newsroom needs your eyes and ears.";
   return {
     template: CAMPAIGN_TEMPLATES.invitation,
-    subject: `Albert's Deep Dive — ${edition.label}: tell us what happened around you`,
+    subject: `${edition.publicationName} — ${edition.label}: tell us what happened around you`,
     layout: {
       preheader: `Your personal link to contribute to the ${edition.label} issue. It takes about five minutes.`,
       kicker: kicker(edition),
@@ -93,7 +112,7 @@ export function invitationEmail(input: { contributor: ContributorContext; editio
         ...whatWeAskedBlocks(campaign),
       ],
       cta: { label: "Contribute in 5 minutes", url: input.link },
-      footer: footer(input.contactEmail),
+      footer: footer(edition.publicationName, input.contactEmail),
     },
   };
 }
@@ -103,13 +122,13 @@ export type ReminderKind = "REMINDER_1" | "REMINDER_2" | "GRACE_PERIOD";
 export function reminderEmail(kind: ReminderKind, input: { contributor: ContributorContext; edition: EditionContext; campaign: CampaignContext; link: string; contactEmail: string | null; now?: Date }): EmailMessage {
   const { contributor, edition, campaign } = input;
   const now = input.now ?? new Date();
-  const base = { kicker: kicker(edition), footer: footer(input.contactEmail), cta: { label: "Send my story", url: input.link } };
+  const base = { kicker: kicker(edition), footer: footer(edition.publicationName, input.contactEmail), cta: { label: "Send my story", url: input.link } };
   if (kind === "REMINDER_1") {
     const daysLeft = Math.max(0, calendarDaysUntil(campaign.deadlineAt, now));
     const left = daysLeft === 0 ? "today" : daysLeft === 1 ? "tomorrow" : `in ${daysLeft} days`;
     return {
       template: CAMPAIGN_TEMPLATES.reminder1,
-      subject: daysLeft <= 1 ? `Reminder: last chance to contribute to Albert's Deep Dive` : `Reminder: ${daysLeft} days left to contribute to Albert's Deep Dive`,
+      subject: daysLeft <= 1 ? `Reminder: last chance to contribute to ${edition.publicationName}` : `Reminder: ${daysLeft} days left to contribute to ${edition.publicationName}`,
       layout: {
         ...base,
         preheader: `The ${edition.label} issue closes ${left}. Your link still works.`,
@@ -126,7 +145,7 @@ export function reminderEmail(kind: ReminderKind, input: { contributor: Contribu
   if (kind === "REMINDER_2") {
     return {
       template: CAMPAIGN_TEMPLATES.reminder2,
-      subject: "Last day to contribute to Albert's Deep Dive",
+      subject: `Last day to contribute to ${edition.publicationName}`,
       layout: {
         ...base,
         preheader: `Today is the last day for the ${edition.label} issue.`,
@@ -141,7 +160,7 @@ export function reminderEmail(kind: ReminderKind, input: { contributor: Contribu
   }
   return {
     template: CAMPAIGN_TEMPLATES.grace,
-    subject: "Albert's Deep Dive closes tonight — last call",
+    subject: `${edition.publicationName} closes tonight — last call`,
     layout: {
       ...base,
       preheader: `Late entries for the ${edition.label} issue are accepted until tonight.`,
@@ -161,7 +180,7 @@ export function closedEmail(input: { contributor: ContributorContext; edition: E
   const publication = edition.publicationTargetAt ? `The issue is planned for ${formatZoned(edition.publicationTargetAt, { hour: undefined, minute: undefined })}.` : "The issue will be out in a few weeks.";
   return {
     template: CAMPAIGN_TEMPLATES.closed,
-    subject: `Thank you for contributing to Albert's Deep Dive — ${edition.label}`,
+    subject: `Thank you for contributing to ${edition.publicationName} — ${edition.label}`,
     layout: {
       kicker: kicker(edition),
       preheader: `Your ${count === 1 ? "story is" : `${count} stories are`} in the newsroom.`,
@@ -171,7 +190,7 @@ export function closedEmail(input: { contributor: ContributorContext; edition: E
         { type: "paragraph", text: "The editors are now reading everything, grouping related submissions and writing the articles. If something is missing, they may email you with a short question." },
         { type: "paragraph", text: publication },
       ],
-      footer: footer(input.contactEmail),
+      footer: footer(edition.publicationName, input.contactEmail),
     },
   };
 }

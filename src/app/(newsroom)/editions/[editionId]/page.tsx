@@ -22,6 +22,7 @@ import { getUi } from "@/server/i18n/locale";
 import { experienceOf } from "@/lib/experience";
 import { DeleteEdition } from "@/components/newsroom/delete-edition";
 import { editionHasContent } from "@/server/publication/readiness";
+import { newsletterFor } from "@/server/publication/naming";
 import { StandardOverview } from "./standard-overview";
 
 export const dynamic = "force-dynamic";
@@ -32,6 +33,7 @@ export default async function ControlRoomPage({ params, searchParams }: { params
   // Standard reads the edition as decisions; the control room below stays one link away.
   if (experienceOf(user?.preferences) === "standard" && sp.view !== "full") return <StandardOverview editionId={editionId} />;
   const [d, activity, outputs, translate, hasContent] = await Promise.all([editionDashboard(editionId), recentActivity(editionId, 8), outputMatrix(editionId), getTranslations(), editionHasContent(editionId)]);
+  const newsletter = await newsletterFor(d.edition.publicationId);
   const coverUrl = d.edition.coverMediaAssetId ? await mediaUrl(d.edition.coverMediaAssetId, "WEB") : null;
   const ed = `/editions/${editionId}`;
   const phase = phaseForStatus(d.edition.status);
@@ -73,7 +75,7 @@ export default async function ControlRoomPage({ params, searchParams }: { params
         <div className="rounded-lg border border-border bg-card shadow-xs">
           <div className="grid md:grid-cols-[132px_minmax(0,1fr)]">
             <div className="border-r border-border bg-muted/40 p-3">
-              <CoverThumbnail url={coverUrl} label={d.edition.label} issueLabel={`${d.edition.isSpecialIssue ? "Special issue" : "Issue"} N°${d.edition.issueNumber}`} headline={d.edition.coverHeadline} />
+              <CoverThumbnail title={newsletter.name} url={coverUrl} label={d.edition.label} issueLabel={`${d.edition.isSpecialIssue ? "Special issue" : "Issue"} N°${d.edition.issueNumber}`} headline={d.edition.coverHeadline} />
             </div>
             <div className="flex flex-col gap-4 p-4">
               <div className="flex flex-wrap items-start justify-between gap-3">

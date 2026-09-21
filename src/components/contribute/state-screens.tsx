@@ -2,15 +2,21 @@ import type { ReactNode } from "react";
 import { BrandMark } from "./brand-mark";
 import { cn } from "@/lib/utils";
 
-/** Outer frame of every public page: paper background, centred column, masthead. */
-export function PublicShell({ children, editionLabel, className }: { children: ReactNode; editionLabel?: string | null; className?: string }) {
+/**
+ * Outer frame of every public page: paper background, centred column, masthead.
+ *
+ * The masthead was the string "Albert's Deep Dive", so every contributor of every customer was
+ * invited to write for somebody else's newspaper. It is a prop now; `publicationName` is what the
+ * page says it is.
+ */
+export function PublicShell({ children, publicationName, editionLabel, className }: { children: ReactNode; publicationName: string; editionLabel?: string | null; className?: string }) {
   return (
     <div className={cn("flex min-h-full flex-1 flex-col bg-background text-[15px] leading-6 text-foreground", className)}>
       <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col px-4 pt-6 pb-28 sm:px-6 sm:pt-10 sm:pb-16">
         <header className="mb-6 flex items-center gap-3">
           <BrandMark size={30} />
           <div className="flex min-w-0 flex-wrap items-baseline gap-x-2">
-            <span className="masthead text-xl font-semibold text-primary">Albert&rsquo;s Deep Dive</span>
+            <span className="masthead text-xl font-semibold text-primary">{publicationName}</span>
             {editionLabel ? <span className="label-caps text-brand-foreground/70">· {editionLabel}</span> : null}
           </div>
         </header>
@@ -44,9 +50,13 @@ export function ContactLine({ email }: { email: string | null }) {
   );
 }
 
+/**
+ * Reached before we know whose link this was, so there is no newsletter to name: an invalid token
+ * identifies nothing. The shell takes a neutral word rather than guessing a publication.
+ */
 export function InvalidLinkScreen() {
   return (
-    <PublicShell>
+    <PublicShell publicationName="Contribute">
       <StatusScreen kicker="Personal link" title="This link is not valid">
         <p>Personal links are unique to each contributor. Check that the whole link was copied from your invitation email, or ask the newsroom for a new one.</p>
       </StatusScreen>

@@ -53,7 +53,8 @@ export type InvitationDTO = {
   /** Why the form is not available, when it is not. */
   blockedReason: "NOT_OPEN" | "CLOSED" | "EXPIRED" | "DECLINED" | null;
   contributor: { firstName: string; lastName: string; email: string; campusId: string | null; campusName: string | null };
-  edition: { id: string; label: string; title: string; issueNumber: number };
+  /** The newsletter this issue belongs to: the masthead every public page shows the contributor. */
+  edition: { id: string; label: string; title: string; issueNumber: number; publicationName: string };
   campaign: {
     id: string;
     name: string;

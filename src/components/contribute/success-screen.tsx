@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 export function SuccessScreen({
   firstName,
   editionLabel,
+  publicationName,
   submittedCount,
   closesLabel,
   onAnother,
@@ -17,13 +18,14 @@ export function SuccessScreen({
   closesLabel: string;
   onAnother: () => void;
   busy?: boolean;
+  publicationName: string;
 }) {
   return (
     <section className="rounded-xl border border-border bg-card p-6 shadow-xs sm:p-8" aria-live="polite">
       <span className="mb-4 flex size-12 items-center justify-center rounded-full bg-success-soft text-success">
         <Check className="size-6" strokeWidth={2.5} />
       </span>
-      <p className="label-caps mb-2 text-brand-foreground/70">Albert&rsquo;s Deep Dive · {editionLabel}</p>
+      <p className="label-caps mb-2 text-brand-foreground/70">{publicationName} · {editionLabel}</p>
       <h1 className="font-display text-[30px] leading-[1.1] font-semibold tracking-tight text-primary sm:text-[36px]">
         Thank you, {firstName}. <span className="text-brand-foreground/90">Your story is in the newsroom.</span>
       </h1>

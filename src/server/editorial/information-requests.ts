@@ -16,6 +16,7 @@ import { NotFoundError, ValidationError } from "@/lib/action-result";
 import { wordCount } from "@/lib/editorial/text";
 import { informationRequestAnsweredEmail, informationRequestEmail } from "./emails";
 import { notifyUsers } from "./notifications";
+import { newsletterFor, newsletterForEdition } from "@/server/publication/naming";
 
 const log = createLogger("editorial:info-requests");
 
@@ -62,7 +63,9 @@ export async function createInformationRequest(input: CreateInformationRequestIn
     .values({ editionId: story.editionId, storyId: story.id, submissionId: data.submissionId ?? null, contributorId: contributor.id, requestedById: data.userId, message: data.message, items, tokenHash: hash, tokenExpiresAt, status: "PENDING" })
     .returning();
   const url = respondUrl(token);
-  const email = informationRequestEmail({ contributorFirstName: contributor.firstName, storyTitle: story.title, editionLabel: story.edition.label, requesterName: requester?.name ?? null, message: data.message, items, url, expiresAt: tokenExpiresAt });
+  // Whose newsletter this contributor is being written to about.
+  const newsletter = await newsletterForEdition(story.editionId);
+  const email = informationRequestEmail({ contributorFirstName: contributor.firstName, storyTitle: story.title, publicationName: newsletter.name, editionLabel: story.edition.label, requesterName: requester?.name ?? null, message: data.message, items, url, expiresAt: tokenExpiresAt });
   const sent = await sendEmail({ to: contributor.email, subject: email.subject, layout: email.layout, template: "information_request", entityType: "INFORMATION_REQUEST", entityId: request.id, editionId: story.editionId, contributorId: contributor.id });
   const [updated] = await db
     .update(informationRequests)
@@ -80,12 +83,12 @@ export type ResolvedInformationRequest =
   | { state: "expired"; storyTitle: string }
   | { state: "answered"; storyTitle: string; answeredAt: Date | null }
   | { state: "cancelled"; storyTitle: string }
-  | { state: "valid"; request: { id: string; message: string; items: InfoRequestItem[]; expiresAt: Date }; storyTitle: string; editionLabel: string; contributorFirstName: string; requesterName: string | null };
+  | { state: "valid"; request: { id: string; message: string; items: InfoRequestItem[]; expiresAt: Date }; storyTitle: string; publicationName: string; editionLabel: string; contributorFirstName: string; requesterName: string | null };
 
 /** Public-safe view of a request for the answer page. */
 export async function resolveInformationRequest(token: string): Promise<ResolvedInformationRequest> {
   if (!token || token.length < 16 || token.length > 200) return { state: "invalid" };
-  const request = await db.query.informationRequests.findFirst({ where: eq(informationRequests.tokenHash, hashToken(token)), with: { story: { columns: { title: true }, with: { edition: { columns: { label: true } } } }, contributor: { columns: { firstName: true } }, requestedBy: { columns: { name: true } } } });
+  const request = await db.query.informationRequests.findFirst({ where: eq(informationRequests.tokenHash, hashToken(token)), with: { story: { columns: { title: true }, with: { edition: { columns: { label: true, publicationId: true } } } }, contributor: { columns: { firstName: true } }, requestedBy: { columns: { name: true } } } });
   if (!request) return { state: "invalid" };
   const storyTitle = request.story?.title ?? "your contribution";
   if (request.status === "ANSWERED") return { state: "answered", storyTitle, answeredAt: request.answeredAt };
@@ -98,6 +101,7 @@ export async function resolveInformationRequest(token: string): Promise<Resolved
     state: "valid",
     request: { id: request.id, message: request.message, items: request.items, expiresAt: request.tokenExpiresAt },
     storyTitle,
+    publicationName: (await newsletterFor(request.story?.edition?.publicationId ?? null)).name,
     editionLabel: request.story?.edition?.label ?? "",
     contributorFirstName: request.contributor?.firstName ?? "",
     requesterName: request.requestedBy?.name ?? null,
@@ -226,7 +230,7 @@ export async function listInformationRequests(storyId: string) {
 
 /** Pre-fills a request from the story's unresolved missing-information items and its primary contributor. */
 export async function suggestInformationRequest(storyId: string) {
-  const story = await db.query.stories.findFirst({ where: eq(stories.id, storyId), with: { cluster: { with: { members: true } }, edition: { columns: { label: true } } } });
+  const story = await db.query.stories.findFirst({ where: eq(stories.id, storyId), with: { cluster: { with: { members: true } }, edition: { columns: { id: true, label: true, publicationId: true } } } });
   if (!story) throw new NotFoundError("Story");
   const memberIds = story.cluster?.members.map((m) => m.submissionId) ?? [];
   const primaryId = story.cluster?.members.find((m) => m.isPrimary)?.submissionId ?? memberIds[0] ?? null;
@@ -235,7 +239,8 @@ export async function suggestInformationRequest(storyId: string) {
   const alreadyAsked = new Set(pending.flatMap((r) => r.items.map((i) => i.key)));
   const items = story.missingInformation.filter((m) => !m.resolved && !alreadyAsked.has(m.key)).map((m) => ({ key: m.key, label: m.label, severity: m.severity }));
   const firstName = primary?.contributor?.firstName ?? "there";
-  const message = `Hi ${firstName}, thank you for your contribution to Albert's Deep Dive (${story.edition.label}). We are writing the story “${story.title}” and need a few details to make it accurate and complete. Could you answer the questions below?`;
+  const suggested = await newsletterForEdition(story.editionId);
+  const message = `Hi ${firstName}, thank you for your contribution to ${suggested.name} (${story.edition.label}). We are writing the story “${story.title}” and need a few details to make it accurate and complete. Could you answer the questions below?`;
   return {
     storyId,
     submissionId: primary?.id ?? null,

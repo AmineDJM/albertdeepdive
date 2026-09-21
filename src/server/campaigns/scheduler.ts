@@ -29,6 +29,7 @@ import { listEditors, notifyEditors } from "./notify";
 import { recordSkippedRun, runStep, type AutomationRun, type TriggeredBy } from "./runs";
 import { closeCampaign, createOrUpdateCampaign, openCampaign, sendReminders, type Campaign } from "./service";
 import { AUTOMATION_KEYS, getAutomationToggles, getCampaignDefaults, getDefaultSections, type AutomationKey, type AutomationToggles } from "./settings";
+import { newsletterFor } from "@/server/publication/naming";
 
 const log = createLogger("campaigns:scheduler");
 
@@ -315,7 +316,8 @@ async function deadlineAlerts(ctx: { now: Date; triggeredBy: TriggeredBy; result
       const body = `${approved} of ${total} articles are approved.`;
       const href = `/editions/${edition.id}/articles`;
       const notified = await notifyEditors({ type: "DEADLINE_APPROACHING", title, body, entityType: "EDITION", entityId: edition.id, href });
-      const message = deadlineAlertEmail({ edition: { label: edition.label, issueNumber: edition.issueNumber }, finalReviewAt: edition.finalReviewAt!, approved, total, link: `${env.NEXT_PUBLIC_APP_URL}${href}` });
+      const newsletter = await newsletterFor(edition.publicationId);
+      const message = deadlineAlertEmail({ edition: { publicationName: newsletter.name, label: edition.label, issueNumber: edition.issueNumber }, finalReviewAt: edition.finalReviewAt!, approved, total, link: `${env.NEXT_PUBLIC_APP_URL}${href}` });
       let emails = 0;
       for (const editor of await listEditors()) {
         const sent = await sendEmail({ to: editor.email, subject: message.subject, layout: message.layout, template: message.template, entityType: "EDITION", entityId: edition.id, editionId: edition.id });
@@ -365,7 +367,8 @@ async function coverageChecks(ctx: { now: Date; triggeredBy: TriggeredBy; result
       }
       let emails = 0;
       if (under.length) {
-        const message = lowCoverageEmail({ edition: { label: edition.label, issueNumber: edition.issueNumber }, campuses: under.map((c) => ({ name: c.name, submissions: c.submissions })), average: coverage.balance.average, link: `${env.NEXT_PUBLIC_APP_URL}/editions/${edition.id}/inbox` });
+        const newsletter = await newsletterFor(edition.publicationId);
+        const message = lowCoverageEmail({ edition: { publicationName: newsletter.name, label: edition.label, issueNumber: edition.issueNumber }, campuses: under.map((c) => ({ name: c.name, submissions: c.submissions })), average: coverage.balance.average, link: `${env.NEXT_PUBLIC_APP_URL}/editions/${edition.id}/inbox` });
         for (const editor of await listEditors()) {
           const sent = await sendEmail({ to: editor.email, subject: message.subject, layout: message.layout, template: message.template, entityType: "EDITION", entityId: edition.id, editionId: edition.id });
           if (sent.ok) emails += 1;

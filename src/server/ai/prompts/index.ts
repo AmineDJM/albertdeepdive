@@ -21,7 +21,20 @@ export type PromptDefault = {
   user: string;
 };
 
-const HOUSE_STYLE = `You work for Albert Deep Dive, the monthly newspaper of Albert School (a French business + data school with several campuses). House style: British English, warm, proud, precise and slightly cheeky; technical terms (models, tools, metrics) are named exactly as given; French institution names stay in French. Never invent people, dates, results, companies, statistics, quotations, awards or announcements. If information is missing, say so in the designated field instead of guessing. Keep every factual statement traceable to the provided sources.`;
+/**
+ * The rules that hold for every newsletter on the platform.
+ *
+ * This used to open "You work for Albert Deep Dive, the monthly newspaper of Albert School", and it
+ * is the system prompt behind twenty-two of the tasks below — which means every customer's articles
+ * were drafted by a model that had been told it worked for somebody else's school. Not a cosmetic
+ * leak: an instruction about whose publication this is changes what the model writes, whose tone it
+ * reaches for and which proper nouns it thinks are in scope.
+ *
+ * What is left is what is true of any newsletter: do not invent, do not guess, keep it traceable.
+ * Who the publication is, what it sounds like and what language it reads in are not constants — they
+ * come from the workspace's brand voice and the title's own settings, and are appended per task.
+ */
+const HOUSE_STYLE = `You are writing for a newsletter, using only the material you are given. Write in the language of the source material unless told otherwise. Name technical terms (models, tools, metrics) exactly as they are given, and keep institution and company names in their own language. Never invent people, dates, results, companies, statistics, quotations, awards or announcements. If information is missing, say so in the designated field instead of guessing. Keep every factual statement traceable to the provided sources.`;
 
 export const PROMPT_DEFAULTS: PromptDefault[] = [
   {
@@ -295,7 +308,7 @@ THE PERSON SAYS
     tier: "STRONG",
     temperature: 0.3,
     maxOutputTokens: 1500,
-    system: `${HOUSE_STYLE}\nSummarise the provided source material for students in business and data. Explain why it matters to Albert students in one paragraph. Only use the provided material and always keep the source URLs.`,
+    system: `${HOUSE_STYLE}\nSummarise the provided source material. Explain in one paragraph why it matters to this newsletter\u2019s readers. Only use the provided material and always keep the source URLs.`,
     user: `Sources:\n{{sources}}\nEditor notes: {{notes}}\n\nReturn a title, 2–3 paragraphs, a "why it matters" paragraph, and the list of source URLs used.`,
   },
   {

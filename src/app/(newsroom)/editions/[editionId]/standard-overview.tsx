@@ -21,6 +21,7 @@ import { DeleteEdition } from "@/components/newsroom/delete-edition";
 import { formatDate } from "@/lib/utils";
 import { activeIdentity } from "@/server/design/identity";
 import { editionHasContent } from "@/server/publication/readiness";
+import { workspaceMasthead } from "@/server/publication/naming";
 import { calendarDaysUntil } from "@/lib/campaigns/schedule";
 import { intlLocale } from "@/lib/i18n";
 import { currentLocale, getUi } from "@/server/i18n/locale";
@@ -44,6 +45,9 @@ export async function StandardOverview({ editionId }: { editionId: string }) {
   const identity = publication ? await activeIdentity(publication.id) : null;
   const model = identity?.source ? { ...identity.source, rubrics: identity.rubrics.map((rubric) => rubric.name) } : null;
   const coverUrl = d.edition.coverMediaAssetId ? await mediaUrl(d.edition.coverMediaAssetId, "WEB") : null;
+  // The name on the cover: this newsletter's, falling back to the workspace masthead for an issue
+  // that belongs to no title yet.
+  const masthead = await workspaceMasthead();
   const ed = `/editions/${editionId}`;
   const canEdit = hasPermission(user, "edition:edit");
   const canSetUp = hasPermission(user, "settings:manage") || tenant.role === "OWNER" || tenant.role === "ADMIN";
@@ -101,7 +105,7 @@ export async function StandardOverview({ editionId }: { editionId: string }) {
     <PageBody className="mx-auto w-full max-w-3xl space-y-6">
       <section className="fade-in flex gap-5">
         <div className="hidden w-[96px] shrink-0 sm:block">
-          <CoverThumbnail url={coverUrl} label={d.edition.label} issueLabel={`${d.edition.isSpecialIssue ? tr("Special issue") : tr("Issue")} N°${d.edition.issueNumber}`} headline={d.edition.coverHeadline} />
+          <CoverThumbnail title={publication?.name ?? masthead.name} url={coverUrl} label={d.edition.label} issueLabel={`${d.edition.isSpecialIssue ? tr("Special issue") : tr("Issue")} N°${d.edition.issueNumber}`} headline={d.edition.coverHeadline} />
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">

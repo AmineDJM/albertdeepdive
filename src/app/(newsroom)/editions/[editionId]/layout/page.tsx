@@ -9,6 +9,7 @@ import { FlatplanReport } from "@/components/newsroom/flatplan-report";
 import { FlatplanRunningOrder } from "@/components/newsroom/flatplan-running-order";
 import { FlatplanToolbar } from "@/components/newsroom/flatplan-toolbar";
 import { getUi } from "@/server/i18n/locale";
+import { newsletterForEdition } from "@/server/publication/naming";
 
 export const dynamic = "force-dynamic";
 
@@ -24,6 +25,8 @@ export default async function FlatplanPage({ params }: { params: Promise<{ editi
   const canEdit = hasPermission(user, "layout:edit");
   const flatplan = await getFlatplan(editionId);
   const { stats, report, edition, plan } = flatplan;
+  // The masthead that goes on the cover sheet of the plan.
+  const newsletter = await newsletterForEdition(editionId);
 
   return (
     <>
@@ -65,7 +68,7 @@ export default async function FlatplanPage({ params }: { params: Promise<{ editi
             <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_272px]">
               <FlatplanBoard
                 editionId={editionId}
-                editionLabel={edition.label}
+                publicationName={newsletter.name} editionLabel={edition.label}
                 issueLabel={edition.issueLabel}
                 pages={flatplan.pages}
                 stories={flatplan.stories}

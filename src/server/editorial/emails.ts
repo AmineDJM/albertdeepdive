@@ -7,6 +7,8 @@ import type { EmailLayoutInput } from "@/server/email";
 export type InformationRequestEmailInput = {
   contributorFirstName: string;
   storyTitle: string;
+  /** The newsletter this story is for — required, so no caller can fall back to a hardcoded name. */
+  publicationName: string;
   editionLabel: string;
   requesterName: string | null;
   message: string;
@@ -19,19 +21,19 @@ export function informationRequestEmail(input: InformationRequestEmailInput): { 
   const deadline = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long" }).format(input.expiresAt);
   const count = input.items.length;
   return {
-    subject: `A few details for “${input.storyTitle}” — Albert's Deep Dive ${input.editionLabel}`,
+    subject: `A few details for “${input.storyTitle}” — ${input.publicationName} ${input.editionLabel}`,
     layout: {
-      preheader: `${count} quick question${count === 1 ? "" : "s"} about your contribution to Albert's Deep Dive.`,
+      preheader: `${count} quick question${count === 1 ? "" : "s"} about your contribution to ${input.publicationName}.`,
       kicker: `Information request · ${input.editionLabel}`,
       title: `Hi ${input.contributorFirstName}, we need a few details about “${input.storyTitle}”`,
       blocks: [
         { type: "paragraph", text: input.message },
         ...(count ? ([{ type: "callout", title: `What we need (${count})`, text: "Answer what you can — every detail helps us write an accurate story." }, { type: "list", items: input.items.map((i) => i.label) }] as EmailLayoutInput["blocks"]) : []),
         { type: "paragraph", text: `Please answer by ${deadline}. The link works on your phone and takes two minutes; you can also attach photos.` },
-        ...(input.requesterName ? ([{ type: "paragraph", text: `Thank you — ${input.requesterName}, Albert's Deep Dive newsroom` }] as EmailLayoutInput["blocks"]) : []),
+        ...(input.requesterName ? ([{ type: "paragraph", text: `Thank you — ${input.requesterName}, ${input.publicationName} newsroom` }] as EmailLayoutInput["blocks"]) : []),
       ],
       cta: { label: "Answer the questions", url: input.url },
-      footer: "Albert's Deep Dive · the monthly newspaper of Albert School. This link is personal: please do not forward it.",
+      footer: `${input.publicationName}. This link is personal: please do not forward it.`,
     },
   };
 }

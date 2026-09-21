@@ -5,6 +5,7 @@ import { mediaUrls } from "@/server/media/urls";
 import { editionDashboard, getCurrentEdition } from "@/server/editions/service";
 import { PHASES, phaseForStatus, type EditionPhase, type EditionStatus } from "@/lib/editorial/edition-state";
 import { FORMATS, type CreativeFormat } from "@/lib/creative/formats";
+import { workspaceMasthead } from "@/server/publication/naming";
 
 /**
  * What Home says.
@@ -21,6 +22,8 @@ export type HomeEditionCard = {
   id: string;
   label: string;
   title: string;
+  /** The newsletter this issue belongs to, for the masthead on its cover. */
+  publicationName: string;
   issueLabel: string;
   status: EditionStatus;
   coverUrl: string | null;
@@ -35,6 +38,8 @@ export type MissingKey = "submissions" | "stories" | "articles" | "pictures" | "
 export type HomeNext = {
   id: string;
   label: string;
+  /** The newsletter this issue belongs to, for the masthead on its cover. */
+  publicationName: string;
   issueLabel: string;
   status: EditionStatus;
   /** The furthest screen of the guided path anybody reached, so "continue" comes back to it. */
@@ -127,6 +132,15 @@ export async function homeData(organizationId: string): Promise<HomeData> {
     db.select({ n: sql<number>`count(*)` }).from(s.editions).where(and(eq(s.editions.organizationId, organizationId), isNull(s.editions.hiddenAt), inArray(s.editions.status, IN_PRODUCTION))),
   ]);
 
+  // The name on each cover. One query for the lot rather than one per card.
+  const titleIds = [...new Set(editions.map((e) => e.publicationId).filter((id): id is string => !!id))];
+  const titles = titleIds.length
+    ? new Map(
+        (await db.select({ id: s.publications.id, name: s.publications.name }).from(s.publications).where(inArray(s.publications.id, titleIds))).map((row) => [row.id, row.name]),
+      )
+    : new Map<string, string>();
+  const fallback = (await workspaceMasthead()).name;
+
   const outputs = await outputsFor(editions.map((e) => e.id));
   const covers = await mediaUrls(editions.map((e) => e.coverMediaAssetId).filter((id): id is string => Boolean(id)), "WEB");
   const issueLabel = (e: { isSpecialIssue: boolean; issueNumber: number }) => `${e.isSpecialIssue ? "Special issue" : "Issue"} N°${e.issueNumber}`;
@@ -135,6 +149,7 @@ export async function homeData(organizationId: string): Promise<HomeData> {
     id: e.id,
     label: e.label,
     title: e.title,
+    publicationName: (e.publicationId ? titles.get(e.publicationId) : null) ?? fallback,
     issueLabel: issueLabel(e),
     status: e.status,
     coverUrl: e.coverMediaAssetId ? (covers[e.coverMediaAssetId] ?? null) : null,
@@ -164,6 +179,7 @@ export async function homeData(organizationId: string): Promise<HomeData> {
     next = {
       id: current.id,
       label: current.label,
+      publicationName: (current.publicationId ? titles.get(current.publicationId) : null) ?? fallback,
       issueLabel: issueLabel(current),
       status: current.status,
       guidedRoom: current.guidedRoom,

@@ -8,6 +8,7 @@ import { contributorContext, getCampaignForEdition, resolveSelection } from "./s
 import { getContactSettings } from "@/server/campaigns/settings";
 import { normaliseBrief } from "@/lib/campaigns/brief";
 import { getUi } from "@/server/i18n/locale";
+import { newsletterFor } from "@/server/publication/naming";
 
 /**
  * The email, before anybody gets it.
@@ -54,12 +55,14 @@ export async function previewInvitation(editionId: string): Promise<InvitationPr
   const sample = selection.selected.length ? (people.get(selection.selected[0]) ?? null) : null;
   const brief = normaliseBrief(campaign.brief);
   const contact = await getContactSettings();
+  // The preview must be the email, name included — that is the whole point of reading it first.
+  const newsletter = await newsletterFor(edition.publicationId);
 
   const message = invitationEmail({
     // With nobody selected there is still an email to look at, addressed to the person the editor
     // is about to choose. A blank preview would say the least at the moment it matters most.
     contributor: sample ? { firstName: sample.firstName, lastName: sample.lastName, campusName: sample.campusName } : { firstName: "—", lastName: "" },
-    edition: { label: edition.label, issueNumber: edition.issueNumber, publicationTargetAt: edition.publicationTargetAt },
+    edition: { publicationName: newsletter.name, label: edition.label, issueNumber: edition.issueNumber, publicationTargetAt: edition.publicationTargetAt },
     campaign: { introMessage: campaign.introMessage, deadlineAt: campaign.deadlineAt, graceEndsAt: campaign.graceEndsAt, asks: brief.asks, openContributions: brief.openContributions },
     link: PREVIEW_LINK,
     contactEmail: contact.email,

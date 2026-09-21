@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 
-/** The Albert's Deep Dive mark: a bright blue disc with a navy satellite dot (CSS only). */
+/** The public pages' mark: a bright blue disc with a navy satellite dot (CSS only). */
 export function BrandMark({ size = 28, className }: { size?: number; className?: string }) {
   return (
     <span aria-hidden className={cn("relative inline-block shrink-0", className)} style={{ width: size, height: size }}>

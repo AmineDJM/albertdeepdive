@@ -3,7 +3,7 @@ export const STORY_TYPES = [
   { value: "STUDENT_ACHIEVEMENT", label: "Student achievement", short: "Achievement", description: "Admissions, awards, competitions, results." },
   { value: "STUDENT_PROJECT", label: "Student startup / project", short: "Startup", description: "A company, product or project launched by students." },
   { value: "INTERVIEW_PROFILE", label: "Interview / profile", short: "Profile", description: "A conversation with or portrait of a student, alumnus or staff member." },
-  { value: "SCHOOL_NEWS", label: "School news", short: "Albert Actus", description: "Institutional news: partnerships, accreditations, press, programmes." },
+  { value: "SCHOOL_NEWS", label: "Organisation news", short: "News", description: "Institutional news: partnerships, accreditations, press, programmes." },
   { value: "ASSOCIATION", label: "Association / club", short: "Association", description: "Life and initiatives of student associations." },
   { value: "CAMPUS_LIFE", label: "Campus life", short: "Campus", description: "Daily life, anecdotes, campus rivalries, little victories." },
   { value: "EVENT_RECAP", label: "Event recap", short: "Recap", description: "What happened at an event that already took place." },
@@ -11,7 +11,7 @@ export const STORY_TYPES = [
   { value: "ALUMNI", label: "Alumni", short: "Alumni", description: "News from graduates." },
   { value: "ACADEMIC_NEWS", label: "Academic news", short: "Academic", description: "Courses, assessments, faculty, pedagogy." },
   { value: "CAREER_INTERNSHIP", label: "Career / internship", short: "Careers", description: "Internships, jobs, corporate relations." },
-  { value: "DATA_AI_BUSINESS_INSIGHT", label: "Data / AI / business insight", short: "Insight", description: "External news or analysis relevant to Albert students, with sources." },
+  { value: "DATA_AI_BUSINESS_INSIGHT", label: "Data / AI / business insight", short: "Insight", description: "External news or analysis relevant to your readers, with sources." },
   { value: "PHOTO_STORY", label: "Photo story", short: "Photos", description: "A story told mostly through pictures." },
   { value: "ANECDOTE", label: "Anecdote", short: "Anecdote", description: "A short, fun, true story." },
   { value: "OTHER", label: "Other", short: "Other", description: "Anything else worth telling." },
@@ -34,7 +34,7 @@ export const DEFAULT_SECTIONS = [
   { slug: "spotlight", name: "Spotlight", kicker: "People discover", colour: "#2BAFE0", targetPages: 3, storyTypes: ["INTERVIEW_PROFILE", "STUDENT_ACHIEVEMENT"] },
   { slug: "projects", name: "Student Projects & Startups", kicker: "Student initiative", colour: "#F2994A", targetPages: 2, storyTypes: ["STUDENT_PROJECT"] },
   { slug: "bdd", name: "Business Deep Dives", kicker: "Business Deep Dive", colour: "#10203A", targetPages: 6, storyTypes: ["BUSINESS_DEEP_DIVE"] },
-  { slug: "actus", name: "Albert Actus", kicker: "School news", colour: "#1F6FB2", targetPages: 3, storyTypes: ["SCHOOL_NEWS", "ACADEMIC_NEWS", "CAREER_INTERNSHIP"] },
+  { slug: "actus", name: "News", kicker: "Organisation news", colour: "#1F6FB2", targetPages: 3, storyTypes: ["SCHOOL_NEWS", "ACADEMIC_NEWS", "CAREER_INTERNSHIP"] },
   { slug: "data-business", name: "Business & Data", kicker: "Under pressure", colour: "#5B5FCF", targetPages: 1, storyTypes: ["DATA_AI_BUSINESS_INSIGHT"] },
   { slug: "campus-life", name: "Campus Life", kicker: "Anecdotes & student life", colour: "#E4572E", targetPages: 3, storyTypes: ["CAMPUS_LIFE", "ANECDOTE", "EVENT_RECAP", "PHOTO_STORY"] },
   { slug: "associations", name: "Associations", kicker: "Association", colour: "#2A9D8F", targetPages: 2, storyTypes: ["ASSOCIATION"] },
@@ -74,10 +74,19 @@ export function templateByCode(code: string) {
   return PAGE_TEMPLATES.find((t) => t.code === code) ?? PAGE_TEMPLATES[5];
 }
 
-export const CONSENT_TEXT_VERSION = "2026-09";
+/**
+ * Bumped because the wording changed, which is what this version is for.
+ *
+ * The two sentences below named one customer's publication, and they are consent statements: every
+ * contributor of every other workspace was asked to agree that their words and their photographs
+ * could appear in a newspaper that has nothing to do with them. A consent recorded against the
+ * wrong publication is not a small copy error, so the old text keeps its version and anything
+ * agreed under it stays attributable to what was actually shown.
+ */
+export const CONSENT_TEXT_VERSION = "2026-10";
 export const CONSENT_TEXTS = {
-  PUBLICATION: "I confirm that this information may be published in Albert Deep Dive (print and digital) and that the people named have agreed to be mentioned.",
-  IMAGE_RIGHTS: "I confirm that I have the right to share these photographs and that the people pictured agree to appear in Albert Deep Dive.",
+  PUBLICATION: "I confirm that this information may be published in this newsletter (print and digital) and that the people named have agreed to be mentioned.",
+  IMAGE_RIGHTS: "I confirm that I have the right to share these photographs and that the people pictured agree to appear in this newsletter.",
 } as const;
 
 export const RIGHTS_STATUS_LABELS = {

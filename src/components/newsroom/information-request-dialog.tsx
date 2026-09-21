@@ -33,7 +33,7 @@ export function InformationRequestDialog({
   const [pending, startTransition] = useTransition();
   const [checked, setChecked] = useState<Set<string>>(() => new Set(items.map((i) => i.key)));
   const [extra, setExtra] = useState("");
-  const [message, setMessage] = useState(`Hello, we are preparing the article about "${storyTitle}" for the next issue of Albert's Deep Dive and a few details are still missing. Could you help us fill the gaps below? It takes two minutes.`);
+  const [message, setMessage] = useState(`Hello, we are preparing the article about "${storyTitle}" for the next issue and a few details are still missing. Could you help us fill the gaps below? It takes two minutes.`);
 
   const selected = items.filter((i) => checked.has(i.key));
   const extraItems = extra

@@ -3565,4 +3565,5 @@ export const UI_FR: Record<string, string> = {
   "What changed, who did it, and what happens next.": "Ce qui a changé, qui l'a fait, et la suite.",
   "A paragraph of sample text, set the way this model sets a paragraph, so the measure and the spacing can be judged rather than imagined.": "Un paragraphe d'exemple, composé comme ce modèle compose un paragraphe, pour juger la justification et l'interlignage au lieu de les imaginer.",
   "A second one, because a single line says nothing about how the type reads at length.": "Un second, parce qu'une seule ligne ne dit rien de la façon dont la typographie se lit sur la longueur.",
+  "e.g. the marketing team, the alumni network": "ex. l'équipe marketing, le réseau des anciens",
 };

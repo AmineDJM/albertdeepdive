@@ -102,7 +102,7 @@ export function ContributorEditor({ value, campuses, programs, groups, openOnPar
               <option value="fr">{tr("Français")}</option>
             </NativeSelect>
           </div>
-          <div className="col-span-2 space-y-1.5"><Label>{tr("Organisation / association")}</Label><Input value={form.organisationName ?? ""} onChange={(e) => set("organisationName", e.target.value || null)} placeholder={tr("e.g. Albertine, KÆRN, Corporate Relations")} /></div>
+          <div className="col-span-2 space-y-1.5"><Label>{tr("Organisation / association")}</Label><Input value={form.organisationName ?? ""} onChange={(e) => set("organisationName", e.target.value || null)} placeholder={tr("e.g. the marketing team, the alumni network")} /></div>
           <div className="col-span-2 space-y-1.5">
             <Label>{tr("Groups")}</Label>
             <div className="grid grid-cols-2 gap-1.5 rounded-md border p-2 sm:grid-cols-3">

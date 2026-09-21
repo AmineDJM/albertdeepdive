@@ -214,7 +214,7 @@ export async function renderPdf(doc: EditionDocument, options: RenderPdfOptions 
       pdf.setTitle(`${finalDocument.meta.masthead.title} — ${finalDocument.meta.issueLabel}, ${finalDocument.meta.label}`);
       pdf.setAuthor(finalDocument.meta.masthead.title);
       pdf.setSubject(finalDocument.meta.issueLabel);
-      pdf.setKeywords([finalDocument.meta.versionLabel, finalDocument.meta.generatedAt, finalDocument.meta.label, "Albert School"]);
+      pdf.setKeywords([finalDocument.meta.versionLabel, finalDocument.meta.generatedAt, finalDocument.meta.label, finalDocument.meta.masthead.title]);
       pdf.setProducer("Briefly publication pipeline");
       pdf.setCreator(`Briefly print renderer (Chromium ${browser.version()})`);
       pdf.setLanguage("en-GB");

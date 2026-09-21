@@ -161,7 +161,7 @@ export type WorkspaceAnalyticsRow = {
 };
 
 /**
- * One row per customer, with the columns that answer "how is Albert using Briefly".
+ * One row per customer, with the columns that answer "how is this customer using Briefly".
  *
  * One query per aggregate, grouped by workspace, rather than one pass per customer: the shape that
  * still loads when there are two hundred of them.

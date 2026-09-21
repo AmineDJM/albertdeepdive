@@ -28,8 +28,9 @@ export const mastheadSchema = z.object({
 });
 export type MastheadSettings = z.infer<typeof mastheadSchema>;
 export const DEFAULT_MASTHEAD: MastheadSettings = {
-  title: "Albert's Deep Dive",
-  tagline: "The monthly newspaper of Albert School",
+  /** Only ever seen by an edition that belongs to no newsletter: every title carries its own name. */
+  title: "Our newsletter",
+  tagline: "",
 };
 
 export const contactSchema = z.object({

@@ -9,6 +9,7 @@ import { pollInbox, type InboundRunResult } from "@/server/email/inbound";
 import { sendEmail } from "@/server/email";
 import { ok, toActionFailure, type ActionResult } from "@/lib/action-result";
 import { getUi } from "@/server/i18n/locale";
+import { workspaceMasthead } from "@/server/publication/naming";
 
 function revalidateEmail() {
   revalidatePath("/settings/email");
@@ -56,9 +57,11 @@ export async function sendTestEmailAction(to: string): Promise<ActionResult> {
   const tr = await getUi();
   try {
     const user = await requirePermission("settings:manage");
+    // A workspace-level test, so the workspace masthead is the right name here.
+    const masthead = await workspaceMasthead();
     const result = await sendEmail({
       to,
-      subject: "Albert's Deep Dive — the newsroom mailbox works",
+      subject: `${masthead.name} — the newsroom mailbox works`,
       template: "mailbox_test",
       // From the workspace's own sender, so the test shows exactly what a reader would see.
       organizationId: await optionalOrganizationId(),
@@ -67,7 +70,7 @@ export async function sendTestEmailAction(to: string): Promise<ActionResult> {
         kicker: "Mailbox check",
         title: tr("The newsroom mailbox is connected"),
         blocks: [
-          { type: "paragraph", text: `${user.name} sent this from Albert's Deep Dive to check that invitations and reminders will reach contributors.` },
+          { type: "paragraph", text: `${user.name} sent this from ${masthead.name} to check that invitations and reminders will reach contributors.` },
           { type: "paragraph", text: "Reply to this message and your reply appears in the newsroom inbox, ready for triage." },
         ],
       },

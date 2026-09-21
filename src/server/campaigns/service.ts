@@ -33,6 +33,7 @@ import { notifyEditors } from "./notify";
 import { releaseRun, runStep, type TriggeredBy } from "./runs";
 import { getCampaignDefaults, getContactSettings } from "./settings";
 import { contributionLink, defaultTokenExpiry, mintRequestToken, requestTokenHash, rotatedTokenExpiry } from "./tokens";
+import { newsletterFor } from "@/server/publication/naming";
 
 const log = createLogger("campaigns");
 
@@ -649,6 +650,8 @@ type SendResult = { sent: number; failed: number; links: { contributorId: string
 async function sendInvitations(campaign: Campaign, edition: Edition, requests: SubmissionRequest[], now: Date, opts: { resend?: boolean } = {}): Promise<SendResult> {
   const result: SendResult = { sent: 0, failed: 0, links: [] };
   if (!requests.length) return result;
+  // Whose newsletter this is. Resolved once per send rather than per recipient.
+  const newsletter = await newsletterFor(edition.publicationId);
   const contact = await getContactSettings();
   const people = await contributorContext(requests.map((r) => r.contributorId));
   for (const request of requests) {
@@ -657,7 +660,7 @@ async function sendInvitations(campaign: Campaign, edition: Edition, requests: S
     const link = contributionLink(mintRequestToken(request.id, request.tokenExpiresAt));
     const message = invitationEmail({
       contributor: { firstName: person.firstName, lastName: person.lastName, campusName: person.campusName },
-      edition: { label: edition.label, issueNumber: edition.issueNumber, publicationTargetAt: edition.publicationTargetAt },
+      edition: { publicationName: newsletter.name, label: edition.label, issueNumber: edition.issueNumber, publicationTargetAt: edition.publicationTargetAt },
       // The asks this person was given, which is what makes the invitation worth opening. Topics
       // handed to somebody else are filtered out here for the same reason they are on the form.
       campaign: {
@@ -815,6 +818,7 @@ const REMINDER_STEP: Record<ReminderKind, { step: "REMINDER_1" | "REMINDER_2" | 
 export async function sendReminders(campaignId: string, kind: ReminderKind, opts: StepOptions): Promise<ReminderResult> {
   const now = opts.now ?? new Date();
   const { campaign, edition } = await loadCampaignWithEdition(campaignId);
+  const newsletter = await newsletterFor(edition.publicationId);
   if (campaign.status === "CLOSED") return { skipped: true, reason: "Campaign is closed", targeted: 0, emailsSent: 0, emailsFailed: 0, tokensRenewed: 0 };
   if (campaign.status === "DRAFT" || campaign.status === "SCHEDULED") return { skipped: true, reason: "Campaign is not open yet", targeted: 0, emailsSent: 0, emailsFailed: 0, tokensRenewed: 0 };
   const spec = REMINDER_STEP[kind];
@@ -840,7 +844,7 @@ export async function sendReminders(campaignId: string, kind: ReminderKind, opts
       const link = contributionLink(mintRequestToken(request.id, tokenExpiresAt));
       const message = reminderEmail(kind, {
         contributor: { firstName: person.firstName, lastName: person.lastName, campusName: person.campusName },
-        edition: { label: edition.label, issueNumber: edition.issueNumber, publicationTargetAt: edition.publicationTargetAt },
+        edition: { publicationName: newsletter.name, label: edition.label, issueNumber: edition.issueNumber, publicationTargetAt: edition.publicationTargetAt },
         campaign: { introMessage: campaign.introMessage, deadlineAt: campaign.deadlineAt, graceEndsAt: campaign.graceEndsAt },
         link,
         contactEmail: contact.email,
@@ -899,6 +903,7 @@ export type CloseCampaignResult = { skipped: boolean; reason?: string; submissio
 export async function closeCampaign(campaignId: string, opts: CloseCampaignOptions): Promise<CloseCampaignResult> {
   const now = opts.now ?? new Date();
   const { campaign, edition } = await loadCampaignWithEdition(campaignId);
+  const newsletter = await newsletterFor(edition.publicationId);
   if (campaign.status === "CLOSED") return { skipped: true, reason: "Campaign is already closed", submissions: 0, contributors: 0, thankYouEmails: 0, processingQueued: false };
   const step = await runStep({ editionId: edition.id, step: "CAMPAIGN_CLOSE", runKey: `${edition.id}:CAMPAIGN_CLOSE`, triggeredBy: opts.triggeredBy, scheduledFor: campaign.graceEndsAt, now }, async () => {
     await db.update(submissionCampaigns).set({ status: "CLOSED", closedAt: now }).where(eq(submissionCampaigns.id, campaign.id));
@@ -927,7 +932,7 @@ export async function closeCampaign(campaignId: string, opts: CloseCampaignOptio
       if (!person) continue;
       const message = closedEmail({
         contributor: { firstName: person.firstName, lastName: person.lastName, campusName: person.campusName },
-        edition: { label: edition.label, issueNumber: edition.issueNumber, publicationTargetAt: edition.publicationTargetAt },
+        edition: { publicationName: newsletter.name, label: edition.label, issueNumber: edition.issueNumber, publicationTargetAt: edition.publicationTargetAt },
         submissionsCount: request.submissionsCount,
         contactEmail: contact.email,
       });

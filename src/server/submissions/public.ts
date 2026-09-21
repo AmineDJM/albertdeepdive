@@ -36,6 +36,7 @@ import { ACTIVE_CAMPAIGN_STATUSES } from "@/server/campaigns/service";
 import { getContactSettings } from "@/server/campaigns/settings";
 import { looksLikeToken } from "@/server/campaigns/tokens";
 import { asksFor, normaliseBrief } from "@/lib/campaigns/brief";
+import { newsletterFor } from "@/server/publication/naming";
 
 const log = createLogger("submissions:public");
 
@@ -197,13 +198,15 @@ export async function toDraftDTO(row: SubmissionRow): Promise<DraftDTO> {
 }
 
 export async function toInvitationDTO(resolved: ResolvedInvitation, opts: { includeDraft?: boolean } = {}): Promise<InvitationDTO> {
-  const [campusList, contact, submitted] = await Promise.all([
+  const [campusList, contact, submitted, newsletter] = await Promise.all([
     listActiveCampuses(),
     getContactSettings(),
     db
       .select({ n: sql<number>`count(*)::int` })
       .from(submissions)
       .where(and(eq(submissions.requestId, resolved.request.id), ne(submissions.status, "DRAFT"))),
+    // The masthead the contributor sees on every public page and in the thank-you.
+    newsletterFor(resolved.edition.publicationId),
   ]);
   const draft = opts.includeDraft === false ? null : await findDraft(resolved.request.id);
   return {
@@ -219,7 +222,7 @@ export async function toInvitationDTO(resolved: ResolvedInvitation, opts: { incl
       campusId: resolved.contributor.campusId,
       campusName: resolved.campus?.name ?? null,
     },
-    edition: { id: resolved.edition.id, label: resolved.edition.label, title: resolved.edition.title, issueNumber: resolved.edition.issueNumber },
+    edition: { id: resolved.edition.id, label: resolved.edition.label, title: resolved.edition.title, issueNumber: resolved.edition.issueNumber, publicationName: newsletter.name },
     campaign: {
       id: resolved.campaign.id,
       name: resolved.campaign.name,

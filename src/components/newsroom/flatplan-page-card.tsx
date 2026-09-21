@@ -23,6 +23,8 @@ export type FlatplanPageCardProps = {
   page: FlatplanPage;
   editionLabel: string;
   issueLabel: string;
+  /** The newsletter whose masthead goes on the cover sheet. */
+  publicationName: string;
   templates: FlatplanTemplate[];
   canEdit: boolean;
   pending?: boolean;
@@ -39,6 +41,7 @@ export function FlatplanPageCard({
   page,
   editionLabel,
   issueLabel,
+  publicationName,
   templates,
   canEdit,
   pending = false,
@@ -120,7 +123,7 @@ export function FlatplanPageCard({
         className="group relative block w-full cursor-pointer text-left focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:outline-none"
         aria-label={`Open page ${page.number} (${page.templateName})`}
       >
-        <PageSheet page={page} editionLabel={editionLabel} issueLabel={issueLabel} />
+        <PageSheet page={page} editionLabel={editionLabel} issueLabel={issueLabel} publicationName={publicationName} />
         <span className="absolute top-1 right-1 flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
           <span className="inline-flex size-5 items-center justify-center rounded bg-background/90 text-muted-foreground shadow-xs">
             <Ellipsis className="size-3.5" />
@@ -236,7 +239,7 @@ export function FlatplanPageCard({
 }
 
 /** The paper: a schematic of what the template puts on the page, using the real lead photo and headline. */
-function PageSheet({ page, editionLabel, issueLabel }: { page: FlatplanPage; editionLabel: string; issueLabel: string }) {
+function PageSheet({ page, editionLabel, issueLabel, publicationName }: { page: FlatplanPage; editionLabel: string; issueLabel: string; publicationName: string }) {
   const tr = useUi();
   const lead = page.images[0] ?? null;
   const item = page.items[0] ?? null;
@@ -244,7 +247,7 @@ function PageSheet({ page, editionLabel, issueLabel }: { page: FlatplanPage; edi
   if (page.template === "COVER_A" || page.template === "COVER_B") {
     return (
       <div className="p-1.5">
-        <CoverThumbnail url={lead?.url ?? null} label={editionLabel} issueLabel={issueLabel} headline={item?.headline ?? null} />
+        <CoverThumbnail title={publicationName} url={lead?.url ?? null} label={editionLabel} issueLabel={issueLabel} headline={item?.headline ?? null} />
       </div>
     );
   }

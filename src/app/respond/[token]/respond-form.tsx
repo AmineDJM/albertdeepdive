@@ -55,7 +55,7 @@ export function RespondForm({ token, items }: { token: string; items: Item[] }) 
           <ImagePlus className="size-4 text-muted-foreground" /> Add photos (optional)
         </Label>
         <input id="files" name="files" type="file" accept="image/*" multiple className="block w-full text-sm text-muted-foreground file:mr-3 file:rounded-md file:border file:border-border file:bg-card file:px-3 file:py-1.5 file:text-[13px] file:font-medium file:text-foreground hover:file:bg-muted" />
-        <p className="text-xs text-muted-foreground">JPEG, PNG or WebP. By sending a photo you confirm the people pictured agree to appear in Albert&apos;s Deep Dive.</p>
+        <p className="text-xs text-muted-foreground">JPEG, PNG or WebP. By sending a photo you confirm the people pictured agree to appear in this newsletter.</p>
       </div>
       {state.status === "error" ? (
         <Alert variant="destructive">

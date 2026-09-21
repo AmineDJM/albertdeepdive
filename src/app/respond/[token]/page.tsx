@@ -10,14 +10,15 @@ import { RespondForm } from "./respond-form";
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Answer an information request", robots: { index: false, follow: false } };
 
-function Masthead({ label }: { label?: string }) {
+/** The newsletter that asked. Named rather than assumed: this page is public and personal. */
+function Masthead({ newsletterName, label }: { newsletterName: string; label?: string }) {
   return (
     <div className="flex items-center gap-3">
       <span className="relative inline-block size-7 rounded-full bg-brand" aria-hidden>
         <span className="absolute -left-1 top-2 size-2.5 rounded-full bg-primary" />
       </span>
       <div className="leading-tight">
-        <div className="font-serif text-lg font-semibold tracking-tight text-primary">Albert&apos;s Deep Dive</div>
+        <div className="font-serif text-lg font-semibold tracking-tight text-primary">{newsletterName}</div>
         {label ? <div className="text-xs text-muted-foreground">{label}</div> : null}
       </div>
     </div>
@@ -30,7 +31,7 @@ export default async function RespondPage({ params }: { params: Promise<{ token:
 
   return (
     <main className="mx-auto flex w-full max-w-xl flex-col gap-6 px-4 py-8 sm:py-12">
-      <Masthead label={resolved.state === "valid" ? resolved.editionLabel : undefined} />
+      <Masthead newsletterName={resolved.state === "valid" ? resolved.publicationName : "Briefly"} label={resolved.state === "valid" ? resolved.editionLabel : undefined} />
       {resolved.state === "invalid" ? (
         <Alert variant="destructive">
           <MailQuestion />
@@ -72,14 +73,14 @@ export default async function RespondPage({ params }: { params: Promise<{ token:
             </div>
             <CardTitle className="font-serif text-xl leading-tight font-semibold">{resolved.storyTitle}</CardTitle>
             <CardDescription className="text-sm leading-relaxed whitespace-pre-line text-foreground/80">{resolved.request.message}</CardDescription>
-            {resolved.requesterName ? <p className="text-xs text-muted-foreground">Asked by {resolved.requesterName}, Albert&apos;s Deep Dive newsroom</p> : null}
+            {resolved.requesterName ? <p className="text-xs text-muted-foreground">Asked by {resolved.requesterName}, {resolved.publicationName} newsroom</p> : null}
           </CardHeader>
           <CardContent className="px-5">
             <RespondForm token={token} items={resolved.request.items.map((i) => ({ key: i.key, label: i.label }))} />
           </CardContent>
         </Card>
       )}
-      <p className="text-center text-xs text-muted-foreground">Albert&apos;s Deep Dive · the monthly newspaper of Albert School</p>
+      <p className="text-center text-xs text-muted-foreground">{resolved.state === "valid" ? resolved.publicationName : ""}</p>
     </main>
   );
 }

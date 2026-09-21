@@ -36,6 +36,7 @@ type Spread = { key: string; label: string; left: FlatplanPage | null; right: Fl
 export function FlatplanBoard({
   editionId,
   editionLabel,
+  publicationName,
   issueLabel,
   pages,
   stories,
@@ -44,6 +45,8 @@ export function FlatplanBoard({
 }: {
   editionId: string;
   editionLabel: string;
+  /** The newsletter whose masthead goes on the cover sheet. */
+  publicationName: string;
   issueLabel: string;
   pages: FlatplanPage[];
   stories: Flatplan["stories"];
@@ -118,6 +121,7 @@ export function FlatplanBoard({
   const cardProps = (page: FlatplanPage) => ({
     page,
     editionLabel,
+    publicationName,
     issueLabel,
     templates,
     canEdit,

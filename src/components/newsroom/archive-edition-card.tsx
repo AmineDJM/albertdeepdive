@@ -22,7 +22,7 @@ export async function ArchiveEditionCard({ edition }: { edition: ShelfEdition })
   return (
     <article className="flex gap-3.5 rounded-lg border border-border bg-card p-3.5 shadow-xs transition-colors hover:border-brand/50">
       <Link href={`/archive/${edition.id}`} className="block w-[92px] shrink-0" aria-label={`Open the ${edition.label} issue`}>
-        <CoverThumbnail url={edition.coverUrl} label={edition.label} issueLabel={edition.issueLabel} headline={edition.coverHeadline} />
+        <CoverThumbnail title={edition.publicationName} url={edition.coverUrl} label={edition.label} issueLabel={edition.issueLabel} headline={edition.coverHeadline} />
       </Link>
       <div className="flex min-w-0 flex-1 flex-col">
         <div className="flex items-start justify-between gap-2">

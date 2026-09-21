@@ -1,5 +1,5 @@
 /**
- * The print design system of Albert's Deep Dive as a CSS string (embedded in the print HTML so the
+ * The print design system as a CSS string (embedded in the print HTML so the
  * renderer never depends on a running web server).
  *
  * Page geometry: A4 by default (variables allow Tabloid/Letter), 14 mm outer margins, a 12-column

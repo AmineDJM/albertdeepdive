@@ -277,7 +277,7 @@ export function ContributeForm({ token, invitation: initialInvitation, limits }:
   // ── Blocked states ────────────────────────────────────────────────────────
   if (!invitation.canSubmit) {
     return (
-      <PublicShell editionLabel={invitation.edition.label}>
+      <PublicShell publicationName={invitation.edition.publicationName} editionLabel={invitation.edition.label}>
         <BlockedScreen invitation={invitation} onUndoDecline={() => decline(true)} busy={busy} />
       </PublicShell>
     );
@@ -285,8 +285,8 @@ export function ContributeForm({ token, invitation: initialInvitation, limits }:
 
   if (submitted) {
     return (
-      <PublicShell editionLabel={invitation.edition.label}>
-        <SuccessScreen firstName={invitation.contributor.firstName} editionLabel={invitation.edition.label} submittedCount={invitation.submittedCount} closesLabel={invitation.labels.graceEnds} onAnother={startAnother} busy={busy} />
+      <PublicShell publicationName={invitation.edition.publicationName} editionLabel={invitation.edition.label}>
+        <SuccessScreen firstName={invitation.contributor.firstName} publicationName={invitation.edition.publicationName} editionLabel={invitation.edition.label} submittedCount={invitation.submittedCount} closesLabel={invitation.labels.graceEnds} onAnother={startAnother} busy={busy} />
         {formError ? (
           <p className="mt-4 text-[13px] text-destructive" role="alert">
             {formError}
@@ -299,7 +299,7 @@ export function ContributeForm({ token, invitation: initialInvitation, limits }:
   const isLast = step === 3;
 
   return (
-    <PublicShell editionLabel={invitation.edition.label}>
+    <PublicShell publicationName={invitation.edition.publicationName} editionLabel={invitation.edition.label}>
       <ContributeHeader
         firstName={invitation.contributor.firstName}
         campusName={invitation.contributor.campusName}
@@ -474,6 +474,7 @@ function ActionBar({ step, isLast, submitting, onBack, continueLabel }: { step: 
 
 function BlockedScreen({ invitation, onUndoDecline, busy }: { invitation: InvitationDTO; onUndoDecline: () => void; busy: boolean }) {
   const { edition, contributor, contactEmail, labels } = invitation;
+  const publicationName = edition.publicationName;
   switch (invitation.blockedReason) {
     case "DECLINED":
       return (
@@ -491,14 +492,14 @@ function BlockedScreen({ invitation, onUndoDecline, busy }: { invitation: Invita
       );
     case "EXPIRED":
       return (
-        <StatusScreen kicker={`Albert's Deep Dive · ${edition.label}`} title="This link has expired">
+        <StatusScreen kicker={`${publicationName} · ${edition.label}`} title="This link has expired">
           <p>Personal links stop working a week after the issue closes. If you still have a story for the newsroom, just ask for a new link.</p>
           <ContactLine email={contactEmail} />
         </StatusScreen>
       );
     case "NOT_OPEN":
       return (
-        <StatusScreen kicker={`Albert's Deep Dive · ${edition.label}`} title={`Contributions open ${labels.opensLong}`}>
+        <StatusScreen kicker={`${publicationName} · ${edition.label}`} title={`Contributions open ${labels.opensLong}`}>
           <p>Hi {contributor.firstName} — you are on the list for the {edition.label} issue. Come back once the campaign opens; this link will be waiting.</p>
           <ContactLine email={contactEmail} />
         </StatusScreen>
@@ -506,7 +507,7 @@ function BlockedScreen({ invitation, onUndoDecline, busy }: { invitation: Invita
     case "CLOSED":
     default:
       return (
-        <StatusScreen kicker={`Albert's Deep Dive · ${edition.label}`} title={`Contributions for ${edition.label} are closed`}>
+        <StatusScreen kicker={`${publicationName} · ${edition.label}`} title={`Contributions for ${edition.label} are closed`}>
           <p>
             Thanks for stopping by, {contributor.firstName}. The newsroom closed on {labels.graceEndsLong} and the editors are now working on the issue.
             {invitation.submittedCount ? ` Your ${invitation.submittedCount === 1 ? "story is" : `${invitation.submittedCount} stories are`} in.` : ""}

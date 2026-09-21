@@ -22,6 +22,7 @@ import * as s from "@/server/db/schema";
 import { getStorage } from "@/server/storage";
 import { mediaUrls } from "@/server/media/urls";
 import { STORY_TYPES } from "@/lib/constants";
+import { workspaceMasthead } from "@/server/publication/naming";
 
 export const ARCHIVE_STORY_STATUSES = ["SELECTED", "DRAFTING", "IN_REVIEW", "APPROVED", "PUBLISHED"] as const;
 
@@ -237,6 +238,8 @@ export async function searchArchive(filters: ArchiveFilters = {}, limit = 200): 
 export type ArchiveEdition = {
   id: string;
   label: string;
+  /** The newsletter this issue belongs to, for the masthead on its cover. */
+  publicationName: string;
   issueLabel: string;
   title: string;
   status: string;
@@ -266,6 +269,13 @@ export async function archiveEditions(): Promise<ArchiveEdition[]> {
   const versionMap = new Map(versions.map((v) => [v.editionId, v]));
   const assets = versions.length ? await db.select().from(s.publicationAssets).where(inArray(s.publicationAssets.versionId, versions.map((v) => v.id))) : [];
   const storage = await getStorage();
+  // Each issue's own masthead. One query for the lot; the workspace setting answers for an issue
+  // that belongs to no title.
+  const titleIds = [...new Set(editions.map((e) => e.publicationId).filter((id): id is string => !!id))];
+  const titles = titleIds.length
+    ? new Map((await db.select({ id: s.publications.id, name: s.publications.name }).from(s.publications).where(inArray(s.publications.id, titleIds))).map((row) => [row.id, row.name]))
+    : new Map<string, string>();
+  const fallbackName = (await workspaceMasthead()).name;
   const coverIds = editions.map((e) => e.coverMediaAssetId).filter((v): v is string => !!v);
   const covers = coverIds.length ? await mediaUrls(coverIds, "WEB") : {};
   const out: ArchiveEdition[] = [];
@@ -283,6 +293,7 @@ export async function archiveEditions(): Promise<ArchiveEdition[]> {
     out.push({
       id: e.id,
       label: e.label,
+      publicationName: (e.publicationId ? titles.get(e.publicationId) : null) ?? fallbackName,
       issueLabel: `${e.isSpecialIssue ? "Special issue" : "Issue"} N°${e.issueNumber}`,
       title: e.title,
       status: e.status,

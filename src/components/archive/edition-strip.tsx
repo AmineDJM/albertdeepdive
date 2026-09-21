@@ -27,7 +27,7 @@ export async function EditionStrip({ editions, activeEditionId }: { editions: Ar
           return (
             <li key={e.id} className={`flex w-[300px] gap-3 rounded-lg border bg-card p-3 shadow-xs ${active ? "border-brand ring-1 ring-brand/40" : "border-border"}`}>
               <Link href={`/archive?editionId=${e.id}`} className="block w-[84px] shrink-0" aria-label={`Filter the archive on ${e.label}`}>
-                <CoverThumbnail url={e.coverUrl} label={e.label} issueLabel={e.issueLabel} headline={e.coverHeadline} />
+                <CoverThumbnail title={e.publicationName} url={e.coverUrl} label={e.label} issueLabel={e.issueLabel} headline={e.coverHeadline} />
               </Link>
               <div className="flex min-w-0 flex-1 flex-col">
                 <div className="flex items-start justify-between gap-2">

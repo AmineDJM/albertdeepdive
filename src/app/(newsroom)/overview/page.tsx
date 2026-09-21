@@ -51,7 +51,7 @@ function EditionCard({ edition, tr }: { edition: HomeEditionCard; tr: (text: str
   return (
     <Link href={`/editions/${edition.id}`} className="lift group flex gap-3 rounded-xl border border-border bg-card p-3">
       <div className="w-[68px] shrink-0">
-        <CoverThumbnail url={edition.coverUrl} label={edition.label} issueLabel={edition.issueLabel} headline={edition.coverHeadline} className="shadow-none" />
+        <CoverThumbnail title={edition.publicationName} url={edition.coverUrl} label={edition.label} issueLabel={edition.issueLabel} headline={edition.coverHeadline} className="shadow-none" />
       </div>
       <div className="flex min-w-0 flex-1 flex-col justify-between gap-2">
         <div className="min-w-0">
@@ -148,7 +148,7 @@ export default async function HomePage() {
             <div className="grid gap-0 overflow-hidden rounded-xl border border-border bg-card shadow-xs md:grid-cols-[minmax(0,1fr)_320px]">
               <div className="flex gap-5 p-5">
                 <div className="hidden w-[112px] shrink-0 sm:block">
-                  <CoverThumbnail url={next.coverUrl} label={next.label} issueLabel={next.issueLabel} />
+                  <CoverThumbnail title={next.publicationName} url={next.coverUrl} label={next.label} issueLabel={next.issueLabel} />
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
