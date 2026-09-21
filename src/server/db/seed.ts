@@ -32,6 +32,7 @@ function at(base: Date, days: number, hours = 0, minutes = 0) {
   return new Date(base.getTime() + ((days * 24 + hours) * 60 + minutes) * 60_000);
 }
 import { seedShowcase } from "./seed-showcase";
+import { assertSeedable, redactDatabaseUrl } from "./seed-guard";
 
 async function truncateAll(quiet = false) {
   const names = Object.values(schema)
@@ -46,10 +47,9 @@ export type SeedResult = { editionId: string; nextEditionId: string; adminEmail:
 
 export async function runSeed(options: { quiet?: boolean } = {}): Promise<SeedResult> {
   const say = (...args: unknown[]) => (options.quiet ? undefined : console.log(...args));
-  if (env.NODE_ENV === "production" && process.env.FORCE_SEED !== "1") {
-    throw new Error("Refusing to seed a production database without FORCE_SEED=1");
-  }
-  say(`[seed] database: ${env.DATABASE_URL.replace(/:[^:@/]+@/, ":***@")}`);
+  // Asked of the address, not of NODE_ENV — see seed-guard.ts for why that distinction matters.
+  assertSeedable(env.DATABASE_URL, env.NODE_ENV, process.env.FORCE_SEED);
+  say(`[seed] database: ${redactDatabaseUrl(env.DATABASE_URL)}`);
   await truncateAll(options.quiet);
 
   // ── Workspace ──────────────────────────────────────────────────────────────
