@@ -45,6 +45,8 @@ export default async function PublicationPage({ params }: { params: Promise<{ pu
   const canCreate = hasPermission(user, "edition:create");
   const canSetUp = hasPermission(user, "layout:edit");
   const canRemove = hasPermission(user, "edition:archive");
+  // Giving a newsletter away is a decision about the workspace, not about an issue.
+  const canHandOver = hasPermission(user, "settings:manage");
   // What this title is made on, if anybody has said. Read here so the button can say which.
   const model = (await activeIdentity(publicationId)).source;
 
@@ -72,6 +74,11 @@ export default async function PublicationPage({ params }: { params: Promise<{ pu
               </Button>
             ) : null}
             {canCreate ? <NewEditionButton publicationId={publication.id} inheritsFrom={inherits?.from.label ?? null} /> : null}
+            {canHandOver ? (
+              <Button asChild variant="ghost" size="sm">
+                <Link href={`/publications/${publicationId}/transfer`}>{tr("Hand it over")}</Link>
+              </Button>
+            ) : null}
             {canRemove ? <DeletePublication publicationId={publication.id} name={publication.name} editionCount={editionCount} /> : null}
           </div>
         }

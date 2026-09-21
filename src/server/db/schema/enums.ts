@@ -27,6 +27,9 @@ export const organizationRoleEnum = pgEnum("organization_role", ["OWNER", "ADMIN
 
 export const organizationStatusEnum = pgEnum("organization_status", ["ACTIVE", "SUSPENDED", "ARCHIVED"]);
 
+/** Where a newsletter handover has got to. Both sides must answer before it is COMPLETED. */
+export const transferStatusEnum = pgEnum("transfer_status", ["PENDING", "COMPLETED", "CANCELLED", "EXPIRED"]);
+
 /** A publication is a recurring title; each of its editions chooses its own output formats. */
 export const publicationStatusEnum = pgEnum("publication_status", ["DRAFT", "ACTIVE", "PAUSED", "ARCHIVED"]);
 

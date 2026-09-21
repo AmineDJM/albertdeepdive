@@ -1,4 +1,4 @@
-import { and, eq, ne } from "drizzle-orm";
+import { and, count, eq, inArray, ne } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/server/db/client";
 import * as s from "@/server/db/schema";
@@ -101,7 +101,26 @@ export async function updatePublication(organizationId: string, id: string, raw:
   // quietly reset its language, its cadence and whether it charges.
   const input = onlySent(publicationInputSchema.partial().parse(raw), raw);
   const patch: Record<string, unknown> = { ...input };
-  if (input.name && input.name !== existing.name) patch.slug = await uniqueSlug(organizationId, input.name, id);
+  /*
+   * Renaming changes what readers see. It must not change where they go.
+   *
+   * The slug followed the name, so every rename silently reissued the newsletter's public address
+   * — the subscription link in an email somebody sent last month, the page a reader bookmarked,
+   * the QR code on a poster. A newsletter you are told you can rename freely, that breaks its own
+   * links when you do, is not one you can rename freely.
+   *
+   * So the address follows the name only while nobody could be holding it: no reader has
+   * subscribed and nothing has been published. After that the name is yours to change and the
+   * address is fixed, which is the same bargain every publication on the web makes.
+   */
+  if (input.name && input.name !== existing.name) {
+    const [[readers], [published]] = await Promise.all([
+      db.select({ n: count() }).from(s.publicationSubscriptions).where(eq(s.publicationSubscriptions.publicationId, id)),
+      db.select({ n: count() }).from(s.editions).where(and(eq(s.editions.publicationId, id), inArray(s.editions.status, ["PUBLISHED", "ARCHIVED"]))),
+    ]);
+    const outInTheWorld = Number(readers?.n ?? 0) > 0 || Number(published?.n ?? 0) > 0;
+    if (!outInTheWorld) patch.slug = await uniqueSlug(organizationId, input.name, id);
+  }
   const next = { ...existing, ...input };
   if (next.access === "paid") await assertChargeable(organizationId, next.priceCents);
   else if (input.access === "free") patch.priceCents = null;

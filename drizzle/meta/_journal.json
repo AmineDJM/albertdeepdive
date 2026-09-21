@@ -218,6 +218,13 @@
       "when": 1789925430191,
       "tag": "0030_dry_micromax",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1789997087716,
+      "tag": "0031_nosy_the_hunter",
+      "breakpoints": true
     }
   ]
 }

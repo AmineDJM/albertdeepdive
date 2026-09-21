@@ -1,6 +1,6 @@
 import type { AnyPgColumn } from "drizzle-orm/pg-core";
 import { boolean, index, integer, jsonb, pgTable, primaryKey, real, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
-import { contributorTypeEnum, organizationRoleEnum, organizationStatusEnum, organizationTypeEnum, publicationStatusEnum, showcaseConsentEnum, userRoleEnum } from "./enums";
+import { contributorTypeEnum, organizationRoleEnum, organizationStatusEnum, organizationTypeEnum, publicationStatusEnum, showcaseConsentEnum, transferStatusEnum, userRoleEnum } from "./enums";
 
 /**
  * Multi-tenancy.
@@ -42,6 +42,16 @@ export const organizations = pgTable(
     name: text("name").notNull(),
     slug: text("slug").notNull(),
     type: organizationTypeEnum("type").notNull().default("COMPANY"),
+    /**
+     * One person's own workspace, made with their account rather than joined.
+     *
+     * A newsletter has to live somewhere, and "somewhere" was always an organisation — which asks
+     * somebody writing alone to invent a company before they can start. A personal workspace is a
+     * real workspace in every other respect: it has publications, an audience, a brand. It differs
+     * in that nobody else is added to it, and in that it is the natural side of a transfer when
+     * something started alone becomes something a team runs.
+     */
+    isPersonal: boolean("is_personal").notNull().default(false),
     status: organizationStatusEnum("status").notNull().default("ACTIVE"),
     /**
      * A workspace Briefly runs itself, to have something beautiful in the gallery on day one.
@@ -199,6 +209,15 @@ export const users = pgTable(
   {
     id: uuid("id").primaryKey().defaultRandom(),
     email: text("email").notNull(),
+    /**
+     * How one account names another, for the things an email address is the wrong handle for.
+     *
+     * Transferring a newsletter is the first of them: you hand it to a person or an organisation,
+     * and asking somebody to type a colleague's email to do it invites the transfer going to a
+     * typo. Nullable because every account that already exists predates it; claimed once, and
+     * unique after that.
+     */
+    username: text("username"),
     name: text("name").notNull(),
     passwordHash: text("password_hash"),
     role: userRoleEnum("role").notNull().default("VIEWER"),
@@ -210,7 +229,7 @@ export const users = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
   },
-  (t) => [uniqueIndex("users_email_idx").on(t.email)],
+  (t) => [uniqueIndex("users_email_idx").on(t.email), uniqueIndex("users_username_idx").on(t.username)],
 );
 
 export const sessions = pgTable(
@@ -298,4 +317,51 @@ export const contributorGroupMembers = pgTable(
     addedAt: timestamp("added_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [primaryKey({ columns: [t.groupId, t.contributorId] })],
+);
+
+/**
+ * Handing a newsletter to somebody else.
+ *
+ * A newsletter is not a row to be moved by an administrator: it has an audience who agreed to hear
+ * from *it*, contributors who wrote for *it*, a name and a look somebody built. Moving it between
+ * workspaces changes who is responsible for all of that, so neither side can do it alone.
+ *
+ * Two codes, and they are two different assertions. The one emailed to the owner says "the person
+ * asking is really the person who holds this newsletter" — it defends against somebody who has a
+ * session but not the mailbox. The one emailed to the receiving workspace's admin address says
+ * "the other side agreed to take it", which is the half an owner cannot fake: a newsletter arriving
+ * unannounced in a workspace, with its subscribers and its sending reputation, is not a gift.
+ *
+ * Only the hashes are kept. A code in the database is a code an operator can read out of it.
+ */
+export const publicationTransfers = pgTable(
+  "publication_transfers",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    publicationId: uuid("publication_id").notNull().references(() => publications.id, { onDelete: "cascade" }),
+    fromOrganizationId: uuid("from_organization_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
+    toOrganizationId: uuid("to_organization_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
+    requestedById: uuid("requested_by_id").references((): AnyPgColumn => users.id, { onDelete: "set null" }),
+    /** Where each code went, recorded so the screen can say where to look without guessing. */
+    ownerEmail: text("owner_email").notNull(),
+    recipientEmail: text("recipient_email").notNull(),
+    ownerCodeHash: text("owner_code_hash").notNull(),
+    recipientCodeHash: text("recipient_code_hash").notNull(),
+    ownerConfirmedAt: timestamp("owner_confirmed_at", { withTimezone: true }),
+    recipientConfirmedAt: timestamp("recipient_confirmed_at", { withTimezone: true }),
+    /** Wrong codes are counted, so a six-digit code cannot be found by trying every six-digit code. */
+    attempts: integer("attempts").notNull().default(0),
+    status: transferStatusEnum("status").notNull().default("PENDING"),
+    /** What moved, written at the moment it moved: the count of editions, readers and contributors. */
+    moved: jsonb("moved").$type<Record<string, number>>().notNull().default({}),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+  },
+  (t) => [
+    index("publication_transfers_publication_idx").on(t.publicationId),
+    index("publication_transfers_status_idx").on(t.status),
+  ],
 );
