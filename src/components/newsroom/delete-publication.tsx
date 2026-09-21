@@ -36,7 +36,7 @@ export function DeletePublication({ publicationId, name, editionCount }: { publi
       }
       setOpen(false);
       toast.success(result.message);
-      // As above: the action revalidated, and refreshing would re-fetch the title we just deleted.
+      // As above: the action revalidated, so the push lands on fresh data on its own.
       router.push("/overview");
     });
   }

@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { closeDb, one } from "./db";
-import { login, setExperience } from "./helpers";
+import { ADMIN, login, setExperience } from "./helpers";
 
 /**
  * Unmaking what you made.
@@ -63,8 +63,25 @@ test.describe("taking it back", () => {
 
   test("a newsletter with issues behind it offers the archive before the deletion", async ({ page }) => {
     // The seed's own title, which really has editions: opened, read, and closed without touching it.
+    //
+    // Scoped to the workspace the test signs into, and ordered by id after the count. Neither is
+    // decoration: the seed gives four workspaces a title apiece, two of them with two editions, so
+    // an unscoped `order by count desc limit 1` picks whichever the planner returns first — and
+    // when that was another workspace's title the page rightly answered 404, because it is not
+    // this admin's to see. The control never rendered and the test hung on a locator, blaming the
+    // button for tenant isolation doing its job.
     const title = await one<{ id: string; name: string; count: string }>(
-      `select p.id, p.name, count(e.id)::text as count from publications p join editions e on e.publication_id = p.id group by p.id having count(e.id) > 0 order by count(e.id) desc limit 1`,
+      `select p.id, p.name, count(e.id)::text as count
+         from publications p
+         join editions e on e.publication_id = p.id
+         join organization_members m on m.organization_id = p.organization_id
+         join users u on u.id = m.user_id
+        where u.email = $1
+        group by p.id
+       having count(e.id) > 0
+        order by count(e.id) desc, p.id
+        limit 1`,
+      [ADMIN.email],
     );
     expect(title, "a seeded title with editions").toBeTruthy();
 

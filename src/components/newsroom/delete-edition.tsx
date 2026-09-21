@@ -54,9 +54,15 @@ export function DeleteEdition({ editionId, label, published }: { editionId: stri
                   return;
                 }
                 toast.success(result.message);
-                // Push only. The action has already revalidated /overview, and a refresh on top of
-                // it re-fetches the route we just left — the deleted edition's own page — which
-                // answers NOT_FOUND, as it should.
+                // Push only: the action has already revalidated /overview, so a refresh on top of
+                // it would fetch the same data twice.
+                //
+                // It does not silence the NOT_FOUND this logs. A server action re-renders the
+                // route it was called from, and that route is the edition that no longer exists,
+                // so the server records a 404 for a page nobody will see — the push has already
+                // moved on. Silencing it means redirecting from inside the action, and the action
+                // is shared with the bulk bar in the content hub, which must stay where it is.
+                // Left alone deliberately: it is a line in the log, not something the reader meets.
                 router.push("/overview");
               })
             }
