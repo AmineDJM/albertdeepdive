@@ -3,7 +3,11 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { saveWorkspaceAction, type WorkspaceInput } from "./actions";
+import { RefreshCw } from "lucide-react";
+import { rereadWebsiteAction, saveWorkspaceAction, type WorkspaceInput } from "./actions";
+import { WebsiteReading } from "./website-reading";
+import type { DiscoveredOrganization } from "@/server/tenancy/discovery";
+import { ORGANIZATION_TYPE_LABELS, organizationTypes } from "@/lib/tenancy/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,18 +16,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { useTranslations } from "@/components/i18n/provider";
 import { useUi } from "@/components/i18n/provider";
 
-const TYPES = [
-  ["COMPANY", "Company"],
-  ["SCHOOL", "School"],
-  ["UNIVERSITY", "University"],
-  ["ASSOCIATION", "Association"],
-  ["COMMUNITY", "Community"],
-  ["INVESTOR", "Investment firm"],
-  ["MEDIA", "Media"],
-  ["INSTITUTION", "Institution"],
-  ["OTHER", "Other"],
-] as const;
-
 export type WorkspaceValues = WorkspaceInput & { slug: string };
 
 export function WorkspaceForm({ initial, canEdit }: { initial: WorkspaceValues; canEdit: boolean }) {
@@ -31,7 +23,9 @@ export function WorkspaceForm({ initial, canEdit }: { initial: WorkspaceValues; 
   const router = useRouter();
   const t = useTranslations();
   const [pending, startTransition] = useTransition();
+  const [reading, startReading] = useTransition();
   const [values, setValues] = useState<WorkspaceInput>(initial);
+  const [found, setFound] = useState<{ at: number; result: DiscoveredOrganization } | null>(null);
 
   const set = <K extends keyof WorkspaceInput>(key: K, value: WorkspaceInput[K]) => setValues((v) => ({ ...v, [key]: value }));
 
@@ -47,8 +41,49 @@ export function WorkspaceForm({ initial, canEdit }: { initial: WorkspaceValues; 
     });
   }
 
+  /** Reads the address currently in the form, so a correction does not have to be saved first. */
+  function reread() {
+    startReading(async () => {
+      const result = await rereadWebsiteAction(values.website ?? "");
+      if (!result.ok) {
+        toast.error(result.error);
+        return;
+      }
+      setFound({ at: Date.now(), result: result.data });
+      if (result.data.missing.length) toast.info(tr("Some things were not on the page. They are yours to fill in."));
+    });
+  }
+
+  /** A text field that carries nothing but its own value: the long tail of who an organisation is. */
+  const field = (key: keyof WorkspaceInput, label: string, placeholder?: string, span = false) => (
+    <div className={span ? "space-y-1.5 sm:col-span-2" : "space-y-1.5"}>
+      <Label htmlFor={`ws-${String(key)}`}>{label}</Label>
+      <Input
+        id={`ws-${String(key)}`}
+        value={String(values[key] ?? "")}
+        onChange={(e) => set(key, e.target.value as WorkspaceInput[typeof key])}
+        placeholder={placeholder}
+        disabled={!canEdit}
+      />
+    </div>
+  );
+
   return (
     <div className="max-w-2xl space-y-5">
+      {canEdit ? (
+        <div className="flex flex-wrap items-center gap-3">
+          <Button variant="outline" size="sm" onClick={reread} loading={reading} disabled={!values.website}>
+            <RefreshCw className="size-3.5" />
+            {tr("Read my website again")}
+          </Button>
+          <p className="text-xs text-muted-foreground">
+            {values.website ? tr("We open your site in a browser and bring back what it says about you.") : tr("Add your website below, then we can read it for you.")}
+          </p>
+        </div>
+      ) : null}
+
+      {found ? <WebsiteReading key={found.at} reading={found.result} current={values} onApply={(patch) => setValues((v) => ({ ...v, ...patch }))} /> : null}
+
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-1.5 sm:col-span-2">
           <Label htmlFor="ws-name">{t("workspace.name")}</Label>
@@ -60,9 +95,9 @@ export function WorkspaceForm({ initial, canEdit }: { initial: WorkspaceValues; 
         <div className="space-y-1.5">
           <Label htmlFor="ws-type">{t("onboarding.type")}</Label>
           <NativeSelect id="ws-type" value={values.type} onChange={(e) => set("type", e.target.value as WorkspaceInput["type"])} disabled={!canEdit}>
-            {TYPES.map(([value, label]) => (
+            {organizationTypes.map((value) => (
               <option key={value} value={value}>
-                {label}
+                {ORGANIZATION_TYPE_LABELS[value]}
               </option>
             ))}
           </NativeSelect>
@@ -82,6 +117,7 @@ export function WorkspaceForm({ initial, canEdit }: { initial: WorkspaceValues; 
           <Label htmlFor="ws-timezone">{t("workspace.timezone")}</Label>
           <Input id="ws-timezone" value={values.timezone} onChange={(e) => set("timezone", e.target.value)} disabled={!canEdit} />
         </div>
+        {field("headline", tr("Headline"), tr("One line your readers would recognise"), true)}
         <div className="space-y-1.5 sm:col-span-2">
           <Label htmlFor="ws-description">{t("workspace.description")}</Label>
           <Textarea id="ws-description" rows={2} value={values.description ?? ""} onChange={(e) => set("description", e.target.value)} disabled={!canEdit} />
@@ -118,6 +154,31 @@ export function WorkspaceForm({ initial, canEdit }: { initial: WorkspaceValues; 
           ))}
         </div>
         <p className="text-xs text-muted-foreground">{t("workspace.brandHint")}</p>
+      </div>
+
+      <div className="space-y-3 rounded-lg border border-border bg-card p-4">
+        <p className="label-caps">{tr("Organisation details")}</p>
+        <div className="grid gap-4 sm:grid-cols-2">
+          {field("legalName", tr("Legal name"), tr("Acme SAS"))}
+          {field("industry", tr("Industry"))}
+          {field("foundedYear", tr("Founded"), tr("2016"))}
+          {field("country", tr("Country"))}
+          {field("email", tr("Contact email"), tr("hello@acme.com"))}
+          {field("telephone", tr("Telephone"))}
+          {field("address", tr("Address"), undefined, true)}
+        </div>
+        <p className="text-xs text-muted-foreground">{tr("Used on imprints and footers. Nothing here is required.")}</p>
+      </div>
+
+      <div className="space-y-3 rounded-lg border border-border bg-card p-4">
+        <p className="label-caps">{tr("Where else you are")}</p>
+        <div className="grid gap-4 sm:grid-cols-2">
+          {field("linkedin", "LinkedIn")}
+          {field("instagram", "Instagram")}
+          {field("x", "X")}
+          {field("youtube", "YouTube")}
+          {field("facebook", "Facebook")}
+        </div>
       </div>
 
       {canEdit ? (

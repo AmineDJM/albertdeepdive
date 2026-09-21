@@ -27,3 +27,4 @@ export * from "./image-describer";
 export * from "./speech-adapter";
 export * from "./voice-director";
 export * from "./image-planner";
+export * from "./organisation-reader";

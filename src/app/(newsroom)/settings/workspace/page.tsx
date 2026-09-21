@@ -4,6 +4,7 @@ import { PageBody, PageHeader, SectionTitle } from "@/components/newsroom/page-h
 import { Badge } from "@/components/ui/badge";
 import { WorkspaceForm } from "./workspace-form";
 import { getUi } from "@/server/i18n/locale";
+import { profileFromSettings } from "@/lib/brand/organisation";
 
 export const dynamic = "force-dynamic";
 
@@ -13,6 +14,8 @@ export default async function WorkspaceSettingsPage() {
   const [organization, members] = await Promise.all([getOrganization(tenant.organizationId), listMembers(tenant.organizationId)]);
   const canEdit = tenant.role === "OWNER" || tenant.role === "ADMIN";
   const colours = (organization.brandColours ?? {}) as { primary?: string; accent?: string };
+  const links = (organization.links ?? {}) as Record<string, string | undefined>;
+  const profile = profileFromSettings(organization.settings);
 
   return (
     <>
@@ -30,8 +33,21 @@ export default async function WorkspaceSettingsPage() {
             timezone: organization.timezone,
             country: organization.country ?? "",
             logoUrl: organization.logoUrl ?? "",
+            faviconUrl: organization.faviconUrl ?? "",
             primary: colours.primary ?? "",
             accent: colours.accent ?? "",
+            legalName: profile.legalName ?? "",
+            industry: profile.industry ?? "",
+            headline: profile.headline ?? "",
+            foundedYear: profile.foundedYear ? String(profile.foundedYear) : "",
+            email: profile.email ?? "",
+            telephone: profile.telephone ?? "",
+            address: profile.address ?? "",
+            linkedin: links.linkedin ?? "",
+            instagram: links.instagram ?? "",
+            x: links.x ?? "",
+            youtube: links.youtube ?? "",
+            facebook: links.facebook ?? "",
           }}
         />
 

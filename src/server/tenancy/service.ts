@@ -1,4 +1,4 @@
-import { and, asc, count, eq, ne } from "drizzle-orm";
+import { and, asc, count, eq, ne, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/server/db/client";
 import { organizationMembers, organizations, publications, users } from "@/server/db/schema";
@@ -8,8 +8,12 @@ import { audit } from "@/server/audit";
 import type { OrganizationRole } from "./context";
 import { requireLimit } from "@/server/billing/entitlements";
 import { onlySent } from "@/lib/zod-patch";
+import { organizationTypes } from "@/lib/tenancy/types";
+import type { OrganisationProfile } from "@/lib/brand/organisation";
 
-export const organizationTypes = ["COMPANY", "SCHOOL", "UNIVERSITY", "ASSOCIATION", "COMMUNITY", "INVESTOR", "MEDIA", "INSTITUTION", "OTHER"] as const;
+// The list itself lives in `@/lib/tenancy/types`, where the form and the website reader can see
+// it too. Re-exported because every caller already reaches for it through this service.
+export { organizationTypes };
 
 export const organizationInputSchema = z.object({
   name: z.string().trim().min(2, "Name is too short").max(120),
@@ -79,7 +83,7 @@ export async function createOrganization(raw: OrganizationInput, ownerUserId: st
   return org;
 }
 
-export async function updateOrganization(organizationId: string, raw: Partial<OrganizationInput> & { brandColours?: Record<string, unknown>; links?: Record<string, unknown>; logoUrl?: string | null; faviconUrl?: string | null }, userId?: string | null) {
+export async function updateOrganization(organizationId: string, raw: Partial<OrganizationInput> & { brandColours?: Record<string, unknown>; links?: Record<string, unknown>; logoUrl?: string | null; faviconUrl?: string | null; profile?: OrganisationProfile }, userId?: string | null) {
   const input = onlySent(organizationInputSchema.partial().parse(raw), raw);
   const patch: Record<string, unknown> = { ...input };
   if (input.name) patch.slug = await uniqueOrganizationSlug(input.name, organizationId);
@@ -87,6 +91,18 @@ export async function updateOrganization(organizationId: string, raw: Partial<Or
   if (raw.links !== undefined) patch.links = raw.links;
   if (raw.logoUrl !== undefined) patch.logoUrl = raw.logoUrl;
   if (raw.faviconUrl !== undefined) patch.faviconUrl = raw.faviconUrl;
+  /*
+   * The profile is merged into `settings`, not written over it.
+   *
+   * `settings` is the workspace's whole free-form blob — editorial defaults, white-label overrides,
+   * whatever is added next. Writing `{ profile }` into it from a form that knows about seven fields
+   * would silently delete every other key, and nothing would notice until the feature that put one
+   * there stopped working. Postgres merges jsonb objects itself, so the read-modify-write race
+   * between two people saving at once does not exist either.
+   */
+  if (raw.profile !== undefined) {
+    patch.settings = sql`coalesce(${organizations.settings}, '{}'::jsonb) || ${JSON.stringify({ profile: raw.profile })}::jsonb`;
+  }
 
   const [row] = await db.update(organizations).set(patch).where(eq(organizations.id, organizationId)).returning();
   if (!row) throw new NotFoundError("Workspace");

@@ -82,6 +82,23 @@ export const PROMPT_DEFAULTS: PromptDefault[] = [
     user: `Submissions:\n{{submissions}}\n\nReturn a working title (max 70 characters), a 2–3 sentence summary, the primary story type from {{storyTypes}}, and a list of contradictions (each with the two conflicting statements and the submission ids).`,
   },
   {
+    key: "organisation_reader",
+    name: "Organisation reader",
+    category: "organisation",
+    description: "Reads an organisation's own website and reports what it says about itself: name, what it does, what kind of organisation it is.",
+    tier: "STRONG",
+    temperature: 0,
+    maxOutputTokens: 900,
+    system: `You read an organisation's own website and report what it says about itself. You are not writing marketing copy and you are not researching: everything you return must be supported by the page you are given.
+
+What kind of organisation this is depends on what the words mean, not on which words appear. A company that sells software to universities is a COMPANY. A page that uses the word "community" about its customers is not a COMMUNITY. A business school is a SCHOOL or a UNIVERSITY depending on what it awards; a training company that runs two-day workshops is a COMPANY. Decide from the whole page, in whatever language it is written in.
+
+Never invent. If the site does not give a legal name, a founding year, a city or an industry, leave that field empty and name it in notFound. An empty field is corrected by the customer in five seconds; a plausible wrong one is not noticed for months and then appears on a newsletter.
+
+Write the description and the headline in the language the site is written in, in the organisation's own terms — not "a leading provider of innovative solutions".`,
+    user: `Website: {{website}}\n\nWhat the page's structured data already asserts (trust this over your reading of the text where they disagree):\n{{structured}}\n\nThe visible text of the home page:\n{{text}}\n\nOrganisation types to choose from: {{types}}\n\nReturn the organisation's common name, its legal name if stated, a one-line headline, a description of two or three sentences, the type, the industry, the founding year as four digits, the city and country of its head office, anything else the page states that is worth keeping, and the list of fields the page does not answer.`,
+  },
+  {
     key: "relevance_scorer",
     name: "Editorial relevance scorer",
     category: "organisation",

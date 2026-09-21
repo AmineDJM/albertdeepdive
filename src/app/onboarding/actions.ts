@@ -9,6 +9,7 @@ import { createOrganization, organizationTypes, updateOrganization } from "@/ser
 import { ensureBrand } from "@/server/brand/service";
 import { setActiveOrganization } from "@/server/tenancy/context";
 import { slugify } from "@/lib/utils";
+import { organisationProfileSchema } from "@/lib/brand/organisation";
 import { ok, toActionFailure, type ActionResult } from "@/lib/action-result";
 
 /** Step 1 — read the website and show what we found. Nothing is written yet. */
@@ -35,6 +36,7 @@ const confirmSchema = z.object({
   colours: z.string().optional(),
   fonts: z.string().optional(),
   links: z.string().optional(),
+  profile: z.string().optional(),
 });
 
 function parseJson<T>(raw: string | undefined, fallback: T): T {
@@ -60,6 +62,9 @@ export async function confirmOnboardingAction(_prev: ActionResult<{ organization
     const colours = parseJson<string[]>(input.colours, []);
     const fonts = parseJson<string[]>(input.fonts, []);
     const links = parseJson<Record<string, string>>(input.links, {});
+    // Whatever the reading pass established about the organisation itself, exactly as the customer
+    // saw it on the confirmation screen. Anything it got wrong is one field away in Workspace.
+    const profile = organisationProfileSchema.safeParse(parseJson<unknown>(input.profile, {}));
 
     const org = await createOrganization(
       {
@@ -73,7 +78,8 @@ export async function confirmOnboardingAction(_prev: ActionResult<{ organization
       user.id,
     );
 
-    if (colours.length || Object.keys(links).length || input.logoUrl || input.faviconUrl) {
+    const discovered = profile.success ? profile.data : {};
+    if (colours.length || Object.keys(links).length || input.logoUrl || input.faviconUrl || Object.keys(discovered).length) {
       await updateOrganization(
         org.id,
         {
@@ -81,6 +87,7 @@ export async function confirmOnboardingAction(_prev: ActionResult<{ organization
           links,
           logoUrl: input.logoUrl || null,
           faviconUrl: input.faviconUrl || null,
+          profile: discovered,
         },
         user.id,
       );

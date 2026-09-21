@@ -1,7 +1,7 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
-import { chromium, type Browser, type Page } from "playwright";
-import { connectBrowserbase } from "@/server/integrations/browserbase";
+import { type Browser, type Page } from "playwright";
+import { withBrowser } from "@/server/browser";
 import { PDFDocument } from "pdf-lib";
 import type { DocumentMedia, EditionDocument } from "@/lib/publication/document";
 import { env } from "@/server/env";
@@ -122,32 +122,10 @@ export function signedUrlAssets(): AssetSource {
   return (media) => media.src.print?.url ?? media.src.web?.url ?? media.src.thumb?.url ?? null;
 }
 
-export async function launchBrowser(): Promise<Browser> {
-  // A connected Browserbase renders instead of the Chromium on this machine. The page is the same —
-  // fonts and pictures travel inside the HTML — so a host too small for a browser still prints.
-  // When Browserbase cannot be reached, the local browser is the fallback, not a failed job.
-  try {
-    const remote = await connectBrowserbase();
-    if (remote) return remote;
-  } catch (err) {
-    log.warn("Browserbase unavailable; rendering with the local browser", { err });
-  }
-  const executablePath = env.PLAYWRIGHT_CHROMIUM_EXECUTABLE || process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE || undefined;
-  return chromium.launch({
-    executablePath,
-    args: ["--font-render-hinting=none", "--disable-gpu", "--disable-dev-shm-usage"],
-  });
-}
-
-export async function withBrowser<T>(fn: (browser: Browser) => Promise<T>, browser?: Browser): Promise<T> {
-  if (browser) return fn(browser);
-  const own = await launchBrowser();
-  try {
-    return await fn(own);
-  } finally {
-    await own.close().catch(() => {});
-  }
-}
+// Opening a browser lives in `@/server/browser`, so that reading a web page does not mean importing
+// the printing pipeline. Re-exported because half the codebase reaches for it through here.
+export { launchBrowser } from "@/server/browser";
+export { withBrowser };
 
 async function loadHtml(page: Page, html: string) {
   await page.setContent(html, { waitUntil: "load", timeout: 180_000 });

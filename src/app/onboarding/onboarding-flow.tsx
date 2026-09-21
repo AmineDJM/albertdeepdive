@@ -13,27 +13,49 @@ import { cn } from "@/lib/utils";
 import { useTranslations } from "@/components/i18n/provider";
 import type { ActionResult } from "@/lib/action-result";
 import type { DiscoveredOrganization } from "@/server/tenancy/discovery";
-
-const TYPES = [
-  ["COMPANY", "Company"],
-  ["SCHOOL", "School"],
-  ["UNIVERSITY", "University"],
-  ["ASSOCIATION", "Association"],
-  ["COMMUNITY", "Community"],
-  ["INVESTOR", "Investment firm"],
-  ["MEDIA", "Media"],
-  ["INSTITUTION", "Institution"],
-  ["OTHER", "Other"],
-] as const;
+import { ORGANIZATION_TYPE_LABELS, organizationTypes } from "@/lib/tenancy/types";
 
 const SOCIAL_LABELS: Record<string, string> = { linkedin: "LinkedIn", instagram: "Instagram", x: "X", youtube: "YouTube", facebook: "Facebook" };
 
 /** A logo we found on someone else's server. If it will not load, show nothing rather than a broken icon. */
-function RemoteLogo({ src }: { src: string }) {
+function RemoteLogo({ src, className }: { src: string; className?: string }) {
   const [failed, setFailed] = useState(false);
   if (failed) return null;
   // eslint-disable-next-line @next/next/no-img-element
-  return <img src={src} alt="" className="size-12 shrink-0 rounded-md object-contain" onError={() => setFailed(true)} />;
+  return <img src={src} alt="" className={cn("size-12 shrink-0 rounded-md object-contain", className)} onError={() => setFailed(true)} />;
+}
+
+/**
+ * Which of the marks on the page is the logo.
+ *
+ * A header holds the organisation's mark, its partners' marks, an app-store badge and a flag for
+ * the language switcher. Ranking narrows that to a shortlist; only the person whose logo it is can
+ * finish the job, and it takes them one click.
+ */
+function LogoChoice({ candidates, value, onPick, label }: { candidates: DiscoveredOrganization["logoCandidates"]; value: string; onPick: (url: string) => void; label: string }) {
+  if (candidates.length < 2) return null;
+  return (
+    <div className="space-y-2">
+      <p className="label-caps">{label}</p>
+      <div className="flex flex-wrap gap-2">
+        {candidates.map((candidate) => (
+          <button
+            key={candidate.url}
+            type="button"
+            onClick={() => onPick(candidate.url)}
+            aria-pressed={value === candidate.url}
+            aria-label={candidate.alt || candidate.url}
+            className={cn(
+              "flex h-14 w-20 items-center justify-center rounded-md border bg-card p-1.5 transition",
+              value === candidate.url ? "border-primary ring-2 ring-primary/30" : "border-border hover:border-foreground/30",
+            )}
+          >
+            <RemoteLogo src={candidate.url} className="size-auto max-h-full max-w-full" />
+          </button>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 function ErrorNote({ message }: { message: string }) {
@@ -59,8 +81,10 @@ export function OnboardingFlow({ suggestedTimezone }: { suggestedTimezone: strin
   const [discovery, discover, discovering] = useActionState<ActionResult<DiscoveredOrganization> | null, FormData>(discoverAction, null);
   const [confirmState, confirm, confirming] = useActionState<ActionResult<{ organizationId: string }> | null, FormData>(confirmOnboardingAction, null);
   const [manual, setManual] = useState(false);
+  const [logo, setLogo] = useState<string | null>(null);
 
   const found = discovery?.ok ? discovery.data : null;
+  const chosenLogo = logo ?? found?.logoUrl ?? "";
   const step = found || manual ? 2 : 1;
 
   useEffect(() => {
@@ -118,7 +142,7 @@ export function OnboardingFlow({ suggestedTimezone }: { suggestedTimezone: strin
 
           {found?.colours.length ? (
             <div className="flex items-center gap-3 rounded-lg border border-border bg-card p-3">
-              {found.logoUrl ? <RemoteLogo src={found.logoUrl} /> : null}
+              {chosenLogo ? <RemoteLogo src={chosenLogo} /> : null}
               <div className="min-w-0 flex-1">
                 <p className="label-caps">{t("onboarding.yourColours")}</p>
                 <div className="mt-1.5 flex gap-1.5">
@@ -130,6 +154,10 @@ export function OnboardingFlow({ suggestedTimezone }: { suggestedTimezone: strin
             </div>
           ) : null}
 
+          {found?.logoCandidates.length ? (
+            <LogoChoice candidates={found.logoCandidates} value={chosenLogo} onPick={setLogo} label={t("onboarding.whichLogo")} />
+          ) : null}
+
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1.5 sm:col-span-2">
               <Label htmlFor="name">{t("onboarding.organizationName")}</Label>
@@ -138,9 +166,9 @@ export function OnboardingFlow({ suggestedTimezone }: { suggestedTimezone: strin
             <div className="space-y-1.5">
               <Label htmlFor="type">{t("onboarding.type")}</Label>
               <NativeSelect id="type" name="type" defaultValue={found?.type ?? "COMPANY"}>
-                {TYPES.map(([value, label]) => (
+                {organizationTypes.map((value) => (
                   <option key={value} value={value}>
-                    {label}
+                    {ORGANIZATION_TYPE_LABELS[value]}
                   </option>
                 ))}
               </NativeSelect>
@@ -180,7 +208,8 @@ export function OnboardingFlow({ suggestedTimezone }: { suggestedTimezone: strin
 
           <input type="hidden" name="website" value={found?.url ?? ""} />
           <input type="hidden" name="description" value={found?.description ?? ""} />
-          <input type="hidden" name="logoUrl" value={found?.logoUrl ?? ""} />
+          <input type="hidden" name="logoUrl" value={chosenLogo} />
+          <input type="hidden" name="profile" value={JSON.stringify(found?.profile ?? {})} />
           <input type="hidden" name="faviconUrl" value={found?.faviconUrl ?? ""} />
           <input type="hidden" name="colours" value={JSON.stringify(found?.colours ?? [])} />
           <input type="hidden" name="fonts" value={JSON.stringify(found?.fonts ?? [])} />

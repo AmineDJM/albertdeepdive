@@ -4,6 +4,11 @@ import sharp from "sharp";
 import { createLogger } from "@/server/logger";
 import { ValidationError } from "@/lib/action-result";
 import { extractFontFamilies } from "@/lib/brand/discover";
+import { factsFromJsonLd, mergeFacts, rankColours, rankLogos, type LogoCandidate, type OrganisationFacts, type OrganisationProfile } from "@/lib/brand/organisation";
+import { organizationTypes } from "@/lib/tenancy/types";
+import { readSiteWithBrowser, type PageReading } from "./discovery-browser";
+import { getAiProvider } from "@/server/ai/run";
+import { readOrganisation } from "@/server/ai/services/organisation-reader";
 
 const log = createLogger("discovery");
 
@@ -21,8 +26,24 @@ const log = createLogger("discovery");
 export type DiscoveredOrganization = {
   url: string;
   name: string | null;
+  legalName: string | null;
   description: string | null;
+  /** One line the organisation would recognise as a description of itself. */
+  headline: string | null;
+  industry: string | null;
+  foundedYear: number | null;
+  email: string | null;
+  telephone: string | null;
+  address: string | null;
+  city: string | null;
+  country: string | null;
+  /** The same facts in the shape a workspace stores them, ready to be saved as they are. */
+  profile: OrganisationProfile;
   logoUrl: string | null;
+  /** Everything that might be the mark, best first, for a person to choose between. */
+  logoCandidates: LogoCandidate[];
+  /** The header's mark is drawn into the page, so there is no address a newsletter could point at. */
+  markIsInline: boolean;
   faviconUrl: string | null;
   colours: string[];
   /** `font-family` names the page sets on itself. Weak evidence, but the only type evidence a
@@ -33,6 +54,11 @@ export type DiscoveredOrganization = {
   locale: "en" | "fr";
   /** What could not be read, so the UI can ask for it instead of guessing silently. */
   missing: string[];
+  /** How the page was read and who understood it — said on the screen rather than implied. */
+  readBy: "browser" | "fetch";
+  understoodBy: "model" | "rules";
+  /** Anything worth telling the customer about the reading itself. */
+  notes: string[];
 };
 
 type OrganizationTypeGuess = "COMPANY" | "SCHOOL" | "UNIVERSITY" | "ASSOCIATION" | "COMMUNITY" | "INVESTOR" | "MEDIA" | "INSTITUTION" | "OTHER";
@@ -259,49 +285,244 @@ async function paletteFromImage(url: string): Promise<string[]> {
   }
 }
 
-export async function discoverOrganization(rawWebsite: string): Promise<DiscoveredOrganization> {
+/** Every `<script type="application/ld+json">` in a served document, unparsed. */
+function jsonLdBlocks(html: string): string[] {
+  const blocks: string[] = [];
+  const re = /<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
+  for (let m = re.exec(html); m && blocks.length < 12; m = re.exec(html)) {
+    const body = m[1].trim();
+    if (body) blocks.push(body);
+  }
+  return blocks;
+}
+
+/** The page's words, for the pass that reads rather than parses. */
+function visibleText(html: string, limit = 12_000): string {
+  return decodeEntities(
+    html
+      .replace(/<(script|style|noscript|svg)[\s\S]*?<\/\1>/gi, " ")
+      .replace(/<[^>]+>/g, " ")
+      .replace(/\s+/g, " "),
+  ).slice(0, limit);
+}
+
+/**
+ * A deep read may not hold up the screen indefinitely.
+ *
+ * Opening a browser on somebody else's website is the one step here with no upper bound: a site
+ * can serve for forty seconds, or hang a script forever. When the budget runs out the cheap
+ * reading is what the customer gets — worse, but immediate, and every field is editable anyway.
+ */
+function withBudget<T>(work: Promise<T>, ms: number): Promise<T | null> {
+  let timer: NodeJS.Timeout;
+  const budget = new Promise<null>((resolve) => {
+    timer = setTimeout(() => resolve(null), ms);
+  });
+  return Promise.race([work.catch(() => null), budget]).finally(() => clearTimeout(timer));
+}
+
+const DEEP_BUDGET_MS = 30_000;
+
+function contactFacts(reading: PageReading | null): Partial<OrganisationFacts> {
+  if (!reading) return {};
+  return {
+    email: reading.emails.find((address) => /@/.test(address)) ?? null,
+    telephone: reading.phones[0] ?? null,
+    sameAs: reading.socials.filter((href) => SOCIAL_PATTERNS.some(([, re]) => re.test(href))),
+  };
+}
+
+function titleToName(title: string | null): string | null {
+  if (!title) return null;
+  // Site titles are usually "Acme — We build things"; the organisation is the part before the dash.
+  return (title.split(/\s+[|·—–-]\s+/)[0] || title).slice(0, 120).trim() || null;
+}
+
+/**
+ * Everything a website says about the organisation behind it.
+ *
+ * Three readings, each better than the last and none of them trusted alone. The served HTML gives
+ * the metadata a crawler sees. A real browser gives the page a person sees — the rendered header,
+ * the mark inside the link home, the colours actually painted, the copy a script wrote. A model
+ * then reads the words and says what kind of organisation this is, which is a question about
+ * meaning and never was a question about which nouns appear.
+ *
+ * Nothing here is written anywhere. It is a proposal: the screen shows it, the customer corrects
+ * whatever we got wrong, and what they confirm is what is saved.
+ */
+export async function discoverOrganization(rawWebsite: string, options: { deep?: boolean } = {}): Promise<DiscoveredOrganization> {
   const url = normaliseWebsite(rawWebsite);
   await assertPublicHost(url);
   const html = await fetchText(url);
+  const notes: string[] = [];
 
-  const title = meta(html, "og:site_name") ?? meta(html, "og:title") ?? decodeEntities(html.match(/<title[^>]*>([^<]*)<\/title>/i)?.[1] ?? "");
-  // Site titles are usually "Acme — We build things"; the organisation is the part before the dash.
-  const name = title ? (title.split(/\s+[|·—–-]\s+/)[0] || title).slice(0, 120).trim() || null : null;
-  const description = meta(html, "og:description") ?? meta(html, "description");
+  const reading = options.deep === false ? null : await withBudget(readSiteWithBrowser(url), DEEP_BUDGET_MS);
+  if (options.deep !== false && !reading) notes.push("browser-unavailable");
 
-  const logoUrl = absolute(url, meta(html, "og:image") ?? linkHref(html, ["apple-touch-icon"]));
+  const facts = mergeFacts(
+    mergeFacts(factsFromJsonLd(jsonLdBlocks(html)), reading ? factsFromJsonLd(reading.jsonLd) : {}),
+    contactFacts(reading),
+  );
+
+  const metaTitle = meta(html, "og:site_name") ?? meta(html, "og:title") ?? decodeEntities(html.match(/<title[^>]*>([^<]*)<\/title>/i)?.[1] ?? "");
+  const name = facts.name ?? reading?.siteName ?? titleToName(reading?.title ?? metaTitle);
+  const description = facts.description ?? reading?.description ?? meta(html, "og:description") ?? meta(html, "description");
+  const text = reading?.text || visibleText(html);
+
   const faviconUrl = absolute(url, linkHref(html, ["apple-touch-icon", "icon", "shortcut icon"]) ?? "/favicon.ico");
+  const fromMeta = absolute(url, meta(html, "og:image") ?? linkHref(html, ["apple-touch-icon"]));
+
+  // Everything that might be the mark, judged together: what the site declared in its structured
+  // data, what the browser saw in the header, and — last, because it is a share card rather than a
+  // logo — the picture the page offers social networks.
+  const candidates: LogoCandidate[] = [
+    ...(facts.logoUrl ? [{ url: facts.logoUrl, kind: "structured" as const, alt: "", hint: "schema.org logo", inHeader: false, linksHome: false, width: 0, height: 0, top: 0 }] : []),
+    ...(reading?.logos ?? []).map((candidate) => ({ ...candidate, url: absolute(url, candidate.url) ?? candidate.url })),
+    ...(fromMeta ? [{ url: fromMeta, kind: "icon" as const, alt: "", hint: "og:image", inHeader: false, linksHome: false, width: 0, height: 0, top: 0 }] : []),
+  ];
+  const logoCandidates = rankLogos(candidates);
+  const logoUrl = logoCandidates[0]?.url ?? fromMeta;
+  if (reading?.markIsInline) notes.push("mark-is-inline");
 
   const links: DiscoveredOrganization["links"] = { website: url.origin };
   for (const [key, re] of SOCIAL_PATTERNS) {
-    const found = html.match(re)?.[0];
+    const found = facts.sameAs.map((href) => re.exec(href)?.[0]).find(Boolean) ?? html.match(re)?.[0];
     if (found) links[key] = found;
   }
 
-  const themeColour = normaliseHex(meta(html, "theme-color"));
-  // An icon is the logo on its own; a share banner is the logo inside a layout, so it is only worth
-  // reading when the icon gave us nothing.
-  const fromIcon = await paletteFromImage(faviconUrl ?? `${url.origin}/favicon.ico`);
-  const palette = fromIcon.length || !logoUrl ? fromIcon : await paletteFromImage(logoUrl);
+  // Colours the page actually painted beat colours guessed from a favicon, so the images are only
+  // fetched — two network round trips and a resize each — when the browser gave us nothing.
+  const themeColour = normaliseHex(reading?.themeColour ?? meta(html, "theme-color"));
+  const rendered = rankColours(reading?.colours ?? []);
+  let palette = rendered;
+  if (palette.length < 2) {
+    const fromIcon = await paletteFromImage(faviconUrl ?? `${url.origin}/favicon.ico`);
+    palette = [...palette, ...(fromIcon.length || !logoUrl ? fromIcon : await paletteFromImage(logoUrl))];
+  }
   const colours = [...new Set([themeColour, ...palette].filter((c): c is string => !!c))].slice(0, 4);
+
+  const understanding = await understand({ website: url.origin, facts, text, notes });
+
+  const locale: "en" | "fr" = (reading?.lang ?? "").toLowerCase().startsWith("fr") ? "fr" : guessLocale(html);
+  const foundedYear = understanding?.foundedYear ?? facts.foundedYear;
 
   const missing: string[] = [];
   if (!name) missing.push("name");
-  if (!description) missing.push("description");
+  if (!description && !understanding?.description) missing.push("description");
   if (!logoUrl) missing.push("logo");
   if (!colours.length) missing.push("colours");
 
   return {
     url: url.origin,
-    name,
-    description: description?.slice(0, 400) ?? null,
+    name: understanding?.name ?? name,
+    legalName: understanding?.legalName ?? facts.legalName,
+    description: (understanding?.description ?? description)?.slice(0, 400) ?? null,
+    headline: understanding?.headline ?? null,
+    industry: understanding?.industry ?? null,
+    foundedYear,
+    email: facts.email,
+    telephone: facts.telephone,
+    address: facts.address,
+    city: understanding?.city ?? null,
+    country: understanding?.country ?? null,
+    profile: {
+      legalName: (understanding?.legalName ?? facts.legalName) || undefined,
+      email: facts.email || undefined,
+      telephone: facts.telephone || undefined,
+      address: facts.address || undefined,
+      foundedYear: foundedYear ?? undefined,
+      industry: understanding?.industry || undefined,
+      headline: understanding?.headline || undefined,
+    },
     logoUrl,
+    logoCandidates,
+    markIsInline: !!reading?.markIsInline,
     faviconUrl,
     colours,
-    fonts: extractFontFamilies(html).slice(0, 12),
+    fonts: [...new Set([...(reading?.fonts ?? []), ...extractFontFamilies(html)])].slice(0, 12),
     links,
-    type: guessType(html, description),
-    locale: guessLocale(html),
+    type: understanding?.type ?? guessType(html, description),
+    locale,
     missing,
+    readBy: reading ? "browser" : "fetch",
+    understoodBy: understanding ? "model" : "rules",
+    notes,
   };
+}
+
+type Understanding = {
+  name: string | null;
+  legalName: string | null;
+  description: string | null;
+  headline: string | null;
+  industry: string | null;
+  foundedYear: number | null;
+  city: string | null;
+  country: string | null;
+  type: OrganizationTypeGuess;
+};
+
+/** Everything already established, stated plainly, so the model corroborates rather than invents. */
+function structuredSummary(facts: OrganisationFacts): string {
+  const lines = (
+    [
+      ["name", facts.name],
+      ["legal name", facts.legalName],
+      ["description", facts.description],
+      ["email", facts.email],
+      ["telephone", facts.telephone],
+      ["address", facts.address],
+      ["founded", facts.foundedYear ? String(facts.foundedYear) : null],
+      ["profiles", facts.sameAs.length ? facts.sameAs.join(", ") : null],
+    ] as const
+  )
+    .filter(([, value]) => !!value)
+    .map(([label, value]) => `${label}: ${value}`);
+  return lines.length ? lines.join("\n") : "(the page publishes no structured data about itself)";
+}
+
+const clean = (value: string | undefined) => value?.trim() || null;
+
+/**
+ * What kind of organisation this is, and what it does, read by something that understands words.
+ *
+ * Skipped entirely when no model is connected. The local provider answers every task with a
+ * deterministic stand-in, which is the right behaviour for a drafting task in a test and exactly
+ * the wrong behaviour here: a plausible invented description of a real company, shown to the
+ * person who runs it, is worse than an empty field. With no model, the rule-based guess stands and
+ * the screen says so.
+ */
+async function understand(args: { website: string; facts: OrganisationFacts; text: string; notes: string[] }): Promise<Understanding | null> {
+  if (getAiProvider().name === "local") {
+    args.notes.push("no-model-connected");
+    return null;
+  }
+  if (args.text.trim().length < 80) {
+    args.notes.push("too-little-text");
+    return null;
+  }
+  try {
+    const { output } = await readOrganisation({
+      website: args.website,
+      structured: structuredSummary(args.facts),
+      text: args.text,
+    });
+    const year = Number(output.foundedYear?.slice(0, 4));
+    if (output.notFound?.length) args.notes.push(...output.notFound.map((field) => `not-on-the-page:${field}`));
+    return {
+      name: clean(output.name),
+      legalName: clean(output.legalName),
+      description: clean(output.description),
+      headline: clean(output.headline),
+      industry: clean(output.industry),
+      foundedYear: Number.isFinite(year) && year > 1000 && year <= new Date().getFullYear() ? year : null,
+      city: clean(output.city),
+      country: clean(output.country),
+      type: (organizationTypes as readonly string[]).includes(output.type) ? (output.type as OrganizationTypeGuess) : "OTHER",
+    };
+  } catch (err) {
+    log.warn("the model could not read the site", { website: args.website, err });
+    args.notes.push("model-unavailable");
+    return null;
+  }
 }

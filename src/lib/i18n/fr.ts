@@ -118,6 +118,7 @@ export const fr: Dictionary = {
     whatWillYouPublish: "Que publierez-vous ?",
     publicationHint: "Un titre récurrent. Chaque parution décide elle-même si elle part par e-mail, sur le web, en magazine ou à l'imprimerie.",
     whereYouPost: "Où vous publiez déjà",
+    whichLogo: "Lequel est votre logo ?",
     creating: "Création de votre espace…",
     confirm: "C'est bon — créer mon espace",
   },
