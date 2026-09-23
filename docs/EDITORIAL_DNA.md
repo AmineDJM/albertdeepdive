@@ -1,4 +1,8 @@
-# Albert Deep Dive — Editorial DNA
+# Editorial DNA — the reference customer, *Albert Deep Dive*
+
+> *Albert Deep Dive* is the newsletter of Briefly's first customer, Albert School. Its first issue
+> is the reference Briefly's default sections, formats and print design were derived from; nothing
+> below describes Briefly itself.
 
 This document is the distilled analysis of the reference issue supplied with the brief
 (*Albert's Deep Dive — Special issue N°1, May 2025*, 89 pages in the DOCX, tabloid

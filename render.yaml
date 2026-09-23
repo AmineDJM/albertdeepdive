@@ -1,4 +1,4 @@
-# Albert Deep Dive — one-click deployment on Render.
+# Briefly — one-click deployment on Render.
 #
 # Render reads this file when you create a Blueprint from the repository and provisions
 # everything below. The only value you are asked for is your OpenAI API key; the database, the
@@ -85,7 +85,7 @@ services:
       # RENDER_EXTERNAL_URL, and the application reads that. Set NEXT_PUBLIC_APP_URL yourself
       # only when you put a custom domain in front.
       - key: APP_NAME
-        value: Albert Deep Dive
+        value: Briefly
       - key: NODE_ENV
         value: production
       - key: NODE_VERSION

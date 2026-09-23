@@ -1,10 +1,15 @@
-# Albert Deep Dive
+# Briefly
 
-**The automated monthly newsroom and publishing system of Albert School.**
+**The newsletter studio for organisations: AI-assisted, human-approved.**
 
-Albert Deep Dive turns raw information sent by students, campus representatives, associations
-and staff into a verified, AI-assisted, human-approved monthly publication — and exports the
-same canonical edition to a print-ready PDF and an editable DOCX.
+Briefly turns raw information sent by the people of an organisation — members, staff, teams,
+campuses, associations — into a verified, AI-assisted, human-approved publication, and ships the
+same canonical edition as an email, a web page, a print-ready PDF, an editable DOCX, audio, video
+and social posts.
+
+Briefly is multi-tenant: every customer has its own workspace and its own newsletters. The sample
+data shipped with the repository is one real customer's title, *Albert Deep Dive*, the monthly
+newspaper of Albert School — it is a customer, not the product.
 
 ```
 RAW HUMAN INFORMATION → STRUCTURED SOURCES → VERIFIED FACTS → STORY CLUSTERS
@@ -25,12 +30,14 @@ chief approves every issue.
 - [Getting started](#getting-started)
 - [Configuration](#configuration)
 - [Object storage, in one press](#object-storage-in-one-press)
+- [The model a newsletter is made on](#the-model-a-newsletter-is-made-on)
 - [Running the newsroom](#running-the-newsroom)
 - [Exports](#exports)
 - [Preflight](#preflight)
 - [Changing an issue that is already made](#changing-an-issue-that-is-already-made)
 - [After it has gone out](#after-it-has-gone-out)
 - [Social, and the two video shapes](#social-and-the-two-video-shapes)
+- [Spoken editions](#spoken-editions)
 - [Pictures](#pictures)
 - [Whose figures are whose](#whose-figures-are-whose)
 - [Tests](#tests)
@@ -39,7 +46,7 @@ chief approves every issue.
 
 ## What it does
 
-Every month:
+Every edition, on the title's rhythm (monthly by default):
 
 | Day | Automation |
 | --- | --- |
@@ -163,8 +170,8 @@ and the most opened publications.
 | Tests | Vitest (unit + integration on a dedicated test database), Playwright (end-to-end) |
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the code layout, domain model and pipelines,
-and [docs/EDITORIAL_DNA.md](docs/EDITORIAL_DNA.md) for the analysis of the reference issue that
-shaped the sections, formats and print design.
+and [docs/EDITORIAL_DNA.md](docs/EDITORIAL_DNA.md) for the analysis of the first customer's
+reference issue, which shaped the default sections, formats and print design.
 
 ## Getting started
 
@@ -174,24 +181,26 @@ point `PLAYWRIGHT_CHROMIUM_EXECUTABLE` at an existing binary).
 ```bash
 pnpm install
 cp .env.example .env            # adjust DATABASE_URL etc.
-createdb albertdeepdive && createdb albertdeepdive_test
+createdb briefly && createdb briefly_test
 pnpm db:migrate                 # applies drizzle/ migrations
-pnpm db:seed                    # loads the May 2025 special issue as a working edition
+pnpm db:seed                    # loads a sample customer (Albert School) and its May 2025 issue
 pnpm dev                        # http://localhost:3000
 ```
 
 Two administrators, because running Briefly and running a newsroom are different jobs:
 
-- **Platform admin** — `admin@briefly.press` / `albert-deep-dive` (see `SEED_ADMIN_*`). Briefly's
-  own account: the **Platform** console (customers, people, payments, integrations, logs) and the
-  right to open any workspace as support. Belongs to no workspace.
-- **Workspace admin** — `admin@albertschool.com` / `albert-deep-dive`. The owner of the sample
-  newsroom, with everything a customer can do and nothing a customer cannot.
+- **Platform admin** — `admin@briefly.press` / `briefly-demo` (see `SEED_ADMIN_*`). Briefly's
+  own account: the **Super Admin** console at `/admin` (customers, people, payments, integrations,
+  logs) and the right to open any workspace as support. Belongs to no workspace.
+- **Workspace admin** — `admin@albertschool.com` / `briefly-demo`. The owner of the sample
+  customer's newsroom (Albert School, publishing *Albert Deep Dive*), with everything a customer
+  can do and nothing a customer cannot.
 
 The seed also creates `eic@`, `editor@`, `lyon@` (campus editor) and `viewer@albertschool.com`
 with the same password.
 
-> The seed is reconstructed from the real *Special issue N°1 — May 2025*: 26 stories, 31 raw
+> The seed is reconstructed from the sample customer's real *Albert's Deep Dive — Special issue
+> N°1, May 2025*: 26 stories, 31 raw
 > submissions, 58 photographs, facts, quotes, people, organisations, a 25-page flatplan and the
 > automation history of its campaign. Nothing is invented; contributor emails use `@example.com`.
 
@@ -605,7 +614,7 @@ is connected. The app stores only the refresh token, encrypted.
 **Or an app password (no Google Cloud project).**
 
 1. On the Google account, turn on 2-Step Verification, then open
-   [App passwords](https://myaccount.google.com/apppasswords) and create one for "Albert Deep Dive".
+   [App passwords](https://myaccount.google.com/apppasswords) and create one for "Briefly".
    Google shows sixteen characters.
 2. Paste the address and that password into **Settings → Email** and press **Connect the mailbox**.
    The credentials are checked against Gmail before anything is saved, and the password is

@@ -62,7 +62,7 @@ edition layout already renders the tab bar). Top-level `/inbox`, `/stories`, `/a
 - No giant page titles; the header is 48px tall.
 - Numbers use `.tabular`. Use `formatDate`, `formatDateTime`, `relativeTime`,
   `formatCurrency`, `enumLabel` from `src/lib/utils.ts`.
-- Colours: `brand` (Albert blue) for active/primary accents, `primary` (ink navy) for
+- Colours: `brand` (Briefly cobalt) for active/primary accents, `primary` (ink navy) for
   primary buttons, semantic `success/warning/destructive/info` with `-soft` backgrounds.
 - Every list needs an empty state (`EmptyState`) and every async page a `loading.tsx` skeleton.
 - Keyboard: all actions reachable by keyboard; dialogs trap focus; `aria-label` on icon buttons.

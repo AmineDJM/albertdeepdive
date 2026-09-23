@@ -60,7 +60,7 @@ test.describe("newsroom smoke", () => {
   });
 
   test("viewer cannot create editions", async ({ page }) => {
-    await login(page, { email: "viewer@albertschool.com", password: "albert-deep-dive" });
+    await login(page, { email: "viewer@albertschool.com", password: "briefly-demo" });
     await page.goto("/editions");
     await expect(page.getByRole("button", { name: /new edition/i })).toHaveCount(0);
   });

@@ -9,7 +9,7 @@ import postgres from "postgres";
  * the connection in its `afterAll` must not leave the next spec with a dead one: the client is
  * made on demand and made again after it has been ended.
  */
-const url = process.env.DATABASE_URL ?? "postgres://postgres@127.0.0.1:5432/albertdeepdive";
+const url = process.env.DATABASE_URL ?? "postgres://postgres@127.0.0.1:5432/briefly";
 let sql: ReturnType<typeof postgres> | null = null;
 
 function client() {

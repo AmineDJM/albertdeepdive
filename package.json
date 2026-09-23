@@ -1,8 +1,8 @@
 {
-  "name": "albertdeepdive",
+  "name": "briefly",
   "version": "0.1.0",
   "private": true,
-  "description": "Albert Deep Dive — the automated monthly newsroom and publishing system of Albert School",
+  "description": "Briefly — the AI-assisted, human-approved newsletter studio for organisations",
   "scripts": {
     "dev": "next dev",
     "build": "next build",

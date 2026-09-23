@@ -11,6 +11,8 @@ import { env } from "@/server/env";
  * simply set up again).
  */
 const ALGORITHM = "aes-256-gcm";
+// The salt keeps the product's former name on purpose: changing it would make every secret already
+// sealed in a database unreadable.
 const KEY = scryptSync(env.AUTH_SECRET, "albert-deep-dive:settings", 32);
 
 export type SealedSecret = { v: 1; iv: string; tag: string; data: string };

@@ -6,7 +6,7 @@ import path from "node:path";
 
 /** Applies the SQL migrations in `drizzle/`. Reusable so the deploy step can chain it in-process. */
 export async function runMigrations() {
-  const url = process.env.DATABASE_URL ?? "postgres://postgres@127.0.0.1:5432/albertdeepdive";
+  const url = process.env.DATABASE_URL ?? "postgres://postgres@127.0.0.1:5432/briefly";
   const client = postgres(url, { max: 1, onnotice: () => {} });
   const db = drizzle(client);
   console.log(`[migrate] applying migrations to ${url.replace(/:[^:@/]+@/, ":***@")}`);

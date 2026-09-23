@@ -14,6 +14,7 @@ import { assertTransition, type EditionStatus } from "@/lib/editorial/edition-st
 import { editionDocumentSchema, type EditionDocument } from "@/lib/publication/document";
 import { nextVersionLabel, type PublicationKind } from "@/lib/publication/labels";
 import { fileSlug } from "@/lib/publication/text";
+import { newsletterFor } from "./naming";
 import { buildEditionDocument, documentHash } from "./document-builder";
 import { renderDocx, verifyDocx } from "./docx";
 import { renderPdf } from "./pdf";
@@ -189,7 +190,8 @@ export async function renderVersion(versionId: string, options: RenderVersionOpt
 
     await progress(9, 10, "Storing files");
     const storage = await getStorage();
-    const base = `albert-deep-dive-${fileSlug(edition.slug)}-${version.label}`;
+    // Named after the customer's newsletter: the file is theirs, and it lands in their readers' downloads.
+    const base = `${fileSlug((await newsletterFor(edition.publicationId)).name)}-${fileSlug(edition.slug)}-${version.label}`;
     const pdfName = `${base}.pdf`;
     const docxName = `${base}.docx`;
     const pdfKey = storageKeys.publication(edition.id, versionId, pdfName);

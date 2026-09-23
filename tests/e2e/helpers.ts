@@ -9,7 +9,7 @@ import { one } from "./db";
  * and a customer's newsroom only when they open it on purpose. The seed creates both; the journey
  * tests use the first, the console tests the second.
  */
-const PASSWORD = process.env.SEED_ADMIN_PASSWORD ?? "albert-deep-dive";
+const PASSWORD = process.env.SEED_ADMIN_PASSWORD ?? "briefly-demo";
 
 export const ADMIN = { email: "admin@albertschool.com", password: PASSWORD };
 export const PLATFORM_ADMIN = { email: process.env.SEED_ADMIN_EMAIL ?? "admin@briefly.press", password: PASSWORD };

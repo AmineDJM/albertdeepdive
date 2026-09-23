@@ -14,7 +14,6 @@ import { editions, users } from "@/server/db/schema";
 import { getStorage } from "@/server/storage";
 import { verifyDocx } from "@/server/publication/docx";
 import { createPublicationVersion, getVersion, renderVersion } from "@/server/publication/versions";
-import { fileSlug } from "@/lib/publication/text";
 
 async function main() {
   const started = Date.now();
@@ -38,12 +37,11 @@ async function main() {
   const outDir = path.join(process.cwd(), "exports");
   await fs.mkdir(outDir, { recursive: true });
   const storage = await getStorage();
-  const base = `albert-deep-dive-${fileSlug(edition.slug)}-${version.label}`;
   const outputs: Record<string, string> = {};
   for (const asset of version.assets) {
     const buffer = await storage.get(asset.storageKey);
     if (!buffer) throw new Error(`Asset ${asset.fileName} missing from storage`);
-    const target = path.join(outDir, `${base}.${asset.kind === "PDF" ? "pdf" : "docx"}`);
+    const target = path.join(outDir, asset.fileName);
     await fs.writeFile(target, buffer);
     outputs[asset.kind] = target;
     console.log(`  ${asset.kind}: ${path.relative(process.cwd(), target)} (${Math.round(asset.sizeBytes / 1024)} kB${asset.pageCount ? `, ${asset.pageCount} pages` : ""})`);

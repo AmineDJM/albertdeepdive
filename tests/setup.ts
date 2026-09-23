@@ -1,6 +1,6 @@
 /* Vitest setup: point every test at the isolated test database and the deterministic providers. */
 (process.env as Record<string, string>).NODE_ENV = "test";
-process.env.DATABASE_URL = process.env.DATABASE_URL_TEST ?? "postgres://postgres@127.0.0.1:5432/albertdeepdive_test";
+process.env.DATABASE_URL = process.env.DATABASE_URL_TEST ?? "postgres://postgres@127.0.0.1:5432/briefly_test";
 process.env.AI_PROVIDER = process.env.AI_PROVIDER_TEST ?? "local";
 
 /*

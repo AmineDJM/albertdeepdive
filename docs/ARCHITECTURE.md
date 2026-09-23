@@ -1,9 +1,10 @@
-# Albert Deep Dive — Architecture
+# Briefly — Architecture
 
-Albert Deep Dive is the operating system of Albert School's monthly newsroom: it collects
-raw information from students and staff, turns it into verified story clusters, assists
-editors in writing, lays the issue out deterministically and exports the same canonical
-edition to PDF and DOCX.
+Briefly is the operating system of an organisation's newsletter: it collects raw information
+from the people of the organisation, turns it into verified story clusters, assists editors in
+writing, lays the issue out deterministically and exports the same canonical edition to email,
+web, PDF and DOCX. Every customer works in its own workspace (`organizations`); every query is
+scoped to it (`src/server/tenancy/scope.ts`).
 
 ```
 RAW HUMAN INFORMATION → STRUCTURED SOURCES → VERIFIED FACTS → STORY CLUSTERS

@@ -383,7 +383,7 @@ test.describe("the critical journey", () => {
     // An ordinary editor cannot override at all.
     const deskCtx = await browser.newContext();
     const desk = await deskCtx.newPage();
-    await login(desk, { email: "editor@albertschool.com", password: "albert-deep-dive" });
+    await login(desk, { email: "editor@albertschool.com", password: "briefly-demo" });
     await desk.goto(`/editions/${editionId}/qa`);
     await expect(desk.getByRole("heading", { name: /QA & publish/i })).toBeVisible();
     await expect(desk.getByRole("button", { name: /Override/ })).toHaveCount(0);
@@ -392,7 +392,7 @@ test.describe("the critical journey", () => {
     // The editor in chief can, and the reason they type is what the gate then shows.
     const chiefCtx = await browser.newContext();
     const page = await chiefCtx.newPage();
-    await login(page, { email: "eic@albertschool.com", password: "albert-deep-dive" });
+    await login(page, { email: "eic@albertschool.com", password: "briefly-demo" });
     await open(page, `/editions/${editionId}/qa`);
     const gate = page.locator("li", { hasText: "Image rights validated" }).first();
     const override = gate.getByRole("button", { name: /Override/ });
@@ -418,7 +418,7 @@ test.describe("the critical journey", () => {
   });
   test("20–21 · the issue is signed off, published and archived", async ({ page }) => {
     test.setTimeout(600_000);
-    await login(page, { email: "eic@albertschool.com", password: "albert-deep-dive" });
+    await login(page, { email: "eic@albertschool.com", password: "briefly-demo" });
     const editionId = await currentEditionId();
 
     // Everything the gates ask for, done the way an editor would do it.

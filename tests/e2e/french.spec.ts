@@ -6,7 +6,7 @@ import { login } from "./helpers";
  * newsroom reads in French — headings, navigation, buttons — then switches back, so the rest of
  * the suite, written against the English words, finds them where it expects.
  */
-const LYON = { email: "lyon@albertschool.com", password: process.env.SEED_ADMIN_PASSWORD ?? "albert-deep-dive" };
+const LYON = { email: "lyon@albertschool.com", password: process.env.SEED_ADMIN_PASSWORD ?? "briefly-demo" };
 
 test.describe("the French interface", () => {
   test("switching the language translates the newsroom, and switching back restores it", async ({ page }) => {

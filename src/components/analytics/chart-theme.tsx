@@ -1,7 +1,7 @@
 /**
  * Chart roles mapped to the app's chart tokens.
  *
- * Light mode uses the tokens as they are: --chart-1 (Albert blue) › --chart-3 (amber) › --chart-6
+ * Light mode uses the tokens as they are: --chart-1 (cobalt) › --chart-3 (amber) › --chart-6
  * (violet). This order passes the adjacent CVD and normal-vision gates of the dataviz validator on
  * the card surface (#ffffff). Blue and amber sit below 3:1 contrast on white, so every chart ships
  * direct value labels and a table view (the relief rule). Dark mode uses the same three hues
@@ -16,7 +16,7 @@ const THEME_CSS = `
 /** Renders the (deduplicated) chart theme once per page. */
 export function ChartTheme() {
   return (
-    <style href="albert-viz-theme" precedence="default">
+    <style href="briefly-viz-theme" precedence="default">
       {THEME_CSS}
     </style>
   );

@@ -11,8 +11,8 @@ import { assertSeedable, isLocalDatabase, redactDatabaseUrl } from "@/server/db/
 describe("what the seed is allowed to empty", () => {
   it("knows a database on this machine", () => {
     for (const url of [
-      "postgres://postgres@127.0.0.1:5432/albertdeepdive",
-      "postgres://postgres:pw@localhost:5432/albertdeepdive_test",
+      "postgres://postgres@127.0.0.1:5432/briefly",
+      "postgres://postgres:pw@localhost:5432/briefly_test",
       "postgresql://user:pw@[::1]:5432/db",
     ]) {
       expect(isLocalDatabase(url), url).toBe(true);
@@ -37,11 +37,11 @@ describe("what the seed is allowed to empty", () => {
   });
 
   it("keeps the production refusal it already had", () => {
-    expect(() => assertSeedable("postgres://postgres@127.0.0.1:5432/albertdeepdive", "production", undefined)).toThrow(/production database/);
+    expect(() => assertSeedable("postgres://postgres@127.0.0.1:5432/briefly", "production", undefined)).toThrow(/production database/);
   });
 
   it("lets a local database through, and an explicit override through anywhere", () => {
-    expect(() => assertSeedable("postgres://postgres@127.0.0.1:5432/albertdeepdive", "test", undefined)).not.toThrow();
+    expect(() => assertSeedable("postgres://postgres@127.0.0.1:5432/briefly", "test", undefined)).not.toThrow();
     expect(() => assertSeedable("postgres://u:pw@dpg-x.oregon-postgres.render.com:5432/briefly", "production", "1")).not.toThrow();
   });
 

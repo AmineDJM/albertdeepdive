@@ -32,9 +32,9 @@ describe("tokens", () => {
     ).toBe(false);
   });
   it("passwords hash with scrypt and verify", async () => {
-    const hash = await hashPassword("albert-deep-dive");
+    const hash = await hashPassword("briefly-demo");
     expect(hash.startsWith("scrypt$")).toBe(true);
-    expect(await verifyPassword("albert-deep-dive", hash)).toBe(true);
+    expect(await verifyPassword("briefly-demo", hash)).toBe(true);
     expect(await verifyPassword("wrong", hash)).toBe(false);
     expect(await verifyPassword("x", null)).toBe(false);
   });

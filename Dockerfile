@@ -1,4 +1,4 @@
-# Albert Deep Dive.
+# Briefly.
 #
 # The print renderer drives a real Chromium to lay the pages out, so the image is built on
 # Playwright's own, which already carries that browser and the system libraries and fonts it needs.

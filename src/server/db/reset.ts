@@ -2,7 +2,7 @@ import "@/server/load-env";
 import postgres from "postgres";
 
 async function main() {
-  const url = process.env.DATABASE_URL ?? "postgres://postgres@127.0.0.1:5432/albertdeepdive";
+  const url = process.env.DATABASE_URL ?? "postgres://postgres@127.0.0.1:5432/briefly";
   if (process.env.NODE_ENV === "production" && process.env.FORCE_RESET !== "1") {
     throw new Error("Refusing to reset a production database without FORCE_RESET=1");
   }
