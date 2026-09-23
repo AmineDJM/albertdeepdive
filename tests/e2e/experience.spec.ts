@@ -21,7 +21,8 @@ test.describe("standard and advanced", () => {
     await login(page);
     // Home answers one question.
     await expect(page.locator("main").getByText("What should I do now?")).toBeVisible();
-    await expect(page.getByTestId("home-now")).toBeVisible();
+    // No card above the newsletters restating one edition: the shelf is the answer.
+    await expect(page.getByTestId("home-now")).toHaveCount(0);
     await expect(page.locator("main").getByText("Organization pulse", { exact: true })).toHaveCount(0);
     // The sidebar: Home, Library — Audience, Analytics, Settings. No Content, no Brand, and no
     // Newsletters either: they are the first thing on Home, each title with the edition being made

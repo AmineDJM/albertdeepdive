@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Archive, Sparkles, X } from "lucide-react";
+import { Archive, Sparkles, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -24,6 +24,7 @@ import { RIGHTS_STATUS_LABELS } from "@/lib/constants";
 import { RIGHTS_DOT_CLASS, RIGHTS_STATUSES, type RightsStatus } from "@/server/media/constants";
 import {
   bulkArchiveAction,
+  bulkDeleteAction,
   bulkDescribeAction,
   bulkSetRightsAction,
 } from "@/app/(newsroom)/editions/[editionId]/media/actions";
@@ -69,6 +70,19 @@ export function BulkActionBar({
   function archive() {
     startTransition(async () => {
       const res = await bulkArchiveAction(editionId, ids);
+      if (!res.ok) {
+        toast.error(res.error);
+        return;
+      }
+      toast.success(res.message);
+      onDone();
+      router.refresh();
+    });
+  }
+
+  function remove() {
+    startTransition(async () => {
+      const res = await bulkDeleteAction(editionId, ids);
       if (!res.ok) {
         toast.error(res.error);
         return;
@@ -172,6 +186,24 @@ export function BulkActionBar({
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="outline" size="sm" className="text-destructive" loading={pending}>
+                <Trash2 />{" "}{tr("Delete")}</Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>{n === 1 ? tr("Delete 1 picture for good?") : tr("Delete {count} pictures for good?", { count: n })}</AlertDialogTitle>
+                <AlertDialogDescription>
+                  {tr("The files and every size of them are erased, and they are taken out of the stories and pages that use them. This cannot be undone.")}</AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>{tr("Cancel")}</AlertDialogCancel>
+                <AlertDialogAction onClick={remove} className="bg-destructive text-white hover:bg-destructive/90">
+                  {tr("Delete")}</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </>
       ) : null}
       <Button
@@ -181,7 +213,7 @@ export function BulkActionBar({
         onClick={onDone}
         aria-label={tr("Clear selection")}
       >
-        <X />{" "}{tr("Clear")}</Button>
+        <X />{" "}{tr("Deselect")}</Button>
     </div>
   );
 }

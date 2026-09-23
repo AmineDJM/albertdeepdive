@@ -6,12 +6,13 @@ import { kickJobRunner } from "@/server/jobs/runner";
 import { db } from "@/server/db/client";
 import * as s from "@/server/db/schema";
 import { and, eq, isNull } from "drizzle-orm";
-import { bulkArchive, bulkSetRights } from "@/server/media/rights";
+import { bulkArchive, bulkDelete, bulkSetRights } from "@/server/media/rights";
 import { describeMedia } from "@/server/media/describe";
 import { enqueueMediaProcessing } from "@/server/media/jobs";
 import type { RightsStatus } from "@/server/media/constants";
 import { ok, toActionFailure, type ActionResult } from "@/lib/action-result";
 import { RIGHTS_STATUS_LABELS } from "@/lib/constants";
+import { getUi } from "@/server/i18n/locale";
 
 const INLINE_DESCRIBE_LIMIT = 6;
 
@@ -50,6 +51,24 @@ export async function bulkArchiveAction(
     const result = await bulkArchive(ids, user);
     revalidate(editionId, ids);
     return ok(result, `${result.archived} asset${result.archived === 1 ? "" : "s"} archived`);
+  } catch (err) {
+    return toActionFailure(err);
+  }
+}
+
+/** Deletes the selection for good: rows, variants and files. */
+export async function bulkDeleteAction(
+  editionId: string | null,
+  ids: string[],
+): Promise<ActionResult<{ deleted: number; failed: number }>> {
+  const tr = await getUi();
+  try {
+    const user = await requirePermission("media:manage");
+    const result = await bulkDelete(ids, user);
+    revalidate(editionId, ids);
+    if (!result.deleted) return { ok: false, error: tr("Nothing could be deleted.") };
+    const message = result.deleted === 1 ? tr("1 picture deleted") : tr("{count} pictures deleted", { count: result.deleted });
+    return ok(result, result.failed ? `${message} · ${tr("{count} could not be", { count: result.failed })}` : message);
   } catch (err) {
     return toActionFailure(err);
   }

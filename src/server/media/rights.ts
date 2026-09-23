@@ -6,6 +6,7 @@ import * as s from "@/server/db/schema";
 import { audit, recordDecision } from "@/server/audit";
 import { getStorage, storageKeys } from "@/server/storage";
 import { createLogger } from "@/server/logger";
+import { guardTenant } from "@/server/tenancy/scope";
 import { AppError, ForbiddenError, NotFoundError, ValidationError } from "@/lib/action-result";
 import { CONSENT_TEXT_VERSION } from "@/lib/constants";
 import { type Permission, type Role, roleHasPermission } from "@/lib/auth/permissions";
@@ -27,8 +28,9 @@ function assertActor(actor: MediaActor, permission: Permission) {
     throw new ForbiddenError(`Missing permission: ${permission}`);
 }
 
+/** One asset of the active workspace. Another workspace's id is "not found", like one that never existed. */
 async function loadAsset(assetId: string) {
-  const asset = await db.query.mediaAssets.findFirst({ where: eq(s.mediaAssets.id, assetId) });
+  const asset = await guardTenant(await db.query.mediaAssets.findFirst({ where: eq(s.mediaAssets.id, assetId) }), "Media asset");
   if (!asset) throw new NotFoundError("Media asset");
   return asset;
 }
@@ -211,6 +213,80 @@ export async function bulkArchive(assetIds: string[], actor: MediaActor) {
     }
   }
   return { archived };
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   Delete
+   ────────────────────────────────────────────────────────────────────────── */
+
+/**
+ * Deletes a picture for good: the row, its variants, and the files in storage.
+ *
+ * Archiving hides; this removes. Everything that pointed at the picture lets go of it in the same
+ * transaction — a story's link, an article's image block, a page's placement, an edition's cover,
+ * the workspace's logo — so nothing is left pointing at a hole, and a page that used it is laid
+ * out again without it. The files go after the rows: a storage hiccup leaves a stray file, which
+ * the storage audit lists, never a row pointing at a missing file. Frozen artefacts (a PDF that
+ * already went out) keep their copy, because they are what was sent.
+ */
+export async function deleteMedia(assetId: string, actor: MediaActor): Promise<{ id: string; fileName: string; files: number }> {
+  assertActor(actor, "media:manage");
+  const asset = await loadAsset(assetId);
+  const variants = await db.select({ storageKey: s.mediaVariants.storageKey }).from(s.mediaVariants).where(eq(s.mediaVariants.assetId, assetId));
+  const keys = [...new Set([asset.storageKey, ...variants.map((v) => v.storageKey)].filter(Boolean))];
+
+  await db.transaction(async (tx) => {
+    await tx.execute(sql`
+      update articles set body = (
+        select coalesce(jsonb_agg(block order by position), '[]'::jsonb)
+        from jsonb_array_elements(body) with ordinality as blocks(block, position)
+        where not (block->>'type' = 'image' and block->>'assetId' = ${assetId})
+      )
+      where body @> ${JSON.stringify([{ type: "image", assetId }])}::jsonb`);
+    await tx.execute(sql`update page_plan_pages set media_asset_ids = array_remove(media_asset_ids, ${assetId}::uuid) where ${assetId}::uuid = any(media_asset_ids)`);
+    await tx.update(s.editions).set({ coverMediaAssetId: null }).where(eq(s.editions.coverMediaAssetId, assetId));
+    await tx.update(s.organizations).set({ logoMediaId: null }).where(eq(s.organizations.logoMediaId, assetId));
+    // Variants, story links and attachments' pointers go with the row (cascade / set null).
+    await tx.delete(s.mediaAssets).where(eq(s.mediaAssets.id, assetId));
+  });
+
+  const storage = await getStorage();
+  let removed = 0;
+  for (const key of keys) {
+    try {
+      await storage.delete(key);
+      removed += 1;
+    } catch (err) {
+      log.warn("delete: file left in storage", { assetId, key, err });
+    }
+  }
+  await audit({
+    action: "media.delete",
+    userId: actor.id,
+    entityType: "MEDIA",
+    entityId: assetId,
+    editionId: asset.editionId,
+    metadata: { fileName: asset.fileName, files: removed, of: keys.length },
+  });
+  return { id: assetId, fileName: asset.fileName, files: removed };
+}
+
+export async function bulkDelete(assetIds: string[], actor: MediaActor) {
+  assertActor(actor, "media:manage");
+  const ids = [...new Set(assetIds)];
+  if (!ids.length) throw new ValidationError("Select at least one asset");
+  let deleted = 0;
+  let failed = 0;
+  for (const id of ids) {
+    try {
+      await deleteMedia(id, actor);
+      deleted += 1;
+    } catch (err) {
+      failed += 1;
+      log.warn("bulk delete: asset skipped", { id, err });
+    }
+  }
+  return { deleted, failed };
 }
 
 /* ──────────────────────────────────────────────────────────────────────────

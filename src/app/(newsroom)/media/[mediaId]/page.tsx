@@ -25,6 +25,7 @@ import { SimilarStrip } from "@/components/media/detail/similar-strip";
 import { CropsPanel } from "@/components/media/detail/crops-panel";
 import { AiPanel } from "@/components/media/detail/ai-panel";
 import { ArchiveButton } from "@/components/media/detail/archive-button";
+import { DeleteButton } from "@/components/media/detail/delete-button";
 import { AuditTrail } from "@/components/media/detail/audit-trail";
 import { VariantsList } from "@/components/media/detail/variants-list";
 import { VersionHistory } from "@/components/images/version-history";
@@ -112,6 +113,7 @@ export default async function MediaDetailPage({
                 usedIn={detail.stories.length}
               />
             ) : null}
+            {canManage ? <DeleteButton assetId={a.id} editionId={editionId} usedIn={detail.stories.length} /> : null}
           </>
         }
       />

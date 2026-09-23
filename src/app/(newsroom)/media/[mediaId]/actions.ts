@@ -5,6 +5,7 @@ import { requirePermission } from "@/server/auth/session";
 import {
   archiveMedia,
   attachToStory,
+  deleteMedia,
   clearCrop,
   clearDuplicate,
   detachFromStory,
@@ -92,6 +93,19 @@ export async function archiveAction(
     await archiveMedia(assetId, user);
     revalidate(assetId, editionId);
     return ok(null, tr("Asset archived"));
+  } catch (err) {
+    return toActionFailure(err);
+  }
+}
+
+/** Deletes the picture for good; the caller leaves the page, which no longer exists. */
+export async function deleteAction(assetId: string, editionId: string | null): Promise<ActionResult> {
+  const tr = await getUi();
+  try {
+    const user = await requirePermission("media:manage");
+    await deleteMedia(assetId, user);
+    revalidate(assetId, editionId, ["/library"]);
+    return ok(null, tr("Picture deleted"));
   } catch (err) {
     return toActionFailure(err);
   }

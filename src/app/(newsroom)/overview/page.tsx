@@ -12,7 +12,6 @@ import { cn, formatDate } from "@/lib/utils";
 import { PHASES, STATUS_LABELS } from "@/lib/editorial/edition-state";
 import { getUi } from "@/server/i18n/locale";
 import { experienceOf } from "@/lib/experience";
-import { resumeAt } from "@/lib/editorial/guided-path";
 import { NewEditionButton } from "@/components/newsroom/new-edition-button";
 import { NewsletterShelf, NoNewsletters, type Shelf } from "@/components/newsroom/newsletter-shelf";
 import { PublicationEditor } from "@/app/(newsroom)/publications/publication-editor";
@@ -87,7 +86,7 @@ export default async function HomePage() {
   const newNewsletter = canCreate ? <PublicationEditor trigger={<Button size="sm"><Plus /> {tr("New newsletter")}</Button>} /> : null;
 
   if (experienceOf(user?.preferences) === "standard") {
-    return <StandardHome first={first} next={next} shelf={shelf} contributions={data.pulse.contributions30} canCreate={canCreate} newNewsletter={newNewsletter} tr={tr} />;
+    return <StandardHome first={first} shelf={shelf} canCreate={canCreate} newNewsletter={newNewsletter} tr={tr} />;
   }
 
   return (
@@ -262,83 +261,18 @@ function Shortcut({ href, icon: Icon, title, body }: { href: string; icon: React
 }
 
 /**
- * Home, in Standard: the answer to "what should I do now?" and nothing else.
+ * Home, in Standard: the newsletters, each with the edition being made and the button that starts
+ * the next.
  *
- * One card, one sentence, one button. The edition in hand and how far it is; or, with none, what
- * has come in and the button that turns it into the next edition. Below it the last few editions,
- * for the person who wants to look back. No pulse, no shortcuts: the sidebar is the map.
+ * There was a card above them, "October 2026 · waiting for news" and a button to continue. It said
+ * again what the shelf below already shows, for one edition only, and pushed the titles — the thing
+ * a person comes here for — below the fold. The shelf is the answer to "what should I do now?".
  */
-function StandardHome({ first, next, shelf, contributions, canCreate, newNewsletter, tr }: { first: string; next: Awaited<ReturnType<typeof homeData>>["next"]; shelf: Shelf; contributions: number; canCreate: boolean; newNewsletter: React.ReactNode; tr: (text: string, values?: Record<string, string | number>) => string }) {
-  const sentence = next
-    ? next.stories
-      ? next.stories === 1
-        ? tr("{edition} · 1 story ready", { edition: next.label })
-        : tr("{edition} · {count} stories ready", { edition: next.label, count: next.stories })
-      : next.updates
-        ? next.updates === 1
-          ? tr("{edition} · 1 update received", { edition: next.label })
-          : tr("{edition} · {count} updates received", { edition: next.label, count: next.updates })
-        : tr("{edition} · waiting for news", { edition: next.label })
-    : contributions
-      ? contributions === 1
-        ? tr("1 new update received")
-        : tr("{count} new updates received", { count: contributions })
-      : shelf.length
-        ? tr("Nothing in progress")
-        : tr("Let’s make your first newsletter.");
-  const body = next
-    ? tr("Briefly keeps it up to date with everything that comes in. Open it to see what it chose, change what you like, and publish when you are happy.")
-    : contributions
-      ? tr("Briefly has been listening. One click turns what came in into your next edition.")
-      : tr("Give Briefly what happened. Briefly makes it beautiful. You publish it.");
+function StandardHome({ first, shelf, canCreate, newNewsletter, tr }: { first: string; shelf: Shelf; canCreate: boolean; newNewsletter: React.ReactNode; tr: (text: string, values?: Record<string, string | number>) => string }) {
   return (
     <>
       <PageHeader title={`${tr(greeting())}, ${first}`} description={tr("What should I do now?")} />
       <PageBody className="mx-auto w-full max-w-3xl space-y-8">
-        <section className="fade-in rounded-2xl border border-border bg-card p-6 shadow-xs" data-testid="home-now">
-          <div className="flex flex-wrap items-center gap-2">
-            <h2 className="masthead text-[24px] leading-tight font-semibold tracking-tight">{sentence}</h2>
-            {next ? <EditionStatusBadge status={next.status} /> : null}
-          </div>
-          <p className="mt-2 max-w-xl text-[13.5px] text-muted-foreground">{body}</p>
-          <div className="mt-5 flex flex-wrap items-center gap-2">
-            {next ? (
-              /*
-                * One button, and it lands where the work is.
-                *
-                * There were two: "continue" to the edition's own page and, beside it, the pipeline's
-                * idea of the next thing — two doors to the same edition, with different words on
-                * them. The edition's step decides where "continue" goes, so somebody coming back to
-                * an issue that is already being written is not shown its setup again.
-                */
-              <Button asChild size="lg">
-                <Link href={resumeAt(next.id, next.status, next.guidedRoom)}>
-                  {tr("Continue edition")} <ArrowRight />
-                </Link>
-              </Button>
-            ) : canCreate && shelf.length ? (
-              <NewEditionButton size="lg" label={tr("Prepare my next edition")} />
-            ) : canCreate ? (
-              newNewsletter
-            ) : (
-              <Button asChild variant="outline">
-                <Link href="/editions">{tr("See the editions")}</Link>
-              </Button>
-            )}
-          </div>
-          {next?.missing.length ? (
-            <ul className="mt-5 flex flex-wrap gap-2 border-t border-border/70 pt-4" aria-label={tr("Needs your attention")}>
-              {next.missing.slice(0, 3).map((item) => (
-                <li key={item.key}>
-                  <Link href={item.href} className="inline-flex items-center gap-1.5 rounded-md border border-warning/30 bg-warning-soft px-2 py-1 text-xs font-medium text-warning transition-colors duration-150 hover:border-warning/60">
-                    <span className="tabular">{item.count}</span> {({ submissions: tr("updates to look at"), stories: tr("stories missing something"), articles: tr("articles waiting for your approval"), pictures: tr("pictures with unclear rights"), facts: tr("facts that disagree") })[item.key]}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          ) : null}
-        </section>
-
         {/*
           * The shelf.
           *
