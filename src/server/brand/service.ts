@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { db } from "@/server/db/client";
 import * as s from "@/server/db/schema";
 import { audit } from "@/server/audit";
@@ -21,12 +21,98 @@ import { brandSystemSchema, compileBrandSystem, contrastReport, DEFAULT_BRAND_SY
 
 export type BrandRecord = typeof s.brandSystems.$inferSelect;
 
+/** The organisation's own brand — never one of its newsletters'. */
 export async function activeBrand(organizationId: string): Promise<BrandRecord | null> {
   return (
     (await db.query.brandSystems.findFirst({
-      where: and(eq(s.brandSystems.organizationId, organizationId), eq(s.brandSystems.isActive, true)),
+      where: and(eq(s.brandSystems.organizationId, organizationId), isNull(s.brandSystems.publicationId), eq(s.brandSystems.isActive, true)),
     })) ?? null
   );
+}
+
+/** A newsletter's own brand, when it has one. */
+export async function activePublicationBrand(publicationId: string): Promise<BrandRecord | null> {
+  return (await db.query.brandSystems.findFirst({ where: and(eq(s.brandSystems.publicationId, publicationId), eq(s.brandSystems.isActive, true)) })) ?? null;
+}
+
+/**
+ * The brand a newsletter wears: its own when it was read from its own address, its organisation's
+ * otherwise. Every renderer of an edition asks this rather than the organisation directly, so a
+ * newsletter dressed differently from its sender is dressed that way everywhere it goes out.
+ */
+export async function brandRecordFor(scope: { organizationId: string; publicationId?: string | null }): Promise<BrandRecord> {
+  const own = scope.publicationId ? await activePublicationBrand(scope.publicationId) : null;
+  return own ?? ensureBrand(scope.organizationId);
+}
+
+/** The compiled tokens a newsletter is rendered in. */
+export async function brandForPublication(scope: { organizationId: string; publicationId?: string | null }): Promise<BrandTokens> {
+  return compileBrandSystem((await brandRecordFor(scope)).system);
+}
+
+/**
+ * Give a newsletter its own brand, from what was read off its own address.
+ *
+ * Built on the organisation's brand rather than from nothing: whatever the reading found (the
+ * colours, the type, the mark) replaces the organisation's, and whatever it did not find is the
+ * organisation's still, so a page that yields only a logo does not turn every colour to a default.
+ * Versioned like any brand; the previous one stays as history.
+ */
+export async function savePublicationBrandFromEvidence(input: {
+  organizationId: string;
+  publicationId: string;
+  evidence: BrandEvidence;
+  source: string;
+  actorId?: string | null;
+}): Promise<BrandRecord> {
+  const base = (await ensureBrand(input.organizationId)).system;
+  const discovered = brandFromEvidence(input.evidence);
+  const origin = discovered.origin;
+  const system: BrandSystem = {
+    ...base,
+    colours: {
+      ...base.colours,
+      ...(origin.brand === "discovered" ? { brand: discovered.system.colours.brand } : {}),
+      ...(origin.accent === "discovered" ? { accent: discovered.system.colours.accent } : {}),
+      ...(origin.paper === "discovered" ? { paper: discovered.system.colours.paper } : {}),
+    },
+    personality: origin.personality === "discovered" ? discovered.system.personality : base.personality,
+    imagery: origin.personality === "discovered" ? discovered.system.imagery : base.imagery,
+    logo: origin.logo === "discovered" ? { ...base.logo, markUrl: discovered.system.logo.markUrl } : base.logo,
+  };
+  const parsed = brandSystemSchema.parse(system);
+
+  const previous = await activePublicationBrand(input.publicationId);
+  const record = await db.transaction(async (tx) => {
+    if (previous) await tx.update(s.brandSystems).set({ isActive: false, updatedAt: new Date() }).where(eq(s.brandSystems.id, previous.id));
+    const [created] = await tx
+      .insert(s.brandSystems)
+      .values({
+        organizationId: input.organizationId,
+        publicationId: input.publicationId,
+        name: "Newsletter",
+        system: parsed,
+        origin,
+        notes: [`Read from ${input.source}`, ...discovered.notes.filter((note) => !note.startsWith("We could not read any colours") || origin.brand !== "discovered")],
+        createdById: input.actorId ?? null,
+      })
+      .returning();
+    return created;
+  });
+  await audit({
+    action: "brand.publication.read",
+    entityType: "SETTING",
+    entityId: record.id,
+    userId: input.actorId ?? null,
+    organizationId: input.organizationId,
+    metadata: { publicationId: input.publicationId, source: input.source, brand: parsed.colours.brand, logo: !!parsed.logo.markUrl },
+  });
+  return record;
+}
+
+/** Back to the organisation's brand: the newsletter's own is kept as history, no longer worn. */
+export async function clearPublicationBrand(publicationId: string): Promise<void> {
+  await db.update(s.brandSystems).set({ isActive: false, updatedAt: new Date() }).where(and(eq(s.brandSystems.publicationId, publicationId), eq(s.brandSystems.isActive, true)));
 }
 
 /**

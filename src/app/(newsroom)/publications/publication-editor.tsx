@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { BookOpen, Globe, Mail, Pencil, Plus, Printer } from "lucide-react";
+import { BookOpen, Globe, Mail, Pencil, Plus, Printer, ScanSearch } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { createPublicationAction, updatePublicationAction, type PublicationInput } from "./actions";
+import { createPublicationAction, readNewsletterAddressAction, updatePublicationAction, type NewsletterBrandReading, type PublicationInput } from "./actions";
 import { cn } from "@/lib/utils";
 import { CURRENCY_SYMBOLS, PRICE_CURRENCIES, PRICE_INTERVALS, parseAmountToCents, type PriceCurrency, type PriceInterval } from "@/lib/payments";
 import { useUi } from "@/components/i18n/provider";
@@ -29,6 +29,7 @@ type Publication = {
   priceCents?: number | null;
   priceCurrency?: string;
   priceInterval?: string;
+  website?: string | null;
 };
 
 const FORMATS = [
@@ -60,6 +61,24 @@ export function PublicationEditor({ publication, trigger, paymentsConnected = fa
   const [amount, setAmount] = useState(publication?.priceCents ? (publication.priceCents / 100).toFixed(2).replace(/\.00$/, "") : "");
   const [currency, setCurrency] = useState<PriceCurrency>((publication?.priceCurrency as PriceCurrency) ?? "eur");
   const [interval, setInterval] = useState<PriceInterval>((publication?.priceInterval as PriceInterval) ?? "month");
+  const [website, setWebsite] = useState(publication?.website ?? "");
+  const [reading, setReading] = useState<NewsletterBrandReading | null>(null);
+  const [isReading, startReading] = useTransition();
+
+  /** Read the address now, so the look is on the screen before anything is saved. */
+  function readAddress() {
+    const address = website.trim();
+    if (!address) return;
+    startReading(async () => {
+      const result = await readNewsletterAddressAction(address);
+      if (!result.ok) {
+        setReading(null);
+        toast.error(result.error);
+        return;
+      }
+      setReading(result.data ?? null);
+    });
+  }
 
   function toggleFormat(value: string) {
     setFormats((current) => (current.includes(value) ? current.filter((f) => f !== value) : [...current, value]));
@@ -88,8 +107,11 @@ export function PublicationEditor({ publication, trigger, paymentsConnected = fa
         priceCents,
         priceCurrency: currency,
         priceInterval: interval,
+        website: website.trim() || null,
       };
-      const result = publication ? await updatePublicationAction(publication.id, payload) : await createPublicationAction(payload);
+      // What was read on the screen is what is saved; an address nobody read is read in the background.
+      const seen = reading && website.trim() ? reading : null;
+      const result = publication ? await updatePublicationAction(publication.id, payload, seen) : await createPublicationAction(payload, seen);
       if (!result.ok) {
         toast.error(result.error);
         return;
@@ -132,6 +154,29 @@ export function PublicationEditor({ publication, trigger, paymentsConnected = fa
           <div className="space-y-1.5">
             <Label htmlFor="pub-name">{tr("Name")}</Label>
             <Input id="pub-name" value={name} onChange={(e) => setName(e.target.value)} placeholder={tr("Acme Weekly")} autoFocus />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="pub-website">{tr("Website or social media page")}</Label>
+            <div className="flex gap-2">
+              <Input
+                id="pub-website"
+                value={website}
+                onChange={(e) => {
+                  setWebsite(e.target.value);
+                  setReading(null);
+                }}
+                onBlur={() => {
+                  if (website.trim() && !reading && !isReading) readAddress();
+                }}
+                placeholder="acme.com/news · instagram.com/acme"
+                inputMode="url"
+                autoComplete="off"
+              />
+              <Button type="button" variant="outline" onClick={readAddress} loading={isReading} disabled={!website.trim()}>
+                <ScanSearch />{" "}{tr("Read its look")}</Button>
+            </div>
+            <p className="text-xs text-muted-foreground">{tr("Briefly reads the newsletter's colours, type and logo there, and dresses its editions and emails in them. Empty: your organisation's look.")}</p>
+            {reading ? <LookPreview reading={reading} /> : null}
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="pub-description">{tr("Description")}</Label>
@@ -247,5 +292,36 @@ export function PublicationEditor({ publication, trigger, paymentsConnected = fa
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+/** What was found at the newsletter's address, to be approved before anything is saved. */
+function LookPreview({ reading }: { reading: NewsletterBrandReading }) {
+  const tr = useUi();
+  const nothing = !reading.logoUrl && !reading.colours.length;
+  return (
+    <div className="mt-2 flex items-center gap-3 rounded-md border border-border bg-muted/40 px-3 py-2" data-testid="look-preview">
+      {reading.logoUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={reading.logoUrl} alt={tr("Logo")} className="size-10 shrink-0 rounded-md border border-border bg-card object-contain" />
+      ) : null}
+      <div className="min-w-0 flex-1 text-xs">
+        {nothing ? (
+          <p className="text-warning">{tr("Nothing could be read at that address. The newsletter keeps your organisation's look; you can upload a logo later.")}</p>
+        ) : (
+          <>
+            <p className="truncate font-medium text-foreground">{reading.name ?? reading.url}</p>
+            <div className="mt-1 flex flex-wrap items-center gap-1.5">
+              {reading.colours.map((colour) => (
+                <span key={colour} title={colour} className="size-4 rounded-[4px] border border-black/10" style={{ backgroundColor: colour }} />
+              ))}
+              {reading.fonts.length ? <span className="truncate text-muted-foreground">{reading.fonts.slice(0, 2).join(", ")}</span> : null}
+            </div>
+            {reading.missing.includes("logo") ? <p className="mt-1 text-muted-foreground">{tr("No logo found there.")}</p> : null}
+            {reading.missing.includes("colours") ? <p className="mt-1 text-muted-foreground">{tr("No colours found there; your organisation's are kept.")}</p> : null}
+          </>
+        )}
+      </div>
+    </div>
   );
 }

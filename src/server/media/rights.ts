@@ -224,10 +224,10 @@ export async function bulkArchive(assetIds: string[], actor: MediaActor) {
  *
  * Archiving hides; this removes. Everything that pointed at the picture lets go of it in the same
  * transaction — a story's link, an article's image block, a page's placement, an edition's cover,
- * the workspace's logo — so nothing is left pointing at a hole, and a page that used it is laid
- * out again without it. The files go after the rows: a storage hiccup leaves a stray file, which
- * the storage audit lists, never a row pointing at a missing file. Frozen artefacts (a PDF that
- * already went out) keep their copy, because they are what was sent.
+ * the workspace's logo, a newsletter's mark — so nothing is left pointing at a hole, and a page
+ * that used it is laid out again without it. The files go after the rows: a storage hiccup leaves
+ * a stray file, which the storage audit lists, never a row pointing at a missing file. Frozen
+ * artefacts (a PDF that already went out) keep their copy, because they are what was sent.
  */
 export async function deleteMedia(assetId: string, actor: MediaActor): Promise<{ id: string; fileName: string; files: number }> {
   assertActor(actor, "media:manage");
@@ -246,6 +246,7 @@ export async function deleteMedia(assetId: string, actor: MediaActor): Promise<{
     await tx.execute(sql`update page_plan_pages set media_asset_ids = array_remove(media_asset_ids, ${assetId}::uuid) where ${assetId}::uuid = any(media_asset_ids)`);
     await tx.update(s.editions).set({ coverMediaAssetId: null }).where(eq(s.editions.coverMediaAssetId, assetId));
     await tx.update(s.organizations).set({ logoMediaId: null }).where(eq(s.organizations.logoMediaId, assetId));
+    await tx.update(s.publications).set({ logoMediaId: null }).where(eq(s.publications.logoMediaId, assetId));
     // Variants, story links and attachments' pointers go with the row (cascade / set null).
     await tx.delete(s.mediaAssets).where(eq(s.mediaAssets.id, assetId));
   });

@@ -17,7 +17,11 @@ import { currentDesign } from "@/server/design/service";
 import { readSignals } from "@/lib/design/signals";
 import { buildEditionDocument } from "@/server/publication/document-builder";
 import { describePlan } from "@/lib/design/pages";
-import { ensureBrand } from "@/server/brand/service";
+import { brandRecordFor } from "@/server/brand/service";
+import { db } from "@/server/db/client";
+import * as s from "@/server/db/schema";
+import { scoped } from "@/server/tenancy/scope";
+import { eq } from "drizzle-orm";
 import { storedFocals } from "@/server/design/memory";
 import { requireTenant } from "@/server/tenancy/context";
 import type { BrandSystem } from "@/lib/brand/system";
@@ -160,10 +164,11 @@ export async function designLayoutAction(editionId: string): Promise<ActionResul
 
     const tenant = await requireTenant();
     const document = await buildEditionDocument(editionId, { versionLabel: "design", includeUnapproved: true });
+    const edition = await db.query.editions.findFirst({ where: await scoped(s.editions.organizationId, eq(s.editions.id, editionId)), columns: { publicationId: true } });
     const [{ resolved: direction }, focals, brand] = await Promise.all([
       directionFor(editionId),
       storedFocals(document.media.map((media) => media.id)),
-      ensureBrand(tenant.organizationId),
+      brandRecordFor({ organizationId: tenant.organizationId, publicationId: edition?.publicationId ?? null }),
     ]);
 
     const laid = await layoutDesign({ design, document, direction, brand: brand.system as BrandSystem, focals });

@@ -21,6 +21,8 @@ const log = createLogger("discovery");
  *
  * We deliberately do *not* scrape LinkedIn, Instagram or X. Their terms forbid it, and the links
  * alone are what onboarding actually needs; the customer can connect those accounts properly later.
+ * A newsletter whose only address is a social page gets that page's link preview and nothing more
+ * (see `discoverNewsletterBrand`).
  */
 
 export type DiscoveredOrganization = {
@@ -99,7 +101,7 @@ export function normaliseWebsite(raw: string): URL {
   return url;
 }
 
-async function assertPublicHost(url: URL) {
+export async function assertPublicHost(url: URL) {
   const host = url.hostname;
   if (host === "localhost" || host.endsWith(".localhost") || host.endsWith(".internal") || host.endsWith(".local")) {
     throw new ValidationError("That address is not reachable from the internet", { website: ["Use a public website"] });
@@ -526,4 +528,119 @@ async function understand(args: { website: string; facts: OrganisationFacts; tex
     args.notes.push("model-unavailable");
     return null;
   }
+}
+
+/* ── A newsletter's own address ───────────────────────────────────────────────────────────────── */
+
+const SOCIAL_HOSTS: [string, RegExp][] = [
+  ["instagram", /(^|\.)instagram\.com$/i],
+  ["linkedin", /(^|\.)linkedin\.com$/i],
+  ["x", /(^|\.)(x|twitter)\.com$/i],
+  ["facebook", /(^|\.)facebook\.com$/i],
+  ["youtube", /(^|\.)youtube\.com$/i],
+  ["tiktok", /(^|\.)tiktok\.com$/i],
+  ["threads", /(^|\.)threads\.(net|com)$/i],
+  ["bluesky", /(^|\.)bsky\.app$/i],
+  ["substack", /(^|\.)substack\.com$/i],
+];
+
+/** Which social network an address belongs to, or null for a website of its own. */
+export function socialPlatform(url: URL): string | null {
+  return SOCIAL_HOSTS.find(([, re]) => re.test(url.hostname))?.[0] ?? null;
+}
+
+export type NewsletterBrandReading = {
+  url: string;
+  /** A website of its own, or a page on a social network. */
+  kind: "website" | "social";
+  platform: string | null;
+  name: string | null;
+  description: string | null;
+  logoUrl: string | null;
+  logoCandidates: LogoCandidate[];
+  colours: string[];
+  fonts: string[];
+  readBy: "browser" | "fetch";
+  /** What could not be read, so the screen asks for it instead of pretending. */
+  missing: string[];
+  notes: string[];
+};
+
+/**
+ * The look of one newsletter, read from its own address.
+ *
+ * A website is read the way the organisation's is at onboarding: the served page, then a real
+ * browser (Browserbase when the platform has a key) for the header's mark, the colours painted and
+ * the type set. A social page is a different thing and is read differently. Networks forbid
+ * crawling a profile and most show a sign-in wall to anything that tries, so only what the page
+ * publishes for link previews is taken — its name, its description and its picture, exactly what a
+ * messaging app shows when the link is pasted — and the colours come from that picture, never from
+ * the network's own favicon, which would dress every Instagram newsletter in Instagram's gradient.
+ */
+export async function discoverNewsletterBrand(rawUrl: string): Promise<NewsletterBrandReading> {
+  const url = normaliseWebsite(rawUrl);
+  await assertPublicHost(url);
+  const platform = socialPlatform(url);
+
+  if (!platform) {
+    const site = await discoverOrganization(url.toString());
+    return {
+      url: url.toString(),
+      kind: "website",
+      platform: null,
+      name: site.name,
+      description: site.description,
+      logoUrl: site.logoUrl,
+      logoCandidates: site.logoCandidates,
+      colours: site.colours,
+      fonts: site.fonts,
+      readBy: site.readBy,
+      missing: site.missing.filter((field) => field === "logo" || field === "colours"),
+      notes: site.notes,
+    };
+  }
+
+  const notes: string[] = [];
+  let html = "";
+  try {
+    html = await fetchText(url);
+  } catch (err) {
+    notes.push("preview-unavailable");
+    log.info("social page would not give its preview", { url: url.toString(), err: err instanceof Error ? err.message : String(err) });
+  }
+  let title = meta(html, "og:title") ?? meta(html, "twitter:title");
+  let description = meta(html, "og:description") ?? meta(html, "twitter:description") ?? meta(html, "description");
+  let picture = absolute(url, meta(html, "og:image") ?? meta(html, "twitter:image"));
+  let readBy: NewsletterBrandReading["readBy"] = "fetch";
+
+  // Some networks only write the preview tags once scripts have run; a real browser sees them.
+  if (!picture) {
+    const reading = await withBudget(readSiteWithBrowser(url), DEEP_BUDGET_MS);
+    if (reading) {
+      readBy = "browser";
+      title ??= reading.siteName ?? reading.title;
+      description ??= reading.description;
+      picture = reading.logos.map((candidate) => absolute(url, candidate.url)).find((href): href is string => !!href) ?? null;
+    }
+  }
+
+  const colours = picture ? await paletteFromImage(picture) : [];
+  const missing: string[] = [];
+  if (!picture) missing.push("logo");
+  if (!colours.length) missing.push("colours");
+  return {
+    url: url.toString(),
+    kind: "social",
+    platform,
+    name: titleToName(title),
+    description: description?.slice(0, 400) ?? null,
+    logoUrl: picture,
+    logoCandidates: picture ? [{ url: picture, kind: "icon", alt: "", hint: `${platform} profile picture`, inHeader: false, linksHome: false, width: 0, height: 0, top: 0 }] : [],
+    colours,
+    // A social page's type is the network's, not the newsletter's.
+    fonts: [],
+    readBy,
+    missing,
+    notes,
+  };
 }

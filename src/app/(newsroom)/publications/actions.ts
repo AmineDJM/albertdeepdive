@@ -7,8 +7,79 @@ import { createPublication, deletePublication, updatePublication, type Publicati
 import { ok, toActionFailure, type ActionResult } from "@/lib/action-result";
 import { getUi } from "@/server/i18n/locale";
 import { logger } from "@/server/logger";
+import { z } from "zod";
+import { and, eq } from "drizzle-orm";
+import { db } from "@/server/db/client";
+import * as s from "@/server/db/schema";
+import { discoverNewsletterBrand, type NewsletterBrandReading } from "@/server/tenancy/discovery";
+import { applyNewsletterLook } from "@/server/publications/brand";
+import { enqueueJob } from "@/server/jobs/queue";
+import { JOB_TYPES } from "@/server/jobs/registry";
+import { kickJobRunner } from "@/server/jobs/runner";
 
-export type { PublicationInput };
+export type { PublicationInput, NewsletterBrandReading };
+
+/** What the dialog saw, checked again here: the page is the client's, the look is ours to trust. */
+const readingSchema = z.object({
+  url: z.string().url().max(500),
+  kind: z.enum(["website", "social"]),
+  platform: z.string().max(40).nullable(),
+  name: z.string().max(200).nullable(),
+  description: z.string().max(400).nullable(),
+  logoUrl: z.string().url().max(2000).nullable(),
+  logoCandidates: z.array(z.any()).max(20).default([]),
+  colours: z.array(z.string().regex(/^#[0-9a-f]{6}$/i)).max(8),
+  fonts: z.array(z.string().max(60)).max(20),
+  readBy: z.enum(["browser", "fetch"]),
+  missing: z.array(z.string().max(40)).max(10),
+  notes: z.array(z.string().max(120)).max(20),
+});
+
+/**
+ * Read a newsletter's own address and show what was found, before anything is saved.
+ *
+ * The dialog calls this when somebody gives the address, so the colours and the mark are on the
+ * screen to be approved rather than discovered afterwards on an issue.
+ */
+export async function readNewsletterAddressAction(address: string): Promise<ActionResult<NewsletterBrandReading>> {
+  try {
+    await requirePermission("edition:create");
+    return ok(await discoverNewsletterBrand(address));
+  } catch (err) {
+    return toActionFailure(err);
+  }
+}
+
+/**
+ * Dress the newsletter in its address's look: now, with what the person saw, or in the background
+ * when nothing was read on the screen (reading a site can take twenty seconds).
+ */
+async function dressNewsletter(publicationId: string, actorId: string, reading: unknown) {
+  const parsed = reading ? readingSchema.safeParse(reading) : null;
+  if (parsed?.success) {
+    await applyNewsletterLook(publicationId, { actorId, reading: parsed.data as NewsletterBrandReading }).catch((err) => logger.warn("could not dress the newsletter", { publicationId, err }));
+    return;
+  }
+  await enqueueJob({ type: JOB_TYPES.PUBLICATION_BRAND_READ, payload: { publicationId, actorId }, idempotencyKey: `publication-brand:${publicationId}:${Date.now()}`, createdById: actorId, priority: 4 });
+  kickJobRunner();
+}
+
+/** Read the newsletter's address again, for when the site has changed. */
+export async function rereadNewsletterLookAction(publicationId: string): Promise<ActionResult<{ ownBrand: boolean; missing: string[] }>> {
+  const tr = await getUi();
+  try {
+    const user = await requirePermission("edition:edit");
+    const organizationId = await currentOrganizationId();
+    const own = await db.query.publications.findFirst({ where: and(eq(s.publications.id, publicationId), eq(s.publications.organizationId, organizationId)), columns: { id: true } });
+    if (!own) return { ok: false, error: tr("Newsletter not found") };
+    const result = await applyNewsletterLook(publicationId, { actorId: user.id });
+    revalidatePath("/publications");
+    revalidatePath(`/publications/${publicationId}`);
+    return ok({ ownBrand: result.ownBrand, missing: result.reading?.missing ?? [] }, result.ownBrand ? tr("The newsletter's look was read again") : tr("Nothing could be read at that address"));
+  } catch (err) {
+    return toActionFailure(err);
+  }
+}
 
 /**
  * A new newsletter, and the first edition of it.
@@ -22,11 +93,13 @@ export type { PublicationInput };
  * created and the edition is where to go next, and a caller that only wanted the first should not
  * have to know about the second.
  */
-export async function createPublicationAction(raw: PublicationInput): Promise<ActionResult<{ id: string; editionId: string | null }>> {
+export async function createPublicationAction(raw: PublicationInput, reading?: NewsletterBrandReading | null): Promise<ActionResult<{ id: string; editionId: string | null }>> {
   try {
     const user = await requirePermission("edition:create");
     const organizationId = await currentOrganizationId();
     const row = await createPublication(organizationId, raw, user.id);
+    // Its look before its first edition, so Edition #1 is already dressed.
+    if (row.website) await dressNewsletter(row.id, user.id, reading ?? null);
     // A title without an edition is a shelf without a book on it.
     const first = await openNextEdition(row.id, user.id).catch((err) => {
       logger.warn("created a title without its first edition", { publicationId: row.id, err });
@@ -40,11 +113,17 @@ export async function createPublicationAction(raw: PublicationInput): Promise<Ac
   }
 }
 
-export async function updatePublicationAction(id: string, raw: Partial<PublicationInput>): Promise<ActionResult> {
+export async function updatePublicationAction(id: string, raw: Partial<PublicationInput>, reading?: NewsletterBrandReading | null): Promise<ActionResult> {
   try {
     const user = await requirePermission("edition:edit");
     const organizationId = await currentOrganizationId();
-    await updatePublication(organizationId, id, raw, user.id);
+    const before = await db.query.publications.findFirst({ where: and(eq(s.publications.id, id), eq(s.publications.organizationId, organizationId)), columns: { website: true } });
+    const row = await updatePublication(organizationId, id, raw, user.id);
+    // A new address is a new look; no address is the organisation's look again.
+    if (raw.website !== undefined && row.website !== (before?.website ?? null)) {
+      if (row.website) await dressNewsletter(row.id, user.id, reading ?? null);
+      else await applyNewsletterLook(row.id, { actorId: user.id });
+    }
     revalidatePath("/publications");
     return ok(null);
   } catch (err) {

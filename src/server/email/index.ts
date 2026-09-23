@@ -23,6 +23,8 @@ export type SendEmailInput = {
   editionId?: string | null;
   contributorId?: string | null;
   organizationId?: string | null;
+  /** The newsletter the message is about, when no edition says so (a subscription, a sign-up). */
+  publicationId?: string | null;
   /** Bulk mail only: the one-click unsubscribe address for this recipient. */
   listUnsubscribeUrl?: string;
 };
@@ -40,6 +42,7 @@ export async function sendEmail(input: SendEmailInput) {
   const resolved = await resolveMasthead({
     organizationId: input.organizationId,
     editionId: input.editionId,
+    publicationId: input.publicationId,
     name: input.layout.masthead?.name ?? null,
   });
   const layout: EmailLayoutInput = resolved ? { ...input.layout, masthead: { ...resolved, ...input.layout.masthead, logoUrl: input.layout.masthead?.logoUrl ?? resolved.logoUrl, colour: input.layout.masthead?.colour ?? resolved.colour } } : input.layout;

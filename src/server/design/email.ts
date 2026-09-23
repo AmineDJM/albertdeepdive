@@ -2,7 +2,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/server/db/client";
 import * as s from "@/server/db/schema";
 import { scoped } from "@/server/tenancy/scope";
-import { ensureBrand } from "@/server/brand/service";
+import { brandRecordFor } from "@/server/brand/service";
 import type { BrandSystem } from "@/lib/brand/system";
 import type { EditionDocument } from "@/lib/publication/document";
 import { renderEmailEdition, type RenderedEmail } from "./render/email";
@@ -28,6 +28,8 @@ export type DesignEmailContext = {
   imageUrls: Record<string, string>;
   organizationName: string;
   logoUrl?: string | null;
+  /** The brand to render in; the edition's newsletter's, read once by the caller. */
+  brand?: BrandSystem | null;
   webUrl?: string | null;
   footerNote?: string | null;
   showBrieflyMark?: boolean;
@@ -45,7 +47,7 @@ export async function designEmailFor(editionId: string, context: DesignEmailCont
 
   const [{ resolved: direction }, brand, focals] = await Promise.all([
     directionFor(editionId),
-    ensureBrand(edition.organizationId),
+    context.brand ? Promise.resolve({ system: context.brand }) : brandRecordFor({ organizationId: edition.organizationId, publicationId: edition.publicationId }),
     storedFocals(context.document.media.map((media) => media.id)),
   ]);
 

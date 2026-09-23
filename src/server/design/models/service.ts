@@ -3,7 +3,7 @@ import { db } from "@/server/db/client";
 import * as s from "@/server/db/schema";
 import { scoped } from "@/server/tenancy/scope";
 import { NotFoundError, ValidationError } from "@/lib/action-result";
-import { activeBrand } from "@/server/brand/service";
+import { brandRecordFor } from "@/server/brand/service";
 import { activeGenome, activeIdentity, saveIdentity } from "@/server/design/identity";
 import { DEFAULT_BRAND_SYSTEM, type BrandSystem } from "@/lib/brand/system";
 import { brandGenomeSchema, editorialGenomeSchema, nearestMood, type DesignMood } from "@/lib/design/genome";
@@ -70,7 +70,7 @@ function currentModelId(identity: PublicationIdentity | null): string | null {
 export async function modelShelf(publicationId: string): Promise<ModelShelf> {
   const publication = await publicationFor(publicationId);
   const [brandRow, genome, identity] = await Promise.all([
-    activeBrand(publication.organizationId).catch(() => null),
+    brandRecordFor({ organizationId: publication.organizationId, publicationId: publication.id }).catch(() => null),
     activeGenome(publication.organizationId),
     activeIdentity(publicationId).catch(() => null),
   ]);
@@ -124,7 +124,7 @@ export async function adoptModel(publicationId: string, modelId: string, userId?
   const current = await activeIdentity(publicationId);
 
   if (modelId === "brand") {
-    const [brandRow, genome] = await Promise.all([activeBrand(publication.organizationId).catch(() => null), activeGenome(publication.organizationId)]);
+    const [brandRow, genome] = await Promise.all([brandRecordFor({ organizationId: publication.organizationId, publicationId: publication.id }).catch(() => null), activeGenome(publication.organizationId)]);
     const system = ((brandRow?.system as BrandSystem | undefined) ?? DEFAULT_BRAND_SYSTEM) as BrandSystem;
     return saveIdentity(
       publicationId,

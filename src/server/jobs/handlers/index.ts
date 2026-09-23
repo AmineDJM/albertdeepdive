@@ -11,3 +11,4 @@ import "@/server/creative/jobs";
 import "@/server/speech/jobs";
 import "@/server/images/jobs";
 import "@/server/qc/jobs";
+import "@/server/publications/jobs";

@@ -129,6 +129,16 @@ export const publications = pgTable(
     defaultFormats: text("default_formats").array().notNull().default(["EMAIL"]),
     /** Cadence hint used by automation and by the "next edition" card ("monthly", "weekly"…). */
     cadence: text("cadence").notNull().default("monthly"),
+    /**
+     * Where this newsletter's look is read from: its own website, or a public social media page.
+     *
+     * A newsletter is often not dressed like the organisation that sends it — a school's alumni
+     * review, a fund's portfolio letter — so its colours, type and mark are read from its own
+     * address when it has one, and fall back to the organisation's when it does not.
+     */
+    website: text("website"),
+    /** The newsletter's own mark, copied into the library so an email never points at somebody else's CDN. */
+    logoMediaId: uuid("logo_media_id"),
     /** Look and feel: typography, colours, cover style, section list, header/footer. */
     theme: jsonb("theme").$type<Record<string, unknown>>().notNull().default({}),
     /** Public subscription page slug, e.g. /s/acme-weekly. */

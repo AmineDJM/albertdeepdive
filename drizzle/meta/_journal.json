@@ -232,6 +232,13 @@
       "when": 1790171415977,
       "tag": "0032_large_shadowcat",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1790178682475,
+      "tag": "0033_huge_warbird",
+      "breakpoints": true
     }
   ]
 }

@@ -4,7 +4,7 @@ import * as s from "@/server/db/schema";
 import { scoped } from "@/server/tenancy/scope";
 import { env } from "@/server/env";
 import { createLogger } from "@/server/logger";
-import { activeBrand } from "@/server/brand/service";
+import { brandRecordFor } from "@/server/brand/service";
 import { activeGenome, activeIdentity, saveIdentity } from "@/server/design/identity";
 import { DEFAULT_BRAND_SYSTEM, type BrandSystem } from "@/lib/brand/system";
 import { saturation } from "@/lib/brand/colour";
@@ -124,7 +124,7 @@ export async function proposeFromFile(publicationId: string, bytes: Buffer, file
   if (!publication) throw new Error(`Publication ${publicationId} not found`);
   const [organization, brand] = await Promise.all([
     db.query.organizations.findFirst({ where: eq(s.organizations.id, publication.organizationId) }),
-    activeBrand(publication.organizationId).catch(() => null),
+    brandRecordFor({ organizationId: publication.organizationId, publicationId: publication.id }).catch(() => null),
   ]);
   const system = ((brand?.system as BrandSystem | undefined) ?? DEFAULT_BRAND_SYSTEM) as BrandSystem;
 
@@ -205,7 +205,7 @@ export async function proposeFromFile(publicationId: string, bytes: Buffer, file
 export async function proposeFromBrand(publicationId: string, rubricNames: { name: string; component: PublicationIdentity["rubrics"][number]["component"] }[]): Promise<BlueprintProposal> {
   const publication = await db.query.publications.findFirst({ where: await scoped(s.publications.organizationId, eq(s.publications.id, publicationId)) });
   if (!publication) throw new Error(`Publication ${publicationId} not found`);
-  const [genome, brand] = await Promise.all([activeGenome(publication.organizationId), activeBrand(publication.organizationId).catch(() => null)]);
+  const [genome, brand] = await Promise.all([activeGenome(publication.organizationId), brandRecordFor({ organizationId: publication.organizationId, publicationId: publication.id }).catch(() => null)]);
   const system = ((brand?.system as BrandSystem | undefined) ?? DEFAULT_BRAND_SYSTEM) as BrandSystem;
 
   return {

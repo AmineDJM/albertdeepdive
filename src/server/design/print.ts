@@ -4,7 +4,7 @@ import { db } from "@/server/db/client";
 import * as s from "@/server/db/schema";
 import { scoped } from "@/server/tenancy/scope";
 import { buildEditionDocument } from "@/server/publication/document-builder";
-import { ensureBrand } from "@/server/brand/service";
+import { brandRecordFor } from "@/server/brand/service";
 import type { BrandSystem } from "@/lib/brand/system";
 import type { EditionDocument } from "@/lib/publication/document";
 import type { EditionDesign } from "@/lib/design/model";
@@ -60,7 +60,7 @@ export async function printEditionDesign(editionId: string, options: PrintEditio
   const publication = edition.publicationId ? await db.query.publications.findFirst({ where: eq(s.publications.id, edition.publicationId) }) : null;
   const [{ resolved: direction }, brand, focals] = await Promise.all([
     directionFor(editionId),
-    ensureBrand(edition.organizationId),
+    brandRecordFor({ organizationId: edition.organizationId, publicationId: edition.publicationId }),
     storedFocals(document.media.map((media) => media.id)),
   ]);
 

@@ -6,7 +6,8 @@ import { audit } from "@/server/audit";
 import { createLogger } from "@/server/logger";
 import { sendEmail } from "@/server/email";
 import { buildEditionDocument } from "@/server/publication/document-builder";
-import { mediaUrls } from "@/server/media/urls";
+import { LONG_LIVED_IMAGE_TTL_SECONDS, mediaUrls } from "@/server/media/urls";
+import { newsletterLook } from "@/server/publications/brand";
 import { recipientsFor } from "@/server/subscribers/service";
 import { showsBrieflyBranding } from "@/server/billing/entitlements";
 import { renderEditionEmail } from "./email-edition";
@@ -16,11 +17,7 @@ import { NotFoundError, ValidationError } from "@/lib/action-result";
 
 const log = createLogger("outputs");
 
-/**
- * Signed image URLs expire, and an email is read whenever the reader gets to it — sometimes weeks
- * later. Pictures in a sent email are therefore signed for a year rather than for an hour.
- */
-const EMAIL_IMAGE_TTL_SECONDS = 400 * 24 * 60 * 60;
+const EMAIL_IMAGE_TTL_SECONDS = LONG_LIVED_IMAGE_TTL_SECONDS;
 
 export type SendResult = { sent: number; failed: number; skipped: number; outputId: string };
 
@@ -114,7 +111,8 @@ export async function sendEditionEmail(
     ? `${env.NEXT_PUBLIC_APP_URL}/r/${webOutput.publicSlug}`
     : null;
 
-  const brand = (organization?.brandColours ?? {}) as { primary?: string; accent?: string };
+  // The newsletter's own look when one was read from its address, its organisation's otherwise.
+  const look = edition.organizationId ? await newsletterLook({ organizationId: edition.organizationId, publicationId: edition.publicationId }) : null;
   const config = output.config ?? {};
 
   /*
@@ -126,7 +124,8 @@ export async function sendEditionEmail(
     document: doc,
     imageUrls,
     organizationName: organization?.name ?? doc.meta.masthead.title,
-    logoUrl: organization?.logoUrl ?? null,
+    logoUrl: look?.logoUrl ?? null,
+    brand: look?.brand ?? null,
     webUrl,
     footerNote: typeof config.fromName === "string" ? config.fromName : null,
     showBrieflyMark,
@@ -141,8 +140,8 @@ export async function sendEditionEmail(
       ? designEmail({ unsubscribeUrl, greetingName: recipient.firstName })
       : renderEditionEmail(doc, {
           organizationName: organization?.name ?? doc.meta.masthead.title,
-          logoUrl: organization?.logoUrl ?? null,
-          accentColour: brand.primary ?? brand.accent ?? null,
+          logoUrl: look?.logoUrl ?? null,
+          accentColour: look?.colour ?? null,
           webUrl,
           unsubscribeUrl,
           greetingName: recipient.firstName,

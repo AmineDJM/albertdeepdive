@@ -45,6 +45,7 @@ export const JOB_TYPES = {
   IMAGE_RENDER: "image.render",
   QC_PREFLIGHT: "qc.preflight",
   QC_SWEEP: "qc.sweep",
+  PUBLICATION_BRAND_READ: "publication.brand.read",
 } as const;
 
 export type JobType = (typeof JOB_TYPES)[keyof typeof JOB_TYPES];

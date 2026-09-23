@@ -18,6 +18,11 @@ import { NewEditionButton } from "./new-edition-button";
 import { DeletePublication } from "@/components/newsroom/delete-publication";
 import { cn, enumLabel, formatDate, formatNumber } from "@/lib/utils";
 import { getUi } from "@/server/i18n/locale";
+import { newsletterLook } from "@/server/publications/brand";
+import { activePublicationBrand } from "@/server/brand/service";
+import { RereadLookButton } from "./reread-look-button";
+import { PublicationEditor } from "../publication-editor";
+import { readerPaymentsFor } from "@/server/payments/readers";
 
 export const dynamic = "force-dynamic";
 
@@ -49,6 +54,9 @@ export default async function PublicationPage({ params }: { params: Promise<{ pu
   const canHandOver = hasPermission(user, "settings:manage");
   // What this title is made on, if anybody has said. Read here so the button can say which.
   const model = (await activeIdentity(publicationId)).source;
+  // What it looks like on the way out, and where that was read.
+  const [look, ownBrand, payments] = await Promise.all([newsletterLook({ organizationId: tenant.organizationId, publicationId }), activePublicationBrand(publicationId), readerPaymentsFor(tenant.organizationId)]);
+  const readFrom = ownBrand?.notes.find((note) => note.startsWith("Read from "))?.slice("Read from ".length) ?? null;
 
   // What the next edition would start from, said before anybody commits to it.
   const inherits = canCreate
@@ -134,6 +142,48 @@ export default async function PublicationPage({ params }: { params: Promise<{ pu
           />
           <Stat label={tr("Cadence")} value={tr(enumLabel(publication.cadence))} hint={publication.language.toUpperCase()} />
         </StatGrid>
+
+        <section className="space-y-2">
+          <SectionTitle
+            action={
+              canCreate ? (
+                <span className="flex items-center gap-2">
+                  {publication.website ? <RereadLookButton publicationId={publication.id} /> : null}
+                  <PublicationEditor
+                    publication={publication}
+                    paymentsConnected={Boolean(payments)}
+                    trigger={
+                      <Button variant="outline" size="sm">
+                        {publication.website ? tr("Change the address") : tr("Add its address")}
+                      </Button>
+                    }
+                  />
+                </span>
+              ) : undefined
+            }
+          >
+            {tr("Look")}
+          </SectionTitle>
+          <div className="flex items-center gap-3 rounded-lg border border-border bg-card p-4" data-testid="newsletter-look">
+            {look.logoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={look.logoUrl} alt={tr("Logo")} className="size-12 shrink-0 rounded-md border border-border bg-background object-contain" />
+            ) : null}
+            <div className="min-w-0 flex-1 text-xs">
+              <p className="text-[13px] font-medium text-foreground">
+                {look.own ? tr("Its own look, read from its address") : tr("Your organisation's look")}
+              </p>
+              <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                {[look.brand.colours.brand, look.brand.colours.accent].map((colour) => (
+                  <span key={colour} title={colour} className="size-4 rounded-[4px] border border-black/10" style={{ backgroundColor: colour }} />
+                ))}
+                <span className="truncate text-muted-foreground">
+                  {look.own && readFrom ? readFrom : publication.website ? tr("Being read from {address}", { address: publication.website }) : tr("Add its website or social page to give it a look of its own.")}
+                </span>
+              </div>
+            </div>
+          </div>
+        </section>
 
         <section>
           <SectionTitle>{tr("Every edition")}</SectionTitle>

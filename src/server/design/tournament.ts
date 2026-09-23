@@ -5,7 +5,7 @@ import * as s from "@/server/db/schema";
 import { scoped } from "@/server/tenancy/scope";
 import { createLogger } from "@/server/logger";
 import { buildEditionDocument } from "@/server/publication/document-builder";
-import { ensureBrand } from "@/server/brand/service";
+import { brandRecordFor } from "@/server/brand/service";
 import { recordCost } from "@/server/creative/service";
 import { estimateCostCents } from "@/server/ai/pricing";
 import type { BrandSystem } from "@/lib/brand/system";
@@ -87,7 +87,7 @@ export async function runTournament(editionId: string, options: TournamentOption
   const publication = edition.publicationId ? await db.query.publications.findFirst({ where: eq(s.publications.id, edition.publicationId) }) : null;
   const [{ resolved: direction }, brand, focals] = await Promise.all([
     directionFor(editionId),
-    ensureBrand(organizationId),
+    brandRecordFor({ organizationId: edition.organizationId, publicationId: edition.publicationId }),
     storedFocals(document.media.map((media) => media.id)),
   ]);
   const signals = readSignals(document);

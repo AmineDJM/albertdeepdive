@@ -35,6 +35,8 @@ export type IngestMediaInput = {
   rightsStatus?: "GREEN" | "YELLOW" | "RED";
   rightsNote?: string | null;
   kind?: "photo" | "logo" | "screenshot" | "diagram" | "chart" | "document";
+  /** The workspace it belongs to, for work done outside a request (a job has no workspace in scope). */
+  organizationId?: string | null;
   /** Skip duplicate lookup (seeding many files quickly). */
   skipDuplicateCheck?: boolean;
 };
@@ -190,6 +192,7 @@ export async function ingestMedia(input: IngestMediaInput): Promise<IngestedMedi
   // An asset belongs to the workspace that owns the edition it was filed against; uploads that are
   // not tied to an edition fall back to the workspace in scope for the request.
   const organizationId =
+    input.organizationId ??
     (input.editionId ? (await db.query.editions.findFirst({ where: eq(editions.id, input.editionId), columns: { organizationId: true } }))?.organizationId : null) ??
     (await optionalOrganizationId());
 

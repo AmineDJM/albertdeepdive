@@ -49,6 +49,8 @@ export async function subscribeAction(_prev: ActionResult<SubscribeState> | null
         subject: t("editionEmail.confirmSubject", { publication: publication.name }),
         template: "subscription_confirm",
         organizationId: publication.organizationId,
+        // The reader signed up to this newsletter: its own mark and colour head the message.
+        publicationId: publication.id,
         layout: {
           appName: publication.organization?.name ?? publication.name,
           kicker: publication.name,

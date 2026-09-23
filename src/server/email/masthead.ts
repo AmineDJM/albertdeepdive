@@ -2,6 +2,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/server/db/client";
 import * as s from "@/server/db/schema";
 import type { EmailMasthead } from "./template";
+import { newsletterLook } from "@/server/publications/brand";
 
 /**
  * Whose name goes at the top of an email.
@@ -18,40 +19,33 @@ import type { EmailMasthead } from "./template";
 export async function resolveMasthead(scope: {
   organizationId?: string | null;
   editionId?: string | null;
+  /** The newsletter the message is about, when it is about one and no edition says so. */
+  publicationId?: string | null;
   /** The publication's name, when the caller already knows it. */
   name?: string | null;
 }): Promise<EmailMasthead | null> {
   let organizationId = scope.organizationId ?? null;
-  let name = scope.name?.trim() || null;
+  let publicationId = scope.publicationId ?? null;
+  const name = scope.name?.trim() || null;
 
-  if (scope.editionId && (!organizationId || !name)) {
+  if (scope.editionId && (!organizationId || !publicationId)) {
     const edition = await db.query.editions.findFirst({
       where: eq(s.editions.id, scope.editionId),
       columns: { organizationId: true, publicationId: true },
     });
     organizationId ??= edition?.organizationId ?? null;
-    if (!name && edition?.publicationId) {
-      const publication = await db.query.publications.findFirst({
-        where: eq(s.publications.id, edition.publicationId),
-        columns: { name: true },
-      });
-      name = publication?.name?.trim() || null;
-    }
+    publicationId ??= edition?.publicationId ?? null;
+  }
+  if (publicationId && !organizationId) {
+    organizationId = (await db.query.publications.findFirst({ where: eq(s.publications.id, publicationId), columns: { organizationId: true } }))?.organizationId ?? null;
   }
 
   if (!organizationId) return name ? { name } : null;
-
-  const organization = await db.query.organizations.findFirst({
-    where: eq(s.organizations.id, organizationId),
-    columns: { name: true, logoUrl: true, brandColours: true },
-  });
+  const organization = await db.query.organizations.findFirst({ where: eq(s.organizations.id, organizationId), columns: { id: true } });
   if (!organization) return name ? { name } : null;
 
-  const colours = (organization.brandColours ?? {}) as { primary?: string };
-  return {
-    // The publication signs its own mail; the workspace signs what is not a publication's.
-    name: name ?? organization.name,
-    logoUrl: organization.logoUrl,
-    colour: colours.primary ?? null,
-  };
+  // The newsletter signs its own mail, in its own look when it has one; the workspace signs what
+  // is not a newsletter's.
+  const look = await newsletterLook({ organizationId, publicationId });
+  return { name: name ?? look.name, logoUrl: look.logoUrl, colour: look.colour };
 }

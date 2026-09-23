@@ -1,14 +1,16 @@
 import { sql } from "drizzle-orm";
 import { boolean, index, jsonb, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 import type { AnyPgColumn } from "drizzle-orm/pg-core";
-import { organizations, users } from "./identity";
+import { organizations, publications, users } from "./identity";
 import type { BrandSystem } from "@/lib/brand/system";
 import type { BrandOrigin } from "@/lib/brand/discover";
 
 /**
  * A workspace's brand, versioned.
  *
- * One row is active per organisation; the rest are history. Versioning rather than updating in place
+ * One row is active per organisation, and one per newsletter that has a look of its own (read from
+ * its own website or social page); the rest are history. A newsletter with no row of its own wears
+ * its organisation's. Versioning rather than updating in place
  * because a brand is the input to everything Briefly renders — a magazine exported in March was set
  * in March's colours, and being able to say exactly what those were is the difference between
  * reproducing an artefact and approximating it.
@@ -24,6 +26,8 @@ export const brandSystems = pgTable(
     organizationId: uuid("organization_id")
       .notNull()
       .references(() => organizations.id, { onDelete: "cascade" }),
+    /** Set when this is one newsletter's own brand rather than the organisation's. */
+    publicationId: uuid("publication_id").references(() => publications.id, { onDelete: "cascade" }),
     /** What a person calls this version. Usually just "Brand", sometimes "2026 refresh". */
     name: text("name").notNull().default("Brand"),
     system: jsonb("system").$type<BrandSystem>().notNull(),
@@ -37,8 +41,10 @@ export const brandSystems = pgTable(
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
-    // One active brand per workspace, enforced by the database rather than by whoever writes next.
-    uniqueIndex("brand_systems_active_idx").on(t.organizationId).where(sql`${t.isActive}`),
+    // One active brand per workspace, and one per newsletter, enforced by the database rather than
+    // by whoever writes next.
+    uniqueIndex("brand_systems_active_idx").on(t.organizationId).where(sql`${t.isActive} and ${t.publicationId} is null`),
+    uniqueIndex("brand_systems_publication_active_idx").on(t.publicationId).where(sql`${t.isActive} and ${t.publicationId} is not null`),
     index("brand_systems_org_idx").on(t.organizationId, t.createdAt),
   ],
 );

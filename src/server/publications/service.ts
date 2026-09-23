@@ -10,6 +10,7 @@ import { PRICE_CURRENCIES, PRICE_INTERVALS } from "@/lib/payments";
 import { onlySent } from "@/lib/zod-patch";
 import { ensurePriceFor, readerPaymentsFor, stopChargingReaders } from "@/server/payments/readers";
 import { requireLimit } from "@/server/billing/entitlements";
+import { normaliseWebsite } from "@/server/tenancy/discovery";
 
 /**
  * Publications — the recurring titles a workspace publishes.
@@ -32,7 +33,16 @@ export const publicationInputSchema = z.object({
   priceCents: z.number().int().min(50, "At least 0.50").max(100_000_000).nullable().optional(),
   priceCurrency: z.enum(PRICE_CURRENCIES).default("eur"),
   priceInterval: z.enum(PRICE_INTERVALS).default("month"),
+  /** The newsletter's own website, or a public social media page, that its look is read from. */
+  website: z.string().trim().max(500).optional().nullable(),
 });
+
+/** "acme.com/news" → "https://acme.com/news"; empty stays empty. Refused when it is not an address. */
+function cleanWebsite(value: string | null | undefined): string | null {
+  const trimmed = value?.trim();
+  if (!trimmed) return null;
+  return normaliseWebsite(trimmed).toString();
+}
 
 /** A title may only charge when there is an account to charge into, and a price to charge. */
 async function assertChargeable(organizationId: string, priceCents: number | null | undefined) {
@@ -82,6 +92,7 @@ export async function createPublication(organizationId: string, raw: Publication
       priceCents: input.access === "paid" ? (input.priceCents ?? null) : null,
       priceCurrency: input.priceCurrency,
       priceInterval: input.priceInterval,
+      website: cleanWebsite(input.website),
       subscribeSlug: `${org?.slug ?? "workspace"}-${slug}`,
       // The same handle on both doors: /s/… to read it, /c/… to write for it.
       joinSlug: `${org?.slug ?? "workspace"}-${slug}`,
@@ -101,6 +112,7 @@ export async function updatePublication(organizationId: string, id: string, raw:
   // quietly reset its language, its cadence and whether it charges.
   const input = onlySent(publicationInputSchema.partial().parse(raw), raw);
   const patch: Record<string, unknown> = { ...input };
+  if (input.website !== undefined) patch.website = cleanWebsite(input.website);
   /*
    * Renaming changes what readers see. It must not change where they go.
    *

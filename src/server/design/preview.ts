@@ -4,7 +4,7 @@ import * as s from "@/server/db/schema";
 import { scoped } from "@/server/tenancy/scope";
 import { NotFoundError } from "@/lib/action-result";
 import { buildEditionDocument } from "@/server/publication/document-builder";
-import { ensureBrand } from "@/server/brand/service";
+import { brandRecordFor } from "@/server/brand/service";
 import { mediaUrls } from "@/server/media/urls";
 import { fontCssForUrls } from "@/server/publication/pdf";
 import { env } from "@/server/env";
@@ -35,7 +35,7 @@ export async function previewDesign(editionId: string, medium: "web" | "email"):
   const publication = edition.publicationId ? await db.query.publications.findFirst({ where: eq(s.publications.id, edition.publicationId) }) : null;
   const [{ resolved: direction }, brand, focals, urls] = await Promise.all([
     directionFor(editionId),
-    ensureBrand(edition.organizationId),
+    brandRecordFor({ organizationId: edition.organizationId, publicationId: edition.publicationId }),
     storedFocals(document.media.map((media) => media.id)),
     mediaUrls(document.media.map((media) => media.id), "WEB", PREVIEW_TTL_SECONDS),
   ]);
