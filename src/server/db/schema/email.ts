@@ -50,9 +50,8 @@ export const sendingDomains = pgTable(
     dnsHostUrl: text("dns_host_url"),
     /** A Domain Connect link that publishes every record in one click, when the host supports it. */
     oneClickUrl: text("one_click_url"),
-    senderName: text("sender_name").notNull(),
+    /** The part before the @ on this domain. The name and the reply address are the workspace's (`organizations`). */
     senderLocalPart: text("sender_local_part").notNull().default("newsletter"),
-    replyTo: text("reply_to"),
     lastCheckedAt: timestamp("last_checked_at", { withTimezone: true }),
     verifiedAt: timestamp("verified_at", { withTimezone: true }),
     lastError: text("last_error"),

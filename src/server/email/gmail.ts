@@ -256,7 +256,8 @@ async function imapAuth(connection: GmailConnection): Promise<{ user: string; pa
   return { user: connection.address, pass: password };
 }
 
-export type GmailSendInput = { to: string; subject: string; html: string; text?: string; cc?: string; replyTo?: string; headers?: Record<string, string> };
+/** `fromName` is the name on the envelope; the address is always the mailbox's own. */
+export type GmailSendInput = { to: string; subject: string; html: string; text?: string; cc?: string; replyTo?: string; fromName?: string; headers?: Record<string, string> };
 
 /** Sends through the connected mailbox. Replies go to the same address, which is the point. */
 export async function sendThroughGmail(message: GmailSendInput): Promise<{ providerMessageId?: string }> {
@@ -268,7 +269,7 @@ export async function sendThroughGmail(message: GmailSendInput): Promise<{ provi
   try {
     const info = await withTimeout(
       transport.sendMail({
-        from: { name: connection.displayName, address: connection.address },
+        from: { name: message.fromName || connection.displayName, address: connection.address },
         to: message.to,
         cc: message.cc,
         replyTo: message.replyTo ?? connection.address,

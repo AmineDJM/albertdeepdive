@@ -3,7 +3,7 @@ import { Download, ExternalLink, Shapes } from "lucide-react";
 import { editionDashboard, type EditionDashboard } from "@/server/editions/service";
 import { outputMatrix } from "@/server/outputs/service";
 import { activeBrand } from "@/server/brand/service";
-import { senderFor } from "@/server/email/sender";
+import { envelopeFor } from "@/server/email/sender";
 import { publicationStats } from "@/server/outputs/service";
 import { db } from "@/server/db/client";
 import * as s from "@/server/db/schema";
@@ -39,7 +39,7 @@ export async function StandardOverview({ editionId }: { editionId: string }) {
   const locale = intlLocale(await currentLocale());
   const at = (date: Date | string | null | undefined) => formatDate(date, undefined, locale);
   const [user, tenant] = await Promise.all([getCurrentUser(), requireTenant()]);
-  const [d, outputs, brand, sender, stats] = await Promise.all([editionDashboard(editionId), outputMatrix(editionId), activeBrand(tenant.organizationId), senderFor(tenant.organizationId).catch(() => null), publicationStats(tenant.organizationId)]);
+  const [d, outputs, brand, sender, stats] = await Promise.all([editionDashboard(editionId), outputMatrix(editionId), activeBrand(tenant.organizationId), envelopeFor(tenant.organizationId).catch(() => null), publicationStats(tenant.organizationId)]);
   const publication = d.edition.publicationId ? await db.query.publications.findFirst({ where: eq(s.publications.id, d.edition.publicationId), columns: { id: true, name: true, language: true } }) : null;
   // What every edition of this title is poured into, and where to change it.
   const identity = publication ? await activeIdentity(publication.id) : null;
@@ -236,8 +236,8 @@ export async function StandardOverview({ editionId }: { editionId: string }) {
           {emailOn ? (
             <Decision
               label={tr("Sender")}
-              value={sender ? (sender.mode === "domain" ? tr("Ready") : sender.mode === "test" ? tr("Test mode") : tr("Via Briefly")) : tr("Not set up")}
-              hint={sender ? `${sender.name} <${sender.address}>` : tr("email cannot go out yet")}
+              value={sender ? (sender.mode === "domain" ? tr("Ready") : tr("Your name, Briefly's address")) : tr("Not set up")}
+              hint={sender ? sender.from : tr("email cannot go out yet")}
               tone={sender?.mode === "domain" ? "ready" : sender ? "default" : "attention"}
               change={canSetUp ? { href: "/settings/email", label: sender?.mode === "domain" ? tr("Change") : tr("Set up") } : null}
             />

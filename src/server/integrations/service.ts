@@ -244,7 +244,7 @@ export async function testIntegration(integrationKey: string): Promise<Integrati
         const mine = domains.find((domain) => domain.name.toLowerCase() === shared);
         if (!mine) return { ok: true, message: `Connected, but ${shared} is not registered in Resend yet — run “Set up delivery”.` };
         return mine.status === "verified"
-          ? { ok: true, message: `Connected. Customers send as “via Briefly” from ${shared} until their own domain is ready.` }
+          ? { ok: true, message: `Connected. Customers send from ${shared} under their own name until their own domain is ready.` }
           : { ok: true, message: `Connected, but ${shared} is ${mine.status.replace("_", " ")} in Resend: its DNS records still need publishing.` };
       }
 

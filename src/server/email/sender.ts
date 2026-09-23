@@ -3,17 +3,20 @@ import { db } from "@/server/db/client";
 import * as s from "@/server/db/schema";
 import { env } from "@/server/env";
 import { BRAND } from "@/lib/brand";
+import { resolveEmailAdapter, type EmailAdapter } from "./adapters";
 
 /**
  * Whose name is on the envelope.
  *
- * A workspace with a verified domain sends as itself: "Acme <newsletter@news.acme.com>". Until
- * then it sends as "Acme via Briefly" from Briefly's shared domain — real mail that really
- * arrives, plainly marked as not yet theirs — so nothing about onboarding or a first edition waits
- * on DNS. Platform mail (receipts, reminders) is Briefly's own.
+ * A workspace's mail always carries the workspace's own sender: the name it chose (its own name
+ * until it chooses) and the reply address it chose. Only the address underneath changes. With a
+ * verified domain it is theirs: "Acme <newsletter@news.acme.com>". Until then it is Briefly's
+ * sending address, still under their name — "Acme <preview@send.briefly.press>" — so nothing about
+ * onboarding or a first edition waits on DNS, and no reader of a customer's newsletter ever sees
+ * Briefly's name in the From line. Platform mail (receipts, domain notices) is Briefly's own.
  */
 
-export type SenderMode = "domain" | "test" | "platform";
+export type SenderMode = "domain" | "shared" | "platform";
 
 export type Sender = {
   from: string;
@@ -71,22 +74,56 @@ function platformSender(config: DeliveryConfig): Sender {
   return { from: env.EMAIL_FROM, name: parsed.name ?? BRAND.name, address: parsed.email, mode: "platform", domain: null };
 }
 
+/** What a workspace chose for its envelope, with its own name standing in until it chooses one. */
+export type SenderIdentity = {
+  /** The name readers see. */
+  name: string;
+  /** The name as chosen, or null when it follows the workspace's name. */
+  customName: string | null;
+  replyTo: string | null;
+  /** The part before the @ on the workspace's own domain, when it has one. */
+  localPart: string | null;
+  workspaceName: string;
+};
+
+export async function senderIdentity(organizationId: string): Promise<SenderIdentity> {
+  const [organization, domain] = await Promise.all([
+    db.query.organizations.findFirst({ where: eq(s.organizations.id, organizationId), columns: { name: true, senderName: true, senderReplyTo: true } }),
+    db.query.sendingDomains.findFirst({ where: eq(s.sendingDomains.organizationId, organizationId), columns: { senderLocalPart: true } }),
+  ]);
+  const workspaceName = organization?.name ?? BRAND.name;
+  const customName = organization?.senderName?.trim() || null;
+  return { name: customName ?? workspaceName, customName, replyTo: organization?.senderReplyTo ?? null, localPart: domain?.senderLocalPart ?? null, workspaceName };
+}
+
 export async function senderFor(organizationId: string | null | undefined): Promise<Sender> {
   const config = await deliveryConfig();
   if (!organizationId) return platformSender(config);
 
-  const [domain, organization] = await Promise.all([
-    db.query.sendingDomains.findFirst({ where: eq(s.sendingDomains.organizationId, organizationId) }),
-    db.query.organizations.findFirst({ where: eq(s.organizations.id, organizationId), columns: { name: true } }),
-  ]);
+  const [domain, identity] = await Promise.all([db.query.sendingDomains.findFirst({ where: eq(s.sendingDomains.organizationId, organizationId) }), senderIdentity(organizationId)]);
+  const replyTo = identity.replyTo ?? undefined;
   if (domain?.status === "READY") {
     const address = `${domain.senderLocalPart}@${domain.domainName}`;
-    return { from: formatSender(domain.senderName, address), name: domain.senderName, address, replyTo: domain.replyTo ?? undefined, mode: "domain", domain: domain.domainName };
+    return { from: formatSender(identity.name, address), name: identity.name, address, replyTo, mode: "domain", domain: domain.domainName };
   }
-  if (config.configured && config.sharedDomain) {
-    const name = `${organization?.name ?? BRAND.name} via ${BRAND.name}`;
-    const address = `${PREVIEW_LOCAL_PART}@${config.sharedDomain}`;
-    return { from: formatSender(name, address), name, address, replyTo: domain?.replyTo ?? undefined, mode: "test", domain: null };
-  }
-  return platformSender(config);
+  // Not yet their address, but always their name.
+  const address = config.configured && config.sharedDomain ? `${PREVIEW_LOCAL_PART}@${config.sharedDomain}` : platformSender(config).address;
+  return { from: formatSender(identity.name, address), name: identity.name, address, replyTo, mode: "shared", domain: null };
+}
+
+/**
+ * The envelope exactly as it will leave, through whichever transport is connected right now.
+ *
+ * A delivery provider sends from any address it has verified, so the sender above goes out as it
+ * is. A mailbox (Gmail) or a provider with one verified sender (Brevo) can only send from that
+ * address; the workspace's name and reply address still ride on it. Every screen that says "your
+ * readers see" reads this, so it can never show something different from what is sent.
+ */
+export async function envelopeFor(organizationId: string | null | undefined, transport?: EmailAdapter): Promise<Sender & { transport: EmailAdapter["name"] }> {
+  const [adapter, sender] = await Promise.all([transport ?? resolveEmailAdapter(), senderFor(organizationId)]);
+  const fixed = await adapter.fixedAddress();
+  if (!fixed) return { ...sender, transport: adapter.name };
+  // A platform message through a fixed identity keeps that identity's own name.
+  const name = sender.mode === "platform" ? (fixed.name ?? sender.name) : sender.name;
+  return { ...sender, name, address: fixed.email, from: formatSender(name, fixed.email), domain: null, mode: sender.mode === "domain" ? "shared" : sender.mode, transport: adapter.name };
 }

@@ -87,9 +87,8 @@ export async function getEmail(id: string) {
 
 /** Sends a sample email to the current user so the layout and the provider can be checked end to end. */
 export async function sendTestEmail(user: { id: string; email: string; name: string }, organizationId?: string | null) {
-  const { senderFor } = await import("@/server/email/sender");
-  const { resolveEmailAdapter } = await import("@/server/email/adapters");
-  const [sender, adapter] = await Promise.all([senderFor(organizationId ?? null), resolveEmailAdapter()]);
+  const { envelopeFor } = await import("@/server/email/sender");
+  const sender = await envelopeFor(organizationId ?? null);
   const result = await sendEmail({
     to: user.email,
     subject: "Test email — Briefly mailbox",
@@ -103,7 +102,7 @@ export async function sendTestEmail(user: { id: string; email: string; name: str
       title: `Hello ${user.name.split(" ")[0] ?? ""}, the newsroom can reach you`,
       blocks: [
         { type: "paragraph", text: "This message was sent from Settings → Mailbox to check the email layout and the configured provider." },
-        { type: "kv", rows: [{ label: "Sending through", value: adapter.name === "log" ? "Dev mailbox (log)" : adapter.name === "resend" ? (sender.mode === "domain" ? "Your own domain" : sender.mode === "test" ? "Briefly's domain (test mode)" : "Resend") : adapter.name }, { label: "From", value: adapter.name === "resend" ? sender.from : adapter.name === "gmail" ? "the connected mailbox" : env.EMAIL_FROM }, { label: "Sent at", value: new Date().toISOString() }] },
+        { type: "kv", rows: [{ label: "Sending through", value: sender.transport === "log" ? "Dev mailbox (log)" : sender.transport === "gmail" ? "The connected mailbox" : sender.transport === "brevo" ? "Brevo" : sender.mode === "domain" ? "Your own domain" : "Briefly's sending address" }, { label: "From", value: sender.from }, ...(sender.replyTo ? [{ label: "Replies to", value: sender.replyTo }] : [])] },
         { type: "callout", title: "Contribution requests look like this", text: "Personal links, a deadline and one clear call to action. Nothing else." },
         { type: "list", items: ["Invitation on Day 1", "Reminder #1 on Day 4", "Reminder #2 on Day 7", "Grace period until Day 8"] },
       ],

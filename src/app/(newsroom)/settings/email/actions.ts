@@ -137,6 +137,7 @@ export async function updateSenderAction(patch: SenderPatch): Promise<ActionResu
     const user = await getCurrentUser();
     await updateSenderIdentity(tenant.organizationId, patch, user?.id ?? null);
     revalidatePath("/settings/email");
+    revalidatePath("/settings");
     return ok(null, tr("Sender saved"));
   } catch (err) {
     return toActionFailure(err);
@@ -150,7 +151,7 @@ export async function disconnectDomainAction(): Promise<ActionResult> {
     const user = await getCurrentUser();
     await disconnectSendingDomain(tenant.organizationId, user?.id ?? null);
     revalidatePath("/settings/email");
-    return ok(null, tr("Domain removed. Your editions go out via Briefly again."));
+    return ok(null, tr("Domain removed. Your editions go out from Briefly's sending address again, still under your name."));
   } catch (err) {
     return toActionFailure(err);
   }

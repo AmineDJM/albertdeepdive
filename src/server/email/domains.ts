@@ -5,7 +5,7 @@ import type { DnsRecord, SendingDomainRow } from "@/server/db/schema/email";
 import { getEmailProvider } from "./providers";
 import type { EmailProvider, ProviderDomain, ProviderRecord } from "./providers/types";
 import { detectDnsHost, domainConnectApplyUrl, recordPublished } from "./dns";
-import { deliveryConfig } from "./sender";
+import { deliveryConfig, senderFor, senderIdentity, type SenderIdentity } from "./sender";
 import { audit } from "@/server/audit";
 import { createLogger } from "@/server/logger";
 import { enqueueJob } from "@/server/jobs/queue";
@@ -119,7 +119,7 @@ async function registerDomain(provider: EmailProvider, name: string, region: str
   }
 }
 
-export type ConnectInput = { domain: string; subdomain?: string | null; senderName?: string | null; localPart?: string | null };
+export type ConnectInput = { domain: string; subdomain?: string | null; localPart?: string | null };
 
 export async function connectSendingDomain(organizationId: string, input: ConnectInput, actorId?: string | null): Promise<SendingDomainRow> {
   const provider = await requireProvider();
@@ -129,14 +129,13 @@ export async function connectSendingDomain(organizationId: string, input: Connec
 
   const { root, sending } = normaliseDomain(input.domain);
   const domainName = sending ?? suggestSendingDomain(root, input.subdomain);
-  const senderName = (input.senderName?.trim() || organization.name).slice(0, 80);
   const localPart = normaliseLocalPart(input.localPart);
   const config = await deliveryConfig();
 
   // The row goes in first: a provider that is down leaves a visible "setting up" to retry, not nothing.
   const [row] = await db
     .insert(s.sendingDomains)
-    .values({ organizationId, rootDomain: root, domainName, status: "SETTING_UP", senderName, senderLocalPart: localPart, connectedById: actorId ?? null, providerRegion: config.region })
+    .values({ organizationId, rootDomain: root, domainName, status: "SETTING_UP", senderLocalPart: localPart, connectedById: actorId ?? null, providerRegion: config.region })
     .returning();
 
   try {
@@ -286,7 +285,7 @@ async function notifyReady(row: SendingDomainRow) {
   if (row.notifiedAt) return;
   const organization = await db.query.organizations.findFirst({ where: eq(s.organizations.id, row.organizationId), columns: { locale: true } });
   const words = READY_WORDS[organization?.locale === "fr" ? "fr" : "en"];
-  const sender = `${row.senderName} <${row.senderLocalPart}@${row.domainName}>`;
+  const sender = (await senderFor(row.organizationId)).from;
   const admins = await db
     .select({ id: s.users.id, email: s.users.email })
     .from(s.organizationMembers)
@@ -320,28 +319,45 @@ async function notifyReady(row: SendingDomainRow) {
 
 export type SenderPatch = { senderName?: string | null; localPart?: string | null; replyTo?: string | null };
 
-/** The name and address on the envelope, for the few who want to choose them. */
-export async function updateSenderIdentity(organizationId: string, patch: SenderPatch, actorId?: string | null): Promise<SendingDomainRow> {
-  const row = await getSendingDomain(organizationId);
-  if (!row) throw new NotFoundError("Sending domain");
-  const values: Partial<typeof s.sendingDomains.$inferInsert> = {};
+/** A name as a mail header can carry it: one line, no quotes or angle brackets, at most 80 characters. */
+function cleanSenderName(value: string): string {
+  return value.replace(/[\r\n"<>]/g, " ").replace(/\s+/g, " ").trim().slice(0, 80);
+}
+
+/**
+ * The name and reply address on every message the workspace sends, and the address on its own domain.
+ *
+ * The name and the reply address are the workspace's whether or not it has a domain: a customer
+ * sending from Briefly's address still sends under its own name. An empty name goes back to
+ * following the workspace's name; an empty reply address lets replies go where the envelope says.
+ * Only the part before the @ needs a domain, because there is no address to choose without one.
+ */
+export async function updateSenderIdentity(organizationId: string, patch: SenderPatch, actorId?: string | null): Promise<SenderIdentity> {
+  const organization = await db.query.organizations.findFirst({ where: eq(s.organizations.id, organizationId), columns: { id: true, name: true } });
+  if (!organization) throw new NotFoundError("Workspace");
+  const values: Partial<typeof s.organizations.$inferInsert> = {};
   if (patch.senderName !== undefined) {
-    const name = (patch.senderName ?? "").trim();
-    if (!name) throw new ValidationError("Give the sender a name", { senderName: ["Required"] });
-    values.senderName = name.slice(0, 80);
+    const name = cleanSenderName(patch.senderName ?? "");
+    values.senderName = name && name !== organization.name ? name : null;
   }
-  if (patch.localPart !== undefined) values.senderLocalPart = normaliseLocalPart(patch.localPart);
   if (patch.replyTo !== undefined) {
     const replyTo = (patch.replyTo ?? "").trim().toLowerCase();
     if (replyTo && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(replyTo)) throw new ValidationError("Enter a valid reply address", { replyTo: ["Enter a valid email address"] });
-    values.replyTo = replyTo || null;
+    values.senderReplyTo = replyTo || null;
   }
-  const [updated] = await db.update(s.sendingDomains).set(values).where(eq(s.sendingDomains.id, row.id)).returning();
-  await audit({ action: "email.sender.update", organizationId, userId: actorId ?? null, entityType: "SETTING", entityId: row.id, metadata: { ...values } });
-  return updated;
+  let localPart: string | undefined;
+  if (patch.localPart !== undefined && patch.localPart !== null) {
+    const row = await getSendingDomain(organizationId);
+    if (!row) throw new ValidationError("Connect your domain before choosing an address on it", { localPart: ["Connect a domain first"] });
+    localPart = normaliseLocalPart(patch.localPart);
+    await db.update(s.sendingDomains).set({ senderLocalPart: localPart }).where(eq(s.sendingDomains.id, row.id));
+  }
+  if (Object.keys(values).length) await db.update(s.organizations).set(values).where(eq(s.organizations.id, organizationId));
+  await audit({ action: "email.sender.update", organizationId, userId: actorId ?? null, entityType: "SETTING", entityId: organizationId, metadata: { ...values, ...(localPart ? { localPart } : {}) } });
+  return senderIdentity(organizationId);
 }
 
-/** Back to sending as "via Briefly". The provider forgets the domain too, so nobody else can claim it by accident. */
+/** Back to Briefly's sending address, still under the workspace's name. The provider forgets the domain too, so nobody else can claim it by accident. */
 export async function disconnectSendingDomain(organizationId: string, actorId?: string | null): Promise<void> {
   const row = await getSendingDomain(organizationId);
   if (!row) return;

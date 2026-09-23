@@ -363,7 +363,7 @@ async function setUpResend(actorId?: string | null): Promise<SetupResult> {
         domain = await provider.getDomain(domain.id);
       }
       if (domain.status === "verified") {
-        steps.push({ label: "Briefly sending domain", detail: `${shared} is verified. Customers send as “via Briefly” from it until their own domain is ready.`, ok: true });
+        steps.push({ label: "Briefly sending domain", detail: `${shared} is verified. Customers send from it under their own name until their own domain is ready.`, ok: true });
       } else {
         const records = domain.records.map((record) => `${record.type} ${record.name} → ${record.value}${record.priority !== undefined ? ` (priority ${record.priority})` : ""}`).join("; ");
         steps.push({ label: "Briefly sending domain", detail: `${shared} is ${created ? "registered" : domain.status.replace("_", " ")}. Publish these DNS records, then run setup again: ${records}`, ok: false });

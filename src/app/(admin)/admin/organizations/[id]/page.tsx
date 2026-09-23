@@ -97,7 +97,7 @@ export default async function WorkspaceSheetPage({ params }: { params: Promise<{
               <dt className="text-muted-foreground">{tr("Editions")}</dt>
               <dd>{counts.editions} · {counts.publishedEditions} {tr("published")}{counts.jobsFailed7 ? <span className="text-warning">{" "}· {counts.jobsFailed7} {tr("jobs failed this week")}</span> : null}</dd>
               <dt className="text-muted-foreground">{tr("Email sending")}</dt>
-              <dd>{sendingDomain ? <span className="font-mono">{sendingDomain.domainName}</span> : tr("via Briefly (test mode)")}{sendingDomain ? <span className="text-muted-foreground">{" "}· {sendingDomain.status.toLowerCase().replace(/_/g, " ")}</span> : null}</dd>
+              <dd>{sendingDomain ? <span className="font-mono">{sendingDomain.domainName}</span> : tr("Briefly's sending address, under their name")}{sendingDomain ? <span className="text-muted-foreground">{" "}· {sendingDomain.status.toLowerCase().replace(/_/g, " ")}</span> : null}</dd>
               <dt className="text-muted-foreground">{tr("Reader payments")}</dt>
               <dd>{organization.readerPaymentsConnected ? `${tr("connected")} · ${counts.paidPublications} ${tr("paid titles")}` : tr("not connected")}</dd>
               <dt className="text-muted-foreground">{tr("All-time cost")}</dt>

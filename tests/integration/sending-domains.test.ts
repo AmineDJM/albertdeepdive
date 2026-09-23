@@ -118,20 +118,20 @@ describe("a customer's sending domain", () => {
     delete process.env.RESEND_WEBHOOK_SECRET;
   });
 
-  it("sends “via Briefly” until the workspace has a domain of its own", async () => {
+  it("sends under the workspace's own name from Briefly's address until it has a domain of its own", async () => {
     const sender = await senderFor(albertOrgId);
-    expect(sender).toMatchObject({ mode: "test", from: "Albert School via Briefly <preview@send.briefly.test>" });
+    expect(sender).toMatchObject({ mode: "shared", from: "Albert School <preview@send.briefly.test>" });
     const result = await sendEmail({ to: "reader@example.com", subject: "Hello", template: "test_send", organizationId: albertOrgId, layout: { title: "Hello", blocks: [{ type: "paragraph", text: "Hi" }] } });
     expect(result.ok).toBe(true);
-    expect(provider.sent.at(-1)).toMatchObject({ from: "Albert School via Briefly <preview@send.briefly.test>", to: "reader@example.com", tags: { workspace: albertOrgId, template: "test_send" } });
+    expect(provider.sent.at(-1)).toMatchObject({ from: "Albert School <preview@send.briefly.test>", to: "reader@example.com", tags: { workspace: albertOrgId, template: "test_send" } });
     const row = await db.query.emailLog.findFirst({ where: eq(s.emailLog.id, result.id) });
-    expect(row).toMatchObject({ provider: "resend", status: "SENT", fromAddress: "Albert School via Briefly <preview@send.briefly.test>", delivery: "PENDING" });
+    expect(row).toMatchObject({ provider: "resend", status: "SENT", fromAddress: "Albert School <preview@send.briefly.test>", delivery: "PENDING" });
     expect(row?.providerMessageId).toMatch(/^em_/);
   });
 
   it("turns one typed domain into a registration, records and a door to the DNS host", async () => {
     const row = await connectSendingDomain(albertOrgId, { domain: "https://www.AlbertSchool.test/" }, adminId);
-    expect(row).toMatchObject({ rootDomain: "albertschool.test", domainName: "news.albertschool.test", status: "WAITING_FOR_DNS", senderName: "Albert School", senderLocalPart: "newsletter", dnsHost: "Cloudflare", providerRegion: "eu-west-1" });
+    expect(row).toMatchObject({ rootDomain: "albertschool.test", domainName: "news.albertschool.test", status: "WAITING_FOR_DNS", senderLocalPart: "newsletter", dnsHost: "Cloudflare", providerRegion: "eu-west-1" });
     expect(row.providerDomainId).toBe("dom_1");
     expect(row.records.map((record) => `${record.type} ${record.host}`)).toEqual(["MX send.news", "TXT send.news", "TXT resend._domainkey.news"]);
     expect(row.records[0].fqdn).toBe("send.news.albertschool.test");
@@ -158,7 +158,7 @@ describe("a customer's sending domain", () => {
     row = await checkSendingDomain(albertOrgId, { force: true });
     expect(provider.verified).toEqual(["dom_1"]);
     expect(row.status).toBe("VERIFYING");
-    expect((await senderFor(albertOrgId)).mode).toBe("test");
+    expect((await senderFor(albertOrgId)).mode).toBe("shared");
 
     provider.domains.get("dom_1")!.status = "verified";
     const before = provider.sent.length;
@@ -239,16 +239,19 @@ describe("a customer's sending domain", () => {
     expect(await db.query.emailEvents.findFirst({ where: eq(s.emailEvents.providerEventId, "msg_route_2") })).toBeUndefined();
   });
 
-  it("lets the few who want to choose the name and address, and lets them leave", async () => {
+  it("lets the workspace choose the name and address, and lets it leave keeping its name", async () => {
     const updated = await updateSenderIdentity(albertOrgId, { senderName: "Albert School Newsroom", localPart: "Hello", replyTo: "editors@albertschool.test" }, adminId);
-    expect(updated).toMatchObject({ senderName: "Albert School Newsroom", senderLocalPart: "hello", replyTo: "editors@albertschool.test" });
+    expect(updated).toMatchObject({ name: "Albert School Newsroom", customName: "Albert School Newsroom", localPart: "hello", replyTo: "editors@albertschool.test" });
     expect(await senderFor(albertOrgId)).toMatchObject({ from: "Albert School Newsroom <hello@news.albertschool.test>", replyTo: "editors@albertschool.test" });
     await expect(updateSenderIdentity(albertOrgId, { replyTo: "not-an-address" }, adminId)).rejects.toThrow(/valid/);
 
     await disconnectSendingDomain(albertOrgId, adminId);
     expect(await getSendingDomain(albertOrgId)).toBeNull();
     expect(provider.deleted).toEqual(["dom_1"]);
-    expect((await senderFor(albertOrgId)).mode).toBe("test");
+    // The name and the reply address were the workspace's, not the domain's: they stay.
+    expect(await senderFor(albertOrgId)).toMatchObject({ from: "Albert School Newsroom <preview@send.briefly.test>", replyTo: "editors@albertschool.test" });
+    await updateSenderIdentity(albertOrgId, { senderName: "", replyTo: "" }, adminId);
+    expect((await senderFor(albertOrgId)).mode).toBe("shared");
   });
 
   it("sweeps every domain still on its way", async () => {

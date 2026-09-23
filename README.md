@@ -596,6 +596,15 @@ need to reset that password, open the web service's **Shell** and run
 
 Nothing else has to be configured. No email provider account, no object storage, no cron service.
 
+### Whose name is on the envelope
+
+Every customer chooses its own sender in **Settings → Email → Sender**: the name readers see and the
+address replies go to. It needs no domain: until a customer connects one, its mail leaves from
+Briefly's sending address but under the customer's name, whichever transport carries it (Resend,
+Brevo or a Gmail mailbox, which can only send from their own address). Once the customer's domain is
+verified, the address becomes theirs too (`newsletter@news.acme.com`, the part before the @ chosen on
+the same screen). Only the platform's own mail — receipts, domain notices — goes out as Briefly.
+
 ### The newsroom mailbox (Gmail)
 
 One Gmail account sends the invitations, the reminders and the requests for more information, and

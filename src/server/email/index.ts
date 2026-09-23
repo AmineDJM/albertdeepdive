@@ -3,7 +3,7 @@ import { db } from "@/server/db/client";
 import { emailLog } from "@/server/db/schema";
 import { createLogger } from "@/server/logger";
 import { resolveEmailAdapter } from "./adapters";
-import { senderFor } from "./sender";
+import { envelopeFor } from "./sender";
 import { emailTextFallback, renderEmailLayout, type EmailLayoutInput } from "./template";
 import { resolveMasthead } from "./masthead";
 
@@ -45,10 +45,12 @@ export async function sendEmail(input: SendEmailInput) {
   const layout: EmailLayoutInput = resolved ? { ...input.layout, masthead: { ...resolved, ...input.layout.masthead, logoUrl: input.layout.masthead?.logoUrl ?? resolved.logoUrl, colour: input.layout.masthead?.colour ?? resolved.colour } } : input.layout;
   const html = renderEmailLayout(layout);
   const text = emailTextFallback(layout);
-  // Who it is from is the workspace's business — its own domain once verified, Briefly's shared one
-  // until then — and only the delivery provider can honour that; a mailbox sends as itself.
-  const [adapter, sender] = await Promise.all([resolveEmailAdapter(), senderFor(input.organizationId ?? null)]);
-  const from = adapter.name === "resend" ? sender.from : null;
+  // Who it is from is the workspace's business: its name and reply address always, its own domain
+  // once verified. Every transport carries that name — a mailbox or a single-sender provider on its
+  // own address — so a customer's message never goes out under Briefly's name.
+  const adapter = await resolveEmailAdapter();
+  const sender = await envelopeFor(input.organizationId ?? null, adapter);
+  const from = sender.from;
   const [row] = await db
     .insert(emailLog)
     .values({
@@ -72,8 +74,8 @@ export async function sendEmail(input: SendEmailInput) {
     const result = await adapter.send({
       to: input.to,
       cc: input.cc,
-      from: from ?? undefined,
-      replyTo: input.replyTo ?? (adapter.name === "resend" ? sender.replyTo : undefined),
+      from,
+      replyTo: input.replyTo ?? sender.replyTo,
       subject: input.subject,
       html,
       text,

@@ -25,4 +25,32 @@ test.describe("email sending", () => {
     await page.getByRole("button", { name: "Continue" }).click();
     await expect(page.locator("[data-sonner-toast]").last()).toContainText(/not connected/);
   });
+
+  test("lets the customer name the sender and choose where replies go, with no domain", async ({ page }) => {
+    await login(page, ADMIN);
+    await page.goto("/settings/email");
+    const preview = page.getByTestId("sender-preview");
+    // Never the platform's name on a customer's mail, even before anything is set up.
+    await expect(preview).toContainText("Albert School");
+    await expect(page.locator("main")).not.toContainText("Briefly <");
+
+    await page.getByLabel("Sender name").fill("Albert's Deep Dive");
+    await expect(preview).toContainText("Albert's Deep Dive");
+    await page.getByLabel("Replies go to").fill("editors@albertschool.test");
+    await page.getByRole("button", { name: "Save sender" }).click();
+    await expect(page.locator("[data-sonner-toast]").last()).toContainText("Sender saved");
+
+    await page.reload();
+    await expect(page.getByLabel("Sender name")).toHaveValue("Albert's Deep Dive");
+    await expect(page.getByLabel("Replies go to")).toHaveValue("editors@albertschool.test");
+    await expect(page.locator("main")).toContainText("Albert's Deep Dive <");
+
+    // Back to following the workspace's name.
+    await page.getByLabel("Sender name").fill("");
+    await page.getByLabel("Replies go to").fill("");
+    await page.getByRole("button", { name: "Save sender" }).click();
+    await expect(page.locator("[data-sonner-toast]").last()).toContainText("Sender saved");
+    await page.reload();
+    await expect(page.getByTestId("sender-preview")).toContainText("Albert School");
+  });
 });

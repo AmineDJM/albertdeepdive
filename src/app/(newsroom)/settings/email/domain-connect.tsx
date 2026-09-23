@@ -22,9 +22,10 @@ function rootOf(input: string): string {
  *
  * The customer types acme.com. Briefly says it will send from news.acme.com, why, and what the
  * sender will look like; everything else is behind "Advanced" for the few who want a different
- * subdomain, name or address. Nothing here mentions the provider, keys or DKIM.
+ * subdomain or address. The name on the envelope is the workspace's sender, chosen above this and
+ * not again here. Nothing here mentions the provider, keys or DKIM.
  */
-export function DomainConnect({ suggestion, organizationName, configured }: { suggestion: { root: string; sending: string } | null; organizationName: string; configured: boolean }) {
+export function DomainConnect({ suggestion, senderName, configured }: { suggestion: { root: string; sending: string } | null; senderName: string; configured: boolean }) {
   const tr = useUi();
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -33,7 +34,6 @@ export function DomainConnect({ suggestion, organizationName, configured }: { su
   const [domain, setDomain] = useState(suggestion?.root ?? "");
   const [label, setLabel] = useState<string>("news");
   const [customLabel, setCustomLabel] = useState("");
-  const [senderName, setSenderName] = useState(organizationName);
   const [localPart, setLocalPart] = useState("newsletter");
 
   const root = useMemo(() => rootOf(domain), [domain]);
@@ -44,7 +44,7 @@ export function DomainConnect({ suggestion, organizationName, configured }: { su
 
   const submit = () =>
     startTransition(async () => {
-      const result = await connectDomainAction({ domain, subdomain: alreadySub ? undefined : chosenLabel, senderName: senderName.trim() || undefined, localPart: localPart.trim() || undefined });
+      const result = await connectDomainAction({ domain, subdomain: alreadySub ? undefined : chosenLabel, localPart: localPart.trim() || undefined });
       if (!result.ok) {
         toast.error(result.error);
         return;
@@ -87,7 +87,7 @@ export function DomainConnect({ suggestion, organizationName, configured }: { su
             {alreadySub ? null : <span className="text-muted-foreground">{" "}— {tr("a subdomain keeps your company's own mail separate and safe.")}</span>}
           </p>
           <p className="text-muted-foreground">
-            {tr("Your readers will see")}{" "}<span className="font-medium text-foreground">{senderName.trim() || organizationName}</span>{" "}<span className="font-mono">&lt;{address}&gt;</span>
+            {tr("Your readers will see")}{" "}<span className="font-medium text-foreground">{senderName}</span>{" "}<span className="font-mono">&lt;{address}&gt;</span>
           </p>
         </div>
       ) : null}
@@ -116,10 +116,6 @@ export function DomainConnect({ suggestion, organizationName, configured }: { su
               </div>
             </div>
           ) : null}
-          <div className="space-y-1.5">
-            <Label htmlFor="senderName">{tr("Sender name")}</Label>
-            <Input id="senderName" value={senderName} onChange={(event) => setSenderName(event.target.value)} placeholder={organizationName} />
-          </div>
           <div className="space-y-1.5">
             <Label htmlFor="localPart">{tr("Address")}</Label>
             <div className="flex items-center gap-1">

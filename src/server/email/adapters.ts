@@ -9,7 +9,10 @@ export type OutgoingEmail = {
   replyTo?: string;
   /** Bulk mail must offer one-click unsubscribe, or inboxes treat it as spam. */
   listUnsubscribeUrl?: string;
-  /** Who it is from, resolved per workspace. Adapters with a fixed identity (a mailbox) ignore it. */
+  /**
+   * Who it is from, resolved per workspace. An adapter with a fixed address (a mailbox, a provider
+   * with one verified sender) keeps its address and takes the name from here.
+   */
   from?: string;
   /** Labels the provider hands back on every webhook. */
   tags?: Record<string, string>;
@@ -18,6 +21,8 @@ export type SendResult = { providerMessageId?: string };
 
 export interface EmailAdapter {
   readonly name: "gmail" | "brevo" | "resend" | "log";
+  /** The only address this transport can send from, or null when it sends from whatever it is given. */
+  fixedAddress(): Promise<{ email: string; name?: string } | null>;
   send(message: OutgoingEmail): Promise<SendResult>;
 }
 
@@ -27,9 +32,18 @@ function parseFrom(from: string): { email: string; name?: string } {
   return match ? { name: match[1].replace(/^"|"$/g, "") || undefined, email: match[2] } : { email: from.trim() };
 }
 
+/** The name a message asks for, on the address a fixed transport owns. */
+function onFixedAddress(message: OutgoingEmail, fixed: { email: string; name?: string }): { email: string; name?: string } {
+  const asked = message.from ? parseFrom(message.from).name : undefined;
+  return { email: fixed.email, name: asked ?? fixed.name };
+}
+
 /** Development adapter: emails are stored in the email_log table and viewable in the UI mailbox. */
 export class LogEmailAdapter implements EmailAdapter {
   readonly name = "log" as const;
+  async fixedAddress() {
+    return null;
+  }
   async send(): Promise<SendResult> {
     return { providerMessageId: `log-${Date.now()}` };
   }
@@ -41,6 +55,9 @@ export class LogEmailAdapter implements EmailAdapter {
  */
 export class ResendEmailAdapter implements EmailAdapter {
   readonly name = "resend" as const;
+  async fixedAddress() {
+    return null;
+  }
   async send(message: OutgoingEmail): Promise<SendResult> {
     const { getEmailProvider } = await import("./providers");
     const provider = await getEmailProvider();
@@ -56,11 +73,17 @@ export class ResendEmailAdapter implements EmailAdapter {
  */
 export class BrevoEmailAdapter implements EmailAdapter {
   readonly name = "brevo" as const;
+  /** Brevo sends only from the sender verified on the account, so that address is fixed. */
+  async fixedAddress() {
+    const { integrationConfig } = await import("@/server/integrations/service");
+    const config = await integrationConfig("brevo");
+    return parseFrom(config.from || env.EMAIL_FROM);
+  }
   async send(message: OutgoingEmail): Promise<SendResult> {
     const { integrationConfig } = await import("@/server/integrations/service");
     const config = await integrationConfig("brevo");
     if (!config.apiKey) throw new Error("Brevo is not connected");
-    const sender = parseFrom(config.from || env.EMAIL_FROM);
+    const sender = onFixedAddress(message, parseFrom(config.from || env.EMAIL_FROM));
     const res = await fetch("https://api.brevo.com/v3/smtp/email", {
       method: "POST",
       headers: { "api-key": config.apiKey, "content-type": "application/json", accept: "application/json" },
@@ -93,9 +116,16 @@ export class BrevoEmailAdapter implements EmailAdapter {
  */
 export class GmailEmailAdapter implements EmailAdapter {
   readonly name = "gmail" as const;
+  /** A mailbox sends as itself; the name on it can still be the workspace's. */
+  async fixedAddress() {
+    const { getGmailConnection } = await import("./gmail");
+    const connection = await getGmailConnection();
+    return connection ? { email: connection.address, name: connection.displayName } : null;
+  }
   async send(message: OutgoingEmail): Promise<SendResult> {
     const { sendThroughGmail } = await import("./gmail");
-    return sendThroughGmail(message);
+    const fixed = await this.fixedAddress();
+    return sendThroughGmail({ ...message, fromName: fixed ? onFixedAddress(message, fixed).name : undefined });
   }
 }
 

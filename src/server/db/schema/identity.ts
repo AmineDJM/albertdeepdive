@@ -71,6 +71,16 @@ export const organizations = pgTable(
     locale: text("locale").notNull().default("en"),
     timezone: text("timezone").notNull().default("Europe/Paris"),
     country: text("country"),
+    /**
+     * Who the workspace's mail is from, as its readers and contributors see it.
+     *
+     * The name on the envelope and where replies go belong to the customer, not to the domain they
+     * send from: a workspace with no domain of its own still sends under its own name. A null name
+     * follows the workspace's name, so renaming the workspace renames the sender with it; a null
+     * reply address leaves replies to whatever the envelope says.
+     */
+    senderName: text("sender_name"),
+    senderReplyTo: text("sender_reply_to"),
     /** Free-form workspace settings (tone, editorial defaults, white-label overrides). */
     settings: jsonb("settings").$type<Record<string, unknown>>().notNull().default({}),
     /** The organisation's own payment account for paid titles. The key is sealed, never stored plain. */

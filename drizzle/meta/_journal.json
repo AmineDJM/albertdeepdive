@@ -225,6 +225,13 @@
       "when": 1789997087716,
       "tag": "0031_nosy_the_hunter",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1790171415977,
+      "tag": "0032_large_shadowcat",
+      "breakpoints": true
     }
   ]
 }
