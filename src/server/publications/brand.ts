@@ -6,7 +6,7 @@ import { NotFoundError } from "@/lib/action-result";
 import { activePublicationBrand, brandRecordFor, clearPublicationBrand, savePublicationBrandFromEvidence } from "@/server/brand/service";
 import { assertPublicHost, discoverNewsletterBrand, normaliseWebsite, type NewsletterBrandReading } from "@/server/tenancy/discovery";
 import { ingestMedia, SUPPORTED_IMAGE_MIMES } from "@/server/media/ingest";
-import { mediaUrl, LONG_LIVED_IMAGE_TTL_SECONDS } from "@/server/media/urls";
+import { durableImageUrl } from "@/server/media/durable";
 import type { BrandSystem } from "@/lib/brand/system";
 
 const log = createLogger("publications:brand");
@@ -115,8 +115,8 @@ export type NewsletterLook = {
  * What a newsletter looks like on the way out: name, mark, colour, brand.
  *
  * Its own look when one was read from its address, its organisation's otherwise. The mark is the
- * copy in the library, signed for as long as an email can sit unread; the organisation's mark is
- * whatever address the organisation gave.
+ * copy in the library, at Briefly's own durable address so it still shows in an email opened a year
+ * later; the organisation's mark is whatever address the organisation gave.
  */
 export async function newsletterLook(scope: { organizationId: string; publicationId?: string | null }): Promise<NewsletterLook> {
   const [organization, publication, record] = await Promise.all([
@@ -129,7 +129,7 @@ export async function newsletterLook(scope: { organizationId: string; publicatio
   const own = !!record.publicationId;
   const brand = record.system as BrandSystem;
   const orgColours = (organization?.brandColours ?? {}) as { primary?: string };
-  const storedLogo = own && publication?.logoMediaId ? await mediaUrl(publication.logoMediaId, "WEB", LONG_LIVED_IMAGE_TTL_SECONDS) : null;
+  const storedLogo = own && publication?.logoMediaId ? durableImageUrl(publication.logoMediaId, "WEB") : null;
   return {
     name: publication?.name?.trim() || organization?.name || "",
     logoUrl: own ? (storedLogo ?? brand.logo.markUrl ?? null) : (organization?.logoUrl ?? null),

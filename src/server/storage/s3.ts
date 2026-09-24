@@ -19,6 +19,9 @@ export function s3ClientFor(config: ResolvedStorage): S3Client {
   });
 }
 
+/** The longest a SigV4 presigned URL may live: seven days. */
+export const MAX_PRESIGN_SECONDS = 7 * 24 * 60 * 60;
+
 /** S3-compatible storage: AWS S3, Cloudflare R2, Supabase Storage (S3 protocol), MinIO. */
 export class S3StorageAdapter implements StorageAdapter {
   readonly name = "s3" as const;
@@ -82,6 +85,10 @@ export class S3StorageAdapter implements StorageAdapter {
       Key: key,
       ResponseContentDisposition: options?.download ? `attachment; filename="${options.download.fileName}"` : undefined,
     });
-    return presign(this.client, command, { expiresIn: options?.expiresInSeconds ?? env.STORAGE_SIGNED_URL_TTL_SECONDS });
+    // SigV4 refuses to sign past seven days, and throws rather than shortening. Anything asked for
+    // longer is signed for the most it can be; what must outlive that uses a durable address
+    // (src/server/media/durable.ts), never a longer signature.
+    const expiresIn = Math.min(options?.expiresInSeconds ?? env.STORAGE_SIGNED_URL_TTL_SECONDS, MAX_PRESIGN_SECONDS);
+    return presign(this.client, command, { expiresIn });
   }
 }

@@ -6,7 +6,7 @@ import { audit } from "@/server/audit";
 import { createLogger } from "@/server/logger";
 import { sendEmail } from "@/server/email";
 import { buildEditionDocument } from "@/server/publication/document-builder";
-import { LONG_LIVED_IMAGE_TTL_SECONDS, mediaUrls } from "@/server/media/urls";
+import { durableImageUrls } from "@/server/media/durable";
 import { newsletterLook } from "@/server/publications/brand";
 import { recipientsFor } from "@/server/subscribers/service";
 import { showsBrieflyBranding } from "@/server/billing/entitlements";
@@ -16,8 +16,6 @@ import { setOutputStatus } from "./service";
 import { NotFoundError, ValidationError } from "@/lib/action-result";
 
 const log = createLogger("outputs");
-
-const EMAIL_IMAGE_TTL_SECONDS = LONG_LIVED_IMAGE_TTL_SECONDS;
 
 export type SendResult = { sent: number; failed: number; skipped: number; outputId: string };
 
@@ -85,7 +83,6 @@ export async function sendEditionEmail(
 
   const doc = await buildEditionDocument(editionId, {
     versionLabel: "email",
-    signedUrlTtlSeconds: EMAIL_IMAGE_TTL_SECONDS,
   });
   // Every picture in the edition, not only the covers and heroes: a design may place any of them,
   // and a picture with no URL is an empty frame in somebody's inbox.
@@ -98,7 +95,9 @@ export async function sendEditionEmail(
       ].filter((id): id is string => !!id),
     ),
   ];
-  const imageUrls = await mediaUrls(mediaIds, "WEB", EMAIL_IMAGE_TTL_SECONDS);
+  // Briefly's own addresses, not storage signatures: an email is opened whenever the reader gets to
+  // it, long after any signature a bucket will issue has run out.
+  const imageUrls = await durableImageUrls(mediaIds, "WEB");
 
   const webOutput = await db.query.editionOutputs.findFirst({
     where: and(

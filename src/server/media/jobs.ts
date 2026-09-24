@@ -7,6 +7,7 @@ import { createLogger } from "@/server/logger";
 import { NotFoundError } from "@/lib/action-result";
 import { describeMedia } from "./describe";
 import { DUPLICATE_THRESHOLD, hammingDistance, SIMILAR_THRESHOLD } from "./hash";
+import { inLibraryOf } from "./scope";
 
 const log = createLogger("media:jobs");
 
@@ -51,6 +52,7 @@ export async function recheckDuplicates(assetId: string): Promise<DuplicateCheck
     .where(
       and(
         ne(s.mediaAssets.id, assetId),
+        inLibraryOf(asset.organizationId),
         eq(s.mediaAssets.isArchived, false),
         asset.editionId ? eq(s.mediaAssets.editionId, asset.editionId) : undefined,
         isNotNull(s.mediaAssets.phash),

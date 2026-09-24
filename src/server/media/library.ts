@@ -7,6 +7,7 @@ import { CONSENT_TEXTS } from "@/lib/constants";
 import { contentTokens } from "@/lib/editorial/text";
 import { DUPLICATE_THRESHOLD, hammingDistance, SIMILAR_THRESHOLD } from "./hash";
 import { mediaUrls } from "./urls";
+import { inLibraryOf } from "./scope";
 
 /* Pure constants (kinds, roles, thresholds, flag explanations) live in ./constants so client
    components can import them; they are re-exported here for server code. */
@@ -646,6 +647,7 @@ export async function getMediaDetail(assetId: string): Promise<MediaDetail> {
       .where(
         and(
           ne(s.mediaAssets.id, assetId),
+          inLibraryOf(asset.organizationId),
           asset.editionId ? eq(s.mediaAssets.editionId, asset.editionId) : undefined,
           isNotNull(s.mediaAssets.phash),
         ),

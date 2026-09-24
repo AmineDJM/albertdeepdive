@@ -5,13 +5,12 @@ import { getStorage } from "@/server/storage";
 
 export type VariantKind = "THUMBNAIL" | "WEB" | "PRINT";
 
-/** Signed URL for an asset variant (falls back to the original file). */
 /**
- * Signed image URLs expire, and an email is read whenever the reader gets to it — sometimes weeks
- * later. Pictures in a sent email are therefore signed for a year rather than for an hour.
+ * Signed URL for an asset variant (falls back to the original file).
+ *
+ * Short-lived by design. Anything that must keep working after it leaves Briefly — a picture in a
+ * sent email — uses `durableImageUrl` (./durable.ts) instead.
  */
-export const LONG_LIVED_IMAGE_TTL_SECONDS = 400 * 24 * 60 * 60;
-
 export async function mediaUrl(
   assetId: string,
   kind: VariantKind = "WEB",

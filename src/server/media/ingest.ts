@@ -8,6 +8,7 @@ import { extensionForMime, getStorage, storageKeys } from "@/server/storage";
 import { createLogger } from "@/server/logger";
 import { dHashFromGray, DUPLICATE_THRESHOLD, hammingDistance, SIMILAR_THRESHOLD } from "./hash";
 import { scoreQuality, suggestCrops } from "./quality";
+import { inLibraryOf } from "./scope";
 
 const log = createLogger("media:ingest");
 
@@ -136,6 +137,13 @@ export async function ingestMedia(input: IngestMediaInput): Promise<IngestedMedi
     });
   }
 
+  // An asset belongs to the workspace that owns the edition it was filed against; uploads that are
+  // not tied to an edition fall back to the workspace in scope for the request.
+  const organizationId =
+    input.organizationId ??
+    (input.editionId ? (await db.query.editions.findFirst({ where: eq(editions.id, input.editionId), columns: { organizationId: true } }))?.organizationId : null) ??
+    (await optionalOrganizationId());
+
   let duplicateOfId: string | null = null;
   let similarityGroup: string | null = null;
   const flags = [...quality.flags];
@@ -152,6 +160,7 @@ export async function ingestMedia(input: IngestMediaInput): Promise<IngestedMedi
         and(
           isNotNull(mediaAssets.phash),
           ne(mediaAssets.id, assetId),
+          inLibraryOf(organizationId),
           input.editionId ? eq(mediaAssets.editionId, input.editionId) : undefined,
         ),
       );
@@ -188,13 +197,6 @@ export async function ingestMedia(input: IngestMediaInput): Promise<IngestedMedi
         .where(eq(mediaAssets.id, similarityGroup));
     }
   }
-
-  // An asset belongs to the workspace that owns the edition it was filed against; uploads that are
-  // not tied to an edition fall back to the workspace in scope for the request.
-  const organizationId =
-    input.organizationId ??
-    (input.editionId ? (await db.query.editions.findFirst({ where: eq(editions.id, input.editionId), columns: { organizationId: true } }))?.organizationId : null) ??
-    (await optionalOrganizationId());
 
   const [asset] = await db
     .insert(mediaAssets)
