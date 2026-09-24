@@ -5,7 +5,6 @@ import * as s from "@/server/db/schema";
 import { audit } from "@/server/audit";
 import { NotFoundError, ValidationError } from "@/lib/action-result";
 import { assertTransition, type EditionStatus, phaseForStatus } from "@/lib/editorial/edition-state";
-import { positionOf } from "@/lib/editorial/guided-path";
 import { DEFAULT_SECTIONS } from "@/lib/constants";
 import { slugify } from "@/lib/utils";
 import { guardTenant, scoped, stampTenant } from "@/server/tenancy/scope";
@@ -281,6 +280,8 @@ export const updateEditionSchema = z.object({
 
 export async function updateEdition(editionId: string, rawPatch: z.input<typeof updateEditionSchema>, userId?: string | null) {
   const patch = updateEditionSchema.parse(rawPatch);
+  // Another workspace's edition is not found, not updated.
+  if (!(await guardTenant(await db.query.editions.findFirst({ where: eq(s.editions.id, editionId), columns: { id: true, organizationId: true } }), "Edition"))) throw new NotFoundError("Edition");
   const [row] = await db.update(s.editions).set(patch).where(eq(s.editions.id, editionId)).returning();
   if (!row) throw new NotFoundError("Edition");
   await audit({ action: "edition.update", userId, entityType: "EDITION", entityId: editionId, editionId, metadata: { fields: Object.keys(patch) } });
@@ -309,24 +310,6 @@ export async function getEdition(editionId: string) {
   );
   if (!edition) throw new NotFoundError("Edition");
   return edition;
-}
-
-/**
- * Remember how far along the guided path this edition got.
- *
- * Only forward: pressing Back to check something is not losing your place, so the furthest screen
- * anybody reached is what "continue" comes back to. A room that is not on the path is ignored
- * rather than stored — the path is the only thing that can say what "further" means.
- */
-export async function rememberGuidedRoom(editionId: string, room: string): Promise<void> {
-  if (positionOf(room) < 0) return;
-  const edition = await guardTenant(
-    await db.query.editions.findFirst({ where: eq(s.editions.id, editionId), columns: { id: true, guidedRoom: true, organizationId: true } }),
-    "Edition",
-  );
-  if (!edition) throw new NotFoundError("Edition");
-  if (positionOf(edition.guidedRoom) >= positionOf(room)) return;
-  await db.update(s.editions).set({ guidedRoom: room }).where(eq(s.editions.id, editionId));
 }
 
 export async function listEditions(options: { includeHidden?: boolean } = {}) {

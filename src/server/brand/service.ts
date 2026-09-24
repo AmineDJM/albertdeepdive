@@ -5,7 +5,7 @@ import { audit } from "@/server/audit";
 import { ValidationError } from "@/lib/action-result";
 import { requireTenant } from "@/server/tenancy/context";
 import { brandFromEvidence, type BrandEvidence, type BrandOrigin } from "@/lib/brand/discover";
-import { brandSystemSchema, compileBrandSystem, contrastReport, DEFAULT_BRAND_SYSTEM, type BrandSystem, type BrandTokens } from "@/lib/brand/system";
+import { brandSystemSchema, compileBrandSystem, contrastReport, DEFAULT_BRAND_SYSTEM, TONE_WORDS, type BrandSystem, type BrandTokens } from "@/lib/brand/system";
 
 /**
  * A workspace's brand, read and written.
@@ -107,6 +107,34 @@ export async function savePublicationBrandFromEvidence(input: {
     organizationId: input.organizationId,
     metadata: { publicationId: input.publicationId, source: input.source, brand: parsed.colours.brand, logo: !!parsed.logo.markUrl },
   });
+  return record;
+}
+
+/**
+ * The voice a newsletter is written in, changed where it is read.
+ *
+ * A newsletter with a look of its own gets a new version of that look with the new tone; one
+ * wearing its organisation's changes the organisation's, which is the voice it was already
+ * borrowing. Either way it is a new version, so what was written before keeps its record.
+ */
+export async function setVoiceTone(input: { organizationId: string; publicationId?: string | null; tone: string[]; actorId?: string | null }): Promise<BrandRecord> {
+  const tone = [...new Set(input.tone)].filter((word): word is (typeof TONE_WORDS)[number] => (TONE_WORDS as readonly string[]).includes(word)).slice(0, 3);
+  if (!tone.length) throw new ValidationError("Choose at least one word for the tone", { tone: ["Choose at least one"] });
+  const own = input.publicationId ? await activePublicationBrand(input.publicationId) : null;
+  if (!own) {
+    const record = await ensureBrand(input.organizationId);
+    return saveBrand({ organizationId: input.organizationId, system: { ...record.system, voice: { ...record.system.voice, tone } }, actorId: input.actorId });
+  }
+  const system = brandSystemSchema.parse({ ...own.system, voice: { ...own.system.voice, tone } });
+  const record = await db.transaction(async (tx) => {
+    await tx.update(s.brandSystems).set({ isActive: false, updatedAt: new Date() }).where(eq(s.brandSystems.id, own.id));
+    const [created] = await tx
+      .insert(s.brandSystems)
+      .values({ organizationId: own.organizationId, publicationId: own.publicationId, name: own.name, system, origin: own.origin, notes: own.notes, createdById: input.actorId ?? null })
+      .returning();
+    return created;
+  });
+  await audit({ action: "brand.tone", entityType: "SETTING", entityId: record.id, userId: input.actorId ?? null, organizationId: input.organizationId, metadata: { publicationId: input.publicationId, tone } });
   return record;
 }
 

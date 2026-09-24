@@ -3,7 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requirePermission } from "@/server/auth/session";
-import { createEdition, deleteEditions, prepareEdition, rememberGuidedRoom, setEditionsHidden, transitionEdition, updateEdition, saveEditionSections, createEditionSchema, updateEditionSchema, sectionInputSchema } from "@/server/editions/service";
+import { createEdition, deleteEditions, getEdition, prepareEdition, setEditionsHidden, transitionEdition, updateEdition, saveEditionSections, createEditionSchema, updateEditionSchema, sectionInputSchema } from "@/server/editions/service";
+import { setVoiceTone } from "@/server/brand/service";
 import { ok, toActionFailure, type ActionResult } from "@/lib/action-result";
 import type { EditionStatus } from "@/lib/editorial/edition-state";
 import type { z } from "zod";
@@ -112,18 +113,17 @@ export async function deleteEditionsAction(ids: string[]): Promise<ActionResult<
   }
 }
 
-/**
- * "We got this far."
- *
- * Called by the screen itself when somebody arrives on it, so Home's "Continue" comes back where
- * the work was left rather than where the edition's status happens to put it. It changes nothing
- * about the edition but the bookmark, which is why viewing it is enough.
- */
-export async function rememberStepAction(editionId: string, room: string): Promise<ActionResult> {
+
+/** The tone of the edition's newsletter, changed from the edition's table without leaving it. */
+export async function setEditionToneAction(editionId: string, tone: string[]): Promise<ActionResult> {
+  const tr = await getUi();
   try {
-    await requirePermission("edition:view");
-    await rememberGuidedRoom(editionId, room);
-    return ok(null);
+    const user = await requirePermission("edition:edit");
+    const edition = await getEdition(editionId);
+    if (!edition.organizationId) return { ok: false, error: tr("Edition not found") };
+    await setVoiceTone({ organizationId: edition.organizationId, publicationId: edition.publicationId, tone, actorId: user.id });
+    revalidatePath(`/editions/${editionId}`);
+    return ok(null, tr("Tone changed"));
   } catch (err) {
     return toActionFailure(err);
   }

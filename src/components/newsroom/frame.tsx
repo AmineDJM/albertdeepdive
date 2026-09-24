@@ -1,4 +1,4 @@
-import { and, count, eq, inArray, ne, sql } from "drizzle-orm";
+import { and, asc, eq, ne } from "drizzle-orm";
 import type { CurrentUser } from "@/server/auth/session";
 import { getCurrentEdition, listEditions } from "@/server/editions/service";
 import { listNotificationsForUser } from "@/server/editions/notifications";
@@ -32,24 +32,20 @@ export async function NewsroomFrame({ user, tenant, children }: { user: CurrentU
   // The plan, in one line: the tightest allowance is the one worth watching.
   const tightest = report?.lines.filter((line) => line.limit !== null).sort((a, b) => b.ratio - a.ratio)[0] ?? null;
   const plan = report ? { name: report.plan.planName, usedLabel: tightest ? `${tightest.used.toLocaleString()} / ${tightest.limit!.toLocaleString()} ${t(`billing.${tightest.key}` as "billing.publications").toLowerCase()}` : t("common.unlimited"), ratio: tightest ? tightest.ratio : null, href: "/settings/billing" } : null;
-  let badges = { inbox: 0, flags: 0 };
-  if (current) {
-    const [[inbox], [flags]] = await Promise.all([
-      db.select({ n: count() }).from(s.submissions).where(and(eq(s.submissions.editionId, current.id), inArray(s.submissions.status, ["NEW", "NEEDS_REVIEW"]))),
-      db.select({ n: sql<number>`count(*) filter (where jsonb_array_length(${s.stories.warnings}) > 0 or exists (select 1 from jsonb_array_elements(${s.stories.missingInformation}) m where coalesce((m->>'resolved')::boolean, false) = false))` }).from(s.stories).where(and(eq(s.stories.editionId, current.id), ne(s.stories.status, "REJECTED"), ne(s.stories.status, "DROPPED"))),
-    ]);
-    badges = { inbox: Number(inbox.n), flags: Number(flags.n) };
-  }
-  const toSidebar = (e: { id: string; label: string; issueNumber: number; isSpecialIssue: boolean; status: Editions[number]["status"] }) => ({ id: e.id, label: e.label, issueLabel: `${e.isSpecialIssue ? "Special issue" : "Issue"} N°${e.issueNumber}`, status: e.status });
+  // The newsletters, each with its editions, so the sidebar can light the one a page belongs to.
+  const newsletters = tenant
+    ? await db.query.publications.findMany({ where: and(eq(s.publications.organizationId, tenant.organizationId), ne(s.publications.status, "ARCHIVED")), orderBy: [asc(s.publications.sortOrder), asc(s.publications.name)], columns: { id: true, name: true } })
+    : [];
+  const editionsByNewsletter = new Map<string, string[]>();
+  for (const edition of editions) if (edition.publicationId) editionsByNewsletter.set(edition.publicationId, [...(editionsByNewsletter.get(edition.publicationId) ?? []), edition.id]);
   return (
     <NewsroomShell
       user={{ name: user.name, email: user.email, role: user.role, viewingAs: user.viewingAs ?? null }}
       workspace={tenant ? { name: tenant.name, role: tenant.role } : null}
       workspaces={workspaces.map((w) => ({ organizationId: w.organizationId, name: w.name, slug: w.slug, role: w.role }))}
       impersonated={tenant?.impersonated ?? false}
-      currentEdition={current ? toSidebar(current) : null}
-      editions={editions.filter((e) => e.status !== "ARCHIVED").slice(0, 8).map(toSidebar)}
-      badges={badges}
+      currentEditionId={current?.id ?? null}
+      newsletters={newsletters.map((n) => ({ id: n.id, name: n.name, editionIds: editionsByNewsletter.get(n.id) ?? [] }))}
       notifications={notifications.rows.map((n) => ({ id: n.id, title: n.title, body: n.body, href: n.href, readAt: n.readAt, createdAt: n.createdAt, type: n.type }))}
       unread={notifications.unread}
       plan={plan}

@@ -4,7 +4,6 @@ import { designState } from "@/server/design/console";
 import { PageBody, PageHeader } from "@/components/newsroom/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
 import { getUi } from "@/server/i18n/locale";
-import { GuidedNext } from "@/components/newsroom/guided-next";
 import { DesignWorkbench } from "./design-workbench";
 
 export const dynamic = "force-dynamic";
@@ -39,7 +38,6 @@ export default async function DesignPage({ params }: { params: Promise<{ edition
       <PageHeader title={tr("Design")} description={state.design ? state.intent : tr("This edition has not been designed yet.")} />
       <PageBody className="space-y-4">
         <DesignWorkbench editionId={editionId} initial={state} />
-        <GuidedNext editionId={editionId} room="design" />
       </PageBody>
     </>
   );

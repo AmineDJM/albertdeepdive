@@ -34,7 +34,7 @@ export type ContributorEditorValue = {
   groupIds: string[];
 };
 
-export function ContributorEditor({ value, campuses, programs, groups, openOnParam = false }: { value?: ContributorEditorValue; campuses: { id: string; name: string }[]; programs: { id: string; code: string; name: string }[]; groups: { id: string; name: string }[]; openOnParam?: boolean }) {
+export function ContributorEditor({ value, campuses, programs, groups, openOnParam = false, publicationId = null }: { value?: ContributorEditorValue; campuses: { id: string; name: string }[]; programs: { id: string; code: string; name: string }[]; groups: { id: string; name: string }[]; openOnParam?: boolean; /** Added from this newsletter: they write for it. */ publicationId?: string | null }) {
   const tr = useUi();
   const router = useRouter();
   const params = useSearchParams();
@@ -46,7 +46,7 @@ export function ContributorEditor({ value, campuses, programs, groups, openOnPar
   function submit() {
     startTransition(async () => {
       const payload = { ...form, id: undefined };
-      const res = value?.id ? await updateContributorAction(value.id, payload) : await createContributorAction(payload);
+      const res = value?.id ? await updateContributorAction(value.id, payload) : await createContributorAction(payload, publicationId);
       if (!res.ok) {
         toast.error(res.error, { description: res.fieldErrors ? Object.values(res.fieldErrors).flat().join(" · ") : undefined });
         return;

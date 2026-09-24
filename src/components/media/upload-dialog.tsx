@@ -95,11 +95,14 @@ function uploadOne(
 
 export function UploadDialog({
   editionId,
+  publicationId = null,
   stories,
   defaultStoryId,
   maxFileMb,
 }: {
   editionId: string | null;
+  /** The newsletter whose library the files go in, when there is no edition. */
+  publicationId?: string | null;
   stories: StoryPickerItem[];
   defaultStoryId?: string | null;
   maxFileMb: number;
@@ -177,7 +180,7 @@ export function UploadDialog({
       try {
         const result = await uploadOne(
           item,
-          { editionId: editionId ?? "", storyId, role: storyId ? role : "" },
+          { editionId: editionId ?? "", publicationId: publicationId ?? "", storyId, role: storyId ? role : "" },
           (pct) => update(item.key, { progress: pct }),
         );
         update(item.key, { status: "done", progress: 100, result });

@@ -2,6 +2,7 @@ import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/server/db/client";
 import { optionalOrganizationId } from "@/server/tenancy/context";
+import { guardTenant } from "@/server/tenancy/scope";
 import * as s from "@/server/db/schema";
 import { env } from "@/server/env";
 import { audit } from "@/server/audit";
@@ -37,6 +38,8 @@ export type UploadMediaInput = {
   files: UploadFile[];
   /** The edition the files belong to; none means the workspace's library at large. */
   editionId: string | null;
+  /** The newsletter whose library they go in, when uploaded there rather than into an edition. */
+  publicationId?: string | null;
   storyId?: string | null;
   role?: string | null;
   actor: MediaActor;
@@ -86,13 +89,23 @@ export async function uploadMedia(input: UploadMediaInput): Promise<UploadedAsse
     );
   if (input.editionId && !z.string().uuid().safeParse(input.editionId).success)
     throw new UploadError("editionId must be a UUID", 400, "BAD_EDITION");
+  // Another workspace's edition or newsletter is "not found": files never land in somebody else's library.
   const edition = input.editionId
-    ? await db.query.editions.findFirst({
-        where: eq(s.editions.id, input.editionId),
-        columns: { id: true, status: true },
-      })
+    ? await guardTenant(
+        await db.query.editions.findFirst({
+          where: eq(s.editions.id, input.editionId),
+          columns: { id: true, status: true, organizationId: true },
+        }),
+        "Edition",
+      )
     : null;
   if (input.editionId && !edition) throw new NotFoundError("Edition");
+  if (input.publicationId && !z.string().uuid().safeParse(input.publicationId).success)
+    throw new UploadError("publicationId must be a UUID", 400, "BAD_PUBLICATION");
+  const publication = input.publicationId
+    ? await guardTenant(await db.query.publications.findFirst({ where: eq(s.publications.id, input.publicationId), columns: { id: true, organizationId: true } }), "Newsletter")
+    : null;
+  if (input.publicationId && !publication) throw new NotFoundError("Newsletter");
   if (!edition && !(await optionalOrganizationId())) throw new UploadError("Choose an edition or open a workspace first", 400, "BAD_EDITION");
   let story: { id: string; editionId: string } | null = null;
   if (input.storyId) {
@@ -150,6 +163,7 @@ export async function uploadMedia(input: UploadMediaInput): Promise<UploadedAsse
       fileName: file.fileName.replace(/[\\/]/g, "_").slice(0, 200) || "upload",
       mimeType,
       editionId: edition?.id ?? null,
+      publicationId: publication?.id ?? null,
       userId: input.actor.id,
       caption: meta.caption || null,
       altText: meta.altText || null,
@@ -223,6 +237,7 @@ export async function parseUploadForm(
 ): Promise<{
   files: UploadFile[];
   editionId: string | null;
+  publicationId: string | null;
   storyId: string | null;
   role: string | null;
 }> {
@@ -273,6 +288,7 @@ export async function parseUploadForm(
   return {
     files,
     editionId: text("editionId") || null,
+    publicationId: text("publicationId") || null,
     storyId: text("storyId") || null,
     role: text("role") || null,
   };

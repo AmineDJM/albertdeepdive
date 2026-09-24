@@ -7,8 +7,6 @@ import { PageBody, PageHeader } from "@/components/newsroom/page-header";
 import { CampaignSimpleForm, type AudienceValues } from "@/components/newsroom/campaign-simple-form";
 import { SendInvitations } from "@/components/newsroom/send-invitations";
 import { CreateCampaignButton } from "@/components/newsroom/campaign-controls";
-import { screenWords } from "@/components/newsroom/guided-words";
-import { GUIDED_PATH, nextFrom, previousFrom } from "@/lib/editorial/guided-path";
 import { ACTIVE_CAMPAIGN_STATUSES } from "@/server/campaigns/service";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -31,11 +29,7 @@ export async function StandardCampaign({ editionId }: { editionId: string }) {
   const canManage = hasPermission(user, "campaign:manage");
   const screen = await campaignScreen(editionId);
   const { campaign, stats, edition } = screen;
-  const words = screenWords(tr);
-  const at = GUIDED_PATH.findIndex((s) => s.room === "campaign");
-  const next = nextFrom(editionId, "campaign");
-  const hint = tr("Step {step} of {total}", { step: at + 1, total: GUIDED_PATH.length });
-  const previous = previousFrom(editionId, "campaign");
+  const next = { href: `/editions/${editionId}` };
 
   if (!campaign) {
     return (
@@ -107,10 +101,9 @@ export async function StandardCampaign({ editionId }: { editionId: string }) {
           canManage={canManage}
           closed={campaign.status === "CLOSED"}
           next={next?.href ?? null}
-          nextLabel={words[GUIDED_PATH[at].key].cta}
-          nextHint={hint}
-          title={tr("Next: {question}", { question: words[GUIDED_PATH[at + 1].key].question })}
-          back={previous ? { href: previous.href, label: tr("Back") } : null}
+          nextLabel={tr("Save and go back")}
+          nextHint={tr("Saves what you changed and takes you back to the edition.")}
+          title={tr("Done here?")}
         />
       </PageBody>
     </>

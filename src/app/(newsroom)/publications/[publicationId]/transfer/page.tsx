@@ -1,7 +1,5 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { and, eq, ne } from "drizzle-orm";
-import { ArrowLeft } from "lucide-react";
 import { db } from "@/server/db/client";
 import * as s from "@/server/db/schema";
 import { getCurrentUser, hasPermission } from "@/server/auth/session";
@@ -52,11 +50,7 @@ export default async function TransferPage({ params }: { params: Promise<{ publi
       <PageHeader
         title={tr("Hand it over")}
         description={`${publication.name} · ${tr("Move this newsletter to another workspace, with everything that belongs to it.")}`}
-        actions={
-          <Link href={`/publications/${publicationId}`} className="inline-flex items-center gap-1.5 text-xs font-medium text-brand hover:underline">
-            <ArrowLeft className="size-3.5" /> {tr("Back to the newsletter")}
-          </Link>
-        }
+        back={{ href: `/publications/${publicationId}`, label: publication.name }}
       />
       <PageBody className="mx-auto w-full max-w-2xl">
         <TransferForm

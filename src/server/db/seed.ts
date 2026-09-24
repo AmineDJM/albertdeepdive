@@ -199,6 +199,8 @@ export async function runSeed(options: { quiet?: boolean } = {}): Promise<SeedRe
       })),
     )
     .returning();
+  // Everyone the school asks writes for its one newsletter.
+  await db.insert(s.publicationContributors).values(contributorRows.map((c) => ({ publicationId: publication.id, contributorId: c.id, source: "by-hand" })));
   const contributorByKey = new Map(SEED_CONTRIBUTORS.map((c, i) => [c.key, contributorRows[i]]));
   await db.insert(s.contributorGroupMembers).values(
     SEED_CONTRIBUTORS.flatMap((c) => c.groups.map((g) => ({ groupId: groupBySlug.get(g)!.id, contributorId: contributorByKey.get(c.key)!.id }))),

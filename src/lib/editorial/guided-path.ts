@@ -74,24 +74,6 @@ export type PathState = {
   invitationSent?: boolean;
 };
 
-export function nextFrom(editionId: string, room: string, state: PathState = {}): { href: string; label: string } | null {
-  const at = GUIDED_PATH.findIndex((screen) => screen.room === room);
-  if (at < 0) return null;
-  const here = GUIDED_PATH[at];
-  const next = GUIDED_PATH[at + 1];
-  if (!here.cta || !next) return null;
-  if (room === LAST_SETUP_ROOM && state.invitationSent === false) return null;
-  return { href: `/editions/${editionId}${next.room ? `/${next.room}` : ""}`, label: here.cta };
-}
-
-/** The screen before this one, for the way back. The first screen has none. */
-export function previousFrom(editionId: string, room: string): { href: string } | null {
-  const at = GUIDED_PATH.findIndex((screen) => screen.room === room);
-  if (at <= 0) return null;
-  const before = GUIDED_PATH[at - 1];
-  return { href: `/editions/${editionId}${before.room ? `/${before.room}` : ""}` };
-}
-
 /** How far along the path a room is, or -1 for a room that is not on it. */
 export function positionOf(room: string | null | undefined): number {
   return room === null || room === undefined ? -1 : GUIDED_PATH.findIndex((screen) => screen.room === room);

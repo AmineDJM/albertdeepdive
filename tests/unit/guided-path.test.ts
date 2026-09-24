@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { GUIDED_PATH, nextFrom, previousFrom, resumeAt, screenFor, STEP_ORDER } from "@/lib/editorial/guided-path";
-import { screenWords } from "@/components/newsroom/guided-words";
+import { GUIDED_PATH, resumeAt, screenFor, STEP_ORDER } from "@/lib/editorial/guided-path";
 import { EDITION_STEPS, stepForStatus } from "@/lib/editorial/edition-steps";
 import { EDITION_TABS } from "@/components/newsroom/nav";
 import { STANDARD_ROOMS } from "@/lib/experience";
@@ -34,45 +33,8 @@ describe("the guided path", () => {
     }
   });
 
-  it("says a word on every screen, in the dictionary", () => {
-    const words = screenWords((text) => text);
-    for (const screen of GUIDED_PATH) {
-      expect(words[screen.key], screen.key).toBeTruthy();
-      expect(words[screen.key].question).toBe(screen.question);
-      if (screen.cta) expect(words[screen.key].cta).toBe(screen.cta);
-    }
-  });
-
-  it("walks from the first screen to the last, one button at a time", () => {
-    const visited: string[] = [GUIDED_PATH[0].room];
-    let room = GUIDED_PATH[0].room;
-    for (let guard = 0; guard < 20; guard += 1) {
-      const next = nextFrom("e1", room);
-      if (!next) break;
-      room = next.href.replace("/editions/e1", "").replace(/^\//, "");
-      visited.push(room);
-    }
-    expect(visited).toEqual(GUIDED_PATH.map((screen) => screen.room));
-  });
-
-  it("stops at the end, and says nothing about a room that is not on it", () => {
-    expect(nextFrom("e1", GUIDED_PATH[GUIDED_PATH.length - 1].room)).toBeNull();
-    expect(nextFrom("e1", "layout")).toBeNull();
+  it("says nothing about a room that is not on it", () => {
     expect(screenFor("layout")).toBeNull();
-  });
-
-  it("labels the button from the screen it is on, not the one it opens", () => {
-    // "Validate" belongs to the setup screen, which is the word the editor asked for on it; the
-    // screen it opens is the one that asks what you are asking for.
-    expect(nextFrom("e1", "")).toEqual({ href: "/editions/e1/ask", label: "Validate" });
-  });
-
-  it("goes back the way it came, and not off the front of the path", () => {
-    expect(previousFrom("e1", "campaign")).toEqual({ href: "/editions/e1/ask" });
-    expect(previousFrom("e1", "ask")).toEqual({ href: "/editions/e1" });
-    // The first screen has nowhere behind it, and a room off the path has no way back either.
-    expect(previousFrom("e1", "")).toBeNull();
-    expect(previousFrom("e1", "layout")).toBeNull();
   });
 
   it("resumes where the people got to when that is further than the pipeline", () => {

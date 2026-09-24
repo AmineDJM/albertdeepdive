@@ -5,8 +5,12 @@ import { topicsBoard } from "@/server/editorial/topics";
 import { PageBody, PageHeader } from "@/components/newsroom/page-header";
 import { Stat, StatGrid } from "@/components/newsroom/stat";
 import { TopicsBoard } from "./topics-board";
+import { DocumentImport } from "./document-import";
+import { and, eq, inArray, sql } from "drizzle-orm";
+import { db } from "@/server/db/client";
+import * as s from "@/server/db/schema";
+import { JOB_TYPES } from "@/server/jobs/registry";
 import { getUi } from "@/server/i18n/locale";
-import { GuidedNext } from "@/components/newsroom/guided-next";
 
 export const dynamic = "force-dynamic";
 
@@ -26,6 +30,11 @@ export default async function TopicsPage({ params }: { params: Promise<{ edition
 
   const board = await topicsBoard(editionId);
   const canEdit = hasPermission(user, "story:edit");
+  // A document still being turned into topics, so the screen can say so and watch for them.
+  const [reading] = await db
+    .select({ n: sql<number>`count(*)::int` })
+    .from(s.jobs)
+    .where(and(eq(s.jobs.type, JOB_TYPES.TOPICS_FROM_DOCUMENT), inArray(s.jobs.status, ["QUEUED", "RUNNING"]), sql`${s.jobs.payload}->>'editionId' = ${editionId}`));
 
   return (
     <>
@@ -49,8 +58,7 @@ export default async function TopicsPage({ params }: { params: Promise<{ edition
             <Stat label={tr("Contributions behind them")} value={String(board.topics.reduce((sum, topic) => sum + topic.sources, 0))} />
           </StatGrid>
         ) : null}
-
-        <GuidedNext editionId={editionId} room="topics" />
+        {canEdit ? <DocumentImport editionId={editionId} reading={Number(reading?.n ?? 0) > 0} /> : null}
         <TopicsBoard board={board} canEdit={canEdit} />
       </PageBody>
     </>

@@ -30,8 +30,10 @@ export const dynamic = "force-dynamic";
 export default async function ControlRoomPage({ params, searchParams }: { params: Promise<{ editionId: string }>; searchParams: Promise<{ view?: string }> }) {
   const tr = await getUi();
   const [{ editionId }, sp, user] = await Promise.all([params, searchParams, getCurrentUser()]);
-  // Standard reads the edition as decisions; the control room below stays one link away.
-  if (experienceOf(user?.preferences) === "standard" && sp.view !== "full") return <StandardOverview editionId={editionId} />;
+  // Standard reads the edition as decisions; the control room below stays one link away, and the
+  // way back to the light view stays in sight while it is open.
+  const standard = experienceOf(user?.preferences) === "standard";
+  if (standard && sp.view !== "full") return <StandardOverview editionId={editionId} />;
   const [d, activity, outputs, translate, hasContent] = await Promise.all([editionDashboard(editionId), recentActivity(editionId, 8), outputMatrix(editionId), getTranslations(), editionHasContent(editionId)]);
   const newsletter = await newsletterFor(d.edition.publicationId);
   const coverUrl = d.edition.coverMediaAssetId ? await mediaUrl(d.edition.coverMediaAssetId, "WEB") : null;
@@ -71,6 +73,14 @@ export default async function ControlRoomPage({ params, searchParams }: { params
 
   return (
     <PageBody className="space-y-6">
+      {standard ? (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border bg-muted/40 px-4 py-2.5" data-testid="full-view-banner">
+          <p className="text-xs text-muted-foreground">{tr("You are in the full control room.")}</p>
+          <Link href={ed} className="rounded-md px-2 py-1 text-xs font-medium text-brand transition-colors hover:bg-brand-soft">
+            {tr("Back to the light view")}
+          </Link>
+        </div>
+      ) : null}
       <section className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_300px]">
         <div className="rounded-lg border border-border bg-card shadow-xs">
           <div className="grid md:grid-cols-[132px_minmax(0,1fr)]">

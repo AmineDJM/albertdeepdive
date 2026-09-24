@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, ilike, inArray, isNotNull, ne, or, sql, type SQL } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, inArray, isNotNull, isNull, ne, or, sql, type SQL } from "drizzle-orm";
 import { db } from "@/server/db/client";
 import * as s from "@/server/db/schema";
 import { getStorage } from "@/server/storage";
@@ -139,11 +139,20 @@ const unusedCondition = () =>
       and not exists (select 1 from ${s.businessDeepDives} b where ${s.mediaAssets.id} in (b.logo_asset_id, b.team_photo_asset_id, b.dashboard_asset_id, b.diagram_asset_id))
       and not exists (select 1 from ${s.editions} e where e.cover_media_asset_id = ${s.mediaAssets.id})`;
 
-function scopeCondition(editionId: string | null, archived: boolean, organizationId?: string | null) {
+/**
+ * A newsletter's library: its own pictures, and the organisation's shared ones (its logo, anything
+ * uploaded before newsletters had libraries) — never another newsletter's.
+ */
+function inNewsletterLibrary(publicationId: string) {
+  return or(eq(s.mediaAssets.publicationId, publicationId), isNull(s.mediaAssets.publicationId));
+}
+
+function scopeCondition(editionId: string | null, archived: boolean, organizationId?: string | null, publicationId?: string | null) {
   return and(
     editionId ? eq(s.mediaAssets.editionId, editionId) : undefined,
     // The whole library is the workspace's, never the platform's: with no edition, the workspace scopes it.
     !editionId && organizationId ? eq(s.mediaAssets.organizationId, organizationId) : undefined,
+    !editionId && publicationId ? inNewsletterLibrary(publicationId) : undefined,
     eq(s.mediaAssets.isArchived, archived),
   );
 }
@@ -374,10 +383,11 @@ export async function listMedia(
   editionId: string | null,
   filters: MediaListFilters = {},
   organizationId?: string | null,
+  publicationId?: string | null,
 ): Promise<MediaListResult> {
   const page = toInt(filters.page, 1, 1, 100_000);
   const pageSize = toInt(filters.pageSize, 48, 1, 200);
-  const scope = scopeCondition(editionId, filters.archived === "true", organizationId);
+  const scope = scopeCondition(editionId, filters.archived === "true", organizationId, publicationId);
   const where = and(scope, ...filterConditions(filters));
 
   const [assets, [{ n: total }], facets] = await Promise.all([
@@ -818,7 +828,7 @@ export type MediaStats = {
   archived: number;
 };
 
-export async function mediaStats(editionId: string | null, organizationId?: string | null): Promise<MediaStats> {
+export async function mediaStats(editionId: string | null, organizationId?: string | null, publicationId?: string | null): Promise<MediaStats> {
   const [row] = await db
     .select({
       total: sql<number>`count(*) filter (where not ${s.mediaAssets.isArchived})`,
@@ -834,7 +844,7 @@ export async function mediaStats(editionId: string | null, organizationId?: stri
       archived: sql<number>`count(*) filter (where ${s.mediaAssets.isArchived})`,
     })
     .from(s.mediaAssets)
-    .where(editionId ? eq(s.mediaAssets.editionId, editionId) : organizationId ? eq(s.mediaAssets.organizationId, organizationId) : sql`false`);
+    .where(editionId ? eq(s.mediaAssets.editionId, editionId) : organizationId ? and(eq(s.mediaAssets.organizationId, organizationId), publicationId ? inNewsletterLibrary(publicationId) : undefined) : sql`false`);
   return {
     total: Number(row?.total ?? 0),
     byRights: {

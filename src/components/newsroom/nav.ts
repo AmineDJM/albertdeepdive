@@ -124,7 +124,9 @@ export function visibleTabs(role: Role, tabs: readonly SubTab[]): SubTab[] {
  * look for one thing, and the question "which of these two do I click" is exactly the one Standard
  * exists to not ask. The page still opens from the shelf, and Advanced still lists it.
  */
-const HIDDEN_IN_STANDARD = new Set<string>(["/publications"]);
+// The library and the audience are a newsletter's own now: each one opens from the newsletter, in the
+// list under Home, rather than from a workspace-wide entry that mixed every title's pictures and readers.
+const HIDDEN_IN_STANDARD = new Set<string>(["/publications", "/library", "/subscribers"]);
 
 export function navItemsFor(mode: ExperienceMode): { primary: readonly NavItem[]; secondary: readonly NavItem[] } {
   if (mode === "advanced") return { primary: NAV_ITEMS, secondary: SETUP_ITEMS };
@@ -132,7 +134,7 @@ export function navItemsFor(mode: ExperienceMode): { primary: readonly NavItem[]
   const shown = [...NAV_ITEMS, ...SETUP_ITEMS]
     .filter((item) => STANDARD_PATHS.has(item.href) && !HIDDEN_IN_STANDARD.has(item.href))
     .map((item) => (item.exclude ? { ...item, exclude: undefined } : item));
-  const work = new Set(["/overview", "/library"]);
+  const work = new Set(["/overview"]);
   return { primary: shown.filter((item) => work.has(item.href)), secondary: shown.filter((item) => !work.has(item.href)) };
 }
 

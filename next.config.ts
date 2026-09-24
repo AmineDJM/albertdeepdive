@@ -19,6 +19,8 @@ const nextConfig: NextConfig = {
     "postgres",
     "docx",
     "pdf-lib",
+    // pdf.js, for reading the text of a PDF dropped on the Topics screen.
+    "unpdf",
     "file-type",
     // SheetJS reads the uploaded spreadsheet on the server (contributor import); keep it out of the bundle.
     "xlsx",

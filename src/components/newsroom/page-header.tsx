@@ -1,14 +1,27 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { ChevronRight } from "lucide-react";
+import { BackLink } from "./back-link";
 import { cn } from "@/lib/utils";
 
 export type Crumb = { label: string; href?: string };
 
-export function PageHeader({ title, description, actions, breadcrumbs, meta, className, children }: { title: React.ReactNode; description?: React.ReactNode; actions?: React.ReactNode; breadcrumbs?: Crumb[]; meta?: React.ReactNode; className?: string; children?: React.ReactNode }) {
+/**
+ * The top of every page.
+ *
+ * `back` is the one place the way back lives: top left, above the title, on every page that has
+ * somewhere to go back to. It used to be wherever each page put it — a link at the foot, a button
+ * top right, an arrow beside the title — which is a question somebody had to answer before every
+ * click.
+ */
+export function PageHeader({ title, description, actions, breadcrumbs, back, meta, className, children }: { title: React.ReactNode; description?: React.ReactNode; actions?: React.ReactNode; breadcrumbs?: Crumb[]; back?: { href: string; label: string }; meta?: React.ReactNode; className?: string; children?: React.ReactNode }) {
   return (
     <div className={cn("sticky top-0 z-20 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80", className)}>
       <div className="flex min-h-12 items-center justify-between gap-4 px-5 py-2">
         <div className="min-w-0">
+          <Suspense fallback={back ? <span className="mb-0.5 block h-4" /> : null}>
+            <BackLink fallback={back} />
+          </Suspense>
           {breadcrumbs?.length ? (
             <nav className="mb-0.5 flex items-center gap-1 text-2xs text-muted-foreground" aria-label="Breadcrumb">
               {breadcrumbs.map((c, i) => (

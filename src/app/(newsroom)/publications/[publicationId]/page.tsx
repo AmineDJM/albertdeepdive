@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, BookOpen, Globe, LayoutTemplate, Mail, Printer, Users } from "lucide-react";
+import { BookOpen, Globe, LayoutTemplate, Mail, Printer, Users } from "lucide-react";
 import { getCurrentUser, hasPermission } from "@/server/auth/session";
 import { requireTenant } from "@/server/tenancy/context";
 import { publicationWithEditions } from "@/server/outputs/service";
@@ -9,7 +9,8 @@ import { runAsOrganization } from "@/server/tenancy/context";
 import { activeIdentity } from "@/server/design/identity";
 import { standingOf } from "@/lib/editorial/edition-steps";
 import type { EditionStatus } from "@/lib/editorial/edition-state";
-import { PageBody, PageHeader, SectionTitle } from "@/components/newsroom/page-header";
+import { PageBody, SectionTitle } from "@/components/newsroom/page-header";
+import { NewsletterHubHeader } from "./newsletter-hub";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/newsroom/data-table";
 import { EditionStatusBadge } from "@/components/newsroom/status-badge";
@@ -65,9 +66,8 @@ export default async function PublicationPage({ params }: { params: Promise<{ pu
 
   return (
     <>
-      <PageHeader
-        title={publication.name}
-        description={publication.description ?? tr("A recurring title. Each edition inside it starts where the last one left off.")}
+      <NewsletterHubHeader
+        publication={publication}
         actions={
           <div className="flex flex-wrap items-center gap-2">
             {/*
@@ -91,11 +91,8 @@ export default async function PublicationPage({ params }: { params: Promise<{ pu
           </div>
         }
       />
-      <PageBody className="space-y-6">
-        <Link href="/publications" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
-          <ArrowLeft className="size-3" /> {tr("All titles")}
-        </Link>
 
+      <PageBody className="space-y-6">
         {live ? (
           <section className="rounded-lg border border-border bg-card p-4">
             <div className="flex flex-wrap items-baseline justify-between gap-2">

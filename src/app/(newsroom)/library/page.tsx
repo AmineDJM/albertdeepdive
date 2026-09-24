@@ -22,6 +22,7 @@ import { mayShowRouting, pendingViews, referenceCandidates } from "@/server/imag
 import { PicturesInProgress } from "@/components/images/pictures-in-progress";
 import { cn } from "@/lib/utils";
 import { getUi } from "@/server/i18n/locale";
+import { NewsletterHubHeader, type NewsletterHubPublication } from "@/app/(newsroom)/publications/[publicationId]/newsletter-hub";
 
 export const dynamic = "force-dynamic";
 
@@ -36,8 +37,19 @@ export const dynamic = "force-dynamic";
 const FILTER_KEYS = ["q", "rights", "kind", "quality", "duplicates", "unused", "archived", "category", "sort", "view", "page"] as const;
 
 export default async function LibraryPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  return <LibraryScreen raw={await searchParams} />;
+}
+
+/**
+ * The library, for the organisation or for one newsletter.
+ *
+ * A newsletter's library is the same screen scoped to it: its own pictures and the organisation's
+ * shared ones, under the newsletter's header, and whatever is uploaded there goes into it.
+ */
+export async function LibraryScreen({ raw, publication }: { raw: Record<string, string | string[] | undefined>; publication?: NewsletterHubPublication }) {
   const tr = await getUi();
-  const raw = await searchParams;
+  const publicationId = publication?.id ?? null;
+  const basePath = publicationId ? `/publications/${publicationId}/library` : "/library";
   const sp: Record<string, string | undefined> = {};
   for (const key of FILTER_KEYS) {
     const v = raw[key];
@@ -49,8 +61,8 @@ export default async function LibraryPage({ searchParams }: { searchParams: Prom
   const canRights = hasPermission(user, "media:rights");
   const showRouting = await mayShowRouting(user);
   const [stats, list, stories, pending, candidates] = await Promise.all([
-    mediaStats(null, tenant.organizationId),
-    listMedia(null, { ...sp, pageSize: view === "list" ? 60 : 48 }, tenant.organizationId),
+    mediaStats(null, tenant.organizationId, publicationId),
+    listMedia(null, { ...sp, pageSize: view === "list" ? 60 : 48 }, tenant.organizationId, publicationId),
     current ? listStoriesForPicker(current.id) : Promise.resolve([]),
     pendingViews(tenant.organizationId, null, { showRouting }),
     canManage ? referenceCandidates(tenant.organizationId, null) : Promise.resolve([]),
@@ -60,7 +72,7 @@ export default async function LibraryPage({ searchParams }: { searchParams: Prom
   const qs = (patch: Record<string, string | undefined>) => {
     const merged: Record<string, string | undefined> = { ...sp, ...patch, page: undefined };
     const next = new URLSearchParams(Object.entries(merged).filter((entry): entry is [string, string] => Boolean(entry[1])));
-    return `/library${next.toString() ? `?${next}` : ""}`;
+    return `${basePath}${next.toString() ? `?${next}` : ""}`;
   };
   const shelf = (key: string, label: string, active: boolean) => (
     <Link key={key} href={qs(active ? { category: undefined, archived: undefined, rights: undefined } : key === "approved" ? { rights: "GREEN", category: undefined, archived: undefined } : key === "archived" ? { archived: "true", category: undefined, rights: undefined } : { category: key, archived: undefined, rights: undefined })} className={cn("rounded-md px-2 py-1 text-xs font-medium transition-colors duration-150", active ? "bg-brand-soft text-brand-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground")}>
@@ -70,19 +82,27 @@ export default async function LibraryPage({ searchParams }: { searchParams: Prom
 
   return (
     <>
-      <PageHeader
-        title={tr("Library")}
-        description={tr("{total} assets · {cleared} approved · {unused} unused{archived}", { total: stats.total, cleared: stats.byRights.GREEN, unused: stats.unused, archived: stats.archived ? ` · ${stats.archived} ${tr("archived")}` : "" })}
-        actions={
+      {publication ? (
+        <NewsletterHubHeader publication={publication} description={tr("{total} assets · {cleared} approved · {unused} unused{archived}", { total: stats.total, cleared: stats.byRights.GREEN, unused: stats.unused, archived: stats.archived ? ` · ${stats.archived} ${tr("archived")}` : "" })} actions={
           <>
             <Suspense>
               <ViewToggle view={view} />
             </Suspense>
             {canManage ? <GenerateImageDialog editionId={null} candidates={candidates} /> : null}
-            {canManage ? <UploadDialog editionId={null} stories={stories} maxFileMb={env.UPLOAD_MAX_FILE_MB} /> : null}
+            {canManage ? <UploadDialog editionId={null} publicationId={publicationId} stories={stories} maxFileMb={env.UPLOAD_MAX_FILE_MB} /> : null}
           </>
-        }
-      />
+        } />
+      ) : (
+        <PageHeader title={tr("Library")} description={tr("{total} assets · {cleared} approved · {unused} unused{archived}", { total: stats.total, cleared: stats.byRights.GREEN, unused: stats.unused, archived: stats.archived ? ` · ${stats.archived} ${tr("archived")}` : "" })} actions={
+          <>
+            <Suspense>
+              <ViewToggle view={view} />
+            </Suspense>
+            {canManage ? <GenerateImageDialog editionId={null} candidates={candidates} /> : null}
+            {canManage ? <UploadDialog editionId={null} publicationId={publicationId} stories={stories} maxFileMb={env.UPLOAD_MAX_FILE_MB} /> : null}
+          </>
+        } />
+      )}
       <div className="flex flex-wrap items-center gap-1 border-b border-border px-5 py-2">
         {shelf("all", tr("Everything"), !sp.category && !sp.archived && !sp.rights)}
         {(Object.keys(LIBRARY_CATEGORIES) as LibraryCategory[]).map((key) => shelf(key, shelves[key], sp.category === key))}
@@ -109,7 +129,7 @@ export default async function LibraryPage({ searchParams }: { searchParams: Prom
         {list.rows.length ? (
           <>
             <MediaLibrary rows={list.rows} editionId={null} view={view} canManage={canManage} canRights={canRights} />
-            <MediaPagination page={list.page} pageCount={list.pageCount} total={list.total} pageSize={list.pageSize} basePath="/library" params={sp} />
+            <MediaPagination page={list.page} pageCount={list.pageCount} total={list.total} pageSize={list.pageSize} basePath={basePath} params={sp} />
           </>
         ) : hasFilters ? (
           <EmptyState icon={Images} title={tr("Nothing on this shelf")} description={tr("Try a broader search, clear a filter, or look on another shelf.")} compact />
@@ -118,7 +138,7 @@ export default async function LibraryPage({ searchParams }: { searchParams: Prom
             icon={Sparkles}
             title={tr("Your visual memory starts here.")}
             description={tr("Upload the images, videos and brand assets Briefly should know about. Briefly sorts them; you never file a thing.")}
-            action={canManage ? <UploadDialog editionId={null} stories={stories} maxFileMb={env.UPLOAD_MAX_FILE_MB} /> : null}
+            action={canManage ? <UploadDialog editionId={null} publicationId={publicationId} stories={stories} maxFileMb={env.UPLOAD_MAX_FILE_MB} /> : null}
           />
         )}
         {!canManage && !list.rows.length ? null : (

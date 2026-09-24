@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { planFromDeadline } from "@/lib/campaigns/schedule";
-import { LAST_SETUP_ROOM, nextFrom, resumeAt } from "@/lib/editorial/guided-path";
+import { LAST_SETUP_ROOM, resumeAt } from "@/lib/editorial/guided-path";
 
 const DAY = 86_400_000;
 
@@ -58,19 +58,6 @@ describe("what one date does to the others", () => {
  */
 describe("the path waits for the invitation", () => {
   const id = "11111111-1111-1111-1111-111111111111";
-
-  it("ends at the last setup screen while the invitation is unsent", () => {
-    expect(nextFrom(id, LAST_SETUP_ROOM, { invitationSent: false })).toBeNull();
-    expect(nextFrom(id, LAST_SETUP_ROOM, { invitationSent: true })).toBeTruthy();
-    // Said nothing about it, and the path behaves as it always did.
-    expect(nextFrom(id, LAST_SETUP_ROOM)).toBeTruthy();
-  });
-
-  it("leaves every earlier screen alone", () => {
-    for (const room of ["", "ask", "campaign"]) {
-      expect(nextFrom(id, room, { invitationSent: false }), room).toBeTruthy();
-    }
-  });
 
   it("brings somebody back to the thing left to do rather than past it", () => {
     expect(resumeAt(id, "UPCOMING", "topics", { invitationSent: false })).toBe(`/editions/${id}/${LAST_SETUP_ROOM}`);

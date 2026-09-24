@@ -24,3 +24,26 @@ registerJobHandler<{ storyId: string; userId?: string | null; instruction?: stri
   const result = await draftArticle(payload.storyId, { userId: payload.userId ?? null, instruction: payload.instruction ?? null, jobCtx: ctx, jobId: ctx.job.id });
   return { articleId: result.article.id, version: result.revision.version, wordCount: result.article.wordCount, cautions: result.cautions, aiJobIds: result.aiJobIds, costCents: result.costCents };
 });
+
+/**
+ * A document's parts, turned into topics: each part read like any contribution, then grouped with
+ * everything else the edition has, and a topic proposed for each group.
+ */
+registerJobHandler<{ editionId: string; submissionIds: string[]; userId?: string | null }, Record<string, unknown>>(JOB_TYPES.TOPICS_FROM_DOCUMENT, async (payload, ctx) => {
+  let processed = 0;
+  for (const [index, id] of payload.submissionIds.entries()) {
+    try {
+      await processSubmission(id, { jobId: ctx.job.id });
+      processed += 1;
+    } catch (err) {
+      ctx.log("a part of the document could not be read", { submissionId: id, err: err instanceof Error ? err.message : String(err) });
+    }
+    await ctx.progress(index + 1, payload.submissionIds.length + 1, `Reading part ${index + 1} of ${payload.submissionIds.length}`);
+  }
+  const { clusterEdition } = await import("./clustering");
+  const { createStoriesForEdition } = await import("./stories");
+  const clustering = await clusterEdition(payload.editionId, { jobCtx: ctx, jobId: ctx.job.id });
+  const stories = await createStoriesForEdition(payload.editionId, { userId: payload.userId ?? null });
+  await ctx.progress(payload.submissionIds.length + 1, payload.submissionIds.length + 1, "Topics ready");
+  return { processed, groups: clustering.groups, topicsCreated: stories.created.length };
+});

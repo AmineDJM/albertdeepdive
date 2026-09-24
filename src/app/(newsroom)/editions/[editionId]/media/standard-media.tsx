@@ -10,7 +10,6 @@ import { MediaPagination } from "@/components/media/pagination";
 import { UploadDialog } from "@/components/media/upload-dialog";
 import { GenerateImageDialog } from "@/components/images/generate-image-dialog";
 import { PicturesInProgress } from "@/components/images/pictures-in-progress";
-import { GuidedNext } from "@/components/newsroom/guided-next";
 import { mayShowRouting, pendingViews, referenceCandidates } from "@/server/images/views";
 import { requireTenant } from "@/server/tenancy/context";
 import { getUi } from "@/server/i18n/locale";
@@ -91,8 +90,6 @@ export async function StandardMedia({ editionId, rights, page }: { editionId: st
             action={canManage ? <UploadDialog editionId={editionId} stories={stories} maxFileMb={env.UPLOAD_MAX_FILE_MB} /> : null}
           />
         )}
-
-        <GuidedNext editionId={editionId} room="media" />
       </PageBody>
     </>
   );

@@ -4,8 +4,6 @@ import { getCampaignForEdition } from "@/server/campaigns/service";
 import { listContributors } from "@/server/contributors/service";
 import { PageBody, PageHeader } from "@/components/newsroom/page-header";
 import { NoAccess } from "@/components/settings/no-access";
-import { screenWords } from "@/components/newsroom/guided-words";
-import { GUIDED_PATH, nextFrom, previousFrom } from "@/lib/editorial/guided-path";
 import { experienceOf } from "@/lib/experience";
 import { normaliseBrief } from "@/lib/campaigns/brief";
 import { getUi } from "@/server/i18n/locale";
@@ -29,10 +27,7 @@ export default async function AskPage({ params }: { params: Promise<{ editionId:
   if (!hasPermission(user, "campaign:manage")) return <NoAccess title={tr("What are you asking for?")} permission="campaign:manage" />;
   const [edition, campaign, contributors] = await Promise.all([getEdition(editionId), getCampaignForEdition(editionId), listContributors({ active: "true" })]);
   const standard = experienceOf(user?.preferences) === "standard";
-  const next = standard ? nextFrom(editionId, "ask") : null;
-  const previous = standard ? previousFrom(editionId, "ask") : null;
-  const words = screenWords(tr);
-  const at = GUIDED_PATH.findIndex((screen) => screen.room === "ask");
+  const next = standard ? { href: `/editions/${editionId}` } : null;
   return (
     <>
       <PageHeader
@@ -47,10 +42,9 @@ export default async function AskPage({ params }: { params: Promise<{ editionId:
           contributors={contributors.map((c) => ({ id: c.id, name: `${c.firstName} ${c.lastName}`.trim() }))}
           canManage={hasPermission(user, "campaign:manage")}
           next={next?.href ?? null}
-          nextLabel={words[GUIDED_PATH[at].key].cta}
-          title={tr("Next: {question}", { question: words[GUIDED_PATH[at + 1].key].question })}
-          nextHint={tr("Step {step} of {total}", { step: at + 1, total: GUIDED_PATH.length })}
-          back={previous ? { href: previous.href, label: tr("Back") } : null}
+          nextLabel={tr("Save and go back")}
+          title={tr("Done here?")}
+          nextHint={tr("Saves what you changed and takes you back to the edition.")}
         />
       </PageBody>
     </>

@@ -18,7 +18,8 @@ export const dynamic = "force-dynamic";
 
 const FORMAT_ICONS = { EMAIL: Mail, WEB: Globe, MAGAZINE: BookOpen, PRINT: Printer } as const;
 
-export default async function PublicationsPage() {
+export default async function PublicationsPage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
+  const sp = await searchParams;
   const tr = await getUi();
   const [user, tenant] = await Promise.all([getCurrentUser(), requireTenant()]);
   const [publications, payments, showcase] = await Promise.all([listPublications(tenant.organizationId), readerPaymentsFor(tenant.organizationId), showcaseStatusFor(tenant.organizationId)]);
@@ -30,7 +31,7 @@ export default async function PublicationsPage() {
       <PageHeader
         title={tr("Newsletters")}
         description={tr("Your recurring titles. Open one to see its editions and start the next.")}
-        actions={canManage ? <PublicationEditor paymentsConnected={paymentsConnected} /> : null}
+        actions={canManage ? <PublicationEditor paymentsConnected={paymentsConnected} defaultOpen={sp.new === "1"} /> : null}
       />
       <PageBody className="space-y-4">
         <DataTable

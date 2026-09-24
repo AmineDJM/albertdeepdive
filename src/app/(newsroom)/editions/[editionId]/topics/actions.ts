@@ -5,6 +5,8 @@ import { requirePermission } from "@/server/auth/session";
 import { askForMore, buildDraft, mergeTopics } from "@/server/editorial/topics";
 import { assignSection, rejectStory, selectStory, undecideStory, updateStory } from "@/server/editorial/stories";
 import { ok, toActionFailure, type ActionResult } from "@/lib/action-result";
+import { importDocumentAsTopics } from "@/server/editorial/document-import";
+import { getUi } from "@/server/i18n/locale";
 
 const refresh = (editionId: string) => {
   revalidatePath(`/editions/${editionId}/topics`);
@@ -111,6 +113,22 @@ export async function buildDraftAction(editionId: string): Promise<ActionResult<
       result,
       result.queued ? `Writing ${result.queued} article(s)` : result.alreadyWritten ? "Everything kept is already written" : "Nothing kept yet",
     );
+  } catch (err) {
+    return toActionFailure(err);
+  }
+}
+
+/** A document of content, read and turned into topics in the background. */
+export async function importTopicsDocumentAction(editionId: string, form: FormData): Promise<ActionResult<{ sections: number }>> {
+  const tr = await getUi();
+  try {
+    const user = await requirePermission("story:edit");
+    const file = form.get("file");
+    if (!(file instanceof File) || !file.size) return { ok: false, error: tr("Choose a file first") };
+    if (file.size > 20 * 1024 * 1024) return { ok: false, error: tr("That file is over 20 MB") };
+    const result = await importDocumentAsTopics({ editionId, bytes: Buffer.from(await file.arrayBuffer()), fileName: file.name, mimeType: file.type || null, user: { id: user.id, name: user.name, email: user.email } });
+    refresh(editionId);
+    return ok({ sections: result.sections }, result.sections === 1 ? tr("Briefly is reading 1 part of your document") : tr("Briefly is reading {count} parts of your document", { count: result.sections }));
   } catch (err) {
     return toActionFailure(err);
   }

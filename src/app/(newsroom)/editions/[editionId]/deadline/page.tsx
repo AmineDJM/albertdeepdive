@@ -5,8 +5,6 @@ import { getCampaignForEdition } from "@/server/campaigns/service";
 import { PageBody, PageHeader } from "@/components/newsroom/page-header";
 import { NoAccess } from "@/components/settings/no-access";
 import { EmptyState } from "@/components/ui/empty-state";
-import { screenWords } from "@/components/newsroom/guided-words";
-import { GUIDED_PATH, nextFrom, previousFrom } from "@/lib/editorial/guided-path";
 import { experienceOf } from "@/lib/experience";
 import { zonedDayInput } from "@/lib/campaigns/schedule";
 import { getUi } from "@/server/i18n/locale";
@@ -30,11 +28,8 @@ export default async function DeadlinePage({ params }: { params: Promise<{ editi
   if (!hasPermission(user, "campaign:manage")) return <NoAccess title={tr("When for?")} permission="campaign:manage" />;
   const [edition, campaign] = await Promise.all([getEdition(editionId), getCampaignForEdition(editionId)]);
   const standard = experienceOf(user?.preferences) === "standard";
-  const at = GUIDED_PATH.findIndex((screen) => screen.room === "deadline");
   const sent = campaign ? !isUnsent(campaign.status) : false;
-  const next = standard ? nextFrom(editionId, "deadline", { invitationSent: sent }) : null;
-  const previous = standard ? previousFrom(editionId, "deadline") : null;
-  const words = screenWords(tr);
+  const next = standard ? { href: `/editions/${editionId}` } : null;
 
   return (
     <>
@@ -47,10 +42,9 @@ export default async function DeadlinePage({ params }: { params: Promise<{ editi
             canManage={hasPermission(user, "campaign:manage")}
             closed={campaign.status === "CLOSED"}
             next={next?.href ?? null}
-            nextLabel={words[GUIDED_PATH[at].key].cta}
-            nextHint={tr("Step {step} of {total}", { step: at + 1, total: GUIDED_PATH.length })}
-            title={tr("Next: {question}", { question: words[GUIDED_PATH[at + 1].key].question })}
-            back={previous ? { href: previous.href, label: tr("Back") } : null}
+            nextLabel={tr("Save and go back")}
+            nextHint={tr("Saves what you changed and takes you back to the edition.")}
+            title={tr("Done here?")}
             opensAt={campaign.opensAt.toISOString()}
             unsent={isUnsent(campaign.status)}
             invitationSent={sent}

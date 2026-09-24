@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Download, ExternalLink, Shapes } from "lucide-react";
 import { editionDashboard, type EditionDashboard } from "@/server/editions/service";
 import { outputMatrix } from "@/server/outputs/service";
-import { activeBrand } from "@/server/brand/service";
+import { brandRecordFor } from "@/server/brand/service";
 import { envelopeFor } from "@/server/email/sender";
 import { publicationStats } from "@/server/outputs/service";
 import { db } from "@/server/db/client";
@@ -14,9 +14,9 @@ import { mediaUrl } from "@/server/media/urls";
 import { PageBody, SectionTitle } from "@/components/newsroom/page-header";
 import { CoverThumbnail } from "@/components/newsroom/cover-thumbnail";
 import { EditionStatusBadge } from "@/components/newsroom/status-badge";
-import { Decision, LanguageChange, OutputsChange, PublishDateChange, type OutputChoice } from "@/components/newsroom/decisions";
+import { Decision, LanguageChange, OutputsChange, PublishDateChange, ToneChange, type DecisionStatus, type OutputChoice } from "@/components/newsroom/decisions";
+import { withReturn } from "@/lib/http/return-to";
 import { Button } from "@/components/ui/button";
-import { GuidedNext } from "@/components/newsroom/guided-next";
 import { DeleteEdition } from "@/components/newsroom/delete-edition";
 import { formatDate } from "@/lib/utils";
 import { activeIdentity } from "@/server/design/identity";
@@ -39,8 +39,9 @@ export async function StandardOverview({ editionId }: { editionId: string }) {
   const locale = intlLocale(await currentLocale());
   const at = (date: Date | string | null | undefined) => formatDate(date, undefined, locale);
   const [user, tenant] = await Promise.all([getCurrentUser(), requireTenant()]);
-  const [d, outputs, brand, sender, stats] = await Promise.all([editionDashboard(editionId), outputMatrix(editionId), activeBrand(tenant.organizationId), envelopeFor(tenant.organizationId).catch(() => null), publicationStats(tenant.organizationId)]);
+  const [d, outputs, sender, stats] = await Promise.all([editionDashboard(editionId), outputMatrix(editionId), envelopeFor(tenant.organizationId).catch(() => null), publicationStats(tenant.organizationId)]);
   const publication = d.edition.publicationId ? await db.query.publications.findFirst({ where: eq(s.publications.id, d.edition.publicationId), columns: { id: true, name: true, language: true } }) : null;
+  const brand = await brandRecordFor({ organizationId: tenant.organizationId, publicationId: publication?.id ?? null });
   // What every edition of this title is poured into, and where to change it.
   const identity = publication ? await activeIdentity(publication.id) : null;
   const model = identity?.source ? { ...identity.source, rubrics: identity.rubrics.map((rubric) => rubric.name) } : null;
@@ -89,7 +90,8 @@ export async function StandardOverview({ editionId }: { editionId: string }) {
   const deadlineDays = d.campaign ? calendarDaysUntil(d.campaign.deadlineAt) : null;
   const answered = d.requests.submitted;
   const responseRate = asked ? Math.round((answered / asked) * 100) : 0;
-  const tone = ((brand?.system as { voice?: { tone?: string[] } } | null)?.voice?.tone ?? []).map((word) => toneLabel(word, tr)).join(", ");
+  const toneWords = (brand.system as { voice?: { tone?: string[] } }).voice?.tone ?? [];
+  const tone = toneWords.map((word) => toneLabel(word, tr)).join(", ");
   const webUrl = choices.find((c) => c.format === "WEB")?.publicUrl ?? null;
   const summary = published
     ? tr("Went out on {date}.", { date: at(d.edition.publishedAt ?? d.edition.publicationTargetAt) })
@@ -100,6 +102,17 @@ export async function StandardOverview({ editionId }: { editionId: string }) {
         : d.campaign
           ? tr("Briefly is collecting news. Nothing has come in yet.")
           : tr("Nothing collected yet. Ask your people for news.");
+
+  const rows = {
+    subscribers: (subscribers === 0 && emailOn ? "todo" : "done") as DecisionStatus,
+    publishDate: (d.edition.publicationTargetAt ? "done" : "todo") as DecisionStatus,
+    outputs: (choices.some((c) => c.enabled) ? "done" : "todo") as DecisionStatus,
+    contributors: (asked === 0 && !published ? "todo" : "done") as DecisionStatus,
+    topics: (d.stories.selected === 0 && !published ? "todo" : "done") as DecisionStatus,
+    pictures: (d.media.red ? "todo" : d.media.total ? "done" : "info") as DecisionStatus,
+    sender: (sender && sender.transport !== "log" ? "done" : "todo") as DecisionStatus,
+  };
+  const todo = Object.entries(rows).filter(([key, status]) => status === "todo" && (key !== "sender" || emailOn)).length;
 
   return (
     <PageBody className="mx-auto w-full max-w-3xl space-y-6">
@@ -165,25 +178,26 @@ export async function StandardOverview({ editionId }: { editionId: string }) {
 
       <section>
         <SectionTitle>{tr("What Briefly decided")}</SectionTitle>
-        <p className="-mt-1 mb-2 text-xs text-muted-foreground">{tr("Change anything. Everything else, Briefly does from your brand.")}</p>
-        <ul className="divide-y divide-border/70 rounded-xl border border-border bg-card shadow-xs">
-          <Decision label={tr("Language")} value={languageNames[language] ?? language.toUpperCase()} hint={publication ? publication.name : null} change={!publication && canSetUp ? { href: "/settings/workspace" } : null}>
+        <p className="-mt-1 mb-2 text-xs text-muted-foreground">{tr("Green is settled, orange still needs you. Configure opens the page; Back brings you here.")}</p>
+        <ul className="divide-y divide-border/70 rounded-xl border border-border bg-card shadow-xs" data-testid="decisions">
+          <Decision label={tr("Language")} status="done" value={languageNames[language] ?? language.toUpperCase()} change={!publication && canSetUp ? { href: withReturn("/settings/workspace", ed) } : null}>
             {publication && canEdit && !published ? <LanguageChange publicationId={publication.id} current={publication.language} /> : null}
           </Decision>
-          <Decision label={tr("Audience")} value={subscribers === 1 ? tr("1 subscriber") : tr("{count} subscribers", { count: subscribers })} hint={subscribers === 0 ? tr("nobody yet — add readers first") : null} tone={subscribers === 0 && emailOn ? "attention" : "default"} change={{ href: "/subscribers" }} />
-          <Decision label={tr("Publish date")} value={at(d.edition.publicationTargetAt)} hint={publishHint}>
+          <Decision
+            label={tr("Subscribers")}
+            status={rows.subscribers}
+            value={subscribers === 1 ? tr("1 subscriber") : tr("{count} subscribers", { count: subscribers })}
+            hint={subscribers === 0 ? (emailOn ? tr("nobody to send the email to yet") : tr("nobody yet")) : null}
+            change={{ href: withReturn(publication ? `/publications/${publication.id}/subscribers` : "/subscribers", ed), label: subscribers ? tr("Manage") : tr("Add readers") }}
+          />
+          <Decision label={tr("Publish date")} status={rows.publishDate} value={at(d.edition.publicationTargetAt)} hint={publishHint}>
             {canEdit ? <PublishDateChange editionId={editionId} current={d.edition.publicationTargetAt} locked={published} /> : null}
           </Decision>
-          <Decision label={tr("Outputs")} value={<OutputsChange editionId={editionId} outputs={choices} canEdit={canEdit && !published} />} />
-          {/*
-            * The model this edition is made on, which belongs to the title rather than the month.
-            *
-            * It is on this list because this list is where somebody looks to find out what Briefly
-            * decided, and "what does it look like" is the decision they are least able to guess.
-            */}
+          <Decision label={tr("Outputs")} status={rows.outputs} value={<OutputsChange editionId={editionId} outputs={choices} canEdit={canEdit && !published} />} />
           {publication ? (
             <Decision
               label={tr("Model")}
+              status="done"
               value={
                 model?.kind === "uploaded" && model.fileName
                   ? tr("Read from {file}", { file: model.fileName })
@@ -193,19 +207,13 @@ export async function StandardOverview({ editionId }: { editionId: string }) {
                       ? tr("One of Briefly's models")
                       : tr("Briefly's own")
               }
-              hint={model?.rubrics.length ? model.rubrics.slice(0, 3).join(" · ") : tr("upload yours, or have one designed")}
-              change={canEdit ? { href: `/publications/${publication.id}/blueprint`, label: model ? tr("Change") : tr("Choose") } : null}
+              hint={model?.rubrics.length ? model.rubrics.slice(0, 3).join(" · ") : null}
+              change={canEdit ? { href: withReturn(`/publications/${publication.id}/blueprint`, ed) } : null}
             />
           ) : null}
-          {/*
-            * Who was asked, which is the decision every other one on this list depends on.
-            *
-            * It sat only inside the campaign screen, so the overview could say "0 stories in"
-            * without ever saying that nobody had been asked for any — a count that reads as a
-            * failure of the newsroom when it is a setting nobody has touched.
-            */}
           <Decision
             label={tr("Contributors")}
+            status={rows.contributors}
             value={asked === 0 ? tr("Nobody asked yet") : asked === 1 ? tr("1 person asked") : tr("{count} people asked", { count: asked })}
             hint={
               asked === 0
@@ -218,40 +226,40 @@ export async function StandardOverview({ editionId }: { editionId: string }) {
                   ? tr("{count} have answered · {percent}%", { count: answered, percent: responseRate })
                   : tr("nobody has answered yet")
             }
-            tone={asked === 0 && !published ? "attention" : "default"}
-            change={{ href: `${ed}/campaign`, label: canEdit ? (asked === 0 ? tr("Set up") : tr("Change")) : tr("See") }}
+            change={{ href: `${ed}/campaign`, label: canEdit ? tr("Configure") : tr("See") }}
           />
           {d.campaign && !published ? (
             <Decision
               label={tr("Last day")}
+              status={deadlineDays !== null && deadlineDays >= 0 && deadlineDays <= 2 ? "todo" : "done"}
               value={at(d.campaign.deadlineAt)}
               hint={deadlineDays !== null && deadlineDays < 0 ? tr("closed") : inDays(deadlineDays)}
-              tone={deadlineDays !== null && deadlineDays >= 0 && deadlineDays <= 2 ? "attention" : "default"}
               change={canEdit ? { href: `${ed}/deadline` } : null}
             />
           ) : null}
-          <Decision label={tr("Stories")} value={d.stories.selected === 1 ? tr("1 story in") : tr("{count} stories in", { count: d.stories.selected })} hint={d.stories.candidates ? tr("{count} more to decide on", { count: d.stories.candidates }) : d.submissions.total ? tr("from {count} updates", { count: d.submissions.total }) : null} tone={d.stories.selected === 0 && !published ? "attention" : "default"} change={{ href: `${ed}/topics`, label: canEdit ? tr("Choose") : tr("See") }} />
-          <Decision label={tr("Pictures")} value={d.media.total === 1 ? tr("1 picture") : tr("{count} pictures", { count: d.media.total })} hint={d.media.yellow + d.media.red ? tr("{count} need a look", { count: d.media.yellow + d.media.red }) : null} tone={d.media.red ? "attention" : "default"} change={{ href: `${ed}/media` }} />
-          <Decision label={tr("Tone")} value={tone || tr("Plain and confident")} hint={tr("from your brand")} change={canSetUp ? { href: "/settings/brand" } : null} />
+          <Decision label={tr("Topics")} status={rows.topics} value={d.stories.selected === 1 ? tr("1 topic in") : tr("{count} topics in", { count: d.stories.selected })} hint={d.stories.candidates ? tr("{count} more to decide on", { count: d.stories.candidates }) : d.submissions.total ? tr("from {count} updates", { count: d.submissions.total }) : null} change={{ href: `${ed}/topics`, label: canEdit ? tr("Configure") : tr("See") }} />
+          <Decision label={tr("Pictures")} status={rows.pictures} value={d.media.total === 1 ? tr("1 picture") : tr("{count} pictures", { count: d.media.total })} hint={d.media.yellow + d.media.red ? tr("{count} need a look", { count: d.media.yellow + d.media.red }) : null} change={{ href: `${ed}/media` }} />
+          <Decision label={tr("Tone")} status="done" value={tone || tr("Plain and confident")} hint={tr("from your brand")}>
+            {canEdit && !published ? <ToneChange editionId={editionId} current={toneWords} /> : null}
+          </Decision>
           {emailOn ? (
             <Decision
               label={tr("Sender")}
-              value={sender ? (sender.mode === "domain" ? tr("Ready") : tr("Your name, Briefly's address")) : tr("Not set up")}
-              hint={sender ? sender.from : tr("email cannot go out yet")}
-              tone={sender?.mode === "domain" ? "ready" : sender ? "default" : "attention"}
-              change={canSetUp ? { href: "/settings/email", label: sender?.mode === "domain" ? tr("Change") : tr("Set up") } : null}
+              status={rows.sender}
+              value={sender && sender.transport !== "log" ? (sender.mode === "domain" ? tr("Your own address") : tr("Your name, Briefly's address")) : tr("Email not connected yet")}
+              hint={sender?.from ?? null}
+              change={canSetUp ? { href: withReturn("/settings/email", ed) } : null}
             />
           ) : null}
         </ul>
       </section>
 
       {/*
-        * One button, and it goes forward.
+        * Where it stands, and the one thing left to do.
         *
-        * What stood here was two: "look at what came in" at the top and "publish" at the bottom,
-        * on either side of eight rows each offering "Change" — three competing answers to "and
-        * now?" on one screen. An edition already out is the one case with nothing ahead of it, so
-        * it gets the one thing left to do with it: read what happened.
+        * The table is the to-do list; this says how much of it is left and, once nothing is, takes
+        * the edition out. An edition already out gets the one thing left to do with it: read what
+        * happened.
         */}
       {published ? (
         <section className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-muted/30 px-4 py-3">
@@ -264,7 +272,15 @@ export async function StandardOverview({ editionId }: { editionId: string }) {
           </Button>
         </section>
       ) : (
-        <GuidedNext editionId={editionId} room="" />
+        <section className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-muted/30 px-4 py-3" data-testid="edition-readiness">
+          <div>
+            <p className="text-[13px] font-semibold">{todo === 0 ? tr("Everything is set") : todo === 1 ? tr("1 thing still needs you") : tr("{count} things still need you", { count: todo })}</p>
+            <p className="text-xs text-muted-foreground">{todo === 0 ? tr("Check it once more, then send it out.") : tr("The orange rows above.")}</p>
+          </div>
+          <Button asChild variant={todo === 0 ? "default" : "outline"}>
+            <Link href={`${ed}/exports`}>{tr("Publish")}</Link>
+          </Button>
+        </section>
       )}
 
       {/*

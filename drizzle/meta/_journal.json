@@ -246,6 +246,20 @@
       "when": 1790251036375,
       "tag": "0034_media_links_within_one_workspace",
       "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1790264496556,
+      "tag": "0035_newsletter_libraries",
+      "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1790264881945,
+      "tag": "0036_newsletter_contributors",
+      "breakpoints": true
     }
   ]
 }

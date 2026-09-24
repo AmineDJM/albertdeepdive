@@ -1,6 +1,6 @@
 import { type AnyPgColumn, boolean, index, integer, jsonb, pgTable, primaryKey, real, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 import { attachmentKindEnum, campusScopeEnum, consentTypeEnum, mediaVariantKindEnum, rightsStatusEnum, submissionStatusEnum, submissionTypeEnum } from "./enums";
-import { campuses, contributors, organizations, users } from "./identity";
+import { campuses, contributors, organizations, publications, users } from "./identity";
 import { editions, submissionCampaigns, submissionRequests } from "./editions";
 
 export type SubmissionExtra = Record<string, unknown>;
@@ -97,6 +97,15 @@ export const mediaAssets = pgTable(
     id: uuid("id").primaryKey().defaultRandom(),
     organizationId: uuid("organization_id").references(() => organizations.id, { onDelete: "cascade" }),
     editionId: uuid("edition_id").references(() => editions.id, { onDelete: "set null" }),
+    /**
+     * The newsletter whose library this picture is in.
+     *
+     * Each newsletter has its own library: an alumni review's portraits are not a portfolio
+     * letter's charts. Set from the edition a picture came in with, or from the newsletter's own
+     * library when it was uploaded there; null for a picture that belongs to the organisation as a
+     * whole (its logo, anything uploaded before newsletters had libraries).
+     */
+    publicationId: uuid("publication_id").references(() => publications.id, { onDelete: "set null" }),
     submissionId: uuid("submission_id").references(() => submissions.id, { onDelete: "set null" }),
     uploadedByContributorId: uuid("uploaded_by_contributor_id").references(() => contributors.id, { onDelete: "set null" }),
     uploadedByUserId: uuid("uploaded_by_user_id").references(() => users.id, { onDelete: "set null" }),
@@ -131,7 +140,7 @@ export const mediaAssets = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
   },
-  (t) => [index("media_assets_edition_idx").on(t.editionId), index("media_assets_submission_idx").on(t.submissionId), index("media_assets_sha_idx").on(t.sha256), index("media_assets_phash_idx").on(t.phash)],
+  (t) => [index("media_assets_edition_idx").on(t.editionId), index("media_assets_publication_idx").on(t.publicationId), index("media_assets_submission_idx").on(t.submissionId), index("media_assets_sha_idx").on(t.sha256), index("media_assets_phash_idx").on(t.phash)],
 );
 
 export const mediaVariants = pgTable(

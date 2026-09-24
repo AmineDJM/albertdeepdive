@@ -38,6 +38,8 @@ export type IngestMediaInput = {
   kind?: "photo" | "logo" | "screenshot" | "diagram" | "chart" | "document";
   /** The workspace it belongs to, for work done outside a request (a job has no workspace in scope). */
   organizationId?: string | null;
+  /** The newsletter whose library it goes in; the edition's newsletter when an edition is given. */
+  publicationId?: string | null;
   /** Skip duplicate lookup (seeding many files quickly). */
   skipDuplicateCheck?: boolean;
 };
@@ -139,10 +141,9 @@ export async function ingestMedia(input: IngestMediaInput): Promise<IngestedMedi
 
   // An asset belongs to the workspace that owns the edition it was filed against; uploads that are
   // not tied to an edition fall back to the workspace in scope for the request.
-  const organizationId =
-    input.organizationId ??
-    (input.editionId ? (await db.query.editions.findFirst({ where: eq(editions.id, input.editionId), columns: { organizationId: true } }))?.organizationId : null) ??
-    (await optionalOrganizationId());
+  const filedUnder = input.editionId ? await db.query.editions.findFirst({ where: eq(editions.id, input.editionId), columns: { organizationId: true, publicationId: true } }) : null;
+  const organizationId = input.organizationId ?? filedUnder?.organizationId ?? (await optionalOrganizationId());
+  const publicationId = input.publicationId ?? filedUnder?.publicationId ?? null;
 
   let duplicateOfId: string | null = null;
   let similarityGroup: string | null = null;
@@ -203,6 +204,7 @@ export async function ingestMedia(input: IngestMediaInput): Promise<IngestedMedi
     .values({
       id: assetId,
       organizationId,
+      publicationId,
       editionId: input.editionId ?? null,
       submissionId: input.submissionId ?? null,
       uploadedByContributorId: input.contributorId ?? null,

@@ -37,7 +37,6 @@ export function DeadlineForm({
   nextLabel,
   nextHint,
   title,
-  back,
   showInvitation,
 }: {
   editionId: string;
@@ -53,7 +52,6 @@ export function DeadlineForm({
   nextLabel: string;
   nextHint: string;
   title: string;
-  back?: { href: string; label: string } | null;
   showInvitation: boolean;
 }) {
   const tr = useUi();
@@ -130,7 +128,7 @@ export function DeadlineForm({
         </SettingsCard>
       ) : null}
 
-      <GuidedFooter title={title} hint={dirty ? tr("Not saved yet") : nextHint} back={back}>
+      <GuidedFooter title={title} hint={dirty ? tr("Not saved yet") : nextHint}>
         <div className="flex items-center gap-2">
           {!readOnly && dirty ? (
             <Button

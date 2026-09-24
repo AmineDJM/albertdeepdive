@@ -46,6 +46,7 @@ export const JOB_TYPES = {
   QC_PREFLIGHT: "qc.preflight",
   QC_SWEEP: "qc.sweep",
   PUBLICATION_BRAND_READ: "publication.brand.read",
+  TOPICS_FROM_DOCUMENT: "topics.from_document",
 } as const;
 
 export type JobType = (typeof JOB_TYPES)[keyof typeof JOB_TYPES];

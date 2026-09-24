@@ -4,13 +4,13 @@ import { useTransition } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
-import { Bell, ChevronsUpDown, HelpCircle, Inbox, LogOut, Moon, Search, Shield, Sparkles, Sun, UserRound } from "lucide-react";
+import { Bell, HelpCircle, LogOut, Moon, Plus, Search, Shield, Sun, UserRound } from "lucide-react";
 import { WorkspaceSwitcher, type WorkspaceOption } from "./workspace-switcher";
 import { navItemsFor, resolveNavItem, type NavItem } from "./nav";
 import { useExperience } from "@/components/experience/provider";
 import { cn, initials, relativeTime } from "@/lib/utils";
-import { ROLE_LABELS, type Role } from "@/lib/auth/permissions";
-import { STATUS_LABELS, type EditionStatus } from "@/lib/editorial/edition-state";
+import { ROLE_LABELS, roleHasPermission, type Role } from "@/lib/auth/permissions";
+import type { EditionStatus } from "@/lib/editorial/edition-state";
 import { Kbd } from "@/components/ui/kbd";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -23,6 +23,7 @@ import { BrieflyLogo } from "@/components/brand/briefly-mark";
 import { markAllNotificationsReadAction, markNotificationReadAction, signOutAction } from "@/app/(newsroom)/actions";
 
 export type SidebarEdition = { id: string; label: string; issueLabel: string; status: EditionStatus };
+export type SidebarNewsletter = { id: string; name: string; editionIds: string[] };
 export type SidebarNotification = { id: string; title: string; body: string | null; href: string | null; readAt: Date | null; createdAt: Date; type: string };
 export type SidebarPlan = { name: string; usedLabel: string; ratio: number | null; href: string };
 export type SidebarUser = { name: string; email: string; role: Role };
@@ -30,9 +31,10 @@ export type SidebarUser = { name: string; email: string; role: Role };
 /**
  * The one column every screen shares.
  *
- * Top to bottom, in the order a day goes: the product, the workspace, the edition in hand, the six
- * places to work, the two places to set things up, and — at the foot, where a person looks for
- * themselves — the plan, the bell, the search and the account. There is no bar above the page:
+ * Top to bottom, in the order a day goes: the product, the organisation (and the way to another),
+ * Home, the newsletters — each one the door to everything about it — the places to set things up,
+ * and at the foot, where a person looks for themselves, the plan, the bell, the search and the
+ * account. There is no bar above the page:
  * the page's own header carries its title and its actions, and the column carries everything
  * that is not about this page.
  *
@@ -40,70 +42,43 @@ export type SidebarUser = { name: string; email: string; role: Role };
  * nowhere louder. Selection is a tint and a weight, not a colour.
  */
 
-function WorkingOn({ current, editions, badges }: { current: SidebarEdition | null; editions: SidebarEdition[]; badges: { inbox: number; flags: number } }) {
+/** One colour per newsletter, from the spectrum, so a title is recognised before its name is read. */
+const NEWSLETTER_HUES = ["var(--g-blue)", "var(--g-red)", "var(--g-yellow)", "var(--g-green)", "var(--g-violet)", "var(--g-teal)"] as const;
+
+function Newsletters({ newsletters, pathname, canCreate }: { newsletters: SidebarNewsletter[]; pathname: string; canCreate: boolean }) {
   const tr = useUi();
-  const t = useTranslations();
   return (
-    <div className="px-3 pb-1 pt-1">
-      <div className="rounded-lg border border-sidebar-border bg-card shadow-xs">
-        <div className="flex items-stretch">
-          <Link href={current ? `/editions/${current.id}` : "/editions"} className="min-w-0 flex-1 rounded-l-lg px-2.5 py-1.5 text-left transition-colors duration-150 hover:bg-sidebar-accent/60">
-            <span className="label-caps block">{t("nav.workingOn")}</span>
-            {current ? (
-              <>
-                <span className="block truncate text-[13px] font-medium text-foreground">{current.label}</span>
-                <span className="block truncate text-2xs text-muted-foreground">
-                  {current.issueLabel} · {tr(STATUS_LABELS[current.status])}
-                </span>
-              </>
-            ) : (
-              <span className="block truncate text-[13px] font-medium text-muted-foreground">{t("nav.noEdition")}</span>
-            )}
+    <div className="mt-3">
+      <div className="flex items-center justify-between px-2 pb-1">
+        <span className="label-caps">{tr("Newsletters")}</span>
+        {canCreate ? (
+          <Link href="/publications?new=1" aria-label={tr("New newsletter")} title={tr("New newsletter")} className="flex size-5 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-foreground">
+            <Plus className="size-3.5" />
           </Link>
-          {editions.length > 1 ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger aria-label={t("nav.switchEdition")} className="flex w-8 shrink-0 items-center justify-center rounded-r-lg border-l border-sidebar-border text-muted-foreground transition-colors duration-150 hover:bg-sidebar-accent/60 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none">
-                <ChevronsUpDown className="size-3.5" />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="w-[224px]">
-                <DropdownMenuLabel>{t("nav.switchEdition")}</DropdownMenuLabel>
-                {editions.map((e) => (
-                  <DropdownMenuItem key={e.id} asChild>
-                    <Link href={`/editions/${e.id}`} className="flex flex-col items-start gap-0">
-                      <span className="text-[13px]">
-                        {e.label} · {e.issueLabel}
-                      </span>
-                      <span className="text-2xs text-muted-foreground">{tr(STATUS_LABELS[e.status])}</span>
-                    </Link>
-                  </DropdownMenuItem>
-                ))}
-                <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
-                  <Link href="/editions">{t("nav.allEditions")}</Link>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          ) : null}
-        </div>
-        {current && (badges.inbox > 0 || badges.flags > 0) ? (
-          <div className="flex gap-1 border-t border-sidebar-border px-1.5 py-1">
-            {badges.inbox > 0 ? (
-              <Link href={`/editions/${current.id}/inbox`} className="flex flex-1 items-center gap-1.5 rounded-sm px-1.5 py-0.5 text-2xs text-muted-foreground transition-colors duration-150 hover:bg-sidebar-accent/60 hover:text-foreground">
-                <Inbox className="size-3 shrink-0" />
-                <span className="tabular font-semibold text-brand-foreground">{badges.inbox}</span>
-                <span className="truncate">{t("nav.toReview")}</span>
-              </Link>
-            ) : null}
-            {badges.flags > 0 ? (
-              <Link href={`/editions/${current.id}/stories?flag=needs_attention`} className="flex flex-1 items-center gap-1.5 rounded-sm px-1.5 py-0.5 text-2xs text-muted-foreground transition-colors duration-150 hover:bg-sidebar-accent/60 hover:text-foreground">
-                <Sparkles className="size-3 shrink-0" />
-                <span className="tabular font-semibold text-brand-foreground">{badges.flags}</span>
-                <span className="truncate">{t("nav.flagged")}</span>
-              </Link>
-            ) : null}
-          </div>
         ) : null}
       </div>
+      <ul className="space-y-px" data-testid="sidebar-newsletters">
+        {newsletters.map((newsletter, index) => {
+          const href = `/publications/${newsletter.id}`;
+          const active = pathname === href || pathname.startsWith(`${href}/`) || newsletter.editionIds.some((id) => pathname === `/editions/${id}` || pathname.startsWith(`/editions/${id}/`));
+          return (
+            <li key={newsletter.id}>
+              <Link
+                href={href}
+                aria-current={active ? "page" : undefined}
+                className={cn(
+                  "group flex h-8 items-center gap-2.5 rounded-md px-2 text-[13px] transition-colors duration-150",
+                  active ? "bg-sidebar-accent font-medium text-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent/60 hover:text-foreground",
+                )}
+              >
+                <span aria-hidden className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: NEWSLETTER_HUES[index % NEWSLETTER_HUES.length] }} />
+                <span className="flex-1 truncate">{newsletter.name}</span>
+              </Link>
+            </li>
+          );
+        })}
+        {!newsletters.length ? <li className="px-2 py-1 text-xs text-muted-foreground">{tr("No newsletter yet")}</li> : null}
+      </ul>
     </div>
   );
 }
@@ -242,7 +217,7 @@ function AccountMenu({ user }: { user: SidebarUser }) {
   );
 }
 
-export function Sidebar({ user, role, workspace, workspaces, impersonated, currentEdition, editions, badges, notifications, unread, plan, onOpenSearch }: { user: SidebarUser; role: Role; workspace: { name: string; role: string } | null; workspaces: WorkspaceOption[]; impersonated: boolean; currentEdition: SidebarEdition | null; editions: SidebarEdition[]; badges: { inbox: number; flags: number }; notifications: SidebarNotification[]; unread: number; plan: SidebarPlan | null; onOpenSearch: () => void }) {
+export function Sidebar({ user, role, workspace, workspaces, impersonated, newsletters, notifications, unread, plan, onOpenSearch }: { user: SidebarUser; role: Role; workspace: { name: string; role: string } | null; workspaces: WorkspaceOption[]; impersonated: boolean; newsletters: SidebarNewsletter[]; notifications: SidebarNotification[]; unread: number; plan: SidebarPlan | null; onOpenSearch: () => void }) {
   const tr = useUi();
   const t = useTranslations();
   const pathname = usePathname();
@@ -255,7 +230,6 @@ export function Sidebar({ user, role, workspace, workspaces, impersonated, curre
         </Link>
       </div>
       <WorkspaceSwitcher current={workspace} options={workspaces} impersonated={impersonated} />
-      {workspace ? <WorkingOn current={currentEdition} editions={editions} badges={badges} /> : null}
       <nav className="flex-1 overflow-y-auto px-2 pb-2 pt-1 scrollbar-thin" aria-label={tr("Main")}>
         {workspace ? (
           <>
@@ -264,6 +238,7 @@ export function Sidebar({ user, role, workspace, workspaces, impersonated, curre
                 <NavLink key={item.href} item={item} role={role} pathname={pathname} />
               ))}
             </ul>
+            <Newsletters newsletters={newsletters} pathname={pathname} canCreate={roleHasPermission(role, "edition:create")} />
             <div className="mx-2 my-2 border-t border-sidebar-border" />
             <ul className="space-y-px">
               {nav.secondary.map((item) => (

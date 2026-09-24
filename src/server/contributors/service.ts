@@ -1,4 +1,4 @@
-import { asc, count, desc, eq, ilike, inArray, or, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, ilike, inArray, or, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/server/db/client";
 import * as s from "@/server/db/schema";
@@ -24,7 +24,7 @@ export const contributorInputSchema = z.object({
 });
 export type ContributorInput = z.infer<typeof contributorInputSchema>;
 
-export type ContributorFilters = { q?: string; campusId?: string; type?: string; groupId?: string; active?: "true" | "false" };
+export type ContributorFilters = { q?: string; campusId?: string; type?: string; groupId?: string; active?: "true" | "false"; publicationId?: string };
 
 export async function listContributors(filters: ContributorFilters = {}) {
   const where = await scoped(
@@ -34,6 +34,7 @@ export async function listContributors(filters: ContributorFilters = {}) {
     filters.type ? eq(s.contributors.type, filters.type as (typeof s.contributorTypeEnum.enumValues)[number]) : undefined,
     filters.active ? eq(s.contributors.isActive, filters.active === "true") : undefined,
     filters.groupId ? inArray(s.contributors.id, db.select({ id: s.contributorGroupMembers.contributorId }).from(s.contributorGroupMembers).where(eq(s.contributorGroupMembers.groupId, filters.groupId))) : undefined,
+    filters.publicationId ? inArray(s.contributors.id, db.select({ id: s.publicationContributors.contributorId }).from(s.publicationContributors).where(eq(s.publicationContributors.publicationId, filters.publicationId))) : undefined,
   );
   const rows = await db.query.contributors.findMany({ where, orderBy: [asc(s.contributors.lastName), asc(s.contributors.firstName)], with: { campus: true, program: true, groupMemberships: { with: { group: true } } }, limit: 500 });
   return rows;
@@ -195,4 +196,39 @@ export async function updateCampus(id: string, raw: Partial<z.input<typeof campu
 
 export async function listPrograms() {
   return db.query.academicPrograms.findMany({ where: await scoped(s.academicPrograms.organizationId), orderBy: [asc(s.academicPrograms.sortOrder)] });
+}
+
+/** The newsletter, when it is the active workspace's; not found otherwise. */
+async function ownNewsletter(publicationId: string) {
+  const publication = await guardTenant(await db.query.publications.findFirst({ where: eq(s.publications.id, publicationId), columns: { id: true, organizationId: true } }), "Newsletter");
+  if (!publication) throw new NotFoundError("Newsletter");
+  return publication;
+}
+
+/**
+ * Put people on a newsletter's list of contributors.
+ *
+ * Only the workspace's own people, on the workspace's own newsletter: ids from anywhere else are
+ * ignored rather than attached.
+ */
+export async function attachContributors(publicationId: string, contributorIds: string[], userId?: string | null): Promise<number> {
+  const publication = await ownNewsletter(publicationId);
+  const ids = [...new Set(contributorIds)];
+  if (!ids.length) return 0;
+  const people = await db.select({ id: s.contributors.id }).from(s.contributors).where(and(inArray(s.contributors.id, ids), eq(s.contributors.organizationId, publication.organizationId)));
+  if (!people.length) return 0;
+  const added = await db
+    .insert(s.publicationContributors)
+    .values(people.map((person) => ({ publicationId, contributorId: person.id, source: "by-hand" })))
+    .onConflictDoNothing()
+    .returning();
+  await audit({ action: "publication.contributors.attach", userId, entityType: "CONTRIBUTOR", entityId: publicationId, metadata: { count: added.length } });
+  return added.length;
+}
+
+/** Take somebody off a newsletter's list. They stay one of the workspace's people. */
+export async function detachContributor(publicationId: string, contributorId: string, userId?: string | null): Promise<void> {
+  await ownNewsletter(publicationId);
+  await db.delete(s.publicationContributors).where(and(eq(s.publicationContributors.publicationId, publicationId), eq(s.publicationContributors.contributorId, contributorId)));
+  await audit({ action: "publication.contributors.detach", userId, entityType: "CONTRIBUTOR", entityId: contributorId, metadata: { publicationId } });
 }

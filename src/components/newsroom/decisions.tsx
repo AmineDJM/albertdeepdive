@@ -3,9 +3,9 @@
 import Link from "next/link";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Check, ExternalLink, Plus } from "lucide-react";
+import { Check, CheckCircle2, Circle, CircleDashed, ExternalLink, Plus } from "lucide-react";
 import { toast } from "sonner";
-import { updateEditionAction } from "@/app/(newsroom)/editions/actions";
+import { setEditionToneAction, updateEditionAction } from "@/app/(newsroom)/editions/actions";
 import { toggleOutputAction } from "@/app/(newsroom)/editions/[editionId]/output-actions";
 import { updatePublicationAction } from "@/app/(newsroom)/publications/actions";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -15,32 +15,81 @@ import { useUi } from "@/components/i18n/provider";
 import type { OutputFormat } from "@/server/outputs/service";
 
 /**
- * A decision, in one line: what it is, what Briefly chose, and "Change".
+ * A decision, in one line: where it stands, what Briefly chose, and "Configure".
  *
- * The Standard edition overview is a short list of these. Each carries the whole decision — the
- * value is the value, not a summary of a screen — so a person reads down the list and changes only
- * what they disagree with. `Change` is a link when the decision lives on another screen and a
- * control when it can be made here, and it is left out for a reader who may not make it.
+ * The edition's table is a short list of these, and it is the hub of the edition: every row that
+ * needs a screen opens it, and that screen's Back comes back here. The mark on the left says at a
+ * glance what is settled (green) and what still needs somebody (orange), so the table is also the
+ * to-do list. A decision that can be made in one gesture — the language, the date, the formats,
+ * the tone — is made in place, without leaving.
  */
-export function Decision({ label, value, hint, change, tone = "default", children }: { label: string; value: React.ReactNode; hint?: React.ReactNode; change?: { href: string; label?: string } | null; tone?: "default" | "ready" | "attention"; children?: React.ReactNode }) {
+export type DecisionStatus = "done" | "todo" | "info";
+
+export function Decision({ label, value, hint, change, status = "info", children }: { label: string; value: React.ReactNode; hint?: React.ReactNode; change?: { href: string; label?: string } | null; status?: DecisionStatus; children?: React.ReactNode }) {
   const tr = useUi();
   return (
-    <li className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3">
-      <span className="w-[112px] shrink-0 text-xs font-medium text-muted-foreground">{label}</span>
-      <span className={cn("flex min-w-0 flex-1 flex-wrap items-center gap-2 text-[13px]", tone === "attention" && "text-warning", tone === "ready" && "text-foreground")}>
-        {tone === "ready" ? <Check className="size-3.5 text-success" aria-hidden="true" /> : null}
+    <li className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3" data-status={status}>
+      <span className="flex w-[132px] shrink-0 items-center gap-2 text-xs font-medium text-muted-foreground">
+        {status === "done" ? (
+          <CheckCircle2 className="size-4 shrink-0 text-success" aria-label={tr("Set")} />
+        ) : status === "todo" ? (
+          <CircleDashed className="size-4 shrink-0 text-warning" aria-label={tr("To configure")} />
+        ) : (
+          <Circle className="size-4 shrink-0 text-muted-foreground/40" aria-hidden="true" />
+        )}
+        {label}
+      </span>
+      <span className={cn("flex min-w-0 flex-1 flex-wrap items-center gap-2 text-[13px]", status === "todo" && "text-warning")}>
         {typeof value === "string" ? <span className="min-w-0 truncate font-medium">{value}</span> : <span className="min-w-0 font-medium">{value}</span>}
         {hint ? <span className="text-xs text-muted-foreground">{hint}</span> : null}
       </span>
       <span className="flex shrink-0 items-center gap-1">
         {children}
         {change ? (
-          <Link href={change.href} className="rounded-md px-2 py-1 text-xs font-medium text-brand transition-colors duration-150 hover:bg-brand-soft">
-            {change.label ?? tr("Change")}
+          <Link href={change.href} className={cn("rounded-md px-2 py-1 text-xs font-medium transition-colors duration-150", status === "todo" ? "bg-warning-soft text-warning hover:bg-warning/15" : "text-brand hover:bg-brand-soft")}>
+            {change.label ?? tr("Configure")}
           </Link>
         ) : null}
       </span>
     </li>
+  );
+}
+
+const TONES = ["plain", "warm", "precise", "confident", "playful", "formal"] as const;
+
+/** The tone, changed here: up to three words, saved as they are ticked. */
+export function ToneChange({ editionId, current }: { editionId: string; current: string[] }) {
+  const tr = useUi();
+  const router = useRouter();
+  const [pending, start] = useTransition();
+  const [open, setOpen] = useState(false);
+  const words: Record<(typeof TONES)[number], string> = { plain: tr("plain"), warm: tr("warm"), precise: tr("precise"), confident: tr("confident"), playful: tr("playful"), formal: tr("formal") };
+  function toggle(word: string) {
+    const next = current.includes(word) ? current.filter((w) => w !== word) : [...current, word].slice(-3);
+    if (!next.length) return;
+    start(async () => {
+      const res = await setEditionToneAction(editionId, next);
+      if (!res.ok) toast.error(res.error);
+      else router.refresh();
+    });
+  }
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button type="button" disabled={pending} data-testid="tone-change" className="rounded-md px-2 py-1 text-xs font-medium text-brand transition-colors duration-150 hover:bg-brand-soft disabled:opacity-60">
+          {tr("Change")}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-52 p-1">
+        <p className="px-2 py-1.5 text-2xs text-muted-foreground">{tr("Up to three words")}</p>
+        {TONES.map((word) => (
+          <button key={word} type="button" disabled={pending} onClick={() => toggle(word)} className={cn("flex w-full items-center justify-between rounded-md px-2 py-1.5 text-[13px] capitalize hover:bg-muted", current.includes(word) && "font-medium")}>
+            {words[word]}
+            {current.includes(word) ? <Check className="size-3.5 text-brand" /> : null}
+          </button>
+        ))}
+      </PopoverContent>
+    </Popover>
   );
 }
 

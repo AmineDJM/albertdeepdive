@@ -45,10 +45,10 @@ const FORMATS = [
  * The formats chosen here are the ones a *new* edition starts with, not a constraint on it: a
  * monthly email can still be printed once a year without changing the title.
  */
-export function PublicationEditor({ publication, trigger, paymentsConnected = false }: { publication?: Publication; trigger?: React.ReactNode; paymentsConnected?: boolean }) {
+export function PublicationEditor({ publication, trigger, paymentsConnected = false, defaultOpen = false }: { publication?: Publication; trigger?: React.ReactNode; paymentsConnected?: boolean; defaultOpen?: boolean }) {
   const tr = useUi();
   const router = useRouter();
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(defaultOpen);
   const [pending, startTransition] = useTransition();
   const [name, setName] = useState(publication?.name ?? "");
   const [description, setDescription] = useState(publication?.description ?? "");

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowLeft, Shapes } from "lucide-react";
+import { Shapes } from "lucide-react";
 import { getCurrentUser, hasPermission } from "@/server/auth/session";
 import { getEdition } from "@/server/editions/service";
 import { PageBody, PageHeader } from "@/components/newsroom/page-header";
@@ -56,11 +56,7 @@ export default async function EditionModelsPage({ params }: { params: Promise<{ 
       <PageHeader
         title={tr("The models")}
         description={`${shelf.publicationName} · ${tr("What your newsletter is poured into. Choosing one changes every edition of this newsletter, not just this one.")}`}
-        actions={
-          <Button asChild size="sm" variant="ghost">
-            <Link href={ed}><ArrowLeft /> {tr("Back to the edition")}</Link>
-          </Button>
-        }
+        back={{ href: ed, label: tr("Back to the edition") }}
       />
       <PageBody className="mx-auto w-full max-w-5xl space-y-4">
         <ModelGallery shelf={shelf} canAdopt={canAdopt} />

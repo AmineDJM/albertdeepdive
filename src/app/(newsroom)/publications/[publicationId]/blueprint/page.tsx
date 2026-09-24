@@ -1,6 +1,4 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
 import { getCurrentUser, hasPermission } from "@/server/auth/session";
 import { requireTenant } from "@/server/tenancy/context";
 import { publicationWithEditions } from "@/server/outputs/service";
@@ -36,11 +34,7 @@ export default async function BlueprintPage({ params }: { params: Promise<{ publ
       <PageHeader
         title={tr("The model")}
         description={`${data.publication.name} · ${tr("What every edition of this newsletter is made on.")}`}
-        actions={
-          <Link href={`/publications/${publicationId}`} className="inline-flex items-center gap-1.5 text-xs font-medium text-brand hover:underline">
-            <ArrowLeft className="size-3.5" /> {tr("Back to the newsletter")}
-          </Link>
-        }
+        back={{ href: `/publications/${publicationId}`, label: data.publication.name }}
       />
       <PageBody className="mx-auto w-full max-w-5xl space-y-6">
         {/*

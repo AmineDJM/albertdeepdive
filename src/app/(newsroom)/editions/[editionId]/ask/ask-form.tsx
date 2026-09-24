@@ -30,7 +30,6 @@ export function AskForm({
   nextLabel,
   nextHint,
   title,
-  back,
 }: {
   editionId: string;
   initial: EditionBrief;
@@ -43,7 +42,6 @@ export function AskForm({
   nextLabel: string;
   nextHint: string;
   title: string;
-  back?: { href: string; label: string } | null;
 }) {
   const tr = useUi();
   const router = useRouter();
@@ -85,7 +83,7 @@ export function AskForm({
         />
       </SettingsCard>
 
-      <GuidedFooter title={title} hint={dirty ? tr("Not saved yet") : nextHint} back={back}>
+      <GuidedFooter title={title} hint={dirty ? tr("Not saved yet") : nextHint}>
         <div className="flex items-center gap-2">
           {canManage && dirty ? (
             <Button
