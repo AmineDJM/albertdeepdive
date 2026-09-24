@@ -76,7 +76,7 @@ function ErrorNote({ message }: { message: string }) {
  * because the point of onboarding is that nobody has to fill in twenty fields to see their first
  * edition.
  */
-export function OnboardingFlow({ suggestedTimezone }: { suggestedTimezone: string }) {
+export function OnboardingFlow({ suggestedTimezone, website }: { suggestedTimezone: string; website?: string }) {
   const router = useRouter();
   const t = useTranslations();
   const [discovery, discover, discovering] = useActionState<ActionResult<DiscoveredOrganization> | null, FormData>(discoverAction, null);
@@ -110,7 +110,7 @@ export function OnboardingFlow({ suggestedTimezone }: { suggestedTimezone: strin
             <Label htmlFor="website">{t("onboarding.website")}</Label>
             <div className="relative">
               <Globe className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input id="website" name="website" placeholder="acme.com" autoFocus autoComplete="url" className="pl-9" aria-invalid={!!(discovery && !discovery.ok)} />
+              <Input id="website" name="website" defaultValue={website} placeholder="acme.com" autoFocus autoComplete="url" className="pl-9" aria-invalid={!!(discovery && !discovery.ok)} />
             </div>
             {discovery && !discovery.ok ? <ErrorNote message={discovery.error} /> : null}
           </div>

@@ -45,7 +45,7 @@ export function MarketingHeader({ signedIn }: { signedIn: boolean }) {
     <header
       className={cn(
         "sticky top-0 z-50 transition-[background-color,border-color,backdrop-filter] duration-300",
-        scrolled ? "border-b border-border/70 bg-background/80 backdrop-blur-md" : "border-b border-transparent bg-transparent",
+        scrolled ? "glass border-b border-border/60" : "border-b border-transparent bg-transparent",
       )}
     >
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-5 sm:px-8">
@@ -71,7 +71,7 @@ export function MarketingHeader({ signedIn }: { signedIn: boolean }) {
               <Button size="sm" variant="ghost" asChild>
                 <Link href="/login">{t("marketing.nav.logIn")}</Link>
               </Button>
-              <Button size="sm" asChild>
+              <Button size="sm" className="rounded-full px-3.5" asChild>
                 <Link href="/signup">{t("marketing.nav.startFree")}</Link>
               </Button>
             </>

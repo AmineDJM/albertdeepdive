@@ -266,6 +266,9 @@ export const en = {
       menu: "Menu",
     },
     hero: {
+      eyebrow: "Newsletters, web, magazine and print — from one edition",
+      websiteLabel: "Your website",
+      openApp: "Open Briefly",
       headline: "Everything that happens.",
       headlineAccent: "Beautifully published.",
       body: "Briefly understands your organization, finds what matters, and turns it into newsletters, web editions, magazines and print.",
@@ -431,6 +434,10 @@ export const en = {
       a9: "Your workspace drops to the free plan's limits and keeps everything in it. Nothing is deleted, and your archive stays readable.",
       q10: "Is there a free plan?",
       a10: "Yes, and it is a real one: a publication, two people, 250 subscribers, email and web editions.",
+    },
+    bento: {
+      kicker: "The product",
+      title: "Everything an edition needs. Nothing it doesn't.",
     },
     finalCta: {
       title: "Your next edition already exists.",

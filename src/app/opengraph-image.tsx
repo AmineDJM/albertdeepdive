@@ -1,6 +1,6 @@
 import { ImageResponse } from "next/og";
 import { BRAND } from "@/lib/brand";
-import { GRADIENT, HEX } from "@/lib/brand/palette";
+import { GOOGLE, GRADIENT } from "@/lib/brand/palette";
 
 export const runtime = "nodejs";
 export const alt = `${BRAND.name} — ${BRAND.tagline}`;
@@ -12,7 +12,7 @@ export const contentType = "image/png";
  *
  * Drawn rather than designed in a file, so it never drifts from the brand tokens and needs no asset
  * pipeline. A share card competes with a headline in somebody's feed, so it wins on clarity: the
- * mark, the name, one sentence, and the spectrum as a single band along the bottom — enough colour
+ * mark, the name, one sentence, and Google's four colours as a single band along the bottom — enough colour
  * to be recognisable at thumbnail size without anything to read.
  *
  * `ImageResponse` renders a Satori subset: flex only, no `gap` shorthand surprises, and every colour
@@ -28,8 +28,8 @@ export default function OpengraphImage() {
           display: "flex",
           flexDirection: "column",
           justifyContent: "space-between",
-          background: BRAND.ink,
-          color: BRAND.paper,
+          background: "#FBFBFD",
+          color: GOOGLE.ink,
           padding: 80,
           paddingBottom: 64,
           fontFamily: "sans-serif",
@@ -40,33 +40,28 @@ export default function OpengraphImage() {
             <defs>
               <linearGradient id="og" x1="0" y1="0" x2="1" y2="1">
                 <stop offset="0%" stopColor={GRADIENT[0]} />
-                <stop offset="52%" stopColor={GRADIENT[1]} />
-                <stop offset="100%" stopColor={GRADIENT[2]} />
+                <stop offset="38%" stopColor={GRADIENT[1]} />
+                <stop offset="68%" stopColor={GRADIENT[2]} />
+                <stop offset="100%" stopColor={GRADIENT[3]} />
               </linearGradient>
             </defs>
-            <rect width="100" height="100" rx="24" fill="url(#og)" />
-            <g transform="translate(13.9 13.9) scale(0.722)">
-              <path
-                fillRule="evenodd"
-                fill={BRAND.paper}
-                d="M23 14 h31 a18 18 0 0 1 0 36 h-36 v-31 a5 5 0 0 1 5-5 z M18 50 h46 a18 18 0 0 1 0 36 h-41 a5 5 0 0 1-5-5 z M40 25 h14 a7 7 0 0 1 0 14 h-14 a7 7 0 0 1 0-14 z M40 61 h24 a7 7 0 0 1 0 14 h-24 a7 7 0 0 1 0-14 z"
-              />
-            </g>
+            <rect width="100" height="100" rx="23" fill="url(#og)" />
+            <rect x="27.7" y="27.7" width="44.6" height="44.6" rx="12" fill="#FFFFFF" />
           </svg>
-          <div style={{ fontSize: 42, fontWeight: 600, letterSpacing: -1.5 }}>{BRAND.name}</div>
+          <div style={{ fontSize: 44, fontWeight: 600, letterSpacing: -1.6 }}>{BRAND.name}</div>
         </div>
 
         <div style={{ display: "flex", flexDirection: "column" }}>
-          <div style={{ fontSize: 86, fontWeight: 600, letterSpacing: -3.5, lineHeight: 1.02 }}>Your organization,</div>
-          <div style={{ fontSize: 86, fontWeight: 600, letterSpacing: -3.5, lineHeight: 1.02, opacity: 0.5 }}>published.</div>
-          <div style={{ fontSize: 28, lineHeight: 1.45, marginTop: 28, opacity: 0.6, maxWidth: 880 }}>
+          <div style={{ fontSize: 90, fontWeight: 600, letterSpacing: -3.8, lineHeight: 1.02 }}>Your organization,</div>
+          <div style={{ fontSize: 90, fontWeight: 600, letterSpacing: -3.8, lineHeight: 1.02, color: "#86868B" }}>published.</div>
+          <div style={{ fontSize: 28, lineHeight: 1.45, marginTop: 28, color: "#6E6E73", maxWidth: 880 }}>
             Email, web, magazine and print — from the same edition.
           </div>
         </div>
 
-        <div style={{ display: "flex", height: 8, borderRadius: 4, overflow: "hidden", marginTop: 44 }}>
-          {(["cobalt", "violet", "magenta", "coral", "amber", "green", "teal"] as const).map((hue) => (
-            <div key={hue} style={{ flex: 1, background: HEX[hue] }} />
+        <div style={{ display: "flex", height: 6, borderRadius: 3, overflow: "hidden", marginTop: 44 }}>
+          {([GOOGLE.blue, GOOGLE.red, GOOGLE.yellow, GOOGLE.green] as const).map((colour) => (
+            <div key={colour} style={{ flex: 1, background: colour }} />
           ))}
         </div>
       </div>

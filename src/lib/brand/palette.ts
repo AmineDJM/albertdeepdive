@@ -1,8 +1,8 @@
 /**
  * Briefly's own spectrum.
  *
- * Colourful, in the sense Google's palette is colourful rather than the sense a confetti cannon is:
- * every hue means something, and once you have learned what, the colour is telling you where you
+ * Colourful, in the sense Google's palette is colourful rather than the sense a confetti cannon is
+ * (and on Google's own hues where the two meet): every hue means something, and once you have learned what, the colour is telling you where you
  * are before you have read a word. Amber is always money. Teal is always audience. Cobalt is always
  * the product speaking as itself.
  *
@@ -23,15 +23,15 @@ export type Hue = (typeof HUES)[number];
 
 /** Degrees in OKLCH. Chosen for even spacing by eye, not by arithmetic — 60° steps put two greens next to each other. */
 const ANGLE: Record<Hue, number> = {
-  // Read off the logo: its indigo corner is the product's own colour, the rest of its sweep gives
-  // the others their angle. Green is the one hue the logo does not carry; "done" still needs it.
-  cobalt: 275,
-  violet: 292,
-  magenta: 328,
-  coral: 18,
-  amber: 86,
+  // Google's own angles for the four it shares with us — blue, red, yellow, green — so the interface
+  // and the logo are one family; violet, magenta and teal fill the gaps between them.
+  cobalt: 259,
+  violet: 295,
+  magenta: 330,
+  coral: 27,
+  amber: 80,
   green: 150,
-  teal: 190,
+  teal: 205,
 };
 
 /**
@@ -44,12 +44,12 @@ const ANGLE: Record<Hue, number> = {
  */
 const CHROMA: Record<Hue, number> = {
   cobalt: 0.19,
-  violet: 0.18,
-  magenta: 0.18,
-  coral: 0.17,
-  amber: 0.145,
-  green: 0.145,
-  teal: 0.125,
+  violet: 0.19,
+  magenta: 0.19,
+  coral: 0.19,
+  amber: 0.15,
+  green: 0.155,
+  teal: 0.12,
 };
 
 type Step = "solid" | "soft" | "deep" | "dark";
@@ -73,32 +73,35 @@ export const PALETTE = Object.fromEntries(
  * is the mark in the product.
  */
 export const HEX: Record<Hue, string> = {
-  cobalt: "#5F63F2",
-  violet: "#8A5CEB",
-  magenta: "#D64FB0",
-  coral: "#E85F5A",
-  amber: "#BE8B12",
-  green: "#2E9B5F",
-  teal: "#2496A8",
+  cobalt: "#3581F6",
+  violet: "#9167EA",
+  magenta: "#C252BB",
+  coral: "#E24942",
+  amber: "#B47900",
+  green: "#279F50",
+  teal: "#009C9C",
 };
 
 /**
- * The logo's own colours, exactly as sampled from it.
+ * Google's four, exactly, and the two that complete them.
  *
- * For the places the identity itself appears — the sign-in screen, the marketing site, an
- * illustration — not for the interface, which uses the one indigo and the neutrals. A product with
- * the whole sweep across its buttons is a toy; a product with it only in its mark is a brand.
+ * For the places the identity itself appears — the logo, the sign-in screen, the marketing site, a
+ * newsletter's dot in the sidebar — not for the interface, which uses the spectrum above and the
+ * neutrals. A product with the whole sweep across its buttons is a toy; a product with it only in
+ * its mark is a brand.
  */
-export const LOGO_COLOURS = {
-  indigo: "#5F6AF6",
-  purple: "#8276F5",
-  blue: "#60B4F1",
-  teal: "#6CDED1",
-  yellow: "#F6DC8E",
-  pink: "#F5A8B8",
-  magenta: "#D970DD",
-  ink: "#181820",
+export const GOOGLE = {
+  blue: "#4285F4",
+  red: "#EA4335",
+  yellow: "#FBBC04",
+  green: "#34A853",
+  violet: "#A142F4",
+  teal: "#12B5CB",
+  ink: "#1D1D1F",
 } as const;
+
+/** The Briefly sweep — blue, red, yellow, green — used by the mark and nowhere that needs to be read. */
+export const GRADIENT = [GOOGLE.blue, GOOGLE.red, GOOGLE.yellow, GOOGLE.green] as const;
 
 /**
  * What each hue is for.
@@ -115,6 +118,3 @@ export const HUE_MEANING: Record<Hue, string> = {
   green: "Done, sent, published, healthy",
   teal: "Audience: subscribers, contributors, the people on the other end",
 };
-
-/** The Briefly gradient, used by the mark and nowhere that needs to be read. */
-export const GRADIENT = [LOGO_COLOURS.indigo, LOGO_COLOURS.teal, LOGO_COLOURS.pink] as const;

@@ -12,32 +12,34 @@ export const metadata: Metadata = { title: "Create your account" };
 export const dynamic = "force-dynamic";
 
 /** The other half of the door. Same room as sign-in, so the two pages read as one place. */
-export default async function SignupPage({ searchParams }: { searchParams: Promise<{ next?: string; plan?: string }> }) {
+export default async function SignupPage({ searchParams }: { searchParams: Promise<{ next?: string; plan?: string; website?: string }> }) {
   const tr = await getUi();
   const user = await getCurrentUser();
   if (user) redirect(await homeFor(user));
-  const { next, plan } = await searchParams;
-  const target = next ?? (plan ? `/onboarding?plan=${encodeURIComponent(plan)}` : "/onboarding");
+  const { next, plan, website } = await searchParams;
+  // The address typed on the landing page travels with the person and waits in onboarding's field.
+  const query = new URLSearchParams(Object.entries({ plan, website: website?.trim().slice(0, 200) }).filter((entry): entry is [string, string] => Boolean(entry[1])));
+  const target = next ?? (query.size ? `/onboarding?${query}` : "/onboarding");
   return (
     <div className="grid min-h-screen lg:grid-cols-[1.1fr_1fr]">
-      <aside className="relative hidden flex-col justify-between overflow-hidden bg-[oklch(0.17_0.012_280)] p-12 text-white lg:flex">
+      <aside className="relative hidden flex-col justify-between overflow-hidden bg-[#F5F5F7] p-12 text-foreground lg:flex dark:bg-card">
         <div className="flex items-center gap-3">
           <BrieflyMark className="size-8" />
-          <span className="text-sm font-medium tracking-wide text-white/80">{BRAND.name}</span>
+          <span className="text-[17px] font-semibold tracking-[-0.03em]">{BRAND.name}</span>
         </div>
         <div className="relative z-10 max-w-lg">
-          <h1 className="masthead text-[64px] leading-[0.95] font-semibold text-white">
+          <h1 className="masthead text-[64px] leading-[0.95] font-semibold text-foreground">
             {tr("Give Briefly")}{" "}<br />
             {tr("what happened.")}</h1>
-          <p className="mt-6 max-w-md text-[15px] leading-6 text-white/70">{tr("Briefly collects what your organization has to say, turns it into an edition, and sends it. You approve.")}</p>
-          <ul className="mt-10 space-y-2 text-sm text-white/85">
+          <p className="mt-6 max-w-md text-[15px] leading-6 text-muted-foreground">{tr("Briefly collects what your organization has to say, turns it into an edition, and sends it. You approve.")}</p>
+          <ul className="mt-10 space-y-2 text-sm text-foreground/85">
             <li>{tr("Your first edition in one click.")}</li>
             <li>{tr("Email, web, PDF and print from the same work.")}</li>
             <li>{tr("Your brand, read off your own website.")}</li>
           </ul>
         </div>
-        <p className="text-xs text-white/40">{tr("No card to start.")}</p>
-        <div className="pointer-events-none absolute -right-40 -bottom-40 size-[520px] rounded-full bg-[radial-gradient(circle_at_30%_30%,#5F6AF6_0%,#6CDED1_45%,#F5A8B8_80%,transparent_100%)] opacity-40 blur-3xl" />
+        <p className="text-xs text-muted-foreground">{tr("No card to start.")}</p>
+        <div aria-hidden className="pointer-events-none absolute -right-40 -bottom-40 size-[560px] rounded-full bg-[conic-gradient(from_200deg,#4285F4,#EA4335,#FBBC04,#34A853,#4285F4)] opacity-30 blur-3xl" />
       </aside>
       <main className="flex items-center justify-center p-6">
         <div className="w-full max-w-sm">

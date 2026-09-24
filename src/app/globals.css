@@ -6,87 +6,100 @@
 /* ──────────────────────────────────────────────────────────────
    Briefly — design tokens
 
-   Colourful the way a good map is colourful: every hue means one thing, so
-   the colour tells you where you are before you have read a word. Amber is
-   always money. Teal is always audience. Cobalt is always Briefly itself.
+   Quiet and bright, the way Apple's pages are: a paper that is almost white,
+   ink that is almost black, generous rounding, shadows you notice only when
+   they are gone. The colour is Google's four — blue, red, yellow, green —
+   plus a violet and a teal, and each one means one thing, so the colour tells
+   you where you are before you have read a word. Blue is Briefly itself.
+   Red is attention. Amber is money. Green is done. Teal is audience.
 
-   The craft is in the sameness. All seven hues sit at the same lightness and
-   chroma in OKLCH — a perceptual space — so none shouts over its neighbours
-   and a row of them reads as one family rather than as seven decisions. Pick
-   the hues freely, then hold everything else absolutely constant.
+   The spectrum is held at one lightness and chroma in OKLCH, so none shouts
+   over its neighbours; the soft steps are the pastel washes (Tiime-like) that
+   carry most of the colour in the interface, with the deep step on top.
 
    Kept in step with src/lib/brand/palette.ts, which is the same spectrum for
    the places CSS cannot reach: emails, the OG image, the favicon, print.
    ────────────────────────────────────────────────────────────── */
 :root {
+  /* Google's colours, exactly: the logo, the newsletter dots, anything that is identity. */
+  --g-blue: #4285f4;
+  --g-red: #ea4335;
+  --g-yellow: #fbbc04;
+  --g-green: #34a853;
+  --g-violet: #a142f4;
+  --g-teal: #12b5cb;
+
   /* The spectrum. solid = a chip or a chart series; soft = a wash, always with
      deep on top; deep = text on soft, and the solid step in dark mode. */
-  --cobalt: oklch(0.62 0.190 275);
-  --cobalt-soft: oklch(0.955 0.042 275);
-  --cobalt-deep: oklch(0.45 0.175 275);
-  --violet: oklch(0.62 0.180 292);
-  --violet-soft: oklch(0.955 0.040 292);
-  --violet-deep: oklch(0.45 0.166 292);
-  --magenta: oklch(0.62 0.180 328);
-  --magenta-soft: oklch(0.955 0.040 328);
-  --magenta-deep: oklch(0.45 0.166 328);
-  --coral: oklch(0.62 0.170 18);
-  --coral-soft: oklch(0.955 0.037 18);
-  --coral-deep: oklch(0.45 0.156 18);
-  --amber: oklch(0.62 0.145 86);
-  --amber-soft: oklch(0.955 0.032 86);
-  --amber-deep: oklch(0.45 0.133 86);
-  --green: oklch(0.62 0.145 150);
-  --green-soft: oklch(0.955 0.032 150);
-  --green-deep: oklch(0.45 0.133 150);
-  --teal: oklch(0.62 0.125 190);
-  --teal-soft: oklch(0.955 0.028 190);
-  --teal-deep: oklch(0.45 0.115 190);
+  --cobalt: oklch(0.6 0.19 259);
+  --cobalt-soft: oklch(0.962 0.024 259);
+  --cobalt-deep: oklch(0.48 0.18 259);
+  --violet: oklch(0.6 0.19 295);
+  --violet-soft: oklch(0.962 0.026 295);
+  --violet-deep: oklch(0.46 0.175 295);
+  --magenta: oklch(0.6 0.19 330);
+  --magenta-soft: oklch(0.962 0.026 330);
+  --magenta-deep: oklch(0.46 0.175 330);
+  --coral: oklch(0.61 0.2 27);
+  --coral-soft: oklch(0.962 0.024 27);
+  --coral-deep: oklch(0.5 0.19 27);
+  --amber: oklch(0.72 0.16 75);
+  --amber-soft: oklch(0.968 0.04 85);
+  --amber-deep: oklch(0.5 0.12 65);
+  --green: oklch(0.62 0.155 150);
+  --green-soft: oklch(0.962 0.034 150);
+  --green-deep: oklch(0.46 0.13 150);
+  --teal: oklch(0.64 0.12 205);
+  --teal-soft: oklch(0.962 0.026 205);
+  --teal-deep: oklch(0.46 0.1 205);
 
-  /* Neutrals. A very light, faintly cool paper; white surfaces on it; charcoal ink; borders a
-     shade below the surface so a card is a card without a line shouting it. */
-  --background: oklch(0.982 0.002 275);
-  --foreground: oklch(0.2 0.012 280);
+  /* Neutrals, Apple's: a paper that is nearly white (#FBFBFD), white surfaces on it, ink at
+     #1D1D1F, grey at #6E6E73, and hairlines (#E8E8ED) so light a card is a card by its shadow. */
+  --background: oklch(0.985 0.002 286);
+  --foreground: oklch(0.232 0.004 286);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.2 0.012 280);
+  --card-foreground: oklch(0.232 0.004 286);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.2 0.012 280);
-  /* Semantic names the components read, so "the accent" can move without touching them. */
-  --primary: var(--cobalt-deep);
-  --primary-foreground: oklch(0.985 0.002 275);
-  --secondary: oklch(0.955 0.004 275);
-  --secondary-foreground: oklch(0.3 0.015 280);
-  --muted: oklch(0.96 0.004 275);
-  --muted-foreground: oklch(0.52 0.015 280);
+  --popover-foreground: oklch(0.232 0.004 286);
+  /* The main button is ink, like Apple's; blue is kept for Briefly speaking, links and focus. */
+  --primary: oklch(0.232 0.004 286);
+  --primary-foreground: oklch(0.99 0 0);
+  --secondary: oklch(0.963 0.004 286);
+  --secondary-foreground: oklch(0.29 0.006 286);
+  --muted: oklch(0.967 0.003 286);
+  --muted-foreground: oklch(0.54 0.008 286);
   --accent: var(--cobalt-soft);
   --accent-foreground: var(--cobalt-deep);
   --brand: var(--cobalt);
   --brand-foreground: var(--cobalt-deep);
   --brand-soft: var(--cobalt-soft);
   --destructive: var(--coral-deep);
-  --destructive-foreground: oklch(0.985 0 0);
+  --destructive-foreground: oklch(0.99 0 0);
   --success: var(--green-deep);
   --success-soft: var(--green-soft);
   --warning: var(--amber-deep);
   --warning-soft: var(--amber-soft);
   --info: var(--cobalt-deep);
   --info-soft: var(--cobalt-soft);
-  --border: oklch(0.915 0.005 275);
-  --input: oklch(0.9 0.005 275);
+  --border: oklch(0.925 0.005 286);
+  --input: oklch(0.895 0.006 286);
   --ring: var(--cobalt);
-  --sidebar: oklch(0.975 0.003 275);
-  --sidebar-foreground: oklch(0.34 0.015 280);
-  --sidebar-border: oklch(0.915 0.005 275);
-  --sidebar-accent: oklch(0.935 0.006 275);
+  --sidebar: oklch(0.975 0.003 286);
+  --sidebar-foreground: oklch(0.36 0.006 286);
+  --sidebar-border: oklch(0.93 0.004 286);
+  --sidebar-accent: oklch(1 0 0);
+  /* Shadows: soft and wide, never a dark edge. */
+  --shadow-soft: 0 1px 2px oklch(0.2 0.01 286 / 0.04), 0 2px 8px -2px oklch(0.2 0.01 286 / 0.06);
+  --shadow-float: 0 1px 2px oklch(0.2 0.01 286 / 0.05), 0 12px 32px -8px oklch(0.2 0.01 286 / 0.14);
   /* The vocabulary the brief asked for, as aliases of the above. */
   --surface: var(--card);
   --surface-muted: var(--muted);
   --text-primary: var(--foreground);
   --text-secondary: var(--muted-foreground);
-  --text-tertiary: oklch(0.66 0.012 280);
+  --text-tertiary: oklch(0.622 0.007 286);
   --accent-primary: var(--cobalt);
   --accent-purple: var(--violet);
-  --accent-blue: oklch(0.72 0.13 240);
+  --accent-blue: var(--g-blue);
   --accent-teal: var(--teal);
   --accent-pink: var(--coral);
   --accent-yellow: var(--amber);
@@ -95,7 +108,7 @@
   --ease-out: cubic-bezier(0.2, 0, 0, 1);
   --duration-fast: 140ms;
   --duration-slow: 220ms;
-  --radius: 0.375rem;
+  --radius: 0.5rem;
   /* A chart reaching for its fifth series gets the fifth hue of the same family,
      not whatever looked free — which is how a palette turns into decoration. */
   --chart-1: var(--cobalt);
@@ -110,41 +123,42 @@
 .dark {
   /* Dark mode flips the spectrum rather than reusing it: the solid step is too bright
      against near-black, and the soft step disappears entirely. */
-  --cobalt-soft: oklch(0.29 0.086 275);
-  --violet-soft: oklch(0.29 0.081 292);
-  --magenta-soft: oklch(0.29 0.081 328);
-  --coral-soft: oklch(0.29 0.077 18);
-  --amber-soft: oklch(0.29 0.065 86);
-  --green-soft: oklch(0.29 0.065 150);
-  --teal-soft: oklch(0.29 0.056 190);
-  --cobalt: oklch(0.7 0.16 258);
-  --violet: oklch(0.7 0.16 300);
-  --magenta: oklch(0.7 0.165 346);
-  --coral: oklch(0.7 0.16 28);
-  --amber: oklch(0.72 0.123 86);
-  --green: oklch(0.7 0.14 148);
-  --teal: oklch(0.72 0.106 190);
-  --cobalt-deep: oklch(0.84 0.095 275);
-  --violet-deep: oklch(0.84 0.090 292);
-  --magenta-deep: oklch(0.84 0.090 328);
-  --coral-deep: oklch(0.84 0.085 18);
-  --amber-deep: oklch(0.84 0.072 86);
-  --green-deep: oklch(0.84 0.072 150);
-  --teal-deep: oklch(0.84 0.062 190);
-  --background: oklch(0.17 0.015 260);
-  --foreground: oklch(0.95 0.005 90);
-  --card: oklch(0.21 0.015 260);
-  --card-foreground: oklch(0.95 0.005 90);
-  --popover: oklch(0.21 0.015 260);
-  --popover-foreground: oklch(0.95 0.005 90);
-  --primary: oklch(0.86 0.055 258);
-  --primary-foreground: oklch(0.17 0.02 260);
-  --secondary: oklch(0.27 0.015 260);
-  --secondary-foreground: oklch(0.95 0.005 90);
-  --muted: oklch(0.27 0.015 260);
-  --muted-foreground: oklch(0.7 0.015 260);
+  --cobalt-soft: oklch(0.3 0.08 259);
+  --violet-soft: oklch(0.3 0.08 295);
+  --magenta-soft: oklch(0.3 0.08 330);
+  --coral-soft: oklch(0.3 0.08 27);
+  --amber-soft: oklch(0.3 0.06 80);
+  --green-soft: oklch(0.3 0.06 150);
+  --teal-soft: oklch(0.3 0.05 205);
+  --cobalt: oklch(0.7 0.16 259);
+  --violet: oklch(0.7 0.16 295);
+  --magenta: oklch(0.7 0.165 330);
+  --coral: oklch(0.7 0.17 27);
+  --amber: oklch(0.8 0.14 80);
+  --green: oklch(0.72 0.15 150);
+  --teal: oklch(0.74 0.11 205);
+  --cobalt-deep: oklch(0.85 0.09 259);
+  --violet-deep: oklch(0.85 0.09 295);
+  --magenta-deep: oklch(0.85 0.09 330);
+  --coral-deep: oklch(0.85 0.085 27);
+  --amber-deep: oklch(0.86 0.09 80);
+  --green-deep: oklch(0.85 0.08 150);
+  --teal-deep: oklch(0.85 0.065 205);
+  /* Apple's dark: true black paper, surfaces a step up (#1C1C1E), hairlines a step above that. */
+  --background: oklch(0.155 0.002 286);
+  --foreground: oklch(0.96 0.002 286);
+  --card: oklch(0.215 0.004 286);
+  --card-foreground: oklch(0.96 0.002 286);
+  --popover: oklch(0.235 0.004 286);
+  --popover-foreground: oklch(0.96 0.002 286);
+  --primary: oklch(0.96 0.002 286);
+  --primary-foreground: oklch(0.2 0.004 286);
+  --secondary: oklch(0.27 0.004 286);
+  --secondary-foreground: oklch(0.96 0.002 286);
+  --muted: oklch(0.26 0.004 286);
+  --muted-foreground: oklch(0.72 0.006 286);
   --accent: var(--cobalt-soft);
-  --accent-foreground: oklch(0.95 0.005 90);
+  --accent-foreground: oklch(0.96 0.002 286);
   --brand: var(--cobalt);
   --brand-foreground: var(--cobalt-deep);
   --brand-soft: var(--cobalt-soft);
@@ -156,15 +170,16 @@
   --warning-soft: var(--amber-soft);
   --info: var(--cobalt);
   --info-soft: var(--cobalt-soft);
-  --border: oklch(0.3 0.015 260);
-  --input: oklch(0.32 0.015 260);
+  --border: oklch(0.3 0.004 286);
+  --input: oklch(0.34 0.005 286);
   --ring: var(--cobalt);
-  --sidebar: oklch(0.15 0.015 260);
-  --sidebar-foreground: oklch(0.85 0.01 260);
-  --sidebar-border: oklch(0.26 0.015 260);
-  --sidebar-accent: oklch(0.24 0.02 260);
-  --text-tertiary: oklch(0.6 0.015 260);
-  --accent-blue: oklch(0.75 0.12 240);
+  --sidebar: oklch(0.18 0.003 286);
+  --sidebar-foreground: oklch(0.86 0.004 286);
+  --sidebar-border: oklch(0.27 0.004 286);
+  --sidebar-accent: oklch(0.26 0.005 286);
+  --text-tertiary: oklch(0.6 0.006 286);
+  --shadow-soft: 0 1px 2px oklch(0 0 0 / 0.3);
+  --shadow-float: 0 12px 32px -8px oklch(0 0 0 / 0.5);
 }
 
 @theme inline {
@@ -245,8 +260,19 @@
   --radius-md: var(--radius);
   --radius-lg: calc(var(--radius) + 2px);
   --radius-xl: calc(var(--radius) + 6px);
+  --radius-2xl: calc(var(--radius) + 12px);
+  --shadow-xs: var(--shadow-soft);
+  --shadow-sm: var(--shadow-soft);
+  --shadow-md: var(--shadow-float);
+  --shadow-lg: var(--shadow-float);
+  --color-g-blue: var(--g-blue);
+  --color-g-red: var(--g-red);
+  --color-g-yellow: var(--g-yellow);
+  --color-g-green: var(--g-green);
+  --color-g-violet: var(--g-violet);
+  --color-g-teal: var(--g-teal);
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
-  --font-display: var(--font-fraunces), Georgia, serif;
+  --font-display: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   --font-serif: var(--font-newsreader), Georgia, serif;
   --font-mono: var(--font-plex-mono), ui-monospace, SFMono-Regular, monospace;
   --text-2xs: 0.6875rem;
@@ -263,6 +289,7 @@
   }
   body {
     @apply bg-background text-foreground font-sans text-[13.5px] leading-5;
+    letter-spacing: -0.006em;
   }
   ::selection {
     background: color-mix(in oklch, var(--brand) 35%, transparent);
@@ -282,10 +309,29 @@
   .label-caps {
     @apply text-2xs font-medium uppercase tracking-[0.08em] text-muted-foreground;
   }
+  /* Display type, Apple-style: the same sans as the interface, heavier and tighter. */
   .masthead {
     font-family: var(--font-display);
-    font-variation-settings: "opsz" 144, "SOFT" 30, "WONK" 1;
-    letter-spacing: -0.02em;
+    font-weight: 650;
+    letter-spacing: -0.035em;
+  }
+  /* The four colours as one line of type — for a word the brand wants to say out loud. */
+  .text-spectrum {
+    background: linear-gradient(90deg, var(--g-blue) 0%, var(--g-red) 38%, var(--g-yellow) 66%, var(--g-green) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  /* An organisation's initial, on a soft sweep of the four colours. */
+  .org-mark {
+    background: linear-gradient(135deg, var(--g-blue), var(--g-violet) 45%, var(--g-red) 75%, var(--g-yellow));
+    color: white;
+  }
+  /* Frosted glass, for bars that float over content. */
+  .glass {
+    background: color-mix(in oklch, var(--background) 72%, transparent);
+    -webkit-backdrop-filter: saturate(180%) blur(20px);
+    backdrop-filter: saturate(180%) blur(20px);
   }
   .scrollbar-thin {
     scrollbar-width: thin;

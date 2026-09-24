@@ -269,6 +269,9 @@ export const fr: Dictionary = {
       menu: "Menu",
     },
     hero: {
+      eyebrow: "Newsletter, web, magazine et imprimé — depuis une seule parution",
+      websiteLabel: "Votre site web",
+      openApp: "Ouvrir Briefly",
       headline: "Tout ce qui se passe.",
       headlineAccent: "Publié avec soin.",
       body: "Briefly comprend votre organisation, trouve ce qui compte, et en fait des newsletters, des parutions web, des magazines et de l'imprimé.",
@@ -434,6 +437,10 @@ export const fr: Dictionary = {
       a9: "Votre espace revient aux limites de la formule gratuite et garde tout ce qu'il contient. Rien n'est supprimé, et vos archives restent lisibles.",
       q10: "Y a-t-il une formule gratuite ?",
       a10: "Oui, et une vraie : une publication, deux personnes, 250 abonnés, parutions e-mail et web.",
+    },
+    bento: {
+      kicker: "Le produit",
+      title: "Tout ce qu'il faut à une parution. Rien de plus.",
     },
     finalCta: {
       title: "Votre prochaine parution existe déjà.",
